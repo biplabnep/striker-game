@@ -394,7 +394,7 @@ export type GameScreen =
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
-  | 'season_objectives';
+  | 'season_objectives' | 'cup_bracket';
 
 // --- Season Objectives ---
 export type ObjectiveCategory = 'board' | 'personal' | 'bonus';
@@ -464,6 +464,9 @@ export interface GameState {
   notifications: GameNotification[];
   seasonObjectives: SeasonObjectivesSet[];
   seasonAwards: SeasonAward[];
+  cupFixtures: Fixture[];
+  cupRound: number;
+  cupEliminated: boolean;
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;

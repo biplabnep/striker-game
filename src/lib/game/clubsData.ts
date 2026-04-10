@@ -13,6 +13,18 @@ export const LEAGUES = [
   { id: 'ligue_1', name: 'Ligue 1', country: 'France', emoji: '🇫🇷', teamCount: 18 },
 ] as const;
 
+// Cup competition names per league
+export const CUP_NAMES: Record<string, { name: string; emoji: string }> = {
+  premier_league: { name: 'FA Cup', emoji: '🏆' },
+  la_liga: { name: 'Copa del Rey', emoji: '👑' },
+  serie_a: { name: 'Coppa Italia', emoji: '🇮🇹' },
+  bundesliga: { name: 'DFB-Pokal', emoji: '🇩🇪' },
+  ligue_1: { name: 'Coupe de France', emoji: '🇫🇷' },
+};
+
+// Cup match weeks (every 4 weeks)
+export const CUP_MATCH_WEEKS = [4, 8, 12, 16, 20, 24, 28, 32, 36];
+
 export const CLUBS: Club[] = [
   // ============================================================
   // English Premier League (20 clubs)

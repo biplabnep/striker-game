@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -24,6 +24,7 @@ const moreItems: NavItem[] = [
   { screen: 'training', icon: <Dumbbell className="h-5 w-5" />, label: 'Training' },
   { screen: 'transfers', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Transfers' },
   { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },
+  { screen: 'cup_bracket', icon: <Trophy className="h-5 w-5" />, label: 'Cup' },
   { screen: 'social', icon: <MessageSquare className="h-5 w-5" />, label: 'Social Feed' },
   { screen: 'season_objectives', icon: <Target className="h-5 w-5" />, label: 'Objectives' },
   { screen: 'events', icon: <Bell className="h-5 w-5" />, label: 'Events' },

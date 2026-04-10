@@ -56,6 +56,8 @@ import {
   ENRICHED_CLUBS,
   LEAGUES,
   getSeasonMatchdays,
+  CUP_NAMES,
+  CUP_MATCH_WEEKS,
 } from '@/lib/game/clubsData';
 import {
   generatePlayerName,
@@ -178,6 +180,83 @@ function createNotification(
     timestamp: new Date().toISOString(),
     read: false,
   };
+}
+
+// ============================================================
+// Helper: Generate cup fixtures (single-elimination knockout)
+// All teams enter round 1. Each round halves the teams.
+// Cup match weeks are at weeks 4, 8, 12, 16, 20, 24, 28, 32, 36
+// ============================================================
+function generateCupFixtures(leagueId: string, season: number): Fixture[] {
+  const clubs = getClubsByLeague(leagueId);
+  const fixtures: Fixture[] = [];
+
+  if (clubs.length < 2) return fixtures;
+
+  // Shuffle clubs for random draw
+  const shuffled = [...clubs].sort(() => Math.random() - 0.5);
+  const clubIds = shuffled.map((c) => c.id);
+  const n = clubIds.length;
+
+  // Calculate rounds needed
+  // With 20 teams: R1(20→10), R2(10→5+3 byes=8), R3(8→4), R4(4→2), R5(2→1 final)
+  // With 18 teams: R1(18→9+7 byes=16), R2(16→8), R3(8→4), R4(4→2), R5(2→1 final)
+  const rounds: string[][] = [];
+
+  // Determine how many rounds we need
+  let teamsInRound = n;
+  let roundIndex = 0;
+
+  // Start with all teams
+  let currentTeams = [...clubIds];
+
+  while (currentTeams.length > 1 && roundIndex < CUP_MATCH_WEEKS.length) {
+    const nextRound: string[] = [];
+    const matchCount = Math.floor(currentTeams.length / 2);
+
+    for (let i = 0; i < matchCount; i++) {
+      const homeId = currentTeams[i];
+      const awayId = currentTeams[currentTeams.length - 1 - i];
+
+      fixtures.push({
+        id: generateId(),
+        homeClubId: homeId,
+        awayClubId: awayId,
+        date: `Season ${season}, Cup Round ${roundIndex + 1}`,
+        matchday: roundIndex + 1, // cup round number
+        competition: 'cup',
+        season,
+        played: false,
+      });
+
+      // For now, mark winners as the first team in each pair
+      // Actual winners will be determined when matches are simulated
+      // We just need to generate first round fixtures
+      nextRound.push(homeId); // placeholder
+    }
+
+    // If odd number of teams, the middle team gets a bye
+    if (currentTeams.length % 2 === 1) {
+      const byeTeam = currentTeams[matchCount];
+      nextRound.push(byeTeam);
+    }
+
+    currentTeams = nextRound;
+    roundIndex++;
+  }
+
+  return fixtures;
+}
+
+// ============================================================
+// Helper: Get the cup round name
+// ============================================================
+function getCupRoundName(round: number, totalRounds: number): string {
+  if (round === totalRounds) return 'Final';
+  if (round === totalRounds - 1) return 'Semi-Final';
+  if (round === totalRounds - 2) return 'Quarter-Final';
+  if (round === 1) return 'Round 1';
+  return `Round ${round}`;
 }
 
 // ============================================================
@@ -502,6 +581,7 @@ export const useGameStore = create<GameStore>()(
         // Generate season fixtures
         const seasonNumber = 1;
         const upcomingFixtures = generateFixtures(club.league, seasonNumber);
+        const cupFixtures = generateCupFixtures(club.league, seasonNumber);
 
         const currentYear = new Date().getFullYear();
 
@@ -533,6 +613,9 @@ export const useGameStore = create<GameStore>()(
             getSeasonMatchdays(ENRICHED_CLUBS.find(c => c.id === config.clubId)?.league ?? 'premier_league')
           )],
           seasonAwards: [],
+          cupFixtures,
+          cupRound: 1,
+          cupEliminated: false,
           gameMode: 'career',
           difficulty: config.difficulty,
           createdAt: new Date().toISOString(),
@@ -605,6 +688,9 @@ export const useGameStore = create<GameStore>()(
         let seasonAwards = [...(state.seasonAwards ?? [])];
         let trainingHistory = [...state.trainingHistory];
         let trainingAvailable = state.trainingAvailable;
+        let cupFixtures = [...(state.cupFixtures ?? [])];
+        let cupRound = state.cupRound ?? 1;
+        let cupEliminated = state.cupEliminated ?? false;
 
         // 1. Increment week
         state.currentWeek += 1;
@@ -752,6 +838,193 @@ export const useGameStore = create<GameStore>()(
                 }
               }
             }
+          }
+        }
+
+        // 2b. Cup match processing (on cup weeks)
+        const isCupWeek = CUP_MATCH_WEEKS.includes(week);
+        if (isCupWeek && !cupEliminated && cupFixtures.length > 0) {
+          // Find unplayed cup fixtures for current round
+          const currentCupRound = cupFixtures.filter(f => f.matchday === cupRound && !f.played);
+
+          if (currentCupRound.length > 0) {
+            // Check if player's team has a cup match this round
+            const playerCupFixture = currentCupRound.find(
+              f => f.homeClubId === currentClub.id || f.awayClubId === currentClub.id
+            );
+
+            if (playerCupFixture) {
+              const isCupHome = playerCupFixture.homeClubId === currentClub.id;
+              const cupOpponentId = isCupHome ? playerCupFixture.awayClubId : playerCupFixture.homeClubId;
+              const cupOpponent = getClubById(cupOpponentId);
+
+              if (cupOpponent) {
+                const cupHomeClub = isCupHome ? currentClub : cupOpponent;
+                const cupAwayClub = isCupHome ? cupOpponent : currentClub;
+
+                // Simulate cup match (midweek)
+                const cupMatchResult = simulateMatch(cupHomeClub, cupAwayClub, player, 'cup', isCupHome ? 'home' : 'away');
+                cupMatchResult.week = week;
+                cupMatchResult.season = season;
+                cupMatchResult.competition = 'cup';
+
+                recentResults.unshift(cupMatchResult);
+                if (recentResults.length > 10) recentResults = recentResults.slice(0, 10);
+
+                // Mark cup fixture as played
+                const cupFixIdx = cupFixtures.findIndex(f => f.id === playerCupFixture.id);
+                if (cupFixIdx >= 0) {
+                  cupFixtures[cupFixIdx] = { ...cupFixtures[cupFixIdx], played: true };
+                }
+
+                // Update player stats from cup match
+                const cupStats = { ...player.seasonStats };
+                if (cupMatchResult.playerMinutesPlayed > 0) {
+                  cupStats.appearances += 1;
+                  if (cupMatchResult.playerStarted) cupStats.starts += 1;
+                  cupStats.minutesPlayed += cupMatchResult.playerMinutesPlayed;
+                  cupStats.goals += cupMatchResult.playerGoals;
+                  cupStats.assists += cupMatchResult.playerAssists;
+                  cupStats.averageRating =
+                    (cupStats.averageRating * (cupStats.appearances - 1) + cupMatchResult.playerRating) /
+                    cupStats.appearances;
+                  cupStats.averageRating = Math.round(cupStats.averageRating * 10) / 10;
+                }
+                player.seasonStats = cupStats;
+
+                // Update career stats
+                const cupCareer = { ...player.careerStats };
+                if (cupMatchResult.playerMinutesPlayed > 0) {
+                  cupCareer.totalAppearances += 1;
+                  cupCareer.totalGoals += cupMatchResult.playerGoals;
+                  cupCareer.totalAssists += cupMatchResult.playerAssists;
+                }
+                player.careerStats = cupCareer;
+
+                // Update form
+                const cupRecentRatings = recentResults
+                  .filter(r => r.playerRating > 0)
+                  .map(r => r.playerRating);
+                player.form = updateForm(player, cupRecentRatings);
+
+                // Check if player's team lost → eliminated
+                const playerWonCup = (isCupHome && cupMatchResult.homeScore > cupMatchResult.awayScore) ||
+                                     (!isCupHome && cupMatchResult.awayScore > cupMatchResult.homeScore);
+                const cupDraw = cupMatchResult.homeScore === cupMatchResult.awayScore;
+
+                if (!playerWonCup && !cupDraw) {
+                  // Player lost - eliminated from cup
+                  cupEliminated = true;
+                  get().addNotification({
+                    type: 'match',
+                    title: 'Cup Elimination! 💔',
+                    message: `You've been knocked out of the ${CUP_NAMES[currentClub.league]?.name ?? 'Cup'} in Round ${cupRound}.`,
+                    actionRequired: false,
+                  });
+                } else {
+                  get().addNotification({
+                    type: 'match',
+                    title: cupDraw ? 'Cup Draw!' : 'Cup Advance! 🏆',
+                    message: cupDraw
+                      ? `${CUP_NAMES[currentClub.league]?.name ?? 'Cup'}: Drew ${cupMatchResult.homeScore}-${cupMatchResult.awayScore} vs ${cupOpponent.name}. You advance!`
+                      : `${CUP_NAMES[currentClub.league]?.name ?? 'Cup'}: Won ${isCupHome ? cupMatchResult.homeScore : cupMatchResult.awayScore}-${isCupHome ? cupMatchResult.awayScore : cupMatchResult.homeScore} vs ${cupOpponent.name}!`,
+                    actionRequired: false,
+                  });
+                }
+
+                // Fitness drain from cup match
+                if (cupMatchResult.playerMinutesPlayed > 0) {
+                  const cupDrain = Math.round(cupMatchResult.playerMinutesPlayed / 6);
+                  player.fitness = clamp(player.fitness - cupDrain, 0, 100);
+                }
+
+                // Morale from cup result
+                if (cupMatchResult.playerRating >= 7.5) {
+                  player.morale = clamp(player.morale + 3, 0, 100);
+                } else if (cupMatchResult.playerRating < 5.0) {
+                  player.morale = clamp(player.morale - 5, 0, 100);
+                }
+
+                // Check for cup match injury
+                const cupInjuryEvent = cupMatchResult.events.find(
+                  e => e.type === 'injury' && e.playerId === player.id
+                );
+                if (cupInjuryEvent) {
+                  const weeksOut = randomBetween(1, 6);
+                  player.injuryWeeks = weeksOut;
+                  player.injuryHistory = [
+                    ...player.injuryHistory,
+                    {
+                      type: 'Cup Match Injury',
+                      weekOccured: week,
+                      seasonOccured: season,
+                      weeksOut,
+                    },
+                  ];
+                }
+
+                // Social media from cup match
+                const cupPosts = processMediaReaction(player, cupMatchResult, currentClub.id);
+                socialFeed = [...cupPosts, ...socialFeed].slice(0, 50);
+              }
+            }
+
+            // Simulate other NPC cup matches for this round
+            const otherCupFixtures = currentCupRound.filter(
+              f => f.id !== playerCupFixture?.id && !f.played
+            );
+            for (const otherCupFix of otherCupFixtures) {
+              const homeTeam = getClubById(otherCupFix.homeClubId);
+              const awayTeam = getClubById(otherCupFix.awayClubId);
+              if (homeTeam && awayTeam) {
+                // Mark as played (NPC result doesn't need detailed tracking)
+                const npcCupIdx = cupFixtures.findIndex(f => f.id === otherCupFix.id);
+                if (npcCupIdx >= 0) {
+                  cupFixtures[npcCupIdx] = { ...cupFixtures[npcCupIdx], played: true };
+                }
+              }
+            }
+
+            // Advance to next cup round if all current round matches are played
+            const remainingInRound = cupFixtures.filter(f => f.matchday === cupRound && !f.played);
+            if (remainingInRound.length === 0) {
+              cupRound += 1;
+
+              // Check if player won the final (no more rounds)
+              const nextRoundFixtures = cupFixtures.filter(f => f.matchday === cupRound);
+              if (nextRoundFixtures.length === 0 && !cupEliminated) {
+                // Player won the cup!
+                const cupName = CUP_NAMES[currentClub.league]?.name ?? 'Domestic Cup';
+                player.careerStats.trophies = [
+                  ...player.careerStats.trophies,
+                  { name: cupName, season }
+                ];
+
+                // Big morale/reputation boost
+                player.morale = clamp(player.morale + 15, 0, 100);
+                player.reputation = clamp(player.reputation + 5, 0, 100);
+
+                get().addNotification({
+                  type: 'match',
+                  title: '🏆 Cup Winner!',
+                  message: `You've won the ${cupName}! What an achievement!`,
+                  actionRequired: false,
+                });
+              }
+            }
+          }
+        } else if (isCupWeek && cupEliminated) {
+          // Still simulate NPC cup matches even if player is eliminated
+          const currentCupRound = cupFixtures.filter(f => f.matchday === cupRound && !f.played);
+          for (const otherCupFix of currentCupRound) {
+            const npcCupIdx = cupFixtures.findIndex(f => f.id === otherCupFix.id);
+            if (npcCupIdx >= 0) {
+              cupFixtures[npcCupIdx] = { ...cupFixtures[npcCupIdx], played: true };
+            }
+          }
+          const remainingInRound = cupFixtures.filter(f => f.matchday === cupRound && !f.played);
+          if (remainingInRound.length === 0) {
+            cupRound += 1;
           }
         }
 
@@ -926,6 +1199,11 @@ export const useGameStore = create<GameStore>()(
           leagueTable = generateLeagueTable(currentClub.league, currentClub.id);
           trainingAvailable = 3;
 
+          // Regenerate cup fixtures for new season
+          cupFixtures = generateCupFixtures(currentClub.league, state.currentSeason);
+          cupRound = 1;
+          cupEliminated = false;
+
           // Generate new season objectives
           seasonObjectives = [...seasonObjectives, generateSeasonObjectives(
             currentClub, player, state.currentSeason, getSeasonMatchdays(currentClub.league)
@@ -1021,6 +1299,9 @@ export const useGameStore = create<GameStore>()(
             trainingAvailable,
             seasonObjectives,
             seasonAwards,
+            cupFixtures,
+            cupRound,
+            cupEliminated,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,
@@ -1204,6 +1485,7 @@ export const useGameStore = create<GameStore>()(
         const newClub = offer.fromClub;
         const leagueTable = generateLeagueTable(newClub.league, newClub.id);
         const upcomingFixtures = generateFixtures(newClub.league, gameState.currentSeason);
+        const newCupFixtures = generateCupFixtures(newClub.league, gameState.currentSeason);
 
         set({
           gameState: {
@@ -1214,6 +1496,9 @@ export const useGameStore = create<GameStore>()(
             loanOffers,
             leagueTable,
             upcomingFixtures,
+            cupFixtures: newCupFixtures,
+            cupRound: 1,
+            cupEliminated: false,
           },
         });
 
@@ -1260,6 +1545,7 @@ export const useGameStore = create<GameStore>()(
         const loanClub = offer.fromClub;
         const leagueTable = generateLeagueTable(loanClub.league, loanClub.id);
         const upcomingFixtures = generateFixtures(loanClub.league, gameState.currentSeason);
+        const loanCupFixtures = generateCupFixtures(loanClub.league, gameState.currentSeason);
 
         set({
           gameState: {
@@ -1270,6 +1556,9 @@ export const useGameStore = create<GameStore>()(
             transferOffers,
             leagueTable,
             upcomingFixtures,
+            cupFixtures: loanCupFixtures,
+            cupRound: 1,
+            cupEliminated: false,
           },
         });
 

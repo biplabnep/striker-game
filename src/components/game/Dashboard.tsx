@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getOverallColor, getFormLabel, getMoraleLabel, formatCurrency, getSeasonWeekDescription, getMatchRatingLabel, getPositionColor } from '@/lib/game/gameUtils';
 import { NATIONALITIES } from '@/lib/game/playerData';
-import { getClubById, LEAGUES, getLeagueById, getSeasonMatchdays } from '@/lib/game/clubsData';
+import { getClubById, LEAGUES, getLeagueById, getSeasonMatchdays, CUP_NAMES, CUP_MATCH_WEEKS } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -662,6 +662,83 @@ export default function Dashboard() {
                   </button>
                 </motion.div>
               )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cup Status Card */}
+      <Card className="bg-slate-900 border-amber-900/20 cursor-pointer hover:bg-slate-800/80 transition-colors">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-900/30 flex items-center justify-center">
+                <Trophy className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                {(() => {
+                  const cupData = CUP_NAMES[currentClub.league];
+                  const cupName = cupData?.name ?? 'Domestic Cup';
+                  const cupEmoji = cupData?.emoji ?? '🏆';
+                  const cupRoundVal = gameState.cupRound ?? 1;
+                  const cupElim = gameState.cupEliminated ?? false;
+                  const cupFixts = gameState.cupFixtures ?? [];
+                  const maxCupRound = cupFixts.length > 0 ? Math.max(...cupFixts.map(f => f.matchday)) : 1;
+                  const isCupWinner = !cupElim && cupRoundVal > maxCupRound;
+
+                  const nextCupMatch = cupFixts.find(
+                    f => f.matchday === cupRoundVal && !f.played &&
+                         (f.homeClubId === currentClub.id || f.awayClubId === currentClub.id)
+                  );
+                  const cupOpponentId = nextCupMatch
+                    ? (nextCupMatch.homeClubId === currentClub.id ? nextCupMatch.awayClubId : nextCupMatch.homeClubId)
+                    : null;
+                  const cupOpponent = cupOpponentId ? getClubById(cupOpponentId) : null;
+
+                  function getRoundLabel(round: number, total: number): string {
+                    if (round === total) return 'Final';
+                    if (round === total - 1) return 'Semi-Final';
+                    if (round === total - 2) return 'Quarter-Final';
+                    return `Round ${round}`;
+                  }
+
+                  if (isCupWinner) {
+                    return (
+                      <div>
+                        <p className="text-xs text-slate-500">{cupEmoji} {cupName}</p>
+                        <p className="text-sm font-semibold">
+                          <span className="text-amber-400">Winner! 🏆</span>
+                        </p>
+                      </div>
+                    );
+                  }
+                  if (cupElim) {
+                    return (
+                      <div>
+                        <p className="text-xs text-slate-500">{cupEmoji} {cupName}</p>
+                        <p className="text-sm font-semibold">
+                          <span className="text-red-400">Eliminated</span>
+                          <span className="text-slate-400"> in {getRoundLabel(Math.max(1, cupRoundVal - 1), maxCupRound)}</span>
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div>
+                      <p className="text-xs text-slate-500">{cupEmoji} {cupName}</p>
+                      <p className="text-sm font-semibold">
+                        <span className="text-amber-400">{getRoundLabel(cupRoundVal, maxCupRound)}</span>
+                        <span className="text-slate-400"> in cup</span>
+                      </p>
+                      {cupOpponent && nextCupMatch && (
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Next: vs {cupOpponent.shortName} (Wk {CUP_MATCH_WEEKS[cupRoundVal - 1] ?? cupRoundVal * 4})
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           </div>
         </CardContent>
