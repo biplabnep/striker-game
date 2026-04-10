@@ -474,13 +474,75 @@ export interface YouthCupRound {
   fixtures: YouthFixture[];
 }
 
+// --- Relationships ---
+export type RelationshipType = 'teammate' | 'coach' | 'rival' | 'mentor' | 'agent' | 'media' | 'fan_favorite';
+export type RelationshipLevel = 'hostile' | 'cold' | 'neutral' | 'friendly' | 'close' | 'legendary';
+
+export interface Relationship {
+  id: string;
+  name: string;
+  type: RelationshipType;
+  level: RelationshipLevel;
+  affinity: number;        // 0-100
+  history: string[];       // key moments
+  clubId?: string;         // for teammate/coach relationships
+  position?: Position;     // for teammate relationships
+  trait?: string;          // personality trait
+  isCurrent: boolean;      // still at same club?
+}
+
+export interface TeamDynamics {
+  morale: number;           // 0-100 team morale
+  cohesion: number;         // 0-100 how well team plays together
+  dressingRoomAtmosphere: 'toxic' | 'tense' | 'neutral' | 'positive' | 'excellent';
+  playerInfluence: number;  // 0-100 how influential the player is in the squad
+  captainRating: number;    // 0-100 leadership rating
+}
+
+// --- Continental Competitions ---
+export type ContinentalCompetition = 'champions_league' | 'europa_league';
+
+export interface ContinentalFixture {
+  id: string;
+  homeClubId: string;
+  awayClubId: string;
+  competition: ContinentalCompetition;
+  stage: 'group' | 'round_of_16' | 'quarter_final' | 'semi_final' | 'final';
+  group?: string; // A-H for group stage
+  matchday: number; // 1-6 for group stage, round number for knockout
+  season: number;
+  played: boolean;
+  homeScore?: number;
+  awayScore?: number;
+}
+
+export interface ContinentalGroupStanding {
+  clubId: string;
+  clubName: string;
+  competition: ContinentalCompetition;
+  group: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+}
+
+export interface ContinentalBracketRound {
+  competition: ContinentalCompetition;
+  stage: ContinentalFixture['stage'];
+  fixtures: ContinentalFixture[];
+}
+
 // --- Game Screen Navigation ---
 export type GameScreen =
   | 'main_menu' | 'career_setup' | 'dashboard' | 'match_day'
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
-  | 'season_objectives' | 'cup_bracket' | 'youth_academy';
+  | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental';
 
 // --- Season Objectives ---
 export type ObjectiveCategory = 'board' | 'personal' | 'bonus';
@@ -562,6 +624,16 @@ export interface GameState {
   youthCupEliminated: boolean;
   youthMatchResults: YouthMatchResult[];
   youthLeagueMatchWeek: number; // tracks current matchday for youth leagues
+  // Relationships & Team Dynamics
+  relationships: Relationship[];
+  teamDynamics: TeamDynamics;
+  // Continental Competitions
+  continentalFixtures: ContinentalFixture[];
+  continentalGroupStandings: ContinentalGroupStanding[];
+  continentalQualified: boolean; // whether player's club qualified for continental
+  continentalCompetition: ContinentalCompetition | null; // which competition qualified for
+  continentalKnockoutRound: number; // current knockout round (0 = group stage)
+  continentalEliminated: boolean;
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;

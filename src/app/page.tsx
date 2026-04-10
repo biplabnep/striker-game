@@ -24,6 +24,8 @@ const PlayerProfile = dynamic(() => import('@/components/game/PlayerProfile'), {
 const SeasonObjectivesPanel = dynamic(() => import('@/components/game/SeasonObjectivesPanel'), { ssr: false });
 const CupBracket = dynamic(() => import('@/components/game/CupBracket'), { ssr: false });
 const YouthAcademy = dynamic(() => import('@/components/game/YouthAcademy'), { ssr: false });
+const RelationshipsPanel = dynamic(() => import('@/components/game/RelationshipsPanel'), { ssr: false });
+const ContinentalPanel = dynamic(() => import('@/components/game/ContinentalPanel'), { ssr: false });
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -45,10 +47,12 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   season_objectives: SeasonObjectivesPanel,
   cup_bracket: CupBracket,
   youth_academy: YouthAcademy,
+  relationships: RelationshipsPanel,
+  continental: ContinentalPanel,
 };
 
 const menuScreens: GameScreen[] = ['main_menu', 'career_setup', 'save_load'];
-const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy'];
+const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy', 'relationships', 'continental'];
 
 export default function Home() {
   const screen = useGameStore(state => state.screen);

@@ -30,6 +30,8 @@ import {
   YouthFixture,
   YouthMatchResult,
   YouthPlayer,
+  Relationship,
+  TeamDynamics,
 } from '@/lib/game/types';
 
 // Engine imports
@@ -94,6 +96,27 @@ import {
   promoteYouthPlayerToFirstTeam,
   ageUpYouthPlayers,
 } from '@/lib/game/youthAcademy';
+import {
+  generateInitialRelationships,
+  updateRelationshipsAfterMatch,
+  updateRelationshipsWeekly,
+  calculateTeamDynamics,
+  getDefaultTeamDynamics,
+  generateNewRelationshipsOnTransfer,
+} from '@/lib/game/relationshipsEngine';
+import {
+  determineContinentalQualification,
+  selectContinentalClubs,
+  generateContinentalGroupFixtures,
+  updateContinentalStandings,
+  simulateContinentalMatch,
+  getQualifiedFromGroups,
+  generateKnockoutFixtures,
+  CONTINENTAL_GROUP_MATCH_WEEKS,
+  CONTINENTAL_KO_MATCH_WEEKS,
+  getContinentalName,
+  getStageName,
+} from '@/lib/game/continentalEngine';
 
 // Persistence
 import {
@@ -183,6 +206,9 @@ interface GameStoreActions {
   promoteYouthPlayer: (playerId: string, target: 'u21' | 'first_team') => void;
   setYouthTrainingFocus: (playerId: string, focus: keyof PlayerAttributes) => void;
   generateNewYouthIntake: () => void;
+
+  // Relationships
+  promoteRelationshipLevel: (relationshipId: string) => void;
 
   // Save/Load
   saveGame: (slotName: string) => void;
@@ -657,6 +683,16 @@ export const useGameStore = create<GameStore>()(
           youthCupEliminated: false,
           youthMatchResults: [],
           youthLeagueMatchWeek: 1,
+          // Relationships & Team Dynamics
+          relationships: generateInitialRelationships(club, player),
+          teamDynamics: getDefaultTeamDynamics(),
+          // Continental Competitions (not qualified initially - qualification happens at season end)
+          continentalFixtures: [],
+          continentalGroupStandings: [],
+          continentalQualified: false,
+          continentalCompetition: null,
+          continentalKnockoutRound: 0,
+          continentalEliminated: false,
           gameMode: 'career',
           difficulty: config.difficulty,
           createdAt: new Date().toISOString(),
@@ -741,6 +777,15 @@ export const useGameStore = create<GameStore>()(
         let youthCupEliminated = state.youthCupEliminated ?? false;
         let youthMatchResults = [...(state.youthMatchResults ?? [])];
         let youthLeagueMatchWeek = state.youthLeagueMatchWeek ?? 1;
+        let relationships = [...(state.relationships ?? [])];
+        let teamDynamics = state.teamDynamics ?? getDefaultTeamDynamics();
+        // Continental state
+        let continentalFixtures = [...(state.continentalFixtures ?? [])];
+        let continentalGroupStandings = [...(state.continentalGroupStandings ?? [])];
+        let continentalQualified = state.continentalQualified ?? false;
+        let continentalCompetition = state.continentalCompetition ?? null;
+        let continentalKnockoutRound = state.continentalKnockoutRound ?? 0;
+        let continentalEliminated = state.continentalEliminated ?? false;
 
         // 1. Increment week
         state.currentWeek += 1;
@@ -1178,6 +1223,327 @@ export const useGameStore = create<GameStore>()(
 
         player = applyPlayerUpdates(player, progressionUpdates);
 
+        // 2c. Continental competition match processing
+        if (continentalQualified && continentalCompetition && !continentalEliminated && continentalFixtures.length > 0) {
+          const isContinentalGroupWeek = CONTINENTAL_GROUP_MATCH_WEEKS.includes(week);
+          const isContinentalKOWeek = CONTINENTAL_KO_MATCH_WEEKS.includes(week);
+
+          if (isContinentalGroupWeek && continentalKnockoutRound === 0) {
+            // Group stage matchday
+            const groupMatchday = CONTINENTAL_GROUP_WEEKS.indexOf(week) + 1;
+            const groupFixtures = continentalFixtures.filter(
+              f => f.stage === 'group' && f.matchday === groupMatchday && !f.played
+            );
+
+            // Check if player's team has a group match
+            const playerContinentalFixture = groupFixtures.find(
+              f => f.homeClubId === currentClub.id || f.awayClubId === currentClub.id
+            );
+
+            if (playerContinentalFixture) {
+              const isCHome = playerContinentalFixture.homeClubId === currentClub.id;
+              const cOpponentId = isCHome ? playerContinentalFixture.awayClubId : playerContinentalFixture.homeClubId;
+              const cOpponent = getClubById(cOpponentId);
+
+              if (cOpponent) {
+                const cHome = isCHome ? currentClub : cOpponent;
+                const cAway = isCHome ? cOpponent : currentClub;
+                const compName = getContinentalName(continentalCompetition);
+
+                const cMatchResult = simulateMatch(cHome, cAway, player, 'continental', isCHome ? 'home' : 'away');
+                cMatchResult.week = week;
+                cMatchResult.season = season;
+                cMatchResult.competition = continentalCompetition;
+
+                recentResults.unshift(cMatchResult);
+                if (recentResults.length > 10) recentResults = recentResults.slice(0, 10);
+
+                // Mark fixture as played
+                const cFixIdx = continentalFixtures.findIndex(f => f.id === playerContinentalFixture.id);
+                if (cFixIdx >= 0) {
+                  continentalFixtures[cFixIdx] = {
+                    ...continentalFixtures[cFixIdx],
+                    played: true,
+                    homeScore: cMatchResult.homeScore,
+                    awayScore: cMatchResult.awayScore,
+                  };
+                }
+
+                // Update standings
+                continentalGroupStandings = updateContinentalStandings(
+                  continentalGroupStandings,
+                  playerContinentalFixture.homeClubId,
+                  playerContinentalFixture.awayClubId,
+                  cMatchResult.homeScore,
+                  cMatchResult.awayScore
+                );
+
+                // Update player stats
+                const cStats = { ...player.seasonStats };
+                if (cMatchResult.playerMinutesPlayed > 0) {
+                  cStats.appearances += 1;
+                  if (cMatchResult.playerStarted) cStats.starts += 1;
+                  cStats.minutesPlayed += cMatchResult.playerMinutesPlayed;
+                  cStats.goals += cMatchResult.playerGoals;
+                  cStats.assists += cMatchResult.playerAssists;
+                  cStats.averageRating = (cStats.averageRating * (cStats.appearances - 1) + cMatchResult.playerRating) / cStats.appearances;
+                  cStats.averageRating = Math.round(cStats.averageRating * 10) / 10;
+                }
+                player.seasonStats = cStats;
+
+                const cCareer = { ...player.careerStats };
+                if (cMatchResult.playerMinutesPlayed > 0) {
+                  cCareer.totalAppearances += 1;
+                  cCareer.totalGoals += cMatchResult.playerGoals;
+                  cCareer.totalAssists += cMatchResult.playerAssists;
+                }
+                player.careerStats = cCareer;
+
+                // Update form
+                const cRecentRatings = recentResults.filter(r => r.playerRating > 0).map(r => r.playerRating);
+                player.form = updateForm(player, cRecentRatings);
+
+                // Fitness drain
+                if (cMatchResult.playerMinutesPlayed > 0) {
+                  const cDrain = Math.round(cMatchResult.playerMinutesPlayed / 6);
+                  player.fitness = clamp(player.fitness - cDrain, 0, 100);
+                }
+
+                // Morale from continental result
+                if (cMatchResult.playerRating >= 7.5) {
+                  player.morale = clamp(player.morale + 4, 0, 100);
+                } else if (cMatchResult.playerRating < 5.0) {
+                  player.morale = clamp(player.morale - 5, 0, 100);
+                }
+
+                // Social media
+                const cPosts = processMediaReaction(player, cMatchResult, currentClub.id);
+                socialFeed = [...cPosts, ...socialFeed].slice(0, 50);
+
+                get().addNotification({
+                  type: 'match',
+                  title: `${compName.emoji} ${compName.name} Match!`,
+                  message: `${cMatchResult.homeClub.shortName} ${cMatchResult.homeScore} - ${cMatchResult.awayScore} ${cMatchResult.awayClub.shortName} | Your rating: ${cMatchResult.playerRating.toFixed(1)}`,
+                  actionRequired: false,
+                });
+              }
+            }
+
+            // Simulate other group matches
+            const otherGroupFixtures = groupFixtures.filter(
+              f => f.id !== playerContinentalFixture?.id && !f.played
+            );
+            for (const oFix of otherGroupFixtures) {
+              const oHome = getClubById(oFix.homeClubId);
+              const oAway = getClubById(oFix.awayClubId);
+              if (oHome && oAway) {
+                const oResult = simulateContinentalMatch(oHome, oAway);
+                const oFixIdx = continentalFixtures.findIndex(f => f.id === oFix.id);
+                if (oFixIdx >= 0) {
+                  continentalFixtures[oFixIdx] = {
+                    ...continentalFixtures[oFixIdx],
+                    played: true,
+                    homeScore: oResult.homeScore,
+                    awayScore: oResult.awayScore,
+                  };
+                }
+                continentalGroupStandings = updateContinentalStandings(
+                  continentalGroupStandings,
+                  oFix.homeClubId,
+                  oFix.awayClubId,
+                  oResult.homeScore,
+                  oResult.awayScore
+                );
+              }
+            }
+
+            // Check if group stage is complete
+            const unplayedGroup = continentalFixtures.filter(f => f.stage === 'group' && !f.played);
+            if (unplayedGroup.length === 0) {
+              // Generate knockout fixtures
+              const qualified = getQualifiedFromGroups(continentalGroupStandings, continentalCompetition);
+              if (qualified.length >= 16) {
+                const koFixtures = generateKnockoutFixtures(qualified, continentalCompetition, 'round_of_16', season);
+                continentalFixtures = [...continentalFixtures, ...koFixtures];
+                continentalKnockoutRound = 1;
+
+                // Check if player qualified
+                if (!qualified.includes(currentClub.id)) {
+                  continentalEliminated = true;
+                  get().addNotification({
+                    type: 'match',
+                    title: `${getContinentalName(continentalCompetition).emoji} Eliminated!`,
+                    message: `You failed to advance from the group stage of the ${getContinentalName(continentalCompetition).name}.`,
+                    actionRequired: false,
+                  });
+                } else {
+                  get().addNotification({
+                    type: 'match',
+                    title: `${getContinentalName(continentalCompetition).emoji} Knockout Stage!`,
+                    message: `You've advanced to the Round of 16 in the ${getContinentalName(continentalCompetition).name}!`,
+                    actionRequired: false,
+                  });
+                }
+              }
+            }
+          } else if (isContinentalKOWeek && continentalKnockoutRound > 0) {
+            // Knockout stage match
+            const koStage = continentalKnockoutRound === 1 ? 'round_of_16' :
+              continentalKnockoutRound === 2 ? 'quarter_final' :
+              continentalKnockoutRound === 3 ? 'semi_final' : 'final';
+
+            const koFixtures = continentalFixtures.filter(
+              f => f.stage === koStage && !f.played
+            );
+
+            const playerKOFixture = koFixtures.find(
+              f => f.homeClubId === currentClub.id || f.awayClubId === currentClub.id
+            );
+
+            if (playerKOFixture) {
+              const isKHome = playerKOFixture.homeClubId === currentClub.id;
+              const koOpponentId = isKHome ? playerKOFixture.awayClubId : playerKOFixture.homeClubId;
+              const koOpponent = getClubById(koOpponentId);
+
+              if (koOpponent) {
+                const koHome = isKHome ? currentClub : koOpponent;
+                const koAway = isKHome ? koOpponent : currentClub;
+                const compName = getContinentalName(continentalCompetition);
+
+                const koResult = simulateMatch(koHome, koAway, player, 'continental', isKHome ? 'home' : 'away');
+                koResult.week = week;
+                koResult.season = season;
+                koResult.competition = continentalCompetition;
+
+                recentResults.unshift(koResult);
+                if (recentResults.length > 10) recentResults = recentResults.slice(0, 10);
+
+                // Mark fixture
+                const koFixIdx = continentalFixtures.findIndex(f => f.id === playerKOFixture.id);
+                if (koFixIdx >= 0) {
+                  continentalFixtures[koFixIdx] = {
+                    ...continentalFixtures[koFixIdx],
+                    played: true,
+                    homeScore: koResult.homeScore,
+                    awayScore: koResult.awayScore,
+                  };
+                }
+
+                // Update player stats
+                const koStats = { ...player.seasonStats };
+                if (koResult.playerMinutesPlayed > 0) {
+                  koStats.appearances += 1;
+                  if (koResult.playerStarted) koStats.starts += 1;
+                  koStats.minutesPlayed += koResult.playerMinutesPlayed;
+                  koStats.goals += koResult.playerGoals;
+                  koStats.assists += koResult.playerAssists;
+                  koStats.averageRating = (koStats.averageRating * (koStats.appearances - 1) + koResult.playerRating) / koStats.appearances;
+                  koStats.averageRating = Math.round(koStats.averageRating * 10) / 10;
+                }
+                player.seasonStats = koStats;
+
+                const koCareer = { ...player.careerStats };
+                if (koResult.playerMinutesPlayed > 0) {
+                  koCareer.totalAppearances += 1;
+                  koCareer.totalGoals += koResult.playerGoals;
+                  koCareer.totalAssists += koResult.playerAssists;
+                }
+                player.careerStats = koCareer;
+
+                // Form + fitness + morale
+                const koRecentRatings = recentResults.filter(r => r.playerRating > 0).map(r => r.playerRating);
+                player.form = updateForm(player, koRecentRatings);
+                if (koResult.playerMinutesPlayed > 0) {
+                  player.fitness = clamp(player.fitness - Math.round(koResult.playerMinutesPlayed / 6), 0, 100);
+                }
+                if (koResult.playerRating >= 7.5) player.morale = clamp(player.morale + 4, 0, 100);
+                else if (koResult.playerRating < 5.0) player.morale = clamp(player.morale - 5, 0, 100);
+
+                const koPosts = processMediaReaction(player, koResult, currentClub.id);
+                socialFeed = [...koPosts, ...socialFeed].slice(0, 50);
+
+                // Check result
+                const playerWonKO = (isKHome && koResult.homeScore > koResult.awayScore) ||
+                  (!isKHome && koResult.awayScore > koResult.homeScore);
+
+                if (!playerWonKO) {
+                  continentalEliminated = true;
+                  get().addNotification({
+                    type: 'match',
+                    title: `${compName.emoji} Knocked Out!`,
+                    message: `Eliminated from the ${compName.name} at the ${getStageName(koStage)}.`,
+                    actionRequired: false,
+                  });
+                } else if (koStage === 'final') {
+                  // Won the continental competition!
+                  player.careerStats.trophies = [
+                    ...player.careerStats.trophies,
+                    { name: compName.name, season }
+                  ];
+                  player.morale = clamp(player.morale + 20, 0, 100);
+                  player.reputation = clamp(player.reputation + 10, 0, 100);
+                  continentalEliminated = true;
+
+                  get().addNotification({
+                    type: 'match',
+                    title: `${compName.emoji} CHAMPIONS! 🏆`,
+                    message: `You've won the ${compName.name}! A historic achievement!`,
+                    actionRequired: false,
+                  });
+                } else {
+                  get().addNotification({
+                    type: 'match',
+                    title: `${compName.emoji} Advance!`,
+                    message: `Through to the next round of the ${compName.name}!`,
+                    actionRequired: false,
+                  });
+                }
+              }
+            }
+
+            // Simulate other KO matches
+            const otherKOFixtures = koFixtures.filter(f => f.id !== playerKOFixture?.id && !f.played);
+            const koWinners: string[] = [];
+            for (const oKO of otherKOFixtures) {
+              const oHome = getClubById(oKO.homeClubId);
+              const oAway = getClubById(oKO.awayClubId);
+              if (oHome && oAway) {
+                const oResult = simulateContinentalMatch(oHome, oAway);
+                const oIdx = continentalFixtures.findIndex(f => f.id === oKO.id);
+                if (oIdx >= 0) {
+                  continentalFixtures[oIdx] = {
+                    ...continentalFixtures[oIdx],
+                    played: true,
+                    homeScore: oResult.homeScore,
+                    awayScore: oResult.awayScore,
+                  };
+                }
+                koWinners.push(oResult.homeScore >= oResult.awayScore ? oKO.homeClubId : oKO.awayClubId);
+              }
+            }
+
+            // Check if all KO matches played → generate next round
+            const unplayedKO = continentalFixtures.filter(f => f.stage === koStage && !f.played);
+            if (unplayedKO.length === 0 && koWinners.length > 0) {
+              // Add player's winner if they won
+              if (playerKOFixture && !continentalEliminated) {
+                koWinners.push(currentClub.id);
+              }
+
+              continentalKnockoutRound += 1;
+
+              const nextStage = continentalKnockoutRound === 2 ? 'quarter_final' :
+                continentalKnockoutRound === 3 ? 'semi_final' :
+                continentalKnockoutRound === 4 ? 'final' : null;
+
+              if (nextStage && koWinners.length >= 2) {
+                const nextFixtures = generateKnockoutFixtures(koWinners, continentalCompetition, nextStage, season);
+                continentalFixtures = [...continentalFixtures, ...nextFixtures];
+              }
+            }
+          }
+        }
+
         // 4. Check for random events
         const newEvent = generateRandomEvent(player, currentClub, season, week);
         if (newEvent) {
@@ -1343,6 +1709,40 @@ export const useGameStore = create<GameStore>()(
           cupRound = 1;
           cupEliminated = false;
 
+          // Check continental qualification based on league position
+          const newLeaguePosition = leagueTable.findIndex((e) => e.clubId === currentClub.id) + 1;
+          const continentalQual = determineContinentalQualification(newLeaguePosition, leagueTable);
+          continentalQualified = continentalQual.qualified;
+          continentalCompetition = continentalQual.competition;
+          continentalEliminated = false;
+          continentalKnockoutRound = 0;
+
+          if (continentalQualified && continentalCompetition) {
+            const compName = getContinentalName(continentalCompetition);
+            // Select all clubs and generate group fixtures
+            const { championsLeague, europaLeague } = selectContinentalClubs();
+            const clubs = continentalCompetition === 'champions_league' ? championsLeague : europaLeague;
+            // Ensure player's club is included
+            if (!clubs.find(c => c.id === currentClub.id)) {
+              clubs.push(currentClub);
+            }
+            const { fixtures: cFixtures, standings: cStandings } = generateContinentalGroupFixtures(
+              clubs, continentalCompetition, state.currentSeason
+            );
+            continentalFixtures = cFixtures;
+            continentalGroupStandings = cStandings;
+
+            get().addNotification({
+              type: 'career',
+              title: `${compName.emoji} Qualified!`,
+              message: `You've qualified for the ${compName.name}! European nights await!`,
+              actionRequired: false,
+            });
+          } else {
+            continentalFixtures = [];
+            continentalGroupStandings = [];
+          }
+
           // Generate new season objectives
           seasonObjectives = [...seasonObjectives, generateSeasonObjectives(
             currentClub, player, state.currentSeason, getSeasonMatchdays(currentClub.league)
@@ -1419,6 +1819,16 @@ export const useGameStore = create<GameStore>()(
         // Update overall
         player.overall = calculateOverall(player.attributes, player.position);
 
+        // Update relationships after match
+        if (matchResult) {
+          relationships = updateRelationshipsAfterMatch(relationships, player, matchResult, currentClub.id);
+        }
+
+        // Weekly relationship drift
+        const relUpdate = updateRelationshipsWeekly(relationships, player, teamDynamics);
+        relationships = relUpdate.relationships;
+        teamDynamics = relUpdate.teamDynamics;
+
         // Commit state
         set({
           gameState: {
@@ -1449,6 +1859,14 @@ export const useGameStore = create<GameStore>()(
             youthCupEliminated,
             youthMatchResults,
             youthLeagueMatchWeek,
+            relationships,
+            teamDynamics,
+            continentalFixtures,
+            continentalGroupStandings,
+            continentalQualified,
+            continentalCompetition,
+            continentalKnockoutRound,
+            continentalEliminated,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,
@@ -1634,6 +2052,13 @@ export const useGameStore = create<GameStore>()(
         const upcomingFixtures = generateFixtures(newClub.league, gameState.currentSeason);
         const newCupFixtures = generateCupFixtures(newClub.league, gameState.currentSeason);
 
+        // Update relationships on transfer
+        const newRelationships = generateNewRelationshipsOnTransfer(
+          gameState.relationships ?? [],
+          newClub,
+          player
+        );
+
         set({
           gameState: {
             ...gameState,
@@ -1646,6 +2071,8 @@ export const useGameStore = create<GameStore>()(
             cupFixtures: newCupFixtures,
             cupRound: 1,
             cupEliminated: false,
+            relationships: newRelationships,
+            teamDynamics: calculateTeamDynamics(newRelationships, player, newClub),
           },
         });
 
@@ -1926,13 +2353,39 @@ export const useGameStore = create<GameStore>()(
 
         get().addNotification({
           type: 'career',
-          title: 'New Youth Intake! 🎓',
+          title: 'New Youth Intake! 🎦',
           message: `${newPlayers.length} new players have joined the U18 academy!`,
           actionRequired: false,
         });
 
         set({
           gameState: { ...gameState, youthTeams },
+        });
+      },
+
+      // ---- Relationships ----
+
+      promoteRelationshipLevel: (relationshipId: string) => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        const relationships = [...(gameState.relationships ?? [])];
+        const relIdx = relationships.findIndex((r) => r.id === relationshipId);
+        if (relIdx < 0) return;
+
+        const rel = { ...relationships[relIdx], history: [...relationships[relIdx].history] };
+        // Boost affinity by 5 (manual interaction)
+        rel.affinity = clamp(rel.affinity + 5, 0, 100);
+        rel.level = getRelationshipLevel(rel.affinity);
+        rel.history.push('You spent time together');
+        if (rel.history.length > 10) rel.history = rel.history.slice(-10);
+        relationships[relIdx] = rel;
+
+        // Recalculate team dynamics
+        const teamDynamics = calculateTeamDynamics(relationships, gameState.player, gameState.currentClub);
+
+        set({
+          gameState: { ...gameState, relationships, teamDynamics },
         });
       },
 

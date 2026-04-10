@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -21,11 +21,13 @@ const mainNavItems: NavItem[] = [
 
 const moreItems: NavItem[] = [
   { screen: 'youth_academy', icon: <GraduationCap className="h-5 w-5" />, label: 'Academy' },
+  { screen: 'relationships', icon: <Users className="h-5 w-5" />, label: 'Team' },
   { screen: 'player_profile', icon: <UserCircle className="h-5 w-5" />, label: 'Profile' },
   { screen: 'training', icon: <Dumbbell className="h-5 w-5" />, label: 'Training' },
   { screen: 'transfers', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Transfers' },
   { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },
   { screen: 'cup_bracket', icon: <Trophy className="h-5 w-5" />, label: 'Cup' },
+  { screen: 'continental', icon: <Globe className="h-5 w-5" />, label: 'Europe' },
   { screen: 'social', icon: <MessageSquare className="h-5 w-5" />, label: 'Social Feed' },
   { screen: 'season_objectives', icon: <Target className="h-5 w-5" />, label: 'Objectives' },
   { screen: 'events', icon: <Bell className="h-5 w-5" />, label: 'Events' },
