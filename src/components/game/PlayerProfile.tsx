@@ -563,6 +563,61 @@ export default function PlayerProfile() {
         className="space-y-2"
       >
         <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold px-1">Detailed Attributes</h3>
+        {/* Growth Potential Overview - compact inline card */}
+        <Card className="bg-gradient-to-br from-slate-900 via-emerald-950/10 to-slate-900 border-emerald-900/20">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-emerald-400" /> Growth Potential
+              </span>
+              <span className="text-[10px] text-emerald-400 font-bold">+{player.potential - player.overall} OVR room</span>
+            </div>
+            <div className="space-y-1.5">
+              {ATTR_KEYS.map((attr, i) => {
+                const current = player.attributes[attr];
+                const growthRoom = Math.max(0, player.potential - player.overall);
+                // Distribute growth room across attributes based on position weights
+                const posKey = getPositionCategory(player.position);
+                const weights: Record<string, Record<keyof PlayerAttributes, number>> = {
+                  attack: { pace: 0.2, shooting: 0.35, passing: 0.1, dribbling: 0.2, defending: 0.02, physical: 0.13 },
+                  midfield: { pace: 0.1, shooting: 0.12, passing: 0.3, dribbling: 0.2, defending: 0.13, physical: 0.15 },
+                  defence: { pace: 0.12, shooting: 0.02, passing: 0.1, dribbling: 0.05, defending: 0.4, physical: 0.31 },
+                  goalkeeping: { pace: 0.05, shooting: 0.0, passing: 0.1, dribbling: 0.0, defending: 0.15, physical: 0.2 },
+                };
+                const weight = weights[posKey]?.[attr] ?? 0.1;
+                const estimatedGrowth = Math.round(growthRoom * weight * (0.8 + Math.random() * 0.4));
+                const potentialVal = Math.min(99, current + estimatedGrowth);
+                const meta = ATTR_META[attr];
+
+                return (
+                  <div key={attr} className="flex items-center gap-2">
+                    <span className="text-[9px] text-slate-500 w-8 font-mono">{meta.shortLabel}</span>
+                    <div className="flex-1 h-3 bg-slate-800 rounded-full overflow-hidden relative">
+                      {/* Current value */}
+                      <motion.div
+                        className="h-full rounded-full bg-slate-600"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${current}%` }}
+                        transition={{ delay: i * 0.05, duration: 0.5 }}
+                      />
+                      {/* Potential growth overlay */}
+                      <motion.div
+                        className="absolute top-0 h-full rounded-full bg-emerald-500/30"
+                        initial={{ left: 0, width: 0 }}
+                        animate={{ left: `${current}%`, width: `${Math.max(0, potentialVal - current)}%` }}
+                        transition={{ delay: 0.5 + i * 0.05, duration: 0.5 }}
+                      />
+                    </div>
+                    <span className="text-[9px] text-slate-400 w-6 text-right font-mono">{current}</span>
+                    <span className="text-[9px] text-emerald-400/60">→</span>
+                    <span className="text-[9px] text-emerald-400 w-6 text-right font-mono font-bold">{potentialVal}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[8px] text-slate-600 mt-2 text-center">Estimated potential based on position & growth room</p>
+          </CardContent>
+        </Card>
         {ATTR_KEYS.map((attr, i) => {
           const val = player.attributes[attr];
           const cat = getAttributeCategory(val);

@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { formatCurrency } from '@/lib/game/gameUtils';
 import { isTransferWindow } from '@/lib/game/transferEngine';
+import { getLeagueById } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -186,7 +187,7 @@ function ClubComparisonCard({
   currentRole: string;
   offeredRole: string;
 }) {
-  const formatLeague = (l: string) => l.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const formatLeague = (l: string) => getLeagueById(l)?.name ?? l.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -730,7 +731,7 @@ export default function TransferHub() {
                 <span className="text-2xl">{currentClub.logo}</span>
                 <div>
                   <p className="font-semibold text-sm">{currentClub.name}</p>
-                  <p className="text-[10px] text-slate-500">{currentClub.league.replace(/_/g, ' ')}</p>
+                  <p className="text-[10px] text-slate-500">{getLeagueById(currentClub.league)?.name ?? currentClub.league.replace(/_/g, ' ')}</p>
                 </div>
               </div>
               <div className="text-right">

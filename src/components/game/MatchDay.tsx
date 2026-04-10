@@ -1377,6 +1377,107 @@ export default function MatchDay() {
             </Card>
           </motion.div>
 
+          {/* Head-to-Head History */}
+          {(() => {
+            const h2hResults = gameState.recentResults.filter(r =>
+              (r.homeClub.id === currentClub.id || r.awayClub.id === currentClub.id) &&
+              (r.homeClub.id === opponent.id || r.awayClub.id === opponent.id)
+            ).slice(0, 5);
+            const h2hWins = h2hResults.filter(r => {
+              const won = (r.homeClub.id === currentClub.id && r.homeScore > r.awayScore) ||
+                          (r.awayClub.id === currentClub.id && r.awayScore > r.homeScore);
+              return won;
+            }).length;
+            const h2hDraws = h2hResults.filter(r => r.homeScore === r.awayScore).length;
+            const h2hLosses = h2hResults.length - h2hWins - h2hDraws;
+            const h2hGoalsFor = h2hResults.reduce((sum, r) => {
+              return sum + (r.homeClub.id === currentClub.id ? r.homeScore : r.awayScore);
+            }, 0);
+            const h2hGoalsAgainst = h2hResults.reduce((sum, r) => {
+              return sum + (r.homeClub.id === currentClub.id ? r.awayScore : r.homeScore);
+            }, 0);
+
+            return h2hResults.length > 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35, duration: 0.4 }}
+              >
+                <Card className="bg-slate-900 border-slate-800">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Swords className="w-3 h-3" /> Head-to-Head
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    {/* H2H Summary */}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 text-center">
+                        <p className="text-lg font-black text-emerald-400">{h2hWins}</p>
+                        <p className="text-[9px] text-emerald-400/70 font-medium">Wins</p>
+                      </div>
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 text-center">
+                        <p className="text-lg font-black text-amber-400">{h2hDraws}</p>
+                        <p className="text-[9px] text-amber-400/70 font-medium">Draws</p>
+                      </div>
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-center">
+                        <p className="text-lg font-black text-red-400">{h2hLosses}</p>
+                        <p className="text-[9px] text-red-400/70 font-medium">Losses</p>
+                      </div>
+                    </div>
+
+                    {/* Goal summary */}
+                    <div className="flex items-center justify-between text-[10px] mb-3 px-1">
+                      <span className="text-slate-500">Goals: <span className="text-emerald-400 font-bold">{h2hGoalsFor}</span> - <span className="text-red-400 font-bold">{h2hGoalsAgainst}</span></span>
+                      <span className="text-slate-500">{h2hResults.length} meeting{h2hResults.length > 1 ? 's' : ''}</span>
+                    </div>
+
+                    {/* Recent H2H Results */}
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                      {h2hResults.map((r, i) => {
+                        const isPlayerHome = r.homeClub.id === currentClub.id;
+                        const playerGoals = isPlayerHome ? r.homeScore : r.awayScore;
+                        const oppGoals = isPlayerHome ? r.awayScore : r.homeScore;
+                        const result = playerGoals > oppGoals ? 'W' : playerGoals < oppGoals ? 'L' : 'D';
+                        const resultColor = result === 'W' ? 'bg-emerald-500' : result === 'D' ? 'bg-amber-500' : 'bg-red-500';
+
+                        return (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.05, duration: 0.2 }}
+                            className="flex items-center gap-2 bg-slate-800/40 rounded-md px-2.5 py-1.5"
+                          >
+                            <span className={`w-5 h-5 rounded-full ${resultColor} flex items-center justify-center text-[9px] font-black text-white shrink-0`}>
+                              {result}
+                            </span>
+                            <span className="text-[10px] text-slate-400 flex-1">
+                              {isPlayerHome ? 'H' : 'A'} • {r.homeClub.shortName} {r.homeScore}-{r.awayScore} {r.awayClub.shortName}
+                            </span>
+                            {r.playerGoals > 0 && (
+                              <span className="text-[9px] text-emerald-400 font-bold">⚽{r.playerGoals}</span>
+                            )}
+                            <span className="text-[9px] text-slate-600">Wk{r.week}</span>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35 }}
+                className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 text-center"
+              >
+                <p className="text-[10px] text-slate-600">No previous meetings with {opponent.shortName}</p>
+              </motion.div>
+            );
+          })()}
+
           {/* Action Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}

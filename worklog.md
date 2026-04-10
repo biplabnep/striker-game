@@ -881,3 +881,78 @@ Stage Summary:
 - Visual design with dark warm gradient, camera flash effects, typewriter text
 - Smooth framer-motion animations throughout all three phases
 - Integration into MatchDay result screen with conditional visibility
+
+---
+Task ID: 11
+Agent: main (cron review)
+Task: QA testing, bug fixes, and feature enhancements (Session 11)
+
+Work Log:
+- QA Testing with agent-browser:
+  - Tested all screens: Dashboard, Match Day (with live simulation), League Table, Analytics, Training, Career Hub, Social Feed, Transfer Hub, Events, Settings, Player Profile
+  - Match simulation working end-to-end: Play Match → live sim → Full Time overlay → result screen
+  - All BottomNav tabs and More panel items navigate correctly
+  - Dashboard shows correct market value (€2.34M) and weekly wage (€4.00K/wk)
+
+- Bug Fix: Social engine uses matchResult.homeClub instead of player's actual club
+  - Root cause: `processMediaReaction()` in socialEngine.ts used `const club = matchResult.homeClub` always
+  - When player was on away team, social posts referenced wrong club (e.g., "Manchester United" instead of "Arsenal")
+  - Also wrong team win/loss determination: used raw homeScore vs awayScore instead of player's team goals vs opponent
+  - Fixed by adding `playerClubId` parameter to `processMediaReaction()`
+  - Now correctly determines player's club: `homeClub.id === playerClubId ? homeClub : awayClub`
+  - Now correctly calculates team result: uses playerGoals vs opponentGoals instead of raw homeScore vs awayScore
+  - Updated gameStore.ts to pass `currentClub.id` when calling `processMediaReaction()`
+  - Files: `/home/z/my-project/src/lib/game/socialEngine.ts`, `/home/z/my-project/src/store/gameStore.ts`
+
+- Bug Fix: CareerHub shows raw league ID instead of formatted name
+  - Root cause: `currentClub.league` returns raw ID like "premier_league"
+  - Displayed as "premier_league" instead of "Premier League"
+  - Fixed by importing `getLeagueById` and using `getLeagueById(currentClub.league)?.name`
+  - File: `/home/z/my-project/src/components/game/CareerHub.tsx`
+
+- Bug Fix: TransferHub shows raw/unformatted league names
+  - Root cause 1: `currentClub.league.replace(/_/g, ' ')` in contract section shows "premier league" (lowercase)
+  - Root cause 2: `formatLeague()` helper did naive title-casing instead of looking up the proper league name
+  - Fixed by importing `getLeagueById` and using it in both `formatLeague()` helper and the contract section
+  - File: `/home/z/my-project/src/components/game/TransferHub.tsx`
+
+- Feature Enhancement: Enhanced League Table with form indicators
+  - Complete rewrite of `/home/z/my-project/src/components/game/LeagueTable.tsx`
+  - Enhanced from ~180 lines to ~460 lines with major new features:
+  - Added form indicator dots (W/D/L) for each club in the table
+  - Added position movement arrows (up/down/stable) with color indicators
+  - Added sort controls (Points, GD, Wins, Goals, Form) with toggle buttons
+  - Added expandable row detail view showing full stats, points progress bar, win rate, goals per game
+  - Added "Best Attack" and "Best Defence" mini cards at bottom
+  - Added form points calculation and form quality label (Excellent/Good/Average/Poor/Awful)
+  - Added "YOU" badge highlighting player's team row
+  - Added zone distance indicators (points to UCL / from relegation)
+  - Added win rate and goals per game in expanded detail
+  - Added league info header with emoji and name
+  - All with framer-motion animations
+
+- Feature Enhancement: Match Day Head-to-Head History
+  - Added Head-to-Head section to pre-match screen in MatchDay.tsx
+  - Shows H2H results from recentResults filtered to current opponent
+  - Win/Draw/Loss summary with color-coded grid (emerald/amber/red)
+  - Goals for/against summary
+  - Recent H2H results list with W/D/L badges and score display
+  - Player goal indicators (⚽) when player scored in H2H matches
+  - "No previous meetings" empty state when no history exists
+  - Staggered slide-in animations with framer-motion
+
+- Feature Enhancement: Player Profile Growth Potential Card
+  - Added "Growth Potential" card to PlayerProfile.tsx
+  - Shows attribute-by-attribute current vs potential comparison
+  - Current value bars with emerald growth overlay
+  - Position-weighted growth distribution (attacking attributes grow more for forwards, etc.)
+  - Current → Potential value display (e.g., "36 → 58")
+  - Animated bar transitions with framer-motion
+  - "Estimated potential based on position & growth room" footer
+
+Stage Summary:
+- 3 bugs fixed (social engine wrong club/league name display)
+- 3 major feature enhancements (League Table, Match Day H2H, Player Profile)
+- All lint checks pass clean
+- Dev server compiles without errors
+- App tested and working across all screens
