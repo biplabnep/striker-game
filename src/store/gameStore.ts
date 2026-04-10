@@ -129,6 +129,19 @@ interface GameStoreActions {
   acceptLoan: (offerId: string) => void;
   rejectLoan: (offerId: string) => void;
 
+  // Contract Negotiation
+  negotiateContract: (offer: {
+    weeklyWage: number;
+    yearsRemaining: number;
+    signingBonus: number;
+    performanceBonuses?: {
+      goalsBonus?: number;
+      assistBonus?: number;
+      cleanSheetBonus?: number;
+    };
+    releaseClause?: number;
+  }) => void;
+
   // Navigation
   setScreen: (screen: GameScreen) => void;
   addNotification: (
@@ -581,7 +594,7 @@ export const useGameStore = create<GameStore>()(
             const awayClub = isHome ? opponent : currentClub;
 
             // Simulate the player's match
-            matchResult = simulateMatch(homeClub, awayClub, player, 'league');
+            matchResult = simulateMatch(homeClub, awayClub, player, 'league', isHome ? 'home' : 'away');
             matchResult.week = week;
             matchResult.season = season;
 
@@ -999,7 +1012,7 @@ export const useGameStore = create<GameStore>()(
         const homeClub = isHome ? gameState.currentClub : opponent;
         const awayClub = isHome ? opponent : gameState.currentClub;
 
-        return simulateMatch(homeClub, awayClub, gameState.player, 'league');
+        return simulateMatch(homeClub, awayClub, gameState.player, 'league', isHome ? 'home' : 'away');
       },
 
       // ---- Training ----
@@ -1191,6 +1204,53 @@ export const useGameStore = create<GameStore>()(
           type: 'transfer',
           title: 'Loan Rejected',
           message: 'You\'ve rejected the loan offer.',
+          actionRequired: false,
+        });
+      },
+
+      // ---- Contract Negotiation ----
+
+      negotiateContract: (offer) => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        const player = { ...gameState.player };
+
+        // Update contract fields
+        player.contract = {
+          ...player.contract,
+          weeklyWage: offer.weeklyWage,
+          yearsRemaining: offer.yearsRemaining,
+          signingBonus: offer.signingBonus,
+          performanceBonuses: offer.performanceBonuses ?? player.contract.performanceBonuses,
+          releaseClause: offer.releaseClause ?? player.contract.releaseClause,
+        };
+
+        // Update market value based on new contract (better contract = higher market value)
+        const wageBoost = Math.max(0, (offer.weeklyWage - gameState.player.contract.weeklyWage) / gameState.player.contract.weeklyWage);
+        const newValue = calculateMarketValue(
+          player.overall,
+          player.age,
+          player.potential,
+          Math.min(100, player.reputation + Math.round(wageBoost * 5))
+        );
+        player.marketValue = newValue;
+
+        // Small morale boost from successful contract negotiation
+        player.morale = clamp(player.morale + 5, 0, 100);
+
+        set({
+          gameState: {
+            ...gameState,
+            player,
+            lastSaved: new Date().toISOString(),
+          },
+        });
+
+        get().addNotification({
+          type: 'contract',
+          title: 'Contract Signed!',
+          message: `New contract: ${offer.yearsRemaining} year(s) at ${formatCurrency(offer.weeklyWage, 'K')} with ${formatCurrency(offer.signingBonus, 'K')} signing bonus.`,
           actionRequired: false,
         });
       },

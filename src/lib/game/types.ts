@@ -182,6 +182,7 @@ export interface MatchState {
   playerInvolved: boolean;
   playerHasGoal: boolean;
   playerHasAssist: boolean;
+  playerTeam: 'home' | 'away';
 }
 
 // --- Fixture ---
@@ -353,7 +354,7 @@ export type GameScreen =
   | 'main_menu' | 'career_setup' | 'dashboard' | 'match_day'
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
-  | 'settings' | 'save_load' | 'league_table';
+  | 'settings' | 'save_load' | 'league_table' | 'player_profile';
 
 // --- Game State (Master State) ---
 export interface GameState {

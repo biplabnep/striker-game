@@ -243,7 +243,7 @@ export function simulateMatchMinute(
     const team: 'home' | 'away' = isHome ? 'home' : 'away';
 
     // Is the player involved?
-    const playerTeam = 'home'; // assume player is on home team for simulation
+    const playerTeam = state.playerTeam;
     const playerContributionValue = playerContribution(player);
     const playerGoalProb = POSITION_GOAL_PROB[player.position] *
       (playerContributionValue / 100) *
@@ -306,7 +306,7 @@ export function simulateMatchMinute(
     // Is it the player's chance?
     const playerChanceProb = POSITION_GOAL_PROB[player.position] * (playerContribution(player) / 100) * 0.3;
 
-    if (team === 'home' && rng() < playerChanceProb && state.playerInvolved) {
+    if (team === state.playerTeam && rng() < playerChanceProb && state.playerInvolved) {
       events.push({
         minute,
         type: rng() < 0.3 ? 'save' : 'chance',
@@ -337,7 +337,7 @@ export function simulateMatchMinute(
       ? 0.15
       : 0.05;
 
-    if (team === 'home' && rng() < playerCardProb && state.playerInvolved) {
+    if (team === state.playerTeam && rng() < playerCardProb && state.playerInvolved) {
       events.push({
         minute,
         type: cardType,
@@ -368,7 +368,7 @@ export function simulateMatchMinute(
     // Player injury risk - increases with low fitness
     const playerInjuryRisk = (100 - player.fitness) / 500;
 
-    if (team === 'home' && rng() < playerInjuryRisk && state.playerInvolved) {
+    if (team === state.playerTeam && rng() < playerInjuryRisk && state.playerInvolved) {
       events.push({
         minute,
         type: 'injury',
@@ -436,7 +436,8 @@ export function simulateMatchMinute(
 export function calculatePlayerMatchRating(
   player: Player,
   events: MatchEvent[],
-  minutesPlayed: number
+  minutesPlayed: number,
+  playerTeam: 'home' | 'away' = 'home'
 ): number {
   if (minutesPlayed === 0) return 0;
 
@@ -493,18 +494,19 @@ export function calculatePlayerMatchRating(
   }
 
   // Clean sheet bonus for defenders and GK
+  const opponentTeam = playerTeam === 'home' ? 'away' : 'home';
   const opponentGoals = events.filter(
-    (e) => e.type === 'goal' && e.team !== 'home'
-  ).length; // assuming player is on home team
+    (e) => e.type === 'goal' && e.team === opponentTeam
+  ).length;
 
   if (opponentGoals === 0 && POSITION_CLEAN_SHEET_PROB[player.position] > 0.1) {
     rating += 0.3;
   }
 
   // Team result modifier
-  const homeGoals = events.filter(e => e.type === 'goal' && e.team === 'home').length;
-  const awayGoals = events.filter(e => e.type === 'goal' && e.team === 'away').length;
-  const goalDiff = homeGoals - awayGoals; // assuming player is on home
+  const teamGoals = events.filter(e => e.type === 'goal' && e.team === playerTeam).length;
+  const otherGoals = events.filter(e => e.type === 'goal' && e.team === opponentTeam).length;
+  const goalDiff = teamGoals - otherGoals;
 
   if (goalDiff > 2) rating += 0.2;
   else if (goalDiff > 0) rating += 0.1;
@@ -522,10 +524,12 @@ export function simulateMatch(
   homeClub: Club,
   awayClub: Club,
   player: Player,
-  competition: string
+  competition: string,
+  playerTeam: 'home' | 'away' = 'home'
 ): MatchResult {
-  // Determine squad selection
-  const selection = determineSquadSelection(player, homeClub);
+  // Determine squad selection based on which team the player is on
+  const playerClub = playerTeam === 'home' ? homeClub : awayClub;
+  const selection = determineSquadSelection(player, playerClub);
 
   // Initialize match state
   const state: MatchState = {
@@ -537,6 +541,7 @@ export function simulateMatch(
     playerInvolved: selection.starts,
     playerHasGoal: false,
     playerHasAssist: false,
+    playerTeam,
   };
 
   // Simulate each minute
@@ -551,7 +556,7 @@ export function simulateMatch(
         allEvents.push({
           minute,
           type: 'substitution',
-          team: 'home',
+          team: playerTeam,
           playerName: player.name,
           playerId: player.id,
           detail: `${player.name} comes on as substitute`,
@@ -566,7 +571,7 @@ export function simulateMatch(
         allEvents.push({
           minute,
           type: 'substitution',
-          team: 'home',
+          team: playerTeam,
           playerName: player.name,
           playerId: player.id,
           detail: `${player.name} is taken off`,
@@ -593,7 +598,7 @@ export function simulateMatch(
   }
 
   // Calculate player rating
-  const playerRating = calculatePlayerMatchRating(player, allEvents, playerMinutes);
+  const playerRating = calculatePlayerMatchRating(player, allEvents, playerMinutes, playerTeam);
 
   // Injury check after match
   const injuryEvent = allEvents.find(
@@ -606,12 +611,20 @@ export function simulateMatch(
     allEvents.push({
       minute: 91,
       type: 'injury',
-      team: 'home',
+      team: playerTeam,
       playerName: player.name,
       playerId: player.id,
       detail: `${player.name} will need medical assessment after the match`,
     });
   }
+
+  // Count player goals and assists from events
+  const playerGoals = allEvents.filter(
+    (e) => e.type === 'goal' && e.playerId === player.id
+  ).length;
+  const playerAssists = allEvents.filter(
+    (e) => e.type === 'assist' && e.playerId === player.id
+  ).length;
 
   return {
     homeClub,
@@ -622,6 +635,8 @@ export function simulateMatch(
     playerRating,
     playerMinutesPlayed: playerMinutes,
     playerStarted: selection.starts,
+    playerGoals,
+    playerAssists,
     competition,
     week: 0, // will be set by caller
     season: 0, // will be set by caller

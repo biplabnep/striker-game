@@ -20,6 +20,7 @@ const SaveLoad = dynamic(() => import('@/components/game/SaveLoad'), { ssr: fals
 const BottomNav = dynamic(() => import('@/components/game/BottomNav'), { ssr: false });
 const LeagueTable = dynamic(() => import('@/components/game/LeagueTable'), { ssr: false });
 const SettingsPanel = dynamic(() => import('@/components/game/SettingsPanel'), { ssr: false });
+const PlayerProfile = dynamic(() => import('@/components/game/PlayerProfile'), { ssr: false });
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -37,10 +38,11 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   settings: SettingsPanel,
   save_load: SaveLoad,
   league_table: LeagueTable,
+  player_profile: PlayerProfile,
 };
 
 const menuScreens: GameScreen[] = ['main_menu', 'career_setup', 'save_load'];
-const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table'];
+const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile'];
 
 export default function Home() {
   const screen = useGameStore(state => state.screen);

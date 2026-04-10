@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -20,6 +20,7 @@ const mainNavItems: NavItem[] = [
 ];
 
 const moreItems: NavItem[] = [
+  { screen: 'player_profile', icon: <UserCircle className="h-5 w-5" />, label: 'Profile' },
   { screen: 'training', icon: <Dumbbell className="h-5 w-5" />, label: 'Training' },
   { screen: 'transfers', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Transfers' },
   { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },
@@ -78,7 +79,7 @@ export default function BottomNav() {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-1 p-3">
+                <div className="grid grid-cols-4 gap-1 p-3">
                   {moreItems.map(item => {
                     const isActive = screen === item.screen;
                     const hasBadge = item.screen === 'events' && activeEvents.length > 0;
