@@ -1,66 +1,79 @@
 ---
-Task ID: 1-6
-Agent: main
-Task: Fix missing components, test app, add League Table, enhance UI
+Task ID: 7-8
+Agent: main (cron review)
+Task: QA testing, bug fixes, and feature enhancements
 
 Work Log:
-- Created missing SaveLoad component at /home/z/my-project/src/components/game/SaveLoad.tsx
-  - Save/Load game screen with dual mode toggle (Save/Load)
-  - Displays save slots with player stats, club logo, season/week info
-  - Quick Save button for current game
-  - Load and Delete buttons per save slot
-  - Fixed useEffect lint error by using useMemo with version counter pattern
-- Created missing BottomNav component at /home/z/my-project/src/components/game/BottomNav.tsx
-  - Bottom navigation bar with 5 items: Home, Match, Table, Stats, More
-  - Active state animation with framer-motion layoutId
-  - Notification badge on "More" tab for unread notifications + active events
-  - Larger icons (h-6 w-6) with proper touch targets (56px min-width)
-- Added LeagueTable component at /home/z/my-project/src/components/game/LeagueTable.tsx
-  - Full league standings with position, club, P/W/D/L/GD/Pts columns
-  - Color-coded zone indicators (UCL green, UEL blue, Relegation red)
-  - Player's club highlighted with emerald accent
-  - Summary card at bottom showing player's club stats
-- Created SettingsPanel component at /home/z/my-project/src/components/game/SettingsPanel.tsx
-  - Career info display (player, club, season, difficulty)
-  - Save Game button
-  - Main Menu button
-  - Notifications list with read/unread state and clear all
-- Enhanced Dashboard component
-  - Added notification bell with unread count badge
-  - Added season progress bar (Week X/38 with percentage)
-  - Added league position card with clickable link to league table
-  - Improved Advance Week and Match Day button styling
-- Updated page.tsx to register new components (LeagueTable, SettingsPanel)
-- Updated types.ts to add 'league_table' to GameScreen type
-- All lint checks pass clean
-- Tested full game flow with agent-browser:
-  - Main menu → Career Setup → Start Career → Dashboard
-  - Advance Week → Match simulation → Result display
-  - League Table view with proper standings
-  - Settings/Notifications screen with save functionality
-  - Bottom navigation between all screens
+- QA Testing with agent-browser:
+  - Tested all screens: Dashboard, Match Day, League Table, Stats, Training, Transfers, Career Hub, Social Feed, Events, Settings
+  - Found critical bug: Market Value and Weekly Wage showing €0.00
+  - Found critical bug: Training/Transfers/Career Hub/Social/Events screens unreachable from BottomNav
+  - Found minor issue: Career Setup club list too long with all leagues expanded
+
+- Bug Fix: formatCurrency double-dividing values
+  - Root cause: calculateMarketValue() returns values in millions (e.g. 0.3 = €300K), calculateWage() returns in thousands
+  - Dashboard and TransferHub were dividing by 1000000/1000 again, resulting in €0.00
+  - Fixed in Dashboard.tsx: removed / 1000000 and / 1000 from formatCurrency calls
+  - Fixed in TransferHub.tsx: same fix for market value, wage, release clause, and transfer fee displays
+  - Verified: Market Value now shows €2.10M, Weekly Wage shows €3.50K/wk
+
+- Bug Fix: BottomNav missing screens
+  - Root cause: BottomNav only had 5 tabs (Home, Match, Table, Stats, More) and "More" just went to Settings
+  - Training, Transfers, Career Hub, Social Feed, and Events were completely inaccessible
+  - Redesigned BottomNav with expandable "More" panel:
+    - 4 main tabs: Home, Match, Table, Stats
+    - "More" button opens an animated overlay panel with 6 options: Training, Transfers, Career Hub, Social Feed, Events, Settings
+    - Notification badge on "More" showing unread notifications + active events count
+    - Active state tracking for More panel items
+    - Smooth spring animations with framer-motion
+    - Click outside to dismiss the panel
+
+- New Feature: Weekly Summary modal
+  - Created WeeklySummary.tsx component at /home/z/my-project/src/components/game/WeeklySummary.tsx
+  - Shows after advancing a week with:
+    - Match result card (if match played) with score, player rating, goals, assists, minutes
+    - Player status (Form, Morale, Fitness) with icons
+    - Injury status alert
+    - Training availability
+    - Pending events summary
+    - Market value display
+  - Green "Continue" button to dismiss
+  - Animated with framer-motion (scale + fade)
+  - Backdrop blur overlay
+  - Integrated into Dashboard.tsx via showSummary state
+
+- Enhancement: Career Setup collapsible league sections
+  - Previously all leagues were expanded at once, making the page very long
+  - Added collapsible/expandable sections with useState tracking
+  - Each league has a clickable header with:
+    - League emoji and name
+    - Club count badge
+    - Chevron icon (rotates when expanded/collapsed)
+  - Only the league of the currently selected club is expanded by default
+  - Selected club's league header gets emerald highlight
+  - Much cleaner and shorter page
 
 Stage Summary:
-- All missing components created and working
-- Dev server compiles and serves without errors
-- Full game loop is functional: career setup, weekly advancement, match simulation, league table, transfers, training, events, social feed, analytics, settings
-- UI follows dark theme with emerald accents
-- Game state persists across page reloads via Zustand persist middleware
+- All critical bugs fixed
+- BottomNav now provides access to all game screens
+- Weekly Summary provides visual feedback after advancing weeks
+- Career Setup is much more usable with collapsible leagues
+- Market values and wages now display correctly
+- All lint checks pass clean
 
----
-Task ID: next
-Agent: main
-Task: Continue development - fix issues, add features, polish
-
-Current Status:
-- App is functional with all core features working
+Current Project Status:
+- App is fully functional with all core features working
 - Game engines (match, progression, events, transfer, social) all operational
-- UI components all rendering correctly
+- All UI components accessible via navigation
 - Save/Load system working via localStorage
-- Known areas for improvement:
-  1. Career Setup club list is very long (all leagues visible at once) - could use collapsible sections
-  2. Match result screen could show more detailed events timeline
-  3. No visual feedback when advancing week (just instant state update)
-  4. Bottom nav "More" could expand to show sub-screens (Training, Transfers, Career Hub, Social, Events)
-  5. Player name generation doesn't reflect nationality well
-  6. Could add a "Weekly Summary" modal after advancing week showing what happened
+- Game state persists across page reloads
+
+Known areas for improvement (next session):
+1. Match Day result screen could use timeline-style event display
+2. Match events could have more visual variety (icons for each type, team labels)
+3. Could add "Man of the Match" badge for high-rated performances
+4. Social Feed could use more engaging card designs
+5. Transfer offers could show more detail (club facilities comparison)
+6. Season end could have a detailed summary modal
+7. Could add player comparison feature (compare your stats to league averages)
+8. Could add a "Weekly Recap" notification that persists

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getOverallColor, getFormLabel, getMoraleLabel, formatCurrency, getSeasonWeekDescription, getMatchRatingLabel, getPositionColor } from '@/lib/game/gameUtils';
 import { NATIONALITIES } from '@/lib/game/playerData';
@@ -9,12 +10,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, TrendingUp, Zap, Heart, Activity, Trophy, ArrowRight, Bell, Star, Swords, Table, ChevronRight } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import WeeklySummary from '@/components/game/WeeklySummary';
 
 export default function Dashboard() {
   const gameState = useGameStore(state => state.gameState);
   const advanceWeek = useGameStore(state => state.advanceWeek);
   const setScreen = useGameStore(state => state.setScreen);
   const notifications = useGameStore(state => state.notifications);
+
+  const [showSummary, setShowSummary] = useState(false);
+
+  const handleAdvanceWeek = () => {
+    advanceWeek();
+    setShowSummary(true);
+  };
 
   if (!gameState) return null;
 
@@ -41,6 +51,7 @@ export default function Dashboard() {
   const posSuffix = leaguePos === 1 ? 'st' : leaguePos === 2 ? 'nd' : leaguePos === 3 ? 'rd' : 'th';
 
   return (
+    <>
     <div className="p-4 max-w-lg mx-auto space-y-4">
       {/* Header with notification bell */}
       <div className="flex items-center justify-between">
@@ -192,7 +203,7 @@ export default function Dashboard() {
       {/* Quick Actions - Enhanced */}
       <div className="grid grid-cols-2 gap-3">
         <Button
-          onClick={advanceWeek}
+          onClick={handleAdvanceWeek}
           className="h-14 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-900/30 transition-all hover:shadow-emerald-800/40"
         >
           <ArrowRight className="mr-2 h-5 w-5" />
@@ -248,11 +259,11 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-800">
             <span className="text-xs text-slate-500">Market Value</span>
-            <span className="text-sm font-semibold text-emerald-400">{formatCurrency(player.marketValue / 1000000, 'M')}</span>
+            <span className="text-sm font-semibold text-emerald-400">{formatCurrency(player.marketValue, 'M')}</span>
           </div>
           <div className="flex items-center justify-between mt-1">
             <span className="text-xs text-slate-500">Weekly Wage</span>
-            <span className="text-sm text-slate-300">{formatCurrency(player.contract.weeklyWage / 1000, 'K')}</span>
+            <span className="text-sm text-slate-300">{formatCurrency(player.contract.weeklyWage, 'K')}</span>
           </div>
         </CardContent>
       </Card>
@@ -314,6 +325,10 @@ export default function Dashboard() {
         </Button>
       )}
     </div>
+
+    {/* Weekly Summary Modal */}
+    {showSummary && <WeeklySummary onClose={() => setShowSummary(false)} />}
+    </>
   );
 }
 

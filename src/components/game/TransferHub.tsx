@@ -41,14 +41,14 @@ export default function TransferHub() {
               <p className="text-xs text-slate-400">{player.contract.yearsRemaining} year{player.contract.yearsRemaining !== 1 ? 's' : ''} remaining</p>
             </div>
             <div className="text-right">
-              <p className="font-bold text-emerald-400">{formatCurrency(player.contract.weeklyWage / 1000, 'K')}</p>
+              <p className="font-bold text-emerald-400">{formatCurrency(player.contract.weeklyWage, 'K')}</p>
               <p className="text-[10px] text-slate-500">per week</p>
             </div>
           </div>
           {player.contract.releaseClause && (
             <div className="mt-2 pt-2 border-t border-slate-800">
               <span className="text-xs text-slate-500">Release Clause: </span>
-              <span className="text-xs text-amber-400">{formatCurrency(player.contract.releaseClause / 1000000, 'M')}</span>
+              <span className="text-xs text-amber-400">{formatCurrency(player.contract.releaseClause, 'M')}</span>
             </div>
           )}
         </CardContent>
@@ -58,7 +58,7 @@ export default function TransferHub() {
       <Card className="bg-slate-900 border-slate-800">
         <CardContent className="p-4 flex items-center justify-between">
           <span className="text-sm text-slate-400">Market Value</span>
-          <span className="text-lg font-bold text-emerald-400">{formatCurrency(player.marketValue / 1000000, 'M')}</span>
+          <span className="text-lg font-bold text-emerald-400">{formatCurrency(player.marketValue, 'M')}</span>
         </CardContent>
       </Card>
 
@@ -86,7 +86,7 @@ export default function TransferHub() {
                       <p className="text-xs text-slate-500">{offer.fromClub.league.replace('_', ' ')} • {offer.squadRole.replace('_', ' ')}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-emerald-400">{formatCurrency(offer.fee / 1000000, 'M')}</p>
+                      <p className="font-bold text-emerald-400">{formatCurrency(offer.fee, 'M')}</p>
                       <p className="text-[10px] text-slate-500">Transfer Fee</p>
                     </div>
                   </div>
@@ -94,7 +94,7 @@ export default function TransferHub() {
                   <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
                     <div className="bg-slate-800 rounded-lg p-2">
                       <span className="text-slate-500">Wage</span>
-                      <p className="font-semibold text-white">{formatCurrency(offer.contractOffer.weeklyWage / 1000, 'K')}</p>
+                      <p className="font-semibold text-white">{formatCurrency(offer.contractOffer.weeklyWage, 'K')}</p>
                     </div>
                     <div className="bg-slate-800 rounded-lg p-2">
                       <span className="text-slate-500">Contract</span>
