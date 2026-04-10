@@ -986,3 +986,82 @@ Stage Summary:
 - Dynamic fixture generation works for all league sizes
 - Season length correctly varies by league (38 for 20-team leagues, 34 for 18-team leagues)
 - All QA tests pass
+
+---
+Task ID: cron-review-1
+Agent: main (cron review)
+Task: QA testing, Season Objectives system implementation, and Season Awards foundation
+
+Work Log:
+- QA tested all screens via agent-browser on existing career (Arsenal, Week 27)
+  - Dashboard: Working, form trend, streak indicators, match info ✅
+  - League Table: 20 teams, UCL/Europa/Relegation zones ✅
+  - Analytics: Radar chart, milestones, form breakdown ✅
+  - Training: 6 types, fitness, session count ✅
+  - Transfer Hub: Window timeline, agent card, market value ✅
+  - Career Hub: Contract details, timeline, achievements ✅
+  - Events: 5 pending events, choice resolution working ✅
+  - Social Feed: Accessible via More panel ✅
+  - Settings: Save game, notifications ✅
+  - Match Day: Match simulation, result display ✅
+- No bugs found during QA - app is stable
+- Lint passes clean
+
+- NEW FEATURE: Season Objectives System
+  - Created `/home/z/my-project/src/lib/game/objectivesEngine.ts` (~230 lines)
+    - `generateSeasonObjectives()` - generates board, personal, and bonus objectives per season
+    - `updateObjectivesProgress()` - updates all objectives based on current stats/position
+    - `calculateObjectiveBonus()` - sums completed objective rewards
+    - `generateSeasonAwards()` - generates end-of-season awards
+    - `generateMonthlyAward()` - generates monthly Player of the Month
+    - `getBoardExpectation()` - determines board expectation based on club reputation
+    - Helper functions for labels and colors
+
+  - Created `/home/z/my-project/src/components/game/SeasonObjectivesPanel.tsx` (~260 lines)
+    - Summary card with completed/in-progress count and bonus earned
+    - Overall progress bar
+    - Board Expectations section (league position, minimum wins)
+    - Personal Targets section (goals, appearances, rating)
+    - Bonus Goals section (hat-trick, fan favorite, iron man)
+    - Individual objective cards with icon, description, progress bar, reward
+    - Failed objectives warning section
+    - Category color coding (board=amber, personal=emerald, bonus=purple)
+    - framer-motion animations (staggered entrance, progress bar animations)
+    - Board expectation badge in header (Title Challenge/Top Four/Mid-Table/Survival)
+    - Dark theme with glass-morphism cards
+
+  - Added types to `/home/z/my-project/src/lib/game/types.ts`:
+    - `SeasonObjective`, `SeasonObjectivesSet`, `SeasonAward`
+    - `ObjectiveCategory`, `ObjectiveStatus`
+    - Added `seasonObjectives` and `seasonAwards` to `GameState`
+    - Added `season_objectives` to `GameScreen` navigation type
+
+  - Updated `/home/z/my-project/src/store/gameStore.ts`:
+    - Import objectivesEngine functions
+    - Generate initial objectives in `startNewCareer()`
+    - Auto-generate objectives for existing saves (backward compatibility)
+    - Update objectives progress weekly in `advanceWeek()` step 9b
+    - Generate new season objectives on season transition
+    - Generate season awards on season completion
+    - Pay objective bonus on season completion (added to contract signing bonus)
+    - Added notification for objective bonus payout
+    - Null-safe access for `seasonObjectives` and `seasonAwards` (handles old saves)
+
+  - Updated `/home/z/my-project/src/app/page.tsx`:
+    - Added `SeasonObjectivesPanel` dynamic import
+    - Added `season_objectives` to screen components and game screens
+
+  - Updated `/home/z/my-project/src/components/game/BottomNav.tsx`:
+    - Added "Objectives" item to More panel with Target icon
+    - Added Target import from lucide-react
+
+Stage Summary:
+- All screens QA tested and working, no bugs found
+- Season Objectives system fully implemented with 3 objective categories
+- Objectives auto-generate for existing saves (backward compatible)
+- Season Awards foundation added (types + generation logic)
+- Board expectations vary by club reputation (Title Challenge for top clubs, Survival for lower)
+- Objective bonus payouts on season completion
+- New "Objectives" navigation item in BottomNav More panel
+- All lint checks pass clean
+- Dev server compiles without errors

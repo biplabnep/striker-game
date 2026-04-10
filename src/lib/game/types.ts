@@ -393,7 +393,46 @@ export type GameScreen =
   | 'main_menu' | 'career_setup' | 'dashboard' | 'match_day'
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
-  | 'settings' | 'save_load' | 'league_table' | 'player_profile';
+  | 'settings' | 'save_load' | 'league_table' | 'player_profile'
+  | 'season_objectives';
+
+// --- Season Objectives ---
+export type ObjectiveCategory = 'board' | 'personal' | 'bonus';
+export type ObjectiveStatus = 'in_progress' | 'completed' | 'failed';
+
+export interface SeasonObjective {
+  id: string;
+  category: ObjectiveCategory;
+  title: string;
+  description: string;
+  target: number;
+  current: number;
+  status: ObjectiveStatus;
+  reward: number; // bonus wage multiplier or flat bonus
+  icon: string;
+  deadline: 'season_end' | 'half_season' | 'specific_week';
+  deadlineWeek?: number;
+}
+
+export interface SeasonObjectivesSet {
+  season: number;
+  objectives: SeasonObjective[];
+  boardExpectation: 'title_challenge' | 'top_four' | 'mid_table' | 'survival';
+  bonusPaid: boolean;
+}
+
+export interface SeasonAward {
+  id: string;
+  name: string;
+  category: 'player_of_year' | 'young_player' | 'top_scorer' | 'top_assist' | 'team_of_season' | 'player_of_month';
+  season: number;
+  month?: number; // for monthly awards
+  winner: string; // player name or club name
+  winnerClub: string;
+  stats: string; // e.g., "25 goals" or "8.2 avg rating"
+  icon: string;
+  isPlayer: boolean;
+}
 
 // --- Game State (Master State) ---
 export interface GameState {
@@ -423,6 +462,8 @@ export interface GameState {
   trainingAvailable: number;
   availableClubs: Club[];
   notifications: GameNotification[];
+  seasonObjectives: SeasonObjectivesSet[];
+  seasonAwards: SeasonAward[];
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;

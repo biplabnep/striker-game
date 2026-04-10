@@ -23,6 +23,8 @@ import {
   PlayerAttributes,
   Achievement,
   SquadStatus,
+  SeasonObjectivesSet,
+  SeasonAward,
 } from '@/lib/game/types';
 
 // Engine imports
@@ -66,6 +68,12 @@ import {
   randomBetween,
   clamp,
 } from '@/lib/game/gameUtils';
+import {
+  generateSeasonObjectives,
+  updateObjectivesProgress,
+  generateSeasonAwards,
+  calculateObjectiveBonus,
+} from '@/lib/game/objectivesEngine';
 
 // Persistence
 import {
@@ -518,6 +526,13 @@ export const useGameStore = create<GameStore>()(
           trainingAvailable: 3,
           availableClubs: ENRICHED_CLUBS,
           notifications: [],
+          seasonObjectives: [generateSeasonObjectives(
+            ENRICHED_CLUBS.find(c => c.id === config.clubId) ?? ENRICHED_CLUBS[0],
+            player,
+            seasonNumber,
+            getSeasonMatchdays(ENRICHED_CLUBS.find(c => c.id === config.clubId)?.league ?? 'premier_league')
+          )],
+          seasonAwards: [],
           gameMode: 'career',
           difficulty: config.difficulty,
           createdAt: new Date().toISOString(),
@@ -587,6 +602,7 @@ export const useGameStore = create<GameStore>()(
         let loanOffers = [...state.loanOffers];
         let socialFeed = [...state.socialFeed];
         let storylines = [...state.storylines];
+        let seasonAwards = [...(state.seasonAwards ?? [])];
         let trainingHistory = [...state.trainingHistory];
         let trainingAvailable = state.trainingAvailable;
 
@@ -834,6 +850,25 @@ export const useGameStore = create<GameStore>()(
         // 9. Update league table (sort)
         leagueTable = sortLeagueTable(leagueTable);
 
+        // 9b. Update season objectives progress
+        let seasonObjectives = [...(state.seasonObjectives ?? [])];
+        let currentObjSet = seasonObjectives.find(o => o.season === season);
+        if (!currentObjSet) {
+          // Auto-generate objectives for existing saves that don't have them
+          const newObjSet = generateSeasonObjectives(
+            currentClub, player, season, getSeasonMatchdays(currentClub.league)
+          );
+          seasonObjectives = [...seasonObjectives, newObjSet];
+          currentObjSet = newObjSet;
+        }
+        {
+          const totalMatchdays = getSeasonMatchdays(currentClub.league);
+          const updatedObjSet = updateObjectivesProgress(
+            currentObjSet, player, leagueTable, currentClub.id, week, totalMatchdays
+          );
+          seasonObjectives = seasonObjectives.map(o => o.season === season ? updatedObjSet : o);
+        }
+
         // 10. Check for season end
         const seasonMatchdays = getSeasonMatchdays(currentClub.league);
         if (week >= seasonMatchdays) {
@@ -890,6 +925,37 @@ export const useGameStore = create<GameStore>()(
           upcomingFixtures = generateFixtures(currentClub.league, state.currentSeason);
           leagueTable = generateLeagueTable(currentClub.league, currentClub.id);
           trainingAvailable = 3;
+
+          // Generate new season objectives
+          seasonObjectives = [...seasonObjectives, generateSeasonObjectives(
+            currentClub, player, state.currentSeason, getSeasonMatchdays(currentClub.league)
+          )];
+
+          // Generate season awards for completed season
+          seasonAwards = [...seasonAwards, ...generateSeasonAwards(
+            season, player, currentClub, leagueTable, ENRICHED_CLUBS
+          )];
+
+          // Pay objective bonus
+          const completedObjSet = seasonObjectives.find(o => o.season === season);
+          if (completedObjSet && !completedObjSet.bonusPaid) {
+            const bonus = calculateObjectiveBonus(completedObjSet);
+            if (bonus > 0) {
+              player.contract = {
+                ...player.contract,
+                signingBonus: (player.contract.signingBonus ?? 0) + bonus,
+              };
+              get().addNotification({
+                type: 'contract',
+                title: 'Objective Bonus! 🎉',
+                message: `You earned €${(bonus / 1000).toFixed(0)}K in performance bonuses for completing season objectives!`,
+                actionRequired: false,
+              });
+            }
+            seasonObjectives = seasonObjectives.map(o =>
+              o.season === season ? { ...o, bonusPaid: true } : o
+            );
+          }
 
           // Clear expired transfer/loan offers
           transferOffers = [];
@@ -953,6 +1019,8 @@ export const useGameStore = create<GameStore>()(
             storylines,
             trainingHistory,
             trainingAvailable,
+            seasonObjectives,
+            seasonAwards,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,
