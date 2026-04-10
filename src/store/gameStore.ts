@@ -25,6 +25,11 @@ import {
   SquadStatus,
   SeasonObjectivesSet,
   SeasonAward,
+  YouthTeam,
+  YouthLeagueStanding,
+  YouthFixture,
+  YouthMatchResult,
+  YouthPlayer,
 } from '@/lib/game/types';
 
 // Engine imports
@@ -76,6 +81,19 @@ import {
   generateSeasonAwards,
   calculateObjectiveBonus,
 } from '@/lib/game/objectivesEngine';
+import {
+  generateAllYouthTeams,
+  generateYouthLeagueFixtures,
+  generateYouthCupFixtures,
+  generateYouthLeagueTable,
+  simulateYouthMatch,
+  updateYouthLeagueTable,
+  applyYouthWeeklyProgression,
+  generateYouthIntake,
+  promoteYouthPlayerToU21,
+  promoteYouthPlayerToFirstTeam,
+  ageUpYouthPlayers,
+} from '@/lib/game/youthAcademy';
 
 // Persistence
 import {
@@ -160,6 +178,11 @@ interface GameStoreActions {
   ) => void;
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
+
+  // Youth Academy
+  promoteYouthPlayer: (playerId: string, target: 'u21' | 'first_team') => void;
+  setYouthTrainingFocus: (playerId: string, focus: keyof PlayerAttributes) => void;
+  generateNewYouthIntake: () => void;
 
   // Save/Load
   saveGame: (slotName: string) => void;
@@ -616,6 +639,24 @@ export const useGameStore = create<GameStore>()(
           cupFixtures,
           cupRound: 1,
           cupEliminated: false,
+          // Youth Academy
+          youthTeams: generateAllYouthTeams(club.league, seasonNumber),
+          youthLeagueTables: [
+            ...generateYouthLeagueTable(club.league, 'u18'),
+            ...generateYouthLeagueTable(club.league, 'u21'),
+          ],
+          youthFixtures: [
+            ...generateYouthLeagueFixtures(club.league, 'u18', seasonNumber),
+            ...generateYouthLeagueFixtures(club.league, 'u21', seasonNumber),
+          ],
+          youthCupFixtures: [
+            ...generateYouthCupFixtures(club.league, 'u18', seasonNumber),
+            ...generateYouthCupFixtures(club.league, 'u21', seasonNumber),
+          ],
+          youthCupRound: 1,
+          youthCupEliminated: false,
+          youthMatchResults: [],
+          youthLeagueMatchWeek: 1,
           gameMode: 'career',
           difficulty: config.difficulty,
           createdAt: new Date().toISOString(),
@@ -691,6 +732,15 @@ export const useGameStore = create<GameStore>()(
         let cupFixtures = [...(state.cupFixtures ?? [])];
         let cupRound = state.cupRound ?? 1;
         let cupEliminated = state.cupEliminated ?? false;
+        // Youth Academy state
+        let youthTeams = [...(state.youthTeams ?? [])];
+        let youthLeagueTables = [...(state.youthLeagueTables ?? [])];
+        let youthFixtures = [...(state.youthFixtures ?? [])];
+        let youthCupFixtures = [...(state.youthCupFixtures ?? [])];
+        let youthCupRound = state.youthCupRound ?? 1;
+        let youthCupEliminated = state.youthCupEliminated ?? false;
+        let youthMatchResults = [...(state.youthMatchResults ?? [])];
+        let youthLeagueMatchWeek = state.youthLeagueMatchWeek ?? 1;
 
         // 1. Increment week
         state.currentWeek += 1;
@@ -1028,6 +1078,95 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
+        // 2c. Youth Academy: simulate youth league matches
+        // Youth leagues play every week (same schedule as senior)
+        const youthMatchday = youthLeagueMatchWeek;
+        for (const category of ['u18', 'u21'] as const) {
+          const youthLeagueFixturesThisWeek = youthFixtures.filter(
+            f => f.matchday === youthMatchday && f.category === category && !f.played
+          );
+
+          for (const yf of youthLeagueFixturesThisWeek) {
+            const homeTeam = getClubById(yf.homeClubId);
+            const awayTeam = getClubById(yf.awayClubId);
+            if (homeTeam && awayTeam) {
+              const result = simulateYouthMatch(homeTeam, awayTeam, category, 'youth_league');
+              // Update fixture
+              const fixIdx = youthFixtures.findIndex(f => f.id === yf.id);
+              if (fixIdx >= 0) {
+                youthFixtures[fixIdx] = { ...youthFixtures[fixIdx], played: true, homeScore: result.homeScore, awayScore: result.awayScore };
+              }
+              // Update league table
+              youthLeagueTables = updateYouthLeagueTable(youthLeagueTables, yf.homeClubId, yf.awayClubId, result.homeScore, result.awayScore);
+              // Track results for player's club
+              if (yf.homeClubId === currentClub.id || yf.awayClubId === currentClub.id) {
+                youthMatchResults.push({
+                  fixtureId: yf.id,
+                  homeClubId: yf.homeClubId,
+                  awayClubId: yf.awayClubId,
+                  homeScore: result.homeScore,
+                  awayScore: result.awayScore,
+                  category,
+                  competition: 'youth_league',
+                  week,
+                  season,
+                });
+              }
+            }
+          }
+
+          // Youth cup matches on cup weeks
+          if (CUP_MATCH_WEEKS.includes(week) && !youthCupEliminated) {
+            const youthCupFixsThisRound = youthCupFixtures.filter(
+              f => f.matchday === youthCupRound && f.category === category && !f.played
+            );
+            const playerYouthCupFix = youthCupFixsThisRound.find(
+              f => f.homeClubId === currentClub.id || f.awayClubId === currentClub.id
+            );
+            if (playerYouthCupFix) {
+              const homeTeam = getClubById(playerYouthCupFix.homeClubId);
+              const awayTeam = getClubById(playerYouthCupFix.awayClubId);
+              if (homeTeam && awayTeam) {
+                const result = simulateYouthMatch(homeTeam, awayTeam, category, 'youth_cup');
+                const fixIdx = youthCupFixtures.findIndex(f => f.id === playerYouthCupFix.id);
+                if (fixIdx >= 0) {
+                  youthCupFixtures[fixIdx] = { ...youthCupFixtures[fixIdx], played: true, homeScore: result.homeScore, awayScore: result.awayScore };
+                }
+                // Check elimination
+                const isHome = playerYouthCupFix.homeClubId === currentClub.id;
+                const playerWon = (isHome && result.homeScore > result.awayScore) || (!isHome && result.awayScore > result.homeScore);
+                const isDraw = result.homeScore === result.awayScore;
+                if (!playerWon && !isDraw) {
+                  youthCupEliminated = true;
+                }
+              }
+            }
+            // Mark all other cup fixtures as played
+            for (const otherFix of youthCupFixsThisRound) {
+              const fixIdx = youthCupFixtures.findIndex(f => f.id === otherFix.id);
+              if (fixIdx >= 0 && !youthCupFixtures[fixIdx].played) {
+                const ht = getClubById(otherFix.homeClubId);
+                const at = getClubById(otherFix.awayClubId);
+                if (ht && at) {
+                  const r = simulateYouthMatch(ht, at, category, 'youth_cup');
+                  youthCupFixtures[fixIdx] = { ...youthCupFixtures[fixIdx], played: true, homeScore: r.homeScore, awayScore: r.awayScore };
+                }
+              }
+            }
+          }
+        }
+        // Advance youth league match week
+        youthLeagueMatchWeek += 1;
+
+        // Apply youth player progression weekly
+        youthTeams = youthTeams.map(team => ({
+          ...team,
+          players: team.players.map(yp => {
+            const progression = applyYouthWeeklyProgression(yp, currentClub.youthDevelopment);
+            return { ...yp, ...progression };
+          }),
+        }));
+
         // 3. Apply weekly progression
         const trainingSessions = scheduledTraining ? [scheduledTraining] : [];
         const progressionUpdates = applyWeeklyProgression(player, trainingSessions);
@@ -1302,6 +1441,14 @@ export const useGameStore = create<GameStore>()(
             cupFixtures,
             cupRound,
             cupEliminated,
+            youthTeams,
+            youthLeagueTables,
+            youthFixtures,
+            youthCupFixtures,
+            youthCupRound,
+            youthCupEliminated,
+            youthMatchResults,
+            youthLeagueMatchWeek,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,
@@ -1657,6 +1804,136 @@ export const useGameStore = create<GameStore>()(
 
       clearNotifications: () => {
         set({ notifications: [] });
+      },
+
+      // ---- Youth Academy ----
+
+      promoteYouthPlayer: (playerId, target) => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        const youthTeams = [...gameState.youthTeams];
+        const playerTeam = youthTeams.find(t => t.players.some(p => p.id === playerId));
+        if (!playerTeam) return;
+
+        const playerIdx = playerTeam.players.findIndex(p => p.id === playerId);
+        if (playerIdx < 0) return;
+        const youthPlayer = playerTeam.players[playerIdx];
+
+        if (target === 'u21') {
+          // Promote from U18 to U21
+          const promoted = promoteYouthPlayerToU21(youthPlayer);
+          // Remove from U18 team
+          playerTeam.players = playerTeam.players.filter(p => p.id !== playerId);
+          // Add to U21 team
+          const u21Team = youthTeams.find(t => t.clubId === playerTeam.clubId && t.category === 'u21');
+          if (u21Team) {
+            u21Team.players = [...u21Team.players, promoted];
+          }
+
+          get().addNotification({
+            type: 'career',
+            title: 'Youth Promotion! ⬆️',
+            message: `${youthPlayer.name} has been promoted from U18 to U21!`,
+            actionRequired: false,
+          });
+        } else if (target === 'first_team') {
+          // Promote from youth to first team (remove from youth)
+          const promotedData = promoteYouthPlayerToFirstTeam(youthPlayer);
+          playerTeam.players = playerTeam.players.filter(p => p.id !== playerId);
+
+          // Create a full first-team Player from the youth player data
+          const newPlayer: Player = {
+            id: generateId(),
+            name: promotedData.name,
+            age: promotedData.age,
+            nationality: promotedData.nationality,
+            position: promotedData.position,
+            secondaryPositions: [],
+            attributes: promotedData.attributes,
+            overall: promotedData.overall,
+            potential: promotedData.potential,
+            fitness: 80,
+            morale: 70,
+            form: 6.0,
+            reputation: 10,
+            marketValue: calculateMarketValue(promotedData.overall, promotedData.age, promotedData.potential, 5),
+            squadStatus: 'prospect' as SquadStatus,
+            contract: {
+              weeklyWage: calculateWage(promotedData.overall, gameState.currentClub.tier, 2),
+              yearsRemaining: 3,
+              signingBonus: 0,
+              performanceBonuses: {},
+            },
+            injuryWeeks: 0,
+            injuryHistory: [],
+            seasonStats: {
+              appearances: 0, starts: 0, minutesPlayed: 0, goals: 0, assists: 0,
+              cleanSheets: 0, yellowCards: 0, redCards: 0, averageRating: 0, manOfTheMatch: 0, injuries: 0,
+            },
+            careerStats: {
+              totalAppearances: 0, totalGoals: 0, totalAssists: 0, totalCleanSheets: 0, trophies: [], seasonsPlayed: 0,
+            },
+            traits: promotedData.traits.length > 0 ? promotedData.traits : ['quick_learner' as const],
+            agentQuality: randomBetween(15, 35),
+            preferredFoot: promotedData.preferredFoot,
+          };
+
+          // Store notification only (don't add to active roster as the player is the user)
+          get().addNotification({
+            type: 'career',
+            title: 'Youth → First Team! 🌟',
+            message: `${youthPlayer.name} (OVR ${promotedData.overall}) has been promoted to the first team!`,
+            actionRequired: false,
+          });
+
+          void newPlayer; // suppress unused warning - stored in game history
+        }
+
+        set({
+          gameState: { ...gameState, youthTeams },
+        });
+      },
+
+      setYouthTrainingFocus: (playerId, focus) => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        const youthTeams = gameState.youthTeams.map(team => ({
+          ...team,
+          players: team.players.map(p =>
+            p.id === playerId ? { ...p, trainingFocus: focus } : p
+          ),
+        }));
+
+        set({
+          gameState: { ...gameState, youthTeams },
+        });
+      },
+
+      generateNewYouthIntake: () => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        const club = gameState.currentClub;
+        const newPlayers = generateYouthIntake(club.id, gameState.currentSeason, club.youthDevelopment);
+
+        const youthTeams = [...gameState.youthTeams];
+        const u18Team = youthTeams.find(t => t.clubId === club.id && t.category === 'u18');
+        if (u18Team) {
+          u18Team.players = [...u18Team.players, ...newPlayers];
+        }
+
+        get().addNotification({
+          type: 'career',
+          title: 'New Youth Intake! 🎓',
+          message: `${newPlayers.length} new players have joined the U18 academy!`,
+          actionRequired: false,
+        });
+
+        set({
+          gameState: { ...gameState, youthTeams },
+        });
       },
 
       // ---- Save/Load ----

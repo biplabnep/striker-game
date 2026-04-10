@@ -388,13 +388,99 @@ export interface GameNotification {
   actionRequired: boolean;
 }
 
+// --- Youth Academy ---
+export type YouthCategory = 'u18' | 'u21';
+
+export interface YouthPlayer {
+  id: string;
+  name: string;
+  age: number;            // 14-18 for U18, 18-21 for U21
+  nationality: string;
+  position: Position;
+  secondaryPositions: Position[];
+  attributes: PlayerAttributes;
+  overall: number;
+  potential: number;       // hidden from player view, shown as range
+  fitness: number;
+  morale: number;
+  form: number;
+  category: YouthCategory;
+  clubId: string;
+  seasonStats: {
+    appearances: number;
+    goals: number;
+    assists: number;
+    averageRating: number;
+    cleanSheets: number;
+  };
+  traits: PlayerTrait[];
+  preferredFoot: 'left' | 'right' | 'both';
+  joinedSeason: number;
+  trainingFocus?: keyof PlayerAttributes;
+  promotionStatus: 'developing' | 'ready' | 'overdue';
+}
+
+export interface YouthTeam {
+  clubId: string;
+  category: YouthCategory;
+  players: YouthPlayer[];
+}
+
+export interface YouthLeagueStanding {
+  clubId: string;
+  clubName: string;
+  category: YouthCategory;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+}
+
+export interface YouthFixture {
+  id: string;
+  homeClubId: string;
+  awayClubId: string;
+  matchday: number;
+  competition: 'youth_league' | 'youth_cup';
+  category: YouthCategory;
+  season: number;
+  played: boolean;
+  homeScore?: number;
+  awayScore?: number;
+}
+
+export interface YouthMatchResult {
+  fixtureId: string;
+  homeClubId: string;
+  awayClubId: string;
+  homeScore: number;
+  awayScore: number;
+  category: YouthCategory;
+  competition: 'youth_league' | 'youth_cup';
+  week: number;
+  season: number;
+  playerGoals?: number;
+  playerAssists?: number;
+  playerRating?: number;
+  playerMinutesPlayed?: number;
+}
+
+export interface YouthCupRound {
+  category: YouthCategory;
+  round: number;
+  fixtures: YouthFixture[];
+}
+
 // --- Game Screen Navigation ---
 export type GameScreen =
   | 'main_menu' | 'career_setup' | 'dashboard' | 'match_day'
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
-  | 'season_objectives' | 'cup_bracket';
+  | 'season_objectives' | 'cup_bracket' | 'youth_academy';
 
 // --- Season Objectives ---
 export type ObjectiveCategory = 'board' | 'personal' | 'bonus';
@@ -467,6 +553,15 @@ export interface GameState {
   cupFixtures: Fixture[];
   cupRound: number;
   cupEliminated: boolean;
+  // Youth Academy
+  youthTeams: YouthTeam[];
+  youthLeagueTables: YouthLeagueStanding[];
+  youthFixtures: YouthFixture[];
+  youthCupFixtures: YouthFixture[];
+  youthCupRound: number;
+  youthCupEliminated: boolean;
+  youthMatchResults: YouthMatchResult[];
+  youthLeagueMatchWeek: number; // tracks current matchday for youth leagues
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;
