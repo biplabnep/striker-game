@@ -17,7 +17,7 @@ import {
   Trash2,
   Check,
 } from 'lucide-react';
-import { getLeagueById } from '@/lib/game/clubsData';
+import { getLeagueById, getSeasonMatchdays } from '@/lib/game/clubsData';
 import { useState } from 'react';
 
 const notificationTypeColors: Record<string, string> = {
@@ -146,7 +146,7 @@ export default function SettingsPanel() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-slate-400">Season {currentSeason}</p>
-                <p className="text-xs text-slate-500">Week {currentWeek}/38</p>
+                <p className="text-xs text-slate-500">Week {currentWeek}/{getSeasonMatchdays(currentClub.league)}</p>
               </div>
             </div>
             {leagueInfo && (

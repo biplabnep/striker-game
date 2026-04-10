@@ -211,13 +211,14 @@ export function weightedRandomChoice<T>(items: T[], weights: number[]): T {
 // -----------------------------------------------------------
 // Season week description
 // -----------------------------------------------------------
-export function getSeasonWeekDescription(week: number): string {
-  if (week <= 4) return 'Pre-Season';
-  if (week <= 10) return 'Early Season';
-  if (week <= 20) return 'Mid Season';
-  if (week <= 30) return 'Late Season';
-  if (week <= 36) return 'Title Run-In';
-  if (week <= 40) return 'Season Finale';
+export function getSeasonWeekDescription(week: number, seasonLength: number = 38): string {
+  const pct = seasonLength > 0 ? week / seasonLength : week / 38;
+  if (pct <= 0.10) return 'Pre-Season';
+  if (pct <= 0.26) return 'Early Season';
+  if (pct <= 0.52) return 'Mid Season';
+  if (pct <= 0.78) return 'Late Season';
+  if (pct <= 0.94) return 'Title Run-In';
+  if (pct <= 1.05) return 'Season Finale';
   return 'Off-Season';
 }
 

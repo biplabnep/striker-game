@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getOverallColor, getFormLabel, getMoraleLabel, formatCurrency, getSeasonWeekDescription, getMatchRatingLabel, getPositionColor } from '@/lib/game/gameUtils';
 import { NATIONALITIES } from '@/lib/game/playerData';
-import { getClubById, LEAGUES, getLeagueById } from '@/lib/game/clubsData';
+import { getClubById, LEAGUES, getLeagueById, getSeasonMatchdays } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -320,7 +320,8 @@ export default function Dashboard() {
   const pendingEvents = activeEvents.length;
 
   // Season progress
-  const seasonProgress = Math.min(100, Math.round((currentWeek / 38) * 100));
+  const seasonMatchdays = getSeasonMatchdays(currentClub.league);
+  const seasonProgress = Math.min(100, Math.round((currentWeek / seasonMatchdays) * 100));
   const posSuffix = leaguePos === 1 ? 'st' : leaguePos === 2 ? 'nd' : leaguePos === 3 ? 'rd' : 'th';
 
   // Trend indicators
@@ -573,8 +574,8 @@ export default function Dashboard() {
                   </linearGradient>
                 </defs>
                 {/* Week markers - show at key intervals */}
-                {[1, 5, 10, 15, 19, 23, 28, 33, 38].map(week => {
-                  const angle = ((week / 38) * 360 - 90) * (Math.PI / 180);
+                {Array.from({ length: 9 }, (_, i) => Math.round((i / 8) * seasonMatchdays) || 1).map(week => {
+                  const angle = ((week / seasonMatchdays) * 360 - 90) * (Math.PI / 180);
                   const markerRadius = ringRadius + 13;
                   const x = 70 + markerRadius * Math.cos(angle);
                   const y = 70 + markerRadius * Math.sin(angle);
@@ -592,7 +593,7 @@ export default function Dashboard() {
                         r={isCurrentWeek ? 3 : 1.5}
                         fill={isCurrentWeek ? '#10b981' : week <= currentWeek ? '#475569' : '#1e293b'}
                       />
-                      {(week === 1 || week === 19 || week === 38) && (
+                      {(week === 1 || week === Math.round(seasonMatchdays / 2) || week === seasonMatchdays) && (
                         <text
                           x={70 + (markerRadius + 9) * Math.cos(angle)}
                           y={70 + (markerRadius + 9) * Math.sin(angle)}
@@ -620,7 +621,7 @@ export default function Dashboard() {
             <div className="flex-1 space-y-2">
               <div className="flex items-center gap-2 text-slate-400">
                 <Calendar className="h-3 w-3" />
-                <span className="text-xs">Season {currentSeason} &bull; Week {currentWeek}/38</span>
+                <span className="text-xs">Season {currentSeason} &bull; Week {currentWeek}/{seasonMatchdays}</span>
               </div>
               <p className="text-[10px] text-slate-500">{getSeasonWeekDescription(currentWeek)}</p>
               {pendingEvents > 0 && (

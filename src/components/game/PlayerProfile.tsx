@@ -11,6 +11,7 @@ import {
   formatCurrency,
   getSquadStatusLabel,
 } from '@/lib/game/gameUtils';
+import { getSeasonMatchdays } from '@/lib/game/clubsData';
 import { NATIONALITIES } from '@/lib/game/playerData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -156,7 +157,7 @@ function generateMilestones(gameState: ReturnType<typeof useGameStore.getState>[
       label: 'First Trophy',
       description: `Won the ${firstTrophy.name}`,
       season: firstTrophy.season,
-      week: 38,
+      week: getSeasonMatchdays(currentClub.league),
       unlocked: true,
     });
   }
@@ -168,7 +169,7 @@ function generateMilestones(gameState: ReturnType<typeof useGameStore.getState>[
       label: `Season ${s.number} Complete`,
       description: `Finished ${s.leaguePosition}${getPositionSuffix(s.leaguePosition)} — ${s.playerStats.goals} goals, ${s.playerStats.assists} assists`,
       season: s.number,
-      week: 38,
+      week: getSeasonMatchdays(currentClub.league),
       unlocked: true,
     });
   }
@@ -1085,7 +1086,7 @@ function ComparisonRadar({
     { label: 'Goals', curr: current.goals, prevVal: prev.goals, max: Math.max(maxGoals, 1) },
     { label: 'Assists', curr: current.assists, prevVal: prev.assists, max: Math.max(maxAssists, 1) },
     { label: 'Rating', curr: current.averageRating, prevVal: prev.averageRating, max: maxRating },
-    { label: 'Apps', curr: current.appearances, prevVal: prev.appearances, max: 38 },
+    { label: 'Apps', curr: current.appearances, prevVal: prev.appearances, max: getSeasonMatchdays(gameState.currentClub.league) },
     { label: 'ClnSht', curr: current.cleanSheets, prevVal: prev.cleanSheets, max: Math.max(current.cleanSheets + 5, prev.cleanSheets + 5, 10) },
   ];
 

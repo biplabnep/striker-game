@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { formatCurrency } from '@/lib/game/gameUtils';
 import { isTransferWindow } from '@/lib/game/transferEngine';
-import { getLeagueById } from '@/lib/game/clubsData';
+import { getLeagueById, getSeasonMatchdays } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,8 +68,8 @@ function AnimatedNumber({ value, formatFn }: { value: number; formatFn: (v: numb
 // ============================================================
 // Transfer Window Timeline
 // ============================================================
-function TransferWindowTimeline({ currentWeek }: { currentWeek: number }) {
-  const totalWeeks = 38;
+function TransferWindowTimeline({ currentWeek, leagueId }: { currentWeek: number; leagueId: string }) {
+  const totalWeeks = getSeasonMatchdays(leagueId);
   const windows = [
     { start: 1, end: 12, label: 'Summer Window', color: 'emerald' },
     { start: 25, end: 28, label: 'Winter Window', color: 'cyan' },
@@ -143,7 +143,7 @@ function TransferWindowTimeline({ currentWeek }: { currentWeek: number }) {
           {/* Week labels */}
           <div className="absolute bottom-0 inset-x-0 flex justify-between px-1">
             <span className="text-[7px] text-slate-600">Wk 1</span>
-            <span className="text-[7px] text-slate-600">Wk 38</span>
+            <span className="text-[7px] text-slate-600">Wk {totalWeeks}</span>
           </div>
         </div>
 
@@ -157,7 +157,7 @@ function TransferWindowTimeline({ currentWeek }: { currentWeek: number }) {
             )}
           </Badge>
           <span className="text-[10px] text-slate-500">
-            Week {currentWeek} of 38
+            Week {currentWeek} of {totalWeeks}
           </span>
         </div>
 
@@ -708,7 +708,7 @@ export default function TransferHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
       >
-        <TransferWindowTimeline currentWeek={currentWeek} />
+        <TransferWindowTimeline currentWeek={currentWeek} leagueId={currentClub.league} />
       </motion.div>
 
       {/* Current Contract Card */}

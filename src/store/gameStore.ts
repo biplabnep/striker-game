@@ -53,6 +53,7 @@ import {
   getClubsByLeague,
   ENRICHED_CLUBS,
   LEAGUES,
+  getSeasonMatchdays,
 } from '@/lib/game/clubsData';
 import {
   generatePlayerName,
@@ -193,7 +194,9 @@ function generateLeagueTable(leagueId: string, playerClubId: string): LeagueStan
 }
 
 // ============================================================
-// Helper: Generate season fixtures (round-robin, 38 matchdays)
+// Helper: Generate season fixtures (round-robin, circle method)
+// For N teams: (N-1) rounds in first half, (N-1) in second half
+// Each round has N/2 matches. Total matchdays = (N-1)*2.
 // ============================================================
 function generateFixtures(leagueId: string, season: number): Fixture[] {
   const clubs = getClubsByLeague(leagueId);
@@ -201,29 +204,46 @@ function generateFixtures(leagueId: string, season: number): Fixture[] {
 
   if (clubs.length < 2) return fixtures;
 
-  // Simple round-robin: each pair plays home and away
-  const matchdays = 38;
   const clubIds = clubs.map((c) => c.id);
+  const n = clubIds.length;
+  const totalRounds = n - 1; // rounds per half-season
+  const matchesPerRound = Math.floor(n / 2);
 
-  for (let matchday = 1; matchday <= matchdays; matchday++) {
-    // For each matchday, pick pairs deterministically
-    const numMatches = Math.floor(clubIds.length / 2);
-    for (let m = 0; m < numMatches; m++) {
-      const homeIdx = (matchday + m) % clubIds.length;
-      const awayIdx = (matchday + m + numMatches) % clubIds.length;
+  // Circle method: fix team 0, rotate the rest
+  // teams[0] is fixed, teams[1..n-1] rotate
+  const teams = [...clubIds];
 
-      if (homeIdx !== awayIdx) {
-        fixtures.push({
-          id: generateId(),
-          homeClubId: clubIds[homeIdx],
-          awayClubId: clubIds[awayIdx],
-          date: `Season ${season}, Week ${matchday}`,
-          matchday,
-          competition: 'league',
-          season,
-          played: false,
-        });
-      }
+  for (let round = 0; round < totalRounds; round++) {
+    for (let match = 0; match < matchesPerRound; match++) {
+      const homeIdx = match === 0 ? 0 : ((round + match) % (n - 1)) + 1;
+      const awayIdx = ((round + (n - 1) - match) % (n - 1)) + 1;
+
+      const homeTeam = match === 0 ? teams[0] : teams[homeIdx];
+      const awayTeam = teams[awayIdx];
+
+      // First half: home/away as scheduled
+      fixtures.push({
+        id: generateId(),
+        homeClubId: homeTeam,
+        awayClubId: awayTeam,
+        date: `Season ${season}, Week ${round + 1}`,
+        matchday: round + 1,
+        competition: 'league',
+        season,
+        played: false,
+      });
+
+      // Second half: reverse home/away
+      fixtures.push({
+        id: generateId(),
+        homeClubId: awayTeam,
+        awayClubId: homeTeam,
+        date: `Season ${season}, Week ${totalRounds + round + 1}`,
+        matchday: totalRounds + round + 1,
+        competition: 'league',
+        season,
+        played: false,
+      });
     }
   }
 
@@ -320,7 +340,7 @@ function findFixtureForWeek(
   week: number
 ): Fixture | null {
   // Each matchday corresponds to a week
-  // We map week 1-38 to matchday 1-38
+  // We map week 1-seasonLength to matchday 1-seasonLength
   const matchday = week;
   return (
     fixtures.find(
@@ -815,7 +835,8 @@ export const useGameStore = create<GameStore>()(
         leagueTable = sortLeagueTable(leagueTable);
 
         // 10. Check for season end
-        if (week >= 38) {
+        const seasonMatchdays = getSeasonMatchdays(currentClub.league);
+        if (week >= seasonMatchdays) {
           // Advance season
           const seasonProgression = applySeasonProgression(player, player.seasonStats);
           player = applyPlayerUpdates(player, seasonProgression);
@@ -954,8 +975,9 @@ export const useGameStore = create<GameStore>()(
         if (!gameState || isProcessing) return;
 
         // Simulate remaining weeks in the season
-        const remainingWeeks = 38 - gameState.currentWeek;
-        const weeksToSim = Math.min(remainingWeeks, 38);
+        const seasonMatchdays = getSeasonMatchdays(gameState.currentClub.league);
+        const remainingWeeks = seasonMatchdays - gameState.currentWeek;
+        const weeksToSim = Math.min(remainingWeeks, seasonMatchdays);
 
         set({ isProcessing: true });
 

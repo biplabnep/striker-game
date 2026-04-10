@@ -956,3 +956,33 @@ Stage Summary:
 - All lint checks pass clean
 - Dev server compiles without errors
 - App tested and working across all screens
+
+---
+Task ID: 1
+Agent: main
+Task: Expand leagues to real-life team counts and verify fixture generation
+
+Work Log:
+- Verified clubsData.ts already expanded from 40 → 96 teams (done in previous session)
+  - Premier League: 8 → 20 teams (+12: Brighton, West Ham, Crystal Palace, Bournemouth, Fulham, Wolves, Everton, Brentford, Nottingham Forest, Burnley, Sheffield United, Luton Town)
+  - La Liga: 8 → 20 teams (+12: Real Betis, Girona, Celta Vigo, Osasuna, Mallorca, Getafe, Rayo Vallecano, Alaves, Cadiz, Las Palmas, Almeria, Granada)
+  - Serie A: 8 → 20 teams (+12: Bologna, Monza, Torino, Udinese, Sassuolo, Empoli, Lecce, Cagliari, Genoa, Verona, Frosinone, Salernitana)
+  - Bundesliga: 8 → 18 teams (+10: Stuttgart, Hoffenheim, Mainz, Augsburg, Werder Bremen, Bochum, Koln, Heidenheim, Darmstadt, Gladbach)
+  - Ligue 1: 8 → 18 teams (+10: Strasbourg, Toulouse, Montpellier, Nantes, Reims, Brest, Lorient, Clermont, Le Havre, Metz)
+- Verified LEAGUES array includes teamCount field (20, 20, 20, 18, 18)
+- Verified fixture generation uses circle method with dynamic (N-1)*2 matchdays
+- Verified getSeasonMatchdays() function computes correct values
+- Verified season end check uses getSeasonMatchdays() instead of hardcoded 38
+- QA Tested with agent-browser:
+  - Premier League (Arsenal): 38 matchdays ✅
+  - Bundesliga (Dortmund): 34 matchdays ✅
+  - Ligue 1 (PSG): 34 matchdays ✅
+- Career Setup shows team count badge per league (e.g., "Premier League 20")
+- All 96 clubs accessible in club selection
+- Lint passes clean
+
+Stage Summary:
+- All 5 leagues expanded to real-life team counts (96 total clubs)
+- Dynamic fixture generation works for all league sizes
+- Season length correctly varies by league (38 for 20-team leagues, 34 for 18-team leagues)
+- All QA tests pass

@@ -1,7 +1,7 @@
 'use client';
 
 import { useGameStore } from '@/store/gameStore';
-import { getClubById, getLeagueById } from '@/lib/game/clubsData';
+import { getClubById, getLeagueById, getSeasonMatchdays } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -164,7 +164,7 @@ export default function LeagueTable() {
           )}
         </div>
         <Badge variant="outline" className="border-slate-700 text-slate-400 text-[10px]">
-          Week {gameState.currentWeek}/38
+          Week {gameState.currentWeek}/{getSeasonMatchdays(gameState.currentClub.league)}
         </Badge>
       </div>
 
