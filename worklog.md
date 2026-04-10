@@ -773,3 +773,111 @@ Stage Summary:
 - Agent quality card provides agent management with upgrade path
 - Confirmation buttons prevent accidental accept/reject of transfer offers
 - Glass-morphism, animated counters, and club gradient backgrounds create premium feel
+
+---
+Task ID: 11-a
+Agent: subagent
+Task: Create PressConference post-match press conference component
+
+Work Log:
+- Created `/home/z/my-project/src/components/game/PressConference.tsx` — full-screen overlay modal (~960 lines)
+- Modified `/home/z/my-project/src/components/game/MatchDay.tsx` — added Press Conference button and modal integration
+
+Changes Made:
+
+1. **Press Conference Trigger**:
+   - Component receives `open`, `onClose`, `matchResult` props
+   - Uses `useGameStore` to access `gameState.player` and `gameState.currentClub`
+   - Opens as full-screen overlay with backdrop blur
+
+2. **Media Question System**:
+   - Generates 3 random questions based on match result context
+   - After WIN: positive questions about performance, team spirit, ambitions (3 question pool)
+   - After DRAW: questions about missed chances, tactics, improvements (3 question pool)
+   - After LOSS: critical questions about poor performance, team morale, future (3 question pool)
+   - After great personal rating (≥8.0): questions about personal achievement (2 question pool)
+   - After scoring: questions about the goal (2 question pool)
+   - After getting yellow/red card: questions about discipline (2 question pool)
+   - Questions randomly selected from appropriate pools, always exactly 3
+
+3. **Answer Choices**:
+   - Each question has 3 answer options:
+     - **Confident** (morale +5, reputation +2, slight risk if lost): green-themed button with TrendingUp icon
+     - **Humble** (morale +2, reputation +3, media likes it): blue-themed button with Heart icon
+     - **Controversial** (morale -8 to +8, reputation -3 to +5, high risk/reward): amber-themed button with Flame icon
+   - Color-coded risk indicators on each button (Low Risk / Safe / High Risk)
+   - Effect indicators showing morale and reputation changes inline on each answer
+   - ChevronRight arrow with hover animation on answer buttons
+
+4. **Media Reaction Panel** (after answering all 3 questions):
+   - SVG arc sentiment gauge (red → amber → green, 0-100 scale)
+     - Three background arc segments (red, amber, green at 20% opacity)
+     - Animated value arc with spring animation
+     - Needle dot at current value position
+     - Numeric value display with color coding
+     - Sentiment label badge (Negative / Mixed / Positive)
+   - Key headline generated based on answer patterns:
+     - 2+ controversial answers → explosive headlines
+     - 2+ confident answers → strong/bold headlines
+     - 2+ humble answers → classy/grounded headlines
+     - Mix → contextual headlines based on win/draw/loss
+   - Social media reaction counter:
+     - Likes count (scaled by sentiment × controversy multiplier)
+     - Retweets count (15-35% of likes)
+     - Impressions count (3.2× of likes + retweets)
+     - Heart, Share2, Eye icons with formatted numbers
+   - Effect summary card:
+     - Total morale change (current → new value)
+     - Total reputation change (current → new value)
+     - Color-coded arrows (TrendingUp/TrendingDown/Minus) per stat
+
+5. **Visual Design**:
+   - Full-screen overlay with backdrop blur and dark gradient background
+   - Red carpet / warm gradient feel (from-red-950/20 via-transparent to-red-950/10)
+   - Three-phase flow: Flash → Questions → Reaction
+   - Flash phase: 🎙️ emoji with spring animation, camera flash white overlay fading out, flash effect dots
+   - Questions phase:
+     - LIVE badge with pulsing red indicator and Mic icon
+     - Progress dots (filled=answered, current=amber scaled, pending=slate)
+     - Reporter avatar (randomized from 8 options) + name + media outlet
+     - Camera LIVE badge with Camera icon
+     - Typewriter animation for question text with blinking cursor
+     - AnimatePresence transitions between questions (fade + slide)
+   - Reaction phase:
+     - Staggered entrance animations for each card (0.2s, 0.5s, 0.7s, 0.9s, 1.1s delays)
+     - Glass-morphism cards (bg-slate-900/60, border-slate-800/60)
+   - Answer buttons with whileHover scale 1.01 and whileTap scale 0.99
+   - Close button (X) in top-right corner
+   - "Leave Press Conference" button with red gradient (from-red-700 to-red-600)
+
+6. **Integration with MatchDay.tsx**:
+   - Added `showPressConference` state
+   - Added 🎙️ "Press Conference" button on result screen (only if `playerMinutesPlayed > 0`)
+   - Button styled with red theme (border-red-500/30, bg-red-500/10, text-red-400)
+   - Appears with fade+slide animation (delay 0.6s)
+   - PressConference modal rendered at bottom of result screen JSX
+   - On close, returns to result screen
+
+7. **State Management**:
+   - Uses `useGameStore.setState()` to apply morale and reputation effects directly
+   - Values clamped to 0-100 range
+   - Store update happens only when "Leave Press Conference" is clicked
+
+Technical Implementation:
+- Created: `/home/z/my-project/src/components/game/PressConference.tsx` (~960 lines)
+- Modified: `/home/z/my-project/src/components/game/MatchDay.tsx` (added import, state, button, modal)
+- Imports: useState, useMemo, useEffect, useCallback from React; motion/AnimatePresence from framer-motion; useGameStore; Button/Badge from shadcn/ui; 20+ lucide-react icons
+- Sub-components: SentimentGauge (SVG arc), TypewriterText (character-by-character reveal)
+- Constants: WIN_QUESTIONS, DRAW_QUESTIONS, LOSS_QUESTIONS, GREAT_RATING_QUESTIONS, GOAL_QUESTIONS, CARD_QUESTIONS, ANSWER_STYLE_CONFIG, REPORTER_AVATARS, REPORTER_NAMES
+- Helper functions: pickRandom(), generateQuestions(), generateHeadline(), computeSentiment()
+- Lint passes clean
+- Dev server compiles without errors
+
+Stage Summary:
+- PressConference provides immersive post-match media interaction
+- Question generation adapts to match context (win/draw/loss, rating, goals, cards)
+- Three answer styles offer meaningful risk/reward tradeoffs
+- Media reaction panel with SVG gauge, headlines, and social metrics
+- Visual design with dark warm gradient, camera flash effects, typewriter text
+- Smooth framer-motion animations throughout all three phases
+- Integration into MatchDay result screen with conditional visibility

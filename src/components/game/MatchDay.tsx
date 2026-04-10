@@ -16,6 +16,7 @@ import {
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MatchEvent, MatchEventType, MatchResult } from '@/lib/game/types';
+import PressConference from '@/components/game/PressConference';
 
 // -----------------------------------------------------------
 // Event icon & color mapping
@@ -371,6 +372,7 @@ export default function MatchDay() {
 
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<MatchResult | null>(gameState?.recentResults[0] || null);
+  const [showPressConference, setShowPressConference] = useState(false);
 
   // Simulation states
   const [showSimulation, setShowSimulation] = useState(false);
@@ -1067,6 +1069,24 @@ export default function MatchDay() {
           </Card>
         </motion.div>
 
+        {/* Press Conference Button */}
+        {lastResult.playerMinutesPlayed > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Button
+              onClick={() => setShowPressConference(true)}
+              variant="outline"
+              className="w-full h-12 border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-xl font-semibold gap-2"
+            >
+              <span className="text-lg">🎙️</span>
+              Press Conference
+            </Button>
+          </motion.div>
+        )}
+
         {/* Back Button */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -1077,6 +1097,13 @@ export default function MatchDay() {
             Back to Dashboard
           </Button>
         </motion.div>
+
+        {/* Press Conference Modal */}
+        <PressConference
+          open={showPressConference}
+          onClose={() => setShowPressConference(false)}
+          matchResult={lastResult}
+        />
       </div>
     );
   }

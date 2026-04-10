@@ -166,20 +166,26 @@ const AGENT_POSTS: PostTemplate = {
 
 export function processMediaReaction(
   player: Player,
-  matchResult: MatchResult
+  matchResult: MatchResult,
+  playerClubId: string
 ): SocialPost[] {
   const posts: SocialPost[] = [];
-  const { playerRating, homeScore, awayScore } = matchResult;
-  const club = matchResult.homeClub;
+  const { playerRating, homeScore, awayScore, homeClub, awayClub } = matchResult;
+
+  // Determine the player's actual club (not always home)
+  const club = homeClub.id === playerClubId ? homeClub : awayClub;
+  const isHome = homeClub.id === playerClubId;
+  const playerGoals = isHome ? homeScore : awayScore;
+  const opponentGoals = isHome ? awayScore : homeScore;
 
   // Determine the tone of coverage based on performance
   const isGoodPerformance = playerRating >= 7.0;
   const isGreatPerformance = playerRating >= 8.0;
   const isPoorPerformance = playerRating < 5.5;
   const isTerriblePerformance = playerRating < 4.0;
-  const teamWon = homeScore > awayScore;
-  const teamLost = homeScore < awayScore;
-  const teamDrew = homeScore === awayScore;
+  const teamWon = playerGoals > opponentGoals;
+  const teamLost = playerGoals < opponentGoals;
+  const teamDrew = playerGoals === opponentGoals;
 
   // Fan reaction (1-2 posts)
   if (isGreatPerformance) {

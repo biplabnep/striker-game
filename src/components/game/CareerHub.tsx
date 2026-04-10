@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { formatCurrency, getOverallColor } from '@/lib/game/gameUtils';
+import { getLeagueById } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -262,7 +263,7 @@ export default function CareerHub() {
                   <span className="text-lg">{currentClub.logo}</span>
                   <div>
                     <p className="text-sm font-semibold text-slate-200">{currentClub.name}</p>
-                    <p className="text-[10px] text-slate-500">{currentClub.league}</p>
+                    <p className="text-[10px] text-slate-500">{getLeagueById(currentClub.league)?.name ?? currentClub.league}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">

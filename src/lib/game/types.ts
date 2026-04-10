@@ -82,9 +82,48 @@ export interface InjuryRecord {
 
 // --- Player Trait ---
 export type PlayerTrait =
+  // Attacking
+  | 'clinical_finisher' | 'speed_demon' | 'free_kick_specialist'
+  // Defending
+  | 'iron_wall' | 'leadership'
+  // Mental
+  | 'big_game_player' | 'never_give_up' | 'cool_under_pressure'
+  // Physical
+  | 'iron_man' | 'marathon_runner' | 'quick_recovery'
+  // Special
+  | 'fan_favorite' | 'media_darling' | 'club_legend'
+  // Legacy traits
   | 'speedster' | 'poacher' | 'playmaker' | 'tank' | 'aerial'
   | 'technical' | 'leader' | 'injury_prone' | 'late_bloomer'
-  | 'wonderkid' | 'consistent' | 'volatile';
+  | 'wonderkid' | 'consistent' | 'volatile'
+  | 'quick_learner';
+
+// --- Trait Category ---
+export type TraitCategory = 'attacking' | 'defending' | 'mental' | 'physical' | 'special';
+
+// --- Trait Rarity ---
+export type TraitRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+// --- Trait Definition (metadata for display & gameplay) ---
+export interface TraitDefinition {
+  id: PlayerTrait;
+  name: string;
+  description: string;
+  icon: string;
+  category: TraitCategory;
+  rarity: TraitRarity;
+  effect: string;
+  effectDetails: {
+    type: string;
+    value: number;
+  };
+  toggleable: boolean;
+  unlockRequirement: {
+    type: 'goals' | 'appearances' | 'overall' | 'age' | 'position' | 'reputation' | 'matches_rated_7' | 'seasons_at_club' | 'clean_sheets' | 'injury_count' | 'free_kick_goals' | 'penalty_goals';
+    value: number;
+    label: string;
+  };
+}
 
 // --- Season Stats ---
 export interface SeasonPlayerStats {

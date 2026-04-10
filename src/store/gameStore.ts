@@ -649,7 +649,7 @@ export const useGameStore = create<GameStore>()(
             );
 
             // Generate social posts from match
-            const matchPosts = processMediaReaction(player, matchResult);
+            const matchPosts = processMediaReaction(player, matchResult, currentClub.id);
             socialFeed = [...matchPosts, ...socialFeed].slice(0, 50);
 
             // Check for match injury
