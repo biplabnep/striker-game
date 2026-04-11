@@ -73,13 +73,13 @@ export default function BottomNav() {
               onClick={() => setMoreOpen(false)}
             />
             <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2"
             >
-              <div className="max-w-lg mx-auto bg-[#161b22] rounded-lg border border-[#30363d] shadow-lg overflow-hidden">
+              <div className="max-w-lg mx-auto bg-[#161b22] rounded-lg border border-[#30363d] shadow overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363d]">
                   <span className="text-sm font-semibold text-[#c9d1d9]">More Options</span>
                   <button onClick={() => setMoreOpen(false)} className="text-[#8b949e] hover:text-[#c9d1d9] transition-colors">
@@ -135,7 +135,7 @@ export default function BottomNav() {
                   {isActive && (
                     <motion.div
                       layoutId="bottomNavGlow"
-                      className="absolute inset-0 bg-emerald-500/10 rounded-xl"
+                      className="absolute inset-0 bg-emerald-500/10 rounded-lg"
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
@@ -164,7 +164,7 @@ export default function BottomNav() {
               {(isMoreActive || moreOpen) && (
                 <motion.div
                   layoutId="bottomNavGlowMore"
-                  className="absolute inset-0 bg-emerald-500/10 rounded-xl"
+                  className="absolute inset-0 bg-emerald-500/10 rounded-lg"
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}

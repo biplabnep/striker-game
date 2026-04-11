@@ -375,9 +375,9 @@ export default function TrainingPanel() {
       <AnimatePresence>
         {fatigueRisk !== 'none' && (
           <motion.div
-            initial={{ opacity: 0, y: -8, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -8, height: 0 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.15 }}
           >
             <Card
@@ -452,10 +452,13 @@ export default function TrainingPanel() {
           const isSelected = selectedType === t.type;
           const isSeasonFocusType = gameState.seasonTrainingFocus?.area === t.type;
           return (
-            <motion.button
+            <motion.div
               key={t.type}
               onClick={() => handleTypeSelect(t.type)}
-              className={`relative flex items-center w-full text-left rounded-md transition-all overflow-hidden ${
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTypeSelect(t.type); } }}
+              className={`relative flex items-center w-full text-left rounded-md transition-all overflow-hidden cursor-pointer ${
                 isSelected
                   ? 'bg-[#21262d]'
                   : 'bg-[#161b22] hover:bg-[#1c2129]'
@@ -463,10 +466,9 @@ export default function TrainingPanel() {
               style={{
                 borderLeft: isSelected ? `3px solid ${t.color}` : '3px solid transparent',
               }}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ duration: 0.15, delay: idx * 0.03 }}
-              whileTap={{ scale: 0.995 }}
             >
               <div className="flex items-center gap-3 p-2.5 flex-1 min-w-0">
                 {/* Icon */}
@@ -526,8 +528,8 @@ export default function TrainingPanel() {
                             ? 'bg-emerald-500/10 text-emerald-400/70 border border-emerald-500/20'
                             : 'bg-[#30363d] text-[#8b949e] border border-transparent hover:text-[#c9d1d9]'
                         }`}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         transition={{ duration: 0.1 }}
                       >
                         {isFocus && <Star className="h-2.5 w-2.5 inline mr-0.5 text-emerald-400 fill-emerald-400" />}
@@ -537,7 +539,7 @@ export default function TrainingPanel() {
                   })}
                 </div>
               )}
-            </motion.button>
+            </motion.div>
           );
         })}
       </div>
@@ -546,9 +548,9 @@ export default function TrainingPanel() {
       <AnimatePresence>
         {selectedType && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
@@ -560,15 +562,8 @@ export default function TrainingPanel() {
 
                 {/* Segmented control */}
                 <div className="relative flex bg-[#21262d] rounded-md p-0.5">
-                  {/* Gradient bar background */}
-                  <div className="absolute inset-0.5 rounded-md overflow-hidden">
-                    <div
-                      className="h-full w-full"
-                      style={{
-                        background: 'linear-gradient(to right, #10b98120, #f59e0b20, #ef444420)',
-                      }}
-                    />
-                  </div>
+                  {/* Subtle tone bar background */}
+                  <div className="absolute inset-0.5 rounded-md overflow-hidden bg-[#30363d]/30" />
 
                   {intensities.map(i => {
                     const isSelected = selectedIntensity === i.value;
@@ -585,7 +580,6 @@ export default function TrainingPanel() {
                             ? 'opacity-30 cursor-not-allowed'
                             : 'hover:bg-[#161b22]/50'
                         }`}
-                        whileTap={!isDisabled ? { scale: 0.97 } : undefined}
                         transition={{ duration: 0.1 }}
                       >
                         <p className="text-sm font-semibold" style={{ color: isDisabled ? '#484f58' : isSelected ? i.color : '#8b949e' }}>
@@ -639,8 +633,8 @@ export default function TrainingPanel() {
       {/* Training Status Indicator — enhanced detailed card */}
       {scheduledTraining && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.15 }}
         >
           <Card className="bg-[#161b22] border-emerald-700/40 relative overflow-hidden">
@@ -732,9 +726,9 @@ export default function TrainingPanel() {
         {selectedTrainingConfig && (
           <motion.div
             key={selectedTrainingConfig.type}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
@@ -792,8 +786,8 @@ export default function TrainingPanel() {
                             {gain && (
                               <motion.span
                                 className="text-[11px] font-semibold text-emerald-400"
-                                initial={{ opacity: 0, x: -4 }}
-                                animate={{ opacity: 1, x: 0 }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
                                 transition={{ duration: 0.15, delay: 0.05 }}
                               >
                                 +{gain.min}–{gain.max}
@@ -866,8 +860,8 @@ export default function TrainingPanel() {
                 return (
                   <motion.div
                     key={`${session.completedAt}-${idx}`}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ duration: 0.15, delay: idx * 0.04 }}
                     className="flex items-center gap-2.5 p-2 rounded-md bg-[#21262d] border border-[#30363d]"
                   >
@@ -954,8 +948,8 @@ export default function TrainingPanel() {
                     {delta != null && delta > 0 && (
                       <motion.span
                         className="text-[10px] font-semibold text-emerald-400"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         transition={{ duration: 0.15 }}
                       >
                         +{delta}

@@ -398,7 +398,6 @@ export default function Dashboard() {
                 }}
                 animate={{
                   opacity: [0.6, 1, 0.6],
-                  scale: [1, 1.05, 1],
                 }}
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
               />
@@ -557,9 +556,9 @@ export default function Dashboard() {
           {/* Streak Indicator */}
           {streakInfo && (
             <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.3 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.15, duration: 0.15 }}
               className={`mt-3 px-3 py-2 rounded-lg flex items-center gap-2 border ${
                 streakInfo.color === 'emerald' ? 'bg-emerald-500/8 border-emerald-500/20' :
                 streakInfo.color === 'blue' ? 'bg-blue-500/10 border-blue-500/20' :
@@ -635,7 +634,7 @@ export default function Dashboard() {
       <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
         <div className="relative">
           {/* Subtle gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/20 via-transparent to-emerald-950/10 pointer-events-none" />
+          <div className="absolute inset-0 bg-emerald-950/10 pointer-events-none" />
           <CardContent className="p-4 relative z-10">
             {/* Header row */}
             <div className="flex items-center justify-between mb-3">
@@ -709,8 +708,8 @@ export default function Dashboard() {
               {/* Contract Expiring Alert */}
               {player.contract.yearsRemaining <= 2 && (
                 <motion.div
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 border ${
                     player.contract.yearsRemaining <= 1
                       ? 'bg-red-500/10 border-red-500/20'
@@ -971,8 +970,8 @@ export default function Dashboard() {
               const prevResult = prevPlayerScore > prevOppScore ? 'W' : prevPlayerScore < prevOppScore ? 'L' : 'D';
               return (
                 <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.5, duration: 0.2 }}
                   className="flex items-center justify-between mb-3 px-2 py-1.5 rounded-md bg-[#21262d] border border-[#30363d]"
                 >
@@ -1240,8 +1239,8 @@ export default function Dashboard() {
               return (
                 <motion.div
                   key={`${result.week}-${result.season}-${i}`}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.06, duration: 0.2 }}
                   className={`rounded-lg bg-[#161b22] border ${borderClass} p-2.5 hover:bg-[#21262d] transition-colors`}
                 >
@@ -1286,8 +1285,8 @@ export default function Dashboard() {
                       <div className="flex items-center gap-1.5">
                         {result.playerGoals > 0 && (
                           <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             transition={{ delay: i * 0.06 + 0.2, type: 'spring', stiffness: 400, damping: 15 }}
                             className="flex items-center text-[10px] text-emerald-400 font-semibold"
                           >
@@ -1297,8 +1296,8 @@ export default function Dashboard() {
                         )}
                         {result.playerAssists > 0 && (
                           <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             transition={{ delay: i * 0.06 + 0.3, type: 'spring', stiffness: 400, damping: 15 }}
                             className="flex items-center text-[10px] text-cyan-400 font-semibold"
                           >
@@ -1419,12 +1418,12 @@ function EnhancedStatBar({
         <span className="text-[10px]">{label}</span>
         {/* Trend arrow */}
         {trend === 'up' && (
-          <motion.div initial={{ y: 3, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
             <ArrowUp className="h-2.5 w-2.5 text-emerald-400" />
           </motion.div>
         )}
         {trend === 'down' && (
-          <motion.div initial={{ y: -3, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
             <ArrowDown className="h-2.5 w-2.5 text-red-400" />
           </motion.div>
         )}
@@ -1554,17 +1553,17 @@ function QuickActionButton({
   accentColor: 'emerald' | 'amber' | 'cyan' | 'purple';
 }) {
   const colorClasses = {
-    emerald: 'from-emerald-950/50 to-emerald-900/10 text-emerald-400 group-hover:from-emerald-900/60 group-hover:to-emerald-800/20',
-    amber: 'from-amber-950/50 to-amber-900/10 text-amber-400 group-hover:from-amber-900/60 group-hover:to-amber-800/20',
-    cyan: 'from-cyan-950/50 to-cyan-900/10 text-cyan-400 group-hover:from-cyan-900/60 group-hover:to-cyan-800/20',
-    purple: 'from-purple-950/50 to-purple-900/10 text-purple-400 group-hover:from-purple-900/60 group-hover:to-purple-800/20',
+    emerald: 'bg-emerald-950/20 text-emerald-400 group-hover:bg-emerald-900/30',
+    amber: 'bg-amber-950/20 text-amber-400 group-hover:bg-amber-900/30',
+    cyan: 'bg-cyan-950/20 text-cyan-400 group-hover:bg-cyan-900/30',
+    purple: 'bg-purple-950/20 text-purple-400 group-hover:bg-purple-900/30',
   };
 
   const borderClasses = {
-    emerald: 'border-[#30363d] hover:border-emerald-600/50 group-hover:shadow-[0_0_8px_rgba(16,185,129,0.15)]',
-    amber: 'border-[#30363d] hover:border-amber-600/50 group-hover:shadow-[0_0_8px_rgba(245,158,11,0.15)]',
-    cyan: 'border-[#30363d] hover:border-cyan-600/50 group-hover:shadow-[0_0_8px_rgba(6,182,212,0.15)]',
-    purple: 'border-[#30363d] hover:border-purple-600/50 group-hover:shadow-[0_0_8px_rgba(168,85,247,0.15)]',
+    emerald: 'border-[#30363d] hover:border-emerald-600/50',
+    amber: 'border-[#30363d] hover:border-amber-600/50',
+    cyan: 'border-[#30363d] hover:border-cyan-600/50',
+    purple: 'border-[#30363d] hover:border-purple-600/50',
   };
 
   const iconBgClasses = {
@@ -1577,8 +1576,7 @@ function QuickActionButton({
   return (
     <motion.button
       onClick={onClick}
-      className={`group flex flex-col items-center gap-2 p-3.5 rounded-lg border bg-gradient-to-b ${colorClasses[accentColor]} ${borderClasses[accentColor]} transition-all duration-150`}
-      whileTap={{ scale: 0.97 }}
+      className={`group flex flex-col items-center gap-2 p-3.5 rounded-lg border ${colorClasses[accentColor]} ${borderClasses[accentColor]} transition-all duration-150`}
     >
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${iconBgClasses[accentColor]}`}>
         {icon}

@@ -1454,3 +1454,45 @@ Style:
 - Cyan replaces blue-dominant colors for stats/assists
 - No indigo, no soft gradients, no glassmorphism, no hero sections
 - Clean, professional aesthetics (Linear/Raycast/Stripe style)
+
+---
+Task ID: 11
+Agent: main
+Task: PWA conversion, bug fix (nested buttons), and Uncodixify styling cleanup
+
+Work Log:
+- Converted Elite Striker to a Progressive Web App (PWA):
+  - Created `/home/z/my-project/public/manifest.webmanifest` with app name, icons, theme, display standalone
+  - Created `/home/z/my-project/public/sw.js` manual service worker with network-first caching strategy
+  - Generated PWA icons via AI image generation: icon-512.png, icon-192.png, apple-touch-icon.png, maskable-icon-512.png, favicon-32.png, favicon-16.png
+  - Updated `/home/z/my-project/src/app/layout.tsx` with manifest link, theme-color, apple-web-app meta, viewport settings
+  - Updated `/home/z/my-project/next.config.ts` with turbopack: {} config (removed incompatible @ducanh2912/next-pwa)
+  - Created `/home/z/my-project/src/components/game/PWAInstallPrompt.tsx` — install prompt banner component
+  - Added service worker registration in `/home/z/my-project/src/app/page.tsx`
+  - Added PWAInstallPrompt component to page render
+
+- Bug Fix: Nested <button> HTML validation error in TrainingPanel.tsx
+  - Root cause: motion.button (training type card, line 455) contained inner motion.button elements (focus attribute pills, line 519)
+  - This violates HTML spec: <button> cannot be a descendant of <button>
+  - Fixed by changing outer motion.button to motion.div with role="button", tabIndex={0}, onKeyDown handler
+  - Also removed whileTap={{ scale: 0.995 }} from outer element (Uncodixify violation)
+
+- Uncodixify Styling Cleanup across components:
+  - TrainingPanel.tsx: Removed all y:/x: transform animations (→ opacity only), removed scale animations, removed whileTap, replaced gradient bar background with flat bg, removed initial y:8/x:-8 transforms
+  - Dashboard.tsx: Removed scale: [1, 1.05, 1] animation on overall glow, removed all y:/x: transforms (→ opacity only), removed scale: 0/1 animations, removed whileTap: scale: 0.97, replaced bg-gradient-to-b color classes with flat bg, replaced bg-gradient-to-r overlay with flat bg, removed shadow glow from border classes
+  - BottomNav.tsx: Removed y: 100 transform animation (→ opacity only), changed shadow-lg → shadow, changed rounded-xl → rounded-lg
+  - MainMenu.tsx: Removed y:20/y:0 transform animation (→ opacity only), reduced transition durations to 0.15s
+
+- QA Testing via agent-browser:
+  - Main menu loads correctly
+  - Career setup works with all options (nationalities, positions, leagues, clubs, difficulty)
+  - New career starts successfully (player "Ryan Thomas", Age 14, OVR 47, Arsenal U18)
+  - No console errors or runtime errors
+  - PWA manifest and icons load correctly
+
+Stage Summary:
+- Elite Striker is now a fully installable PWA with offline support
+- Critical HTML validation bug fixed (nested buttons)
+- Uncodixify styling applied to MainMenu, Dashboard, TrainingPanel, BottomNav (removed transforms, gradients, scale animations, excessive shadows)
+- App is stable and running without errors
+- Dev server: localhost:3000, lint passes clean
