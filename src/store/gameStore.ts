@@ -36,6 +36,9 @@ import {
   InternationalCareer,
   PlayerMindset,
   MoraleFactor,
+  PlayerTeamLevel,
+  SeasonTrainingFocus,
+  SeasonTrainingFocusArea,
 } from '@/lib/game/types';
 
 // Engine imports
@@ -46,6 +49,8 @@ import {
   applySeasonProgression,
   determineSquadStatusUpdate,
   updateForm,
+  calculateFocusBonusMultiplier,
+  FOCUS_AREA_ATTRIBUTES,
 } from '@/lib/game/progressionEngine';
 import { generateRandomEvent, resolveEventChoice } from '@/lib/game/randomEvents';
 import {
@@ -227,6 +232,13 @@ interface GameStoreActions {
 
   // Mindset
   setMindset: (mindset: PlayerMindset) => void;
+
+  // Season Training Focus
+  setSeasonTrainingFocus: (area: SeasonTrainingFocusArea) => void;
+
+  // Player Team Level
+  promoteToU21: () => void;
+  promoteToSenior: () => void;
 
   // Save/Load
   saveGame: (slotName: string) => void;
@@ -588,6 +600,10 @@ function migrateGameState(gs: GameState | null): GameState | null {
     },
     internationalCalledUp: gs.internationalCalledUp ?? false,
     internationalOnBreak: gs.internationalOnBreak ?? false,
+    // Player Team Level - migrate existing saves to senior
+    playerTeamLevel: gs.playerTeamLevel ?? (gs.player.age <= 17 ? 'u18' : gs.player.age <= 20 ? 'u21' : 'senior'),
+    // Season Training Focus
+    seasonTrainingFocus: gs.seasonTrainingFocus ?? null,
     // Mindset & Morale
     mindset: gs.mindset ?? 'balanced',
     moraleFactors: gs.moraleFactors ?? [],
@@ -761,6 +777,10 @@ export const useGameStore = create<GameStore>()(
           continentalCompetition: null,
           continentalKnockoutRound: 0,
           continentalEliminated: false,
+          // Player Team Level - start at youth
+          playerTeamLevel: 'u18' as PlayerTeamLevel,
+          // Season Training Focus - will be set at season start
+          seasonTrainingFocus: null,
           // International Duty
           internationalFixtures: [],
           internationalCareer: {
@@ -795,7 +815,7 @@ export const useGameStore = create<GameStore>()(
         get().addNotification({
           type: 'career',
           title: 'Career Started!',
-          message: `Welcome to ${club.name}! Your journey as a ${config.position} begins in the youth academy.`,
+          message: `Welcome to ${club.name}! You've joined the U18 academy. Set your training focus and develop your skills!`,
           actionRequired: false,
         });
       },
@@ -881,18 +901,23 @@ export const useGameStore = create<GameStore>()(
         };
         let internationalCalledUp = state.internationalCalledUp ?? false;
         let internationalOnBreak = state.internationalOnBreak ?? false;
+        // Player team level & season training focus
+        let playerTeamLevel = state.playerTeamLevel ?? 'senior';
+        let seasonTrainingFocus = state.seasonTrainingFocus ?? null;
 
         // 1. Increment week
         state.currentWeek += 1;
         const week = state.currentWeek;
         const season = state.currentSeason;
 
-        // 2. Check if there's a fixture this week → simulate match
-        const fixture = findFixtureForWeek(
+        // 2. Match simulation - depends on player's team level
+        // If player is at youth level, they play youth matches instead of senior
+        const isAtYouthLevel = playerTeamLevel === 'u18' || playerTeamLevel === 'u21';
+        const fixture = !isAtYouthLevel ? findFixtureForWeek(
           upcomingFixtures,
           currentClub.id,
           week
-        );
+        ) : null;
 
         let matchResult: MatchResult | null = null;
 
@@ -1031,9 +1056,35 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        // 2b. Cup match processing (on cup weeks)
+        // 2a. When player is at youth level, simulate ALL senior matches as NPC matches
+        // so the league table still updates correctly
+        if (isAtYouthLevel) {
+          const allFixturesThisWeek = upcomingFixtures.filter(
+            (f) => f.matchday === week && !f.played
+          );
+          for (const fix of allFixturesThisWeek) {
+            const homeTeam = getClubById(fix.homeClubId);
+            const awayTeam = getClubById(fix.awayClubId);
+            if (homeTeam && awayTeam) {
+              const result = simulateNPCTableMatch(homeTeam, awayTeam);
+              leagueTable = updateLeagueTable(
+                leagueTable,
+                fix.homeClubId,
+                fix.awayClubId,
+                result.homeScore,
+                result.awayScore
+              );
+              const fIdx = upcomingFixtures.findIndex((f) => f.id === fix.id);
+              if (fIdx >= 0) {
+                upcomingFixtures[fIdx] = { ...upcomingFixtures[fIdx], played: true };
+              }
+            }
+          }
+        }
+
+        // 2b. Cup match processing (on cup weeks) - only for senior players
         const isCupWeek = CUP_MATCH_WEEKS.includes(week);
-        if (isCupWeek && !cupEliminated && cupFixtures.length > 0) {
+        if (isCupWeek && !cupEliminated && cupFixtures.length > 0 && !isAtYouthLevel) {
           // Find unplayed cup fixtures for current round
           const currentCupRound = cupFixtures.filter(f => f.matchday === cupRound && !f.played);
 
@@ -1220,8 +1271,10 @@ export const useGameStore = create<GameStore>()(
 
         // 2c. Youth Academy: simulate youth league matches
         // Youth leagues play every week (same schedule as senior)
+        // When player is at youth level, they participate in these matches
         const youthMatchday = youthLeagueMatchWeek;
         for (const category of ['u18', 'u21'] as const) {
+          const isPlayerCategory = playerTeamLevel === category;
           const youthLeagueFixturesThisWeek = youthFixtures.filter(
             f => f.matchday === youthMatchday && f.category === category && !f.played
           );
@@ -1229,8 +1282,83 @@ export const useGameStore = create<GameStore>()(
           for (const yf of youthLeagueFixturesThisWeek) {
             const homeTeam = getClubById(yf.homeClubId);
             const awayTeam = getClubById(yf.awayClubId);
+            const isPlayerClub = yf.homeClubId === currentClub.id || yf.awayClubId === currentClub.id;
+
             if (homeTeam && awayTeam) {
-              const result = simulateYouthMatch(homeTeam, awayTeam, category, 'youth_league');
+              let result;
+
+              // If player is at this youth level and it's their club's match, simulate with player
+              if (isPlayerCategory && isPlayerClub && player.injuryWeeks === 0) {
+                const isHome = yf.homeClubId === currentClub.id;
+                // Simulate youth match with player participating (using lower-quality match engine)
+                result = simulateYouthMatch(homeTeam, awayTeam, category, 'youth_league');
+
+                // Create a MatchResult for the player's participation
+                const playerYouthMatch: MatchResult = {
+                  homeClub: homeTeam,
+                  awayClub: awayTeam,
+                  homeScore: result.homeScore,
+                  awayScore: result.awayScore,
+                  events: [],
+                  playerRating: Math.round((5 + Math.random() * 4) * 10) / 10, // 5-9 for youth
+                  playerMinutesPlayed: Math.min(90, Math.max(45, Math.floor(Math.random() * 45 + 45))), // 45-90 min
+                  playerStarted: true,
+                  playerGoals: Math.random() < 0.25 ? 1 : 0, // Youth scoring rate
+                  playerAssists: Math.random() < 0.2 ? 1 : 0,
+                  competition: `youth_${category}`,
+                  week,
+                  season,
+                };
+                recentResults.unshift(playerYouthMatch);
+                if (recentResults.length > 10) recentResults = recentResults.slice(0, 10);
+
+                // Update player season stats from youth match
+                const yStats = { ...player.seasonStats };
+                if (playerYouthMatch.playerMinutesPlayed > 0) {
+                  yStats.appearances += 1;
+                  yStats.starts += 1;
+                  yStats.minutesPlayed += playerYouthMatch.playerMinutesPlayed;
+                  yStats.goals += playerYouthMatch.playerGoals;
+                  yStats.assists += playerYouthMatch.playerAssists;
+                  yStats.averageRating =
+                    (yStats.averageRating * (yStats.appearances - 1) + playerYouthMatch.playerRating) /
+                    yStats.appearances;
+                  yStats.averageRating = Math.round(yStats.averageRating * 10) / 10;
+                }
+                player.seasonStats = yStats;
+
+                // Update career stats
+                const yCareer = { ...player.careerStats };
+                if (playerYouthMatch.playerMinutesPlayed > 0) {
+                  yCareer.totalAppearances += 1;
+                  yCareer.totalGoals += playerYouthMatch.playerGoals;
+                  yCareer.totalAssists += playerYouthMatch.playerAssists;
+                }
+                player.careerStats = yCareer;
+
+                // Update form from youth match
+                const yRecentRatings = recentResults.filter(r => r.playerRating > 0).map(r => r.playerRating);
+                player.form = updateForm(player, yRecentRatings);
+
+                // Youth match fitness drain (less than senior)
+                player.fitness = clamp(player.fitness - Math.round(playerYouthMatch.playerMinutesPlayed / 8), 0, 100);
+
+                // Morale from youth match
+                if (playerYouthMatch.playerRating >= 7.5) {
+                  player.morale = clamp(player.morale + 2, 0, 100);
+                } else if (playerYouthMatch.playerRating < 5.0) {
+                  player.morale = clamp(player.morale - 3, 0, 100);
+                }
+
+                matchResult = playerYouthMatch; // Set for weekly progression
+              } else {
+                result = simulateYouthMatch(homeTeam, awayTeam, category, 'youth_league');
+              }
+
+              if (!result) {
+                result = simulateYouthMatch(homeTeam, awayTeam, category, 'youth_league');
+              }
+
               // Update fixture
               const fixIdx = youthFixtures.findIndex(f => f.id === yf.id);
               if (fixIdx >= 0) {
@@ -1239,7 +1367,7 @@ export const useGameStore = create<GameStore>()(
               // Update league table
               youthLeagueTables = updateYouthLeagueTable(youthLeagueTables, yf.homeClubId, yf.awayClubId, result.homeScore, result.awayScore);
               // Track results for player's club
-              if (yf.homeClubId === currentClub.id || yf.awayClubId === currentClub.id) {
+              if (isPlayerClub) {
                 youthMatchResults.push({
                   fixtureId: yf.id,
                   homeClubId: yf.homeClubId,
@@ -1309,7 +1437,7 @@ export const useGameStore = create<GameStore>()(
 
         // 3. Apply weekly progression
         const trainingSessions = scheduledTraining ? [scheduledTraining] : [];
-        const progressionUpdates = applyWeeklyProgression(player, trainingSessions);
+        const progressionUpdates = applyWeeklyProgression(player, trainingSessions, seasonTrainingFocus);
 
         if (trainingSessions.length > 0) {
           trainingHistory = [...trainingHistory, ...trainingSessions];
@@ -1318,8 +1446,8 @@ export const useGameStore = create<GameStore>()(
 
         player = applyPlayerUpdates(player, progressionUpdates);
 
-        // 2c. Continental competition match processing
-        if (continentalQualified && continentalCompetition && !continentalEliminated && continentalFixtures.length > 0) {
+        // 2c. Continental competition match processing (only for senior players)
+        if (continentalQualified && continentalCompetition && !continentalEliminated && continentalFixtures.length > 0 && !isAtYouthLevel) {
           const isContinentalGroupWeek = CONTINENTAL_GROUP_MATCH_WEEKS.includes(week);
           const isContinentalKOWeek = CONTINENTAL_KO_MATCH_WEEKS.includes(week);
 
@@ -1832,8 +1960,43 @@ export const useGameStore = create<GameStore>()(
           // Age up
           player.age += 1;
 
-          // Update squad status
-          player.squadStatus = determineSquadStatusUpdate(player, currentClub);
+          // Check for youth team promotion
+          if (playerTeamLevel === 'u18' && (player.age >= 18 || player.overall >= 60)) {
+            playerTeamLevel = 'u21';
+            get().addNotification({
+              type: 'career',
+              title: 'Promoted to U21! ⬆️',
+              message: `You've been promoted from the U18 to the U21 team! Keep developing!`,
+              actionRequired: false,
+            });
+          } else if (playerTeamLevel === 'u21' && (player.age >= 19 || player.overall >= 68)) {
+            playerTeamLevel = 'senior';
+            player.squadStatus = 'prospect';
+            get().addNotification({
+              type: 'career',
+              title: 'Promoted to Senior Team! 🎉',
+              message: `You've been promoted to the senior squad! Your hard work in the academy paid off!`,
+              actionRequired: false,
+            });
+          } else if (playerTeamLevel === 'u21' && player.age >= 21) {
+            // Auto-promote at 21
+            playerTeamLevel = 'senior';
+            player.squadStatus = determineSquadStatusUpdate(player, currentClub);
+            get().addNotification({
+              type: 'career',
+              title: 'Promoted to Senior Team! 🎉',
+              message: `You've graduated from the U21 team to the senior squad!`,
+              actionRequired: false,
+            });
+          }
+
+          // Update squad status (for senior players)
+          if (playerTeamLevel === 'senior') {
+            player.squadStatus = determineSquadStatusUpdate(player, currentClub);
+          }
+
+          // Reset season training focus for new season (player must set again)
+          seasonTrainingFocus = null;
 
           // Save season summary
           const seasonSummary = {
@@ -2050,6 +2213,8 @@ export const useGameStore = create<GameStore>()(
             internationalCareer,
             internationalCalledUp,
             internationalOnBreak,
+            playerTeamLevel,
+            seasonTrainingFocus,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,
@@ -2580,6 +2745,75 @@ export const useGameStore = create<GameStore>()(
 
         set({
           gameState: { ...gameState, mindset },
+        });
+      },
+
+      // ---- Season Training Focus ----
+
+      setSeasonTrainingFocus: (area: SeasonTrainingFocusArea) => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        const focusAttributes = FOCUS_AREA_ATTRIBUTES[area];
+        const bonusMultiplier = calculateFocusBonusMultiplier(gameState.player, gameState.player.seasonStats);
+
+        const focus: SeasonTrainingFocus = {
+          area,
+          focusAttributes,
+          bonusMultiplier,
+          setAtSeason: gameState.currentSeason,
+        };
+
+        set({
+          gameState: { ...gameState, seasonTrainingFocus: focus },
+        });
+
+        get().addNotification({
+          type: 'training',
+          title: 'Training Focus Set! 🎯',
+          message: `Your seasonal training focus is now ${area}. Focused attributes get ${bonusMultiplier}x growth bonus!`,
+          actionRequired: false,
+        });
+      },
+
+      // ---- Player Team Level ----
+
+      promoteToU21: () => {
+        const { gameState } = get();
+        if (!gameState || gameState.playerTeamLevel !== 'u18') return;
+
+        set({
+          gameState: { ...gameState, playerTeamLevel: 'u21' },
+        });
+
+        get().addNotification({
+          type: 'career',
+          title: 'Promoted to U21! ⬆️',
+          message: 'You\'ve been promoted from the U18 to the U21 team!',
+          actionRequired: false,
+        });
+      },
+
+      promoteToSenior: () => {
+        const { gameState } = get();
+        if (!gameState || gameState.playerTeamLevel === 'senior') return;
+
+        const updatedPlayer = { ...gameState.player };
+        updatedPlayer.squadStatus = 'prospect';
+
+        set({
+          gameState: {
+            ...gameState,
+            playerTeamLevel: 'senior',
+            player: updatedPlayer,
+          },
+        });
+
+        get().addNotification({
+          type: 'career',
+          title: 'Promoted to Senior Team! 🎉',
+          message: 'You\'ve been promoted to the senior squad! Your academy journey is complete!',
+          actionRequired: false,
         });
       },
 

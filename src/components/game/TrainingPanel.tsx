@@ -3,7 +3,9 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
-import { TrainingType, TrainingSession, PlayerAttributes } from '@/lib/game/types';
+import { TrainingType, TrainingSession, PlayerAttributes, SeasonTrainingFocusArea } from '@/lib/game/types';
+import { FOCUS_AREA_ATTRIBUTES } from '@/lib/game/progressionEngine';
+import SeasonTrainingFocusModal from './SeasonTrainingFocusModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +14,7 @@ import {
   Dumbbell, Sword, Shield, Zap, Brain, Heart,
   TrendingUp, Clock, AlertTriangle, Flame,
   ChevronRight, Activity, BarChart3, History,
+  Star, Target,
 } from 'lucide-react';
 
 // ============================================================
@@ -164,6 +167,7 @@ export default function TrainingPanel() {
   const [selectedType, setSelectedType] = useState<TrainingType | null>(null);
   const [selectedIntensity, setSelectedIntensity] = useState(60);
   const [focusAttr, setFocusAttr] = useState<keyof PlayerAttributes | undefined>(undefined);
+  const [showFocusModal, setShowFocusModal] = useState(false);
 
   // ============================================================
   // Derived state
@@ -190,6 +194,34 @@ export default function TrainingPanel() {
     () => fatigueRisk === 'critical' && selectedIntensity === 90,
     [fatigueRisk, selectedIntensity]
   );
+
+  // Season training focus attributes set (for highlighting)
+  const seasonFocusAttrs = useMemo(() => {
+    if (!gameState?.seasonTrainingFocus) return new Set<keyof PlayerAttributes>();
+    return new Set(gameState.seasonTrainingFocus.focusAttributes);
+  }, [gameState]);
+
+  // Season focus area label
+  const seasonFocusAreaLabel = useMemo(() => {
+    if (!gameState?.seasonTrainingFocus) return '';
+    const area = gameState.seasonTrainingFocus.area;
+    const labels: Record<SeasonTrainingFocusArea, string> = {
+      attacking: 'Attacking',
+      defensive: 'Defensive',
+      physical: 'Physical',
+      technical: 'Technical',
+      tactical: 'Tactical',
+    };
+    return labels[area];
+  }, [gameState]);
+
+  // Season focus attribute names joined
+  const seasonFocusAttrNames = useMemo(() => {
+    if (!gameState?.seasonTrainingFocus) return '';
+    return gameState.seasonTrainingFocus.focusAttributes
+      .map(attr => attrLabels[attr])
+      .join(' & ');
+  }, [gameState]);
 
   const recentTrainingHistory = useMemo(() => {
     if (!gameState) return [];
@@ -282,6 +314,58 @@ export default function TrainingPanel() {
   // ============================================================
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4">
+      {/* Season Training Focus Banner */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3">
+          {gameState.seasonTrainingFocus ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span className="text-sm font-semibold text-[#c9d1d9]">
+                  🎯 {seasonFocusAreaLabel} Focus — {gameState.seasonTrainingFocus.bonusMultiplier}x bonus on {seasonFocusAttrNames}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {gameState.seasonTrainingFocus.focusAttributes.map(attr => (
+                  <div
+                    key={attr}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20"
+                  >
+                    <Star className="h-3 w-3 text-emerald-400 fill-emerald-400" />
+                    <span className="text-xs font-medium text-emerald-300">{attrLabels[attr]}</span>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFocusModal(true)}
+                className="h-7 text-xs border-[#30363d] text-[#8b949e] hover:text-emerald-400 hover:border-emerald-500/40 rounded-lg"
+              >
+                Change Focus
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+                <span className="text-sm text-amber-300">
+                  No training focus set for this season. Set your focus to get 1.5x-2.0x bonus!
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFocusModal(true)}
+                className="h-7 text-xs border-emerald-600/40 text-emerald-400 hover:bg-emerald-600/10 rounded-lg"
+              >
+                Set Focus
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Header with session count & progress dots */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -465,16 +549,20 @@ export default function TrainingPanel() {
                   const gain = expectedGains?.[attr];
                   const currentValue = player.attributes[attr];
                   const isFocusAttr = focusAttr === attr;
+                  const isSeasonFocus = seasonFocusAttrs.has(attr);
 
                   return (
                     <div key={attr} className="space-y-1">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span
-                            className="text-[#8b949e]"
+                            className="text-[#8b949e] relative"
                             style={{ color: isFocused ? selectedTrainingConfig.color : undefined }}
                           >
                             {attrIcons[attr]}
+                            {isSeasonFocus && (
+                              <Star className="h-2.5 w-2.5 text-emerald-400 fill-emerald-400 absolute -top-1 -right-1" />
+                            )}
                           </span>
                           <span
                             className={`text-xs font-medium ${
@@ -483,12 +571,17 @@ export default function TrainingPanel() {
                           >
                             {attrLabels[attr]}
                           </span>
-                          {isFocusAttr && (
+                          {isSeasonFocus && (
+                            <Badge className="h-4 px-1 text-[9px] bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+                              SEASON FOCUS
+                            </Badge>
+                          )}
+                          {isFocusAttr && !isSeasonFocus && (
                             <Badge className="h-4 px-1 text-[9px] bg-emerald-600/30 text-emerald-300 border-emerald-700">
                               FOCUS
                             </Badge>
                           )}
-                          {isFocused && !isFocusAttr && (
+                          {isFocused && !isFocusAttr && !isSeasonFocus && (
                             <Badge className="h-4 px-1 text-[9px] bg-slate-700/50 text-[#8b949e] border-slate-600">
                               TRAINED
                             </Badge>
@@ -512,12 +605,16 @@ export default function TrainingPanel() {
                       </div>
 
                       {/* Attribute bar with current + gain preview */}
-                      <div className="relative h-2.5 bg-[#21262d] rounded-full overflow-hidden">
-                        {/* Current value bar (slate) */}
+                      <div className={`relative h-2.5 bg-[#21262d] rounded-full overflow-hidden ${
+                        isSeasonFocus ? 'ring-1 ring-emerald-500/30' : ''
+                      }`}>
+                        {/* Current value bar */}
                         <motion.div
                           className="absolute h-full rounded-full"
                           style={{
-                            backgroundColor: isFocused
+                            backgroundColor: isSeasonFocus
+                              ? '#10b98180'
+                              : isFocused
                               ? `${selectedTrainingConfig.color}60`
                               : '#475569',
                           }}
@@ -530,10 +627,10 @@ export default function TrainingPanel() {
                           <motion.div
                             className="absolute h-full rounded-full"
                             style={{
-                              backgroundColor: isFocusAttr
+                              backgroundColor: isFocusAttr || isSeasonFocus
                                 ? '#10b981'
                                 : `${selectedTrainingConfig.color}`,
-                              opacity: isFocusAttr ? 0.7 : 0.4,
+                              opacity: isFocusAttr || isSeasonFocus ? 0.7 : 0.4,
                             }}
                             initial={{ left: `${currentValue}%`, width: 0 }}
                             animate={{
@@ -666,6 +763,7 @@ export default function TrainingPanel() {
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(attrLabels) as (keyof PlayerAttributes)[]).map(attr => {
                     const isTrained = selectedTrainingConfig.focusAttrs.includes(attr);
+                    const isSeasonFocus = seasonFocusAttrs.has(attr);
                     return (
                       <motion.button
                         key={attr}
@@ -679,9 +777,12 @@ export default function TrainingPanel() {
                         }`}
                         whileTap={{ scale: 1 }}
                       >
+                        {isSeasonFocus && (
+                          <Star className="h-3 w-3 text-emerald-400 fill-emerald-400" />
+                        )}
                         {attrIcons[attr]}
                         {attrLabels[attr]}
-                        {isTrained && focusAttr !== attr && (
+                        {isTrained && focusAttr !== attr && !isSeasonFocus && (
                           <span className="w-1 h-1 rounded-full bg-emerald-500" />
                         )}
                       </motion.button>
@@ -819,6 +920,12 @@ export default function TrainingPanel() {
         </Card>
       )}
 
+      {/* Season Training Focus Modal */}
+      <SeasonTrainingFocusModal
+        open={showFocusModal}
+        onClose={() => setShowFocusModal(false)}
+      />
+
       {/* Current Attributes Overview */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardHeader className="pb-2 pt-3 px-4">
@@ -828,26 +935,46 @@ export default function TrainingPanel() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-3 space-y-2.5">
-          {(Object.keys(attrLabels) as (keyof PlayerAttributes)[]).map((attr, idx) => (
-            <div key={attr} className="flex items-center gap-3">
-              <span style={{ color: getAttrBarColor(player.attributes[attr]) }}>
-                {attrIcons[attr]}
-              </span>
-              <span className="text-xs text-[#8b949e] w-14">{attrLabels[attr]}</span>
-              <div className="flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${player.attributes[attr]}%` }}
-                  transition={{ duration: 0.6, ease: 'easeOut', delay: idx * 0.05 }}
-                  style={{ backgroundColor: getAttrBarColor(player.attributes[attr]) }}
-                />
+          {(Object.keys(attrLabels) as (keyof PlayerAttributes)[]).map((attr, idx) => {
+            const isSeasonFocus = seasonFocusAttrs.has(attr);
+            return (
+              <div key={attr} className="flex items-center gap-3">
+                <span
+                  className="relative"
+                  style={{ color: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
+                >
+                  {attrIcons[attr]}
+                  {isSeasonFocus && (
+                    <Star className="h-2.5 w-2.5 text-emerald-400 fill-emerald-400 absolute -top-1 -right-1" />
+                  )}
+                </span>
+                <span className={`text-xs w-14 ${isSeasonFocus ? 'text-emerald-300 font-medium' : 'text-[#8b949e]'}`}>
+                  {attrLabels[attr]}
+                </span>
+                <div className={`flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden ${
+                  isSeasonFocus ? 'ring-1 ring-emerald-500/30' : ''
+                }`}>
+                  <motion.div
+                    className="h-full rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${player.attributes[attr]}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut', delay: idx * 0.05 }}
+                    style={{ backgroundColor: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {isSeasonFocus && (
+                    <Badge className="h-4 px-1 text-[8px] bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+                      SEASON
+                    </Badge>
+                  )}
+                  <span className="text-xs font-bold w-6 text-right text-[#c9d1d9]">
+                    {player.attributes[attr]}
+                  </span>
+                </div>
               </div>
-              <span className="text-xs font-bold w-8 text-right text-[#c9d1d9]">
-                {player.attributes[attr]}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
     </div>

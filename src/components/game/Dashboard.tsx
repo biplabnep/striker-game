@@ -13,13 +13,15 @@ import {
   Calendar, TrendingUp, TrendingDown, Zap, Heart, Activity, Trophy,
   ArrowRight, Bell, Star, Swords, Table, ChevronRight, Flame,
   ArrowUp, ArrowDown, Minus, Target, Goal, CircleDot, FileText, UserCircle,
-  Dumbbell, BarChart3, Shield, MapPin, Clock, Users, Sparkles
+  Dumbbell, BarChart3, Shield, MapPin, Clock, Users, Sparkles,
+  GraduationCap, ArrowUpCircle, Crosshair
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WeeklySummary from '@/components/game/WeeklySummary';
 import SeasonEndSummary from '@/components/game/SeasonEndSummary';
 import ContractNegotiation from '@/components/game/ContractNegotiation';
-import { PlayerAttributes, Achievement, SquadStatus, SeasonPlayerStats, LeagueStanding, MatchResult } from '@/lib/game/types';
+import SeasonTrainingFocusModal from '@/components/game/SeasonTrainingFocusModal';
+import { PlayerAttributes, Achievement, SquadStatus, SeasonPlayerStats, LeagueStanding, MatchResult, PlayerTeamLevel, SeasonTrainingFocusArea } from '@/lib/game/types';
 
 // Season end data type for the modal
 interface SeasonEndData {
@@ -104,6 +106,7 @@ export default function Dashboard() {
   const [showSeasonEnd, setShowSeasonEnd] = useState(false);
   const [seasonEndData, setSeasonEndData] = useState<SeasonEndData | null>(null);
   const [showContractNegotiation, setShowContractNegotiation] = useState(false);
+  const [showFocusModal, setShowFocusModal] = useState(false);
 
   // Refs to track previous values for season-end detection
   const prevSeasonsLengthRef = useRef(0);
@@ -299,9 +302,29 @@ export default function Dashboard() {
     return { win: prob, draw: Math.round(Math.max(10, 25 - Math.abs(clubQuality - oppQuality) * 0.2)), opponent };
   }, [gameState]);
 
+  // Auto-show training focus modal at season start
+  const shouldAutoShowFocus = useMemo(() => {
+    if (!gameState) return false;
+    return !gameState.seasonTrainingFocus && gameState.currentWeek <= 2;
+  }, [gameState]);
+
+  // Auto-show training focus modal effect (only once per season start)
+  const hasAutoShownFocusRef = useRef(false);
+  useEffect(() => {
+    if (shouldAutoShowFocus && !hasAutoShownFocusRef.current) {
+      hasAutoShownFocusRef.current = true;
+      setShowFocusModal(true);
+    }
+    if (!shouldAutoShowFocus) {
+      hasAutoShownFocusRef.current = false;
+    }
+  }, [shouldAutoShowFocus]);
+
   if (!gameState) return null;
 
   const { player, currentClub, currentWeek, currentSeason, recentResults, upcomingFixtures, activeEvents, leagueTable, trainingAvailable, seasons } = gameState;
+  const playerTeamLevel = gameState.playerTeamLevel;
+  const seasonTrainingFocus = gameState.seasonTrainingFocus;
   const nationInfo = NATIONALITIES.find(n => n.name === player.nationality);
   const overallColor = getOverallColor(player.overall);
   const posColor = getPositionColor(player.position);
@@ -377,7 +400,22 @@ export default function Dashboard() {
 
             {/* Player Info */}
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-lg truncate">{player.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-lg truncate">{player.name}</h2>
+                {/* Youth Team Badge */}
+                {playerTeamLevel === 'u18' && (
+                  <Badge className="text-[9px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/20 px-1.5 py-0 h-5 shrink-0">
+                    <GraduationCap className="h-2.5 w-2.5 mr-0.5" />
+                    U18
+                  </Badge>
+                )}
+                {playerTeamLevel === 'u21' && (
+                  <Badge className="text-[9px] font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/20 px-1.5 py-0 h-5 shrink-0">
+                    <GraduationCap className="h-2.5 w-2.5 mr-0.5" />
+                    U21
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-2 text-sm text-[#8b949e]">
                 <span>{nationInfo?.flag}</span>
                 <Badge variant="outline" className="text-xs font-bold" style={{ color: posColor, borderColor: posColor }}>{player.position}</Badge>
@@ -388,6 +426,22 @@ export default function Dashboard() {
                 <span className="text-sm text-[#c9d1d9]">{currentClub.name}</span>
                 <Badge variant="outline" className="text-[10px] border-[#30363d] capitalize">{player.squadStatus.replace('_', ' ')}</Badge>
               </div>
+              {/* Season Training Focus Indicator */}
+              {seasonTrainingFocus ? (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-xs">🎯</span>
+                  <span className="text-xs font-medium text-emerald-400 capitalize">{seasonTrainingFocus.area} Focus</span>
+                  <span className="text-[10px] text-[#8b949e]">({seasonTrainingFocus.bonusMultiplier}x)</span>
+                </div>
+              ) : currentWeek <= 2 ? (
+                <button
+                  onClick={() => setShowFocusModal(true)}
+                  className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors"
+                >
+                  <Crosshair className="h-3 w-3" />
+                  Set Training Focus
+                </button>
+              ) : null}
             </div>
 
             {/* Potential */}
@@ -507,6 +561,17 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Youth Promotion Status */}
+      {(playerTeamLevel === 'u18' || playerTeamLevel === 'u21') && (
+        <PromotionStatusCard
+          playerTeamLevel={playerTeamLevel}
+          playerAge={player.age}
+          playerOverall={player.overall}
+          onPromoteU21={useGameStore.getState().promoteToU21}
+          onPromoteSenior={useGameStore.getState().promoteToSenior}
+        />
+      )}
 
       {/* Quick Actions Panel */}
       <div className="grid grid-cols-4 gap-2">
@@ -1152,6 +1217,12 @@ export default function Dashboard() {
       open={showContractNegotiation}
       onClose={() => setShowContractNegotiation(false)}
     />
+
+    {/* Season Training Focus Modal */}
+    <SeasonTrainingFocusModal
+      open={showFocusModal}
+      onClose={() => setShowFocusModal(false)}
+    />
     </>
   );
 }
@@ -1220,6 +1291,91 @@ function EnhancedStatBar({
         <span className={`text-[8px] font-medium text-${statusColor}-400/70`}>{statusLabel}</span>
       </div>
     </div>
+  );
+}
+
+// ==========================================
+// Promotion Status Card Component
+// ==========================================
+function PromotionStatusCard({
+  playerTeamLevel,
+  playerAge,
+  playerOverall,
+  onPromoteU21,
+  onPromoteSenior,
+}: {
+  playerTeamLevel: PlayerTeamLevel;
+  playerAge: number;
+  playerOverall: number;
+  onPromoteU21: () => void;
+  onPromoteSenior: () => void;
+}) {
+  // Determine promotion criteria and eligibility
+  const isU18 = playerTeamLevel === 'u18';
+  const isU21 = playerTeamLevel === 'u21';
+
+  // U18 → U21: Age 18+ or OVR 60+
+  const canPromoteToU21 = isU18 && (playerAge >= 18 || playerOverall >= 60);
+  // U21 → Senior: Age 21+ or OVR 70+
+  const canPromoteToSenior = (isU18 || isU21) && (playerAge >= 21 || playerOverall >= 70);
+
+  const currentLabel = isU18 ? 'U18 Academy' : isU21 ? 'U21 Reserve' : 'Senior';
+  const nextLabel = isU18 ? 'U21 Reserve' : 'Senior';
+  const ageReq = isU18 ? 18 : 21;
+  const ovrReq = isU18 ? 60 : 70;
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-lg bg-[#21262d] flex items-center justify-center">
+            <GraduationCap className="h-5 w-5 text-blue-400" />
+          </div>
+          <div>
+            <p className="text-xs text-[#8b949e]">Team Level</p>
+            <p className="text-sm font-semibold text-[#c9d1d9]">{currentLabel}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] text-[#8b949e] mb-3">
+          <span className="text-[#c9d1d9] font-medium">{currentLabel}</span>
+          <ArrowRight className="h-3 w-3" />
+          <span className="text-emerald-400 font-medium">{nextLabel}</span>
+          <span className="text-[#484f58]">(Need: Age {ageReq}+ or OVR {ovrReq}+)</span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className={`font-semibold ${playerAge >= ageReq ? 'text-emerald-400' : 'text-[#8b949e]'}`}>
+              Age: {playerAge} {playerAge >= ageReq ? '✓' : `(${ageReq} needed)`}
+            </span>
+            <span className={`font-semibold ${playerOverall >= ovrReq ? 'text-emerald-400' : 'text-[#8b949e]'}`}>
+              OVR: {playerOverall} {playerOverall >= ovrReq ? '✓' : `(${ovrReq} needed)`}
+            </span>
+          </div>
+          {canPromoteToU21 && (
+            <Button
+              onClick={onPromoteU21}
+              size="sm"
+              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg"
+            >
+              <ArrowUpCircle className="h-3 w-3 mr-1" />
+              Promote
+            </Button>
+          )}
+          {canPromoteToSenior && isU21 && (
+            <Button
+              onClick={onPromoteSenior}
+              size="sm"
+              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg"
+            >
+              <ArrowUpCircle className="h-3 w-3 mr-1" />
+              Promote
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

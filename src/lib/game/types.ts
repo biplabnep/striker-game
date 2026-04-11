@@ -588,6 +588,19 @@ export interface MoraleFactor {
   expiresWeek?: number;
 }
 
+// --- Player Team Level ---
+export type PlayerTeamLevel = 'u18' | 'u21' | 'senior';
+
+// --- Season Training Focus ---
+export type SeasonTrainingFocusArea = 'attacking' | 'defensive' | 'physical' | 'technical' | 'tactical';
+
+export interface SeasonTrainingFocus {
+  area: SeasonTrainingFocusArea;
+  focusAttributes: (keyof PlayerAttributes)[];  // attributes boosted by this focus
+  bonusMultiplier: number;  // 1.5 to 2.0 based on age/potential
+  setAtSeason: number;
+}
+
 // --- Season Objectives ---
 export type ObjectiveCategory = 'board' | 'personal' | 'bonus';
 export type ObjectiveStatus = 'in_progress' | 'completed' | 'failed';
@@ -683,6 +696,10 @@ export interface GameState {
   internationalCareer: InternationalCareer;
   internationalCalledUp: boolean;  // currently called up?
   internationalOnBreak: boolean;  // is there an international break this week?
+  // Player Team Level
+  playerTeamLevel: PlayerTeamLevel;
+  // Season Training Focus
+  seasonTrainingFocus: SeasonTrainingFocus | null;
   // Mindset & Morale
   mindset: PlayerMindset;
   moraleFactors: MoraleFactor[];

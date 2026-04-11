@@ -533,7 +533,9 @@ export default function MatchDay() {
   if (!gameState) return null;
 
   const { player, currentClub, currentWeek, upcomingFixtures } = gameState;
-  const nextFixture = upcomingFixtures.find(f => !f.played && (f.homeClubId === currentClub.id || f.awayClubId === currentClub.id));
+  const playerTeamLevel = gameState.playerTeamLevel ?? 'senior';
+  const isAtYouthLevel = playerTeamLevel === 'u18' || playerTeamLevel === 'u21';
+  const nextFixture = !isAtYouthLevel ? upcomingFixtures.find(f => !f.played && (f.homeClubId === currentClub.id || f.awayClubId === currentClub.id)) : null;
   const opponent = nextFixture ? getClubById(nextFixture.homeClubId === currentClub.id ? nextFixture.awayClubId : nextFixture.homeClubId) : null;
   const isHome = nextFixture?.homeClubId === currentClub.id;
 
@@ -1119,6 +1121,54 @@ export default function MatchDay() {
         <Swords className="w-5 h-5 text-emerald-400" />
         Match Day
       </h2>
+
+      {/* Youth Team Match Banner */}
+      {isAtYouthLevel && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+            <div className={`h-1.5 ${playerTeamLevel === 'u18' ? 'bg-blue-500' : 'bg-purple-500'}`} />
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  playerTeamLevel === 'u18' ? 'bg-blue-500/15 text-blue-400' : 'bg-purple-500/15 text-purple-400'
+                }`}>
+                  {playerTeamLevel === 'u18' ? '👦' : '🧑'}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#c9d1d9]">
+                    {playerTeamLevel === 'u18' ? 'U18 Academy Match' : 'U21 Reserve Match'}
+                  </h3>
+                  <p className="text-xs text-[#8b949e]">
+                    {currentClub.name} {playerTeamLevel.toUpperCase()} vs League Opponent
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-[#21262d] rounded-lg p-3 space-y-2">
+                <p className="text-xs text-[#8b949e] leading-relaxed">
+                  You&apos;re currently in the <span className={playerTeamLevel === 'u18' ? 'text-blue-400 font-semibold' : 'text-purple-400 font-semibold'}>{playerTeamLevel.toUpperCase()} team</span>.
+                  Your match will be simulated as a youth league match when you advance the week.
+                </p>
+                <div className="flex items-center gap-2 text-[10px] text-[#8b949e]">
+                  <span>⚽ Youth League</span>
+                  <span>•</span>
+                  <span>45-90 min played</span>
+                  <span>•</span>
+                  <span>Lower fatigue cost</span>
+                </div>
+              </div>
+
+              <div className="mt-3 text-[10px] text-[#484f58]">
+                Promotion to {playerTeamLevel === 'u18' ? 'U21' : 'Senior'} requires: {playerTeamLevel === 'u18' ? 'Age 18+ or OVR 60+' : 'Age 19+ or OVR 68+'}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {opponent && nextFixture ? (
         <>

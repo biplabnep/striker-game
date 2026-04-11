@@ -1,7 +1,67 @@
 ---
-Task ID: 5-a
-Agent: subagent
-Task: Enhance TrainingPanel with detailed drills and visual feedback
+Task ID: 4-a
+Agent: main
+Task: Create SeasonTrainingFocusModal and update Dashboard with youth team status and training focus info
+
+Work Log:
+- Created `/home/z/my-project/src/components/game/SeasonTrainingFocusModal.tsx` — full-screen overlay modal (~170 lines)
+- Modified `/home/z/my-project/src/components/game/Dashboard.tsx` — added youth badge, training focus indicator, promotion status, and modal integration
+
+Changes Made:
+
+1. **SeasonTrainingFocusModal Component** (new file):
+   - Full-screen overlay modal with backdrop blur and Framer Motion animations
+   - Title: "Set Your Season Training Focus" with subtitle explaining 1.5x-2.0x growth bonus system
+   - 5 focus area cards in vertical layout:
+     - Attacking (Sword icon, red accent) - Focus: Shooting, Dribbling
+     - Defensive (Shield icon, blue accent) - Focus: Defending
+     - Physical (Zap icon, amber accent) - Focus: Pace, Physical
+     - Technical (Dumbbell icon, emerald accent) - Focus: Passing, Dribbling, Shooting
+     - Tactical (Brain icon, violet accent) - Focus: Passing, Defending
+   - Each card shows: icon + label, description of affected attributes, current attribute values, bonus multiplier preview
+   - Selected card has emerald ring highlight with Check icon
+   - "Confirm Focus" button at bottom (disabled until selection made)
+   - Staggered card entrance animations (0.05s delay per card)
+   - Dark theme: bg-[#0d1117], cards bg-[#161b22] border-[#30363d], text-[#c9d1d9]
+   - Imports FOCUS_AREA_ATTRIBUTES and calculateFocusBonusMultiplier from progressionEngine
+   - Uses useGameStore for setSeasonTrainingFocus action
+
+2. **Youth Team Badge** (in Dashboard Player Profile Card):
+   - U18 badge: bg-blue-500/15 text-blue-400 with GraduationCap icon, shown when playerTeamLevel === 'u18'
+   - U21 badge: bg-purple-500/15 text-purple-400 with GraduationCap icon, shown when playerTeamLevel === 'u21'
+   - Positioned next to player name in a flex row
+
+3. **Season Training Focus Indicator** (in Dashboard Player Profile Card):
+   - If focus is set: shows pill badge "🎯 Attacking Focus (1.8x)" with emerald text
+   - If not set and week ≤ 2: shows amber "Set Training Focus" button with Crosshair icon
+   - Button opens SeasonTrainingFocusModal
+
+4. **Promotion Status Card** (new PromotionStatusCard sub-component):
+   - Only shown when playerTeamLevel is 'u18' or 'u21'
+   - Shows current team level label (U18 Academy / U21 Reserve)
+   - Shows promotion path: "U18 Academy → U21 Reserve (Need: Age 18+ or OVR 60+)"
+   - Age/OVR criteria with checkmark when met
+   - "Promote" button (emerald) when criteria satisfied
+   - Uses promoteToU21() and promoteToSenior() from gameStore
+
+5. **Auto-show Training Focus Modal**:
+   - useMemo computes shouldAutoShowFocus: !seasonTrainingFocus && currentWeek <= 2
+   - useEffect auto-opens modal once per season start (tracked with hasAutoShownFocusRef)
+   - Ref resets when focus is set or season progresses past week 2
+
+6. **Modal Integration**:
+   - showFocusModal state added to Dashboard
+   - SeasonTrainingFocusModal rendered at bottom of Dashboard with other modals
+   - Closes on backdrop click or X button
+
+Technical Implementation:
+- Added imports: SeasonTrainingFocusModal, GraduationCap, ArrowUpCircle, Crosshair, PlayerTeamLevel, SeasonTrainingFocusArea
+- Added state: showFocusModal, hasAutoShownFocusRef
+- Added computed: shouldAutoShowFocus, playerTeamLevel, seasonTrainingFocus
+- PromotionStatusCard sub-component with team level, age, overall, and promotion callbacks
+- All useMemo hooks placed before early return
+- Lint passes clean
+- Dev server compiles without errors
 
 Work Log:
 - Modified `/home/z/my-project/src/components/game/TrainingPanel.tsx` only (no other files changed)
@@ -1129,3 +1189,92 @@ Unresolved issues or risks:
 - The mindset system currently only stores the selection but doesn't yet affect match engine calculations
 - MoraleFactors are computed on-the-fly rather than stored/accumulated over time
 - The BottomNav "More" panel now has 14 items which is quite dense on small screens
+
+---
+Task ID: 6
+Agent: main
+Task: Update TrainingPanel.tsx with seasonal training focus information
+
+Work Log:
+- Modified `/home/z/my-project/src/components/game/TrainingPanel.tsx` only (no other files changed)
+- Enhanced from ~872 lines to ~930 lines with seasonal training focus integration
+
+Changes Made:
+
+1. **Season Training Focus Banner** (at top of TrainingPanel):
+   - If `seasonTrainingFocus` is set:
+     - Shows a card/banner with Target icon: "🎯 {Area} Focus — {bonusMultiplier}x bonus on {attribute names}"
+     - Displays focused attributes as emerald-highlighted pills with Star icons
+     - "Change Focus" button (outline, opens SeasonTrainingFocusModal)
+   - If `seasonTrainingFocus` is NOT set:
+     - Shows amber notice: "No training focus set for this season. Set your focus to get 1.5x-2.0x bonus!"
+     - AlertTriangle icon for visual emphasis
+     - "Set Focus" button (emerald outline, opens SeasonTrainingFocusModal)
+
+2. **Attribute Highlighting in Attribute Preview Section**:
+   - Season focus attributes get a small Star icon overlaid on the attribute icon (top-right corner)
+   - "SEASON FOCUS" badge in emerald (bg-emerald-500/15, text-emerald-300, border-emerald-500/30)
+   - Attribute bars for season focus get `ring-1 ring-emerald-500/30` glow
+   - Bar fill color changes to emerald semi-transparent (#10b98180) for season focus attrs
+   - Gain preview bars use emerald (#10b981) color with 0.7 opacity for season focus
+   - Badge priority: SEASON FOCUS > FOCUS > TRAINED (no duplicate badges)
+
+3. **Attribute Highlighting in Current Attributes Overview**:
+   - Season focus attribute icons get emerald color and a small Star icon overlay
+   - Attribute labels switch to emerald-300 with font-medium for season focus
+   - Attribute bars get `ring-1 ring-emerald-500/30` glow effect
+   - Bar fill color changes to emerald (#10b981) for season focus attributes
+   - "SEASON" badge (8px, emerald styling) appears next to the value for season focus attrs
+   - Value width adjusted from w-8 to w-6 to accommodate badge
+
+4. **Focus Attribute Selector Enhancement**:
+   - Season focus attributes get a filled Star icon before the attribute icon
+   - Visual indicator that these attributes have season-level bonuses
+
+5. **SeasonTrainingFocusModal Integration**:
+   - `showFocusModal` state variable added to control modal visibility
+   - SeasonTrainingFocusModal imported from `./SeasonTrainingFocusModal`
+   - Rendered between Training History and Current Attributes sections
+   - Controlled by open/onClose props
+
+Technical Implementation:
+- Added imports: `SeasonTrainingFocusArea` from `@/lib/game/types`, `FOCUS_AREA_ATTRIBUTES` from `@/lib/game/progressionEngine`, `SeasonTrainingFocusModal` from `./SeasonTrainingFocusModal`, `Star` and `Target` from lucide-react
+- Added state: `showFocusModal` (boolean, default false)
+- Added useMemo hooks (all before early return): `seasonFocusAttrs` (Set), `seasonFocusAreaLabel` (string), `seasonFocusAttrNames` (string)
+- All useMemo hooks placed before the early return (`if (!gameState) return null`)
+- Existing functionality preserved: training type selection, intensity selector, attribute preview, focus attribute selector, schedule/advance buttons, training history, current attributes
+- Lint passes clean
+- Dev server compiles without errors
+
+Style:
+- Dark theme: bg-[#161b22], border-[#30363d], text-[#c9d1d9]
+- Emerald accents for season focus indicators
+- Max 8-10px border-radius (rounded-lg)
+- Subtle ring-1 glow effects (ring-emerald-500/30)
+- 14-16px body text, 9-10px badges
+- Clean Linear/Raycast/Stripe aesthetic
+- No oversized rounded corners or dramatic shadows
+
+---
+Task ID: 11
+Agent: main
+Task: Implement Youth Team Start and Seasonal Training Focus System
+
+Work Log:
+- Updated `/home/z/my-project/src/lib/game/types.ts` — Added `PlayerTeamLevel`, `SeasonTrainingFocusArea`, `SeasonTrainingFocus` types; Added `playerTeamLevel` and `seasonTrainingFocus` to `GameState` interface
+- Updated `/home/z/my-project/src/lib/game/progressionEngine.ts` — Added `FOCUS_AREA_ATTRIBUTES` mapping, `calculateFocusBonusMultiplier()` function (1.5-2.0x based on age/gametime/form/potential), Updated `applyWeeklyProgression()` to accept `seasonTrainingFocus` parameter and apply bonus to focused attributes
+- Updated `/home/z/my-project/src/store/gameStore.ts` — Added `setSeasonTrainingFocus()`, `promoteToU21()`, `promoteToSenior()` actions; Set `playerTeamLevel: 'u18'` in `startNewCareer`; Modified `advanceWeek()` to skip senior matches when at youth level and simulate youth matches with player participation; Added NPC league match simulation for all fixtures when player is at youth level; Added promotion checks at season end (U18→U21 at age 18/OVR 60+, U21→Senior at age 19/OVR 68+); Reset `seasonTrainingFocus` at season start; Updated migration function with `playerTeamLevel` and `seasonTrainingFocus` defaults; Passed `seasonTrainingFocus` to `applyWeeklyProgression()`
+- Created `/home/z/my-project/src/components/game/SeasonTrainingFocusModal.tsx` — Modal for setting seasonal training focus with 5 area cards, attribute preview, bonus multiplier calculation, Framer Motion animations
+- Updated `/home/z/my-project/src/components/game/Dashboard.tsx` — Added Youth Team Badge (U18 blue/U21 purple), Season Training Focus indicator, PromotionStatusCard component, Auto-show focus modal at season start
+- Updated `/home/z/my-project/src/components/game/TrainingPanel.tsx` — Added Season Focus Banner at top (shows current focus with multiplier or "Set Focus" button), Highlighted season focus attributes with Star icon and "SEASON FOCUS" badge, Integrated SeasonTrainingFocusModal
+- Updated `/home/z/my-project/src/components/game/MatchDay.tsx` — Added youth team match banner for U18/U21 players, Skip senior fixture lookup when at youth level, Show promotion requirements in match banner
+
+Stage Summary:
+- Player now starts at U18 academy level instead of senior team
+- Youth team players play youth league matches instead of senior matches
+- Senior league matches still simulated as NPC matches to keep league table accurate
+- Promotion from U18→U21 at age 18+ or OVR 60+, U21→Senior at age 19+ or OVR 68+ (auto at 21)
+- Season Training Focus system: choose attacking/defensive/physical/technical/tactical focus
+- Focus bonus multiplier 1.5x-2.0x based on realistic factors (age, gametime, form, potential room)
+- All new fields properly migrated for old saves
+- Lint passes clean, dev server compiles without errors

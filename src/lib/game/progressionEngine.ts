@@ -12,6 +12,8 @@ import {
   SeasonPlayerStats,
   Club,
   Position,
+  SeasonTrainingFocus,
+  SeasonTrainingFocusArea,
 } from './types';
 
 function clamp(value: number, min: number, max: number): number {
@@ -44,10 +46,72 @@ function getAttrCategory(attr: keyof PlayerAttributes): 'physical' | 'technical'
   return 'mental';
 }
 
+// --- Season Training Focus attribute mapping ---
+export const FOCUS_AREA_ATTRIBUTES: Record<SeasonTrainingFocusArea, (keyof PlayerAttributes)[]> = {
+  attacking: ['shooting', 'dribbling'],
+  defensive: ['defending'],
+  physical: ['pace', 'physical'],
+  technical: ['passing', 'dribbling', 'shooting'],
+  tactical: ['passing', 'defending'],
+};
+
+// --- Calculate seasonal focus bonus multiplier based on realistic factors ---
+export function calculateFocusBonusMultiplier(
+  player: Player,
+  seasonStats: SeasonPlayerStats
+): number {
+  // Base multiplier range: 1.5 to 2.0
+  // Factors: age, gametime, form, potential room
+
+  // Age factor: younger players benefit more from focused training
+  let ageFactor = 1.0;
+  if (player.age <= 17) ageFactor = 1.0;      // Maximum benefit
+  else if (player.age <= 19) ageFactor = 0.95;
+  else if (player.age <= 21) ageFactor = 0.9;
+  else if (player.age <= 24) ageFactor = 0.8;
+  else if (player.age <= 27) ageFactor = 0.65;
+  else if (player.age <= 30) ageFactor = 0.5;
+  else ageFactor = 0.3;                       // Old players barely benefit
+
+  // Gametime factor: more playing time = more growth from match experience
+  // Regular starters get the full benefit
+  const appearances = seasonStats.appearances;
+  let gametimeFactor = 0.6; // No appearances = minimum factor
+  if (appearances >= 30) gametimeFactor = 1.0;
+  else if (appearances >= 20) gametimeFactor = 0.9;
+  else if (appearances >= 10) gametimeFactor = 0.8;
+  else if (appearances >= 5) gametimeFactor = 0.7;
+
+  // Form factor: good form accelerates growth
+  let formFactor = 0.85; // Default neutral form
+  if (player.form >= 8.0) formFactor = 1.0;
+  else if (player.form >= 7.0) formFactor = 0.95;
+  else if (player.form >= 6.0) formFactor = 0.9;
+  else if (player.form >= 5.0) formFactor = 0.8;
+  else formFactor = 0.7; // Poor form hinders growth
+
+  // Potential room factor: further from potential = more room to grow
+  const potentialRoom = player.potential - player.overall;
+  let potentialFactor = 0.8;
+  if (potentialRoom >= 20) potentialFactor = 1.0;
+  else if (potentialRoom >= 15) potentialFactor = 0.95;
+  else if (potentialRoom >= 10) potentialFactor = 0.85;
+  else if (potentialRoom >= 5) potentialFactor = 0.7;
+  else potentialFactor = 0.5; // Near potential, growth slows
+
+  // Calculate final multiplier
+  // Base is 1.5, max is 2.0
+  const combinedFactor = ageFactor * gametimeFactor * formFactor * potentialFactor;
+  const multiplier = 1.5 + (0.5 * combinedFactor); // Range: 1.5 to 2.0
+
+  return clamp(Math.round(multiplier * 100) / 100, 1.5, 2.0);
+}
+
 // --- Apply Weekly Progression ---
 export function applyWeeklyProgression(
   player: Player,
-  trainingSessions: TrainingSession[]
+  trainingSessions: TrainingSession[],
+  seasonTrainingFocus?: SeasonTrainingFocus | null
 ): Partial<Player> {
   const updates: Partial<Player> = {};
   const attrUpdates: Partial<PlayerAttributes> = {};
@@ -87,6 +151,20 @@ export function applyWeeklyProgression(
     // Focused training on specific attribute
     if (session.focusAttribute) {
       applyTrainingBoost(attrUpdates, session.focusAttribute, 0.2 * intensityFactor, ageMultipliers);
+    }
+  }
+
+  // Apply seasonal training focus bonus
+  // This gives 1.5x-2.0 bonus on the focused attributes depending on age/gametime/form/potential
+  if (seasonTrainingFocus) {
+    const focusBonus = seasonTrainingFocus.bonusMultiplier; // 1.5 to 2.0
+    for (const attr of seasonTrainingFocus.focusAttributes) {
+      if (!attrUpdates[attr]) attrUpdates[attr] = 0;
+      // Base natural growth for focused attribute, multiplied by focus bonus
+      const category = getAttrCategory(attr);
+      const multiplier = ageMultipliers[category];
+      const focusGrowth = 0.08 * focusBonus * Math.max(multiplier, 0.2); // Minimum growth even in decline
+      attrUpdates[attr]! += focusGrowth;
     }
   }
 
