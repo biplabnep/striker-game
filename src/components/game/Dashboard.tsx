@@ -322,7 +322,7 @@ export default function Dashboard() {
 
   if (!gameState) return null;
 
-  const { player, currentClub, currentWeek, currentSeason, recentResults, upcomingFixtures, activeEvents, leagueTable, trainingAvailable, seasons } = gameState;
+  const { player, currentClub, currentWeek, currentSeason, recentResults, upcomingFixtures, activeEvents, leagueTable, trainingAvailable, seasons, currentInjury } = gameState;
   const playerTeamLevel = gameState.playerTeamLevel;
   const seasonTrainingFocus = gameState.seasonTrainingFocus;
   const nationInfo = NATIONALITIES.find(n => n.name === player.nationality);
@@ -504,6 +504,24 @@ export default function Dashboard() {
               type="fitness"
               trend={fitnessTrend}
             />
+
+            {/* Active Injury Indicator */}
+            {currentInjury && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.15 }}
+                className="mt-2 flex items-center gap-2 p-2 rounded-md bg-red-500/8 border border-red-500/20 cursor-pointer"
+                onClick={() => useGameStore.getState().setScreen('injury_report')}
+              >
+                <Activity className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-red-300">{currentInjury.name}</span>
+                  <span className="text-[10px] text-red-400/60 ml-1">• {currentInjury.weeksRemaining}wk left</span>
+                </div>
+                <span className="text-[10px] text-[#484f58]">View →</span>
+              </motion.div>
+            )}
           </div>
 
           {/* Player Form Trend Graph */}

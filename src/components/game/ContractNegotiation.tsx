@@ -432,8 +432,9 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
           {/* ====== OVERVIEW PHASE ====== */}
           {phase === 'overview' && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
               className="space-y-4"
             >
               {/* Header */}
@@ -545,7 +546,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
               {/* Start Negotiation Button */}
               <Button
                 onClick={startNegotiation}
-                className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl"
+                className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg"
               >
                 <Handshake className="mr-2 h-4 w-4" />
                 Start Negotiation
@@ -557,9 +558,9 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
           {phase === 'offer' && currentClubOffer && (
             <motion.div
               key={`offer-${currentRound}`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
               className="space-y-4"
             >
               {/* Round Header */}
@@ -672,7 +673,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <Button
                   onClick={() => handleAccept(currentClubOffer)}
                   disabled={isAnimating}
-                  className="w-full h-11 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl"
+                  className="w-full h-11 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-lg"
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Accept Offer
@@ -681,7 +682,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   onClick={() => setPhase('counter')}
                   disabled={isAnimating || currentRound >= 3}
                   variant="outline"
-                  className="w-full h-11 border-amber-700/50 text-amber-300 hover:bg-amber-900/20 font-semibold rounded-xl"
+                  className="w-full h-11 border-amber-700/50 text-amber-300 hover:bg-amber-900/20 font-semibold rounded-lg"
                 >
                   <ArrowRight className="mr-2 h-4 w-4" />
                   Counter-Offer
@@ -690,7 +691,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   onClick={handleReject}
                   disabled={isAnimating}
                   variant="outline"
-                  className="w-full h-11 border-[#30363d] text-[#8b949e] hover:bg-[#21262d] rounded-xl"
+                  className="w-full h-11 border-[#30363d] text-[#8b949e] hover:bg-[#21262d] rounded-lg"
                 >
                   <XCircle className="mr-2 h-4 w-4" />
                   Reject & Walk Away
@@ -702,8 +703,9 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
           {/* ====== COUNTER-OFFER PHASE ====== */}
           {phase === 'counter' && currentClubOffer && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
               className="space-y-4"
             >
               <div className="flex items-center gap-2">
@@ -792,7 +794,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <Button
                   onClick={handleCounterOffer}
                   disabled={isAnimating}
-                  className="w-full h-11 bg-amber-700 hover:bg-amber-600 text-white font-semibold rounded-xl"
+                  className="w-full h-11 bg-amber-700 hover:bg-amber-600 text-white font-semibold rounded-lg"
                 >
                   <ChevronRight className="mr-2 h-4 w-4" />
                   Submit Counter-Offer
@@ -800,7 +802,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <Button
                   onClick={() => setPhase('offer')}
                   variant="outline"
-                  className="w-full h-10 border-[#30363d] text-[#8b949e] hover:bg-[#21262d] rounded-xl text-sm"
+                  className="w-full h-10 border-[#30363d] text-[#8b949e] hover:bg-[#21262d] rounded-lg text-sm"
                 >
                   Back to Offer
                 </Button>
@@ -832,9 +834,9 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
           {/* ====== OUTCOME PHASE ====== */}
           {phase === 'outcome' && finalOffer && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, type: 'spring' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
               className="space-y-4"
             >
               {/* Outcome Message */}
@@ -842,14 +844,15 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 {(outcome === 'accepted' || outcome === 'counter_accepted') && (
                   <motion.div
                     key="success"
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.15 }}
                     className="text-center space-y-3"
                   >
                     <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.15 }}
                     >
                       <PartyPopper className="h-12 w-12 text-emerald-400 mx-auto" />
                     </motion.div>
@@ -867,14 +870,15 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 {outcome === 'rejected_by_player' && (
                   <motion.div
                     key="rejected-player"
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.15 }}
                     className="text-center space-y-3"
                   >
                     <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.15 }}
                     >
                       <XCircle className="h-12 w-12 text-red-400 mx-auto" />
                     </motion.div>
@@ -890,14 +894,15 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 {outcome === 'walked_away' && (
                   <motion.div
                     key="walked-away"
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.15 }}
                     className="text-center space-y-3"
                   >
                     <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.15 }}
                     >
                       <Ban className="h-12 w-12 text-red-400 mx-auto" />
                     </motion.div>
@@ -988,7 +993,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   resetNegotiation();
                   onClose();
                 }}
-                className="w-full h-11 bg-[#21262d] hover:bg-slate-700 text-white font-semibold rounded-xl"
+                className="w-full h-11 bg-[#21262d] hover:bg-slate-700 text-white font-semibold rounded-lg"
               >
                 {outcome === 'accepted' || outcome === 'counter_accepted' ? 'Continue' : 'Close'}
               </Button>

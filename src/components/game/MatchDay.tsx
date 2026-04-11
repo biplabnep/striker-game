@@ -196,9 +196,9 @@ function TimelineEvent({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.25 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.04, duration: 0.2 }}
       className="flex gap-3 relative"
     >
       <div className="flex flex-col items-center w-10 shrink-0">
@@ -265,9 +265,9 @@ function LiveEventCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={`relative rounded-lg border px-3 py-2.5 ${bgClass} ${
         isPlayerEvent
           ? 'ring-2 ring-amber-400/60 shadow-[0_0_16px_rgba(251,191,36,0.2)]'
@@ -310,7 +310,7 @@ function LiveEventCard({
         <motion.div
           initial={{ opacity: 0.6, scale: 1 }}
           animate={{ opacity: 0, scale: 1.5 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
           className="absolute inset-0 rounded-lg border-2 border-emerald-400 pointer-events-none"
         />
       )}
@@ -337,7 +337,7 @@ function MOTMBadge() {
             'drop-shadow(0 0 4px rgba(251,191,36,0.4))',
           ],
         }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
         className="relative"
       >
         <div className="flex items-center gap-1 bg-amber-500 text-slate-900 px-3 py-1 rounded-md font-bold text-xs tracking-wider">
@@ -555,9 +555,9 @@ export default function MatchDay() {
       <div className="p-4 max-w-lg mx-auto space-y-3">
         {/* Live Scoreboard Header */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
         >
           <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
             {/* Top bar with LIVE badge */}
@@ -566,7 +566,7 @@ export default function MatchDay() {
                 {!simComplete && (
                   <motion.div
                     animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                    transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
                     className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-2 py-0.5 rounded-full"
                   >
                     <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
@@ -602,7 +602,7 @@ export default function MatchDay() {
                   animate={goalFlash ? {
                     scale: [1, 1.15, 1],
                   } : {}}
-                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
                   className="text-4xl font-black text-white tracking-wider"
                 >
                   {liveScore.home} <span className="text-[#484f58]">-</span> {liveScore.away}
@@ -612,8 +612,8 @@ export default function MatchDay() {
                   <Clock className="w-3 h-3 text-emerald-400" />
                   <motion.span
                     key={simMinute}
-                    initial={{ opacity: 0.5, y: -2 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0.5 }}
+                    animate={{ opacity: 1 }}
                     className="text-sm font-mono font-bold text-emerald-400"
                   >
                     {simMinute}&apos;
@@ -668,15 +668,15 @@ export default function MatchDay() {
         <AnimatePresence>
           {goalFlash && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               className="bg-emerald-500/15 border border-emerald-500/30 rounded-lg p-3 text-center"
             >
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.5, repeat: 1 }}
+                transition={{ duration: 0.2, repeat: 1 }}
                 className="text-2xl"
               >
                 ⚽
@@ -693,9 +693,9 @@ export default function MatchDay() {
         <AnimatePresence>
           {simMinute >= 45 && simMinute <= 47 && !simComplete && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-center"
             >
               <p className="text-xs font-bold text-amber-400 tracking-wider">⏸️ HALF TIME</p>
@@ -778,20 +778,20 @@ export default function MatchDay() {
         <AnimatePresence>
           {showFullTime && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 "
             >
               <motion.div
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
                 className="bg-[#161b22] border border-[#30363d] rounded-lg p-8 text-center max-w-xs mx-4"
               >
                 <motion.div
                   animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+                  transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
                 >
                   <p className="text-3xl font-black text-white tracking-wider">FULL TIME</p>
                 </motion.div>
@@ -828,16 +828,16 @@ export default function MatchDay() {
       <div className="p-4 max-w-lg mx-auto space-y-4">
         {/* Result Header Card */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
         >
           <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
             <div className={`h-2 ${won ? 'bg-emerald-500' : drew ? 'bg-amber-500' : 'bg-red-500'}`} />
             <CardContent className="p-5 text-center">
               <motion.p
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
                 className={`text-sm font-bold mb-4 tracking-wider ${won ? 'text-emerald-400' : drew ? 'text-amber-400' : 'text-red-400'}`}
               >
@@ -871,9 +871,9 @@ export default function MatchDay() {
 
         {/* Player Performance Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.2 }}
         >
           <Card className={`bg-[#161b22] border-[#30363d] overflow-hidden ${isMotm ? 'ring-1 ring-amber-500/30' : ''}`}>
             <CardContent className="p-5 text-center">
@@ -895,7 +895,7 @@ export default function MatchDay() {
                     '0 0 8px rgba(251,191,36,0.3)',
                   ],
                 } : {}}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
                 className="text-6xl font-black"
                 style={{ color: isMotm ? '#fbbf24' : ratingColor }}
               >
@@ -926,9 +926,9 @@ export default function MatchDay() {
         {/* Match Timeline */}
         {significantEvents.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.2 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
@@ -958,9 +958,9 @@ export default function MatchDay() {
         {/* Match Stats Summary */}
         {matchStats && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.2 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
@@ -1030,9 +1030,9 @@ export default function MatchDay() {
 
         {/* Season Stats After Match */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.2 }}
         >
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
@@ -1074,8 +1074,8 @@ export default function MatchDay() {
         {/* Press Conference Button */}
         {lastResult.playerMinutesPlayed > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
           >
             <Button
@@ -1125,9 +1125,9 @@ export default function MatchDay() {
       {/* Youth Team Match Banner */}
       {isAtYouthLevel && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
         >
           <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
             <div className={`h-1.5 ${playerTeamLevel === 'u18' ? 'bg-blue-500' : 'bg-purple-500'}`} />
@@ -1174,9 +1174,9 @@ export default function MatchDay() {
         <>
           {/* Dramatic Match Preview */}
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
           >
             <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
               {/* Top color bars */}
@@ -1204,7 +1204,7 @@ export default function MatchDay() {
                   <div className="flex flex-col items-center gap-1">
                     <motion.div
                       animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                      transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
                       className="text-[#8b949e] font-black text-xl"
                     >
                       VS
@@ -1238,9 +1238,9 @@ export default function MatchDay() {
 
           {/* Key Player Section: Form & Morale */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.2 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
@@ -1263,7 +1263,7 @@ export default function MatchDay() {
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${player.form * 10}%` }}
-                      transition={{ delay: 0.2, duration: 0.6, ease: 'easeOut' }}
+                      transition={{ delay: 0.2, duration: 0.2, ease: 'easeOut' }}
                       className="h-full rounded-full"
                       style={{
                         background: player.form >= 7
@@ -1290,7 +1290,7 @@ export default function MatchDay() {
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${player.morale}%` }}
-                      transition={{ delay: 0.3, duration: 0.6, ease: 'easeOut' }}
+                      transition={{ delay: 0.3, duration: 0.2, ease: 'easeOut' }}
                       className="h-full rounded-full"
                       style={{
                         background: player.morale >= 70
@@ -1334,9 +1334,9 @@ export default function MatchDay() {
           {/* Win Probability */}
           {winProb && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.2 }}
             >
               <Card className="bg-[#161b22] border-[#30363d]">
                 <CardHeader className="pb-2 pt-3 px-4">
@@ -1350,7 +1350,7 @@ export default function MatchDay() {
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${winProb.win}%` }}
-                      transition={{ delay: 0.4, duration: 0.8, ease: 'easeOut' }}
+                      transition={{ delay: 0.4, duration: 0.2, ease: 'easeOut' }}
                       className="bg-emerald-500 flex items-center justify-center"
                     >
                       <span className="text-[10px] font-bold text-white">{winProb.win}%</span>
@@ -1358,7 +1358,7 @@ export default function MatchDay() {
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${winProb.draw}%` }}
-                      transition={{ delay: 0.4, duration: 0.8, ease: 'easeOut' }}
+                      transition={{ delay: 0.4, duration: 0.2, ease: 'easeOut' }}
                       className="bg-slate-500 flex items-center justify-center"
                     >
                       <span className="text-[10px] font-bold text-white">{winProb.draw}%</span>
@@ -1366,7 +1366,7 @@ export default function MatchDay() {
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${winProb.loss}%` }}
-                      transition={{ delay: 0.4, duration: 0.8, ease: 'easeOut' }}
+                      transition={{ delay: 0.4, duration: 0.2, ease: 'easeOut' }}
                       className="bg-red-500 flex items-center justify-center"
                     >
                       <span className="text-[10px] font-bold text-white">{winProb.loss}%</span>
@@ -1390,9 +1390,9 @@ export default function MatchDay() {
 
           {/* Tactical Info */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.2 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
@@ -1449,9 +1449,9 @@ export default function MatchDay() {
 
             return h2hResults.length > 0 ? (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35, duration: 0.4 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35, duration: 0.2 }}
               >
                 <Card className="bg-[#161b22] border-[#30363d]">
                   <CardHeader className="pb-2 pt-3 px-4">
@@ -1494,8 +1494,8 @@ export default function MatchDay() {
                         return (
                           <motion.div
                             key={i}
-                            initial={{ opacity: 0, x: -8 }}
-                            animate={{ opacity: 1, x: 0 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             transition={{ delay: i * 0.05, duration: 0.2 }}
                             className="flex items-center gap-2 bg-[#21262d] rounded-md px-2.5 py-1.5"
                           >
@@ -1530,9 +1530,9 @@ export default function MatchDay() {
 
           {/* Action Buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.2 }}
             className="space-y-3"
           >
             <Button
@@ -1602,7 +1602,7 @@ function StatBar({
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${homePercent}%` }}
-            transition={{ delay: 0.6, duration: 0.5 }}
+            transition={{ delay: 0.6, duration: 0.2 }}
             className="bg-sky-500/70 rounded-l-full"
             style={{ direction: 'rtl' }}
           />

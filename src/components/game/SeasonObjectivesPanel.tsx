@@ -36,9 +36,9 @@ function ObjectiveCard({ objective, index }: { objective: SeasonObjective; index
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.05, duration: 0.2 }}
       className={`relative rounded-lg border ${isCompleted ? 'border-emerald-500/30 bg-emerald-500/5' : isFailed ? 'border-red-500/20 bg-red-500/5' : 'border-[#30363d] bg-[#161b22]/60'} p-3 transition-all hover:border-slate-600/50`}
     >
       <div className="flex items-start gap-3">
@@ -79,7 +79,7 @@ function ObjectiveCard({ objective, index }: { objective: SeasonObjective; index
                   }`}
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.max(2, progress)}%` }}
-                  transition={{ duration: 0.8, delay: index * 0.05 + 0.2 }}
+                  transition={{ duration: 0.2, delay: index * 0.05 + 0.2 }}
                 />
               </div>
             </div>
@@ -153,8 +153,8 @@ export default function SeasonObjectivesPanel() {
     <div className="px-4 pb-20 max-w-lg mx-auto">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="flex items-center justify-between mb-4"
       >
         <div>
@@ -173,8 +173,8 @@ export default function SeasonObjectivesPanel() {
 
       {/* Summary Card */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.05 }}
         className="mb-4"
       >

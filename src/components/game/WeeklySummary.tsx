@@ -44,9 +44,9 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         className="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-md max-h-[85vh] overflow-hidden shadow-sm"
         onClick={(e) => e.stopPropagation()}

@@ -126,9 +126,9 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
       className="rounded-lg bg-[#161b22]  border border-[#30363d] p-4 mb-4"
     >
       <div className="flex items-center gap-2 mb-4">
@@ -163,7 +163,7 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${dynamics.morale}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
               className={`h-full rounded-full ${
                 dynamics.morale >= 70 ? 'bg-emerald-500' : dynamics.morale >= 40 ? 'bg-amber-500' : 'bg-red-500'
               }`}
@@ -185,7 +185,7 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${dynamics.cohesion}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut', delay: 0.1 }}
+              transition={{ duration: 0.2, ease: 'easeOut', delay: 0.1 }}
               className={`h-full rounded-full ${
                 dynamics.cohesion >= 70 ? 'bg-emerald-500' : dynamics.cohesion >= 40 ? 'bg-amber-500' : 'bg-red-500'
               }`}
@@ -225,9 +225,9 @@ function RelationshipCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.3, delay: index * 0.04 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: index * 0.04 }}
       className={`rounded-lg border ${
         rel.isCurrent
           ? 'bg-[#161b22] border-[#30363d]'
@@ -286,7 +286,7 @@ function RelationshipCard({
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${rel.affinity}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
+                transition={{ duration: 0.2, ease: 'easeOut', delay: 0.2 }}
                 className={`h-full rounded-full ${getAffinityBarColor(rel.affinity)}`}
               />
             </div>
@@ -417,8 +417,8 @@ export default function RelationshipsPanel() {
     <div className="max-w-lg mx-auto px-4 py-4 pb-24">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="flex items-center gap-3 mb-4"
       >
         <div className="p-2 rounded-lg bg-emerald-500/15">
@@ -437,8 +437,8 @@ export default function RelationshipsPanel() {
 
       {/* Filter Tabs */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
         className="mb-4"
       >
@@ -474,8 +474,8 @@ export default function RelationshipsPanel() {
             ))
           ) : (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               className="text-center py-12"
             >
               <Users className="h-12 w-12 mx-auto mb-3 text-[#484f58]" />

@@ -358,7 +358,7 @@ function SentimentGauge({ value }: { value: number }) {
           strokeLinecap="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={{ duration: 1, ease: 'easeOut' }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
         />
 
         {/* Needle dot */}
@@ -367,8 +367,8 @@ function SentimentGauge({ value }: { value: number }) {
           cy={polarToCartesian(valueAngle).y}
           r="6"
           fill={bgColor}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.8, type: 'spring', stiffness: 300 }}
         />
       </svg>
@@ -411,7 +411,7 @@ function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) 
       {!done && (
         <motion.span
           animate={{ opacity: [1, 0] }}
-          transition={{ duration: 0.4, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
           className="inline-block w-0.5 h-4 bg-amber-400 ml-0.5 align-middle"
         />
       )}
@@ -602,13 +602,13 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 "
         >
           <motion.div
-            initial={{ y: 60, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 40, opacity: 0, scale: 0.98 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ type: 'spring', stiffness: 250, damping: 25 }}
             className="relative w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin rounded-lg"
             style={{
-              background: 'linear-gradient(145deg, #1a0a0a 0%, #1c1117 30%, #18121a 60%, #150e10 100%)',
+              backgroundColor: '#161b22',
               border: '1px solid rgba(220, 38, 38, 0.15)',
             }}
           >
@@ -630,13 +630,13 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                 <motion.div
                   initial={{ opacity: 1 }}
                   animate={{ opacity: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
+                  transition={{ duration: 0.2, delay: 0.2 }}
                   className="absolute inset-0 bg-white/30 pointer-events-none rounded-lg"
                 />
 
                 <motion.div
-                  initial={{ scale: 0, rotate: -20 }}
-                  animate={{ scale: 1, rotate: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                   className="text-5xl mb-4"
                 >
@@ -644,8 +644,8 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                 </motion.div>
 
                 <motion.h2
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
                   className="text-xl font-black text-white tracking-wider"
                 >
@@ -672,9 +672,9 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   {[...Array(3)].map((_, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: [0, 1, 0], scale: [0, 1, 0.5] }}
-                      transition={{ duration: 0.4, delay: i * 0.15, repeat: 1 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: [0, 1, 0] }}
+                      transition={{ duration: 0.2, delay: i * 0.15, repeat: 1 }}
                       className="w-2 h-2 rounded-full bg-amber-400"
                     />
                   ))}
@@ -721,10 +721,10 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   {showQuestion && (
                     <motion.div
                       key={currentQuestionIdx}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                     >
                       {/* Reporter avatar + name */}
                       <div className="flex items-center gap-3 mb-4">
@@ -759,7 +759,6 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                               key={answer.style}
                               onClick={() => handleAnswer(answer.style)}
                               whileHover={{ scale: 1 }}
-                              whileTap={{ scale: 1 }}
                               className={`w-full text-left p-3.5 rounded-lg border transition-all duration-200 ${config.borderColor} ${config.bgColor} group`}
                             >
                               <div className="flex items-start gap-3">
@@ -809,7 +808,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.2 }}
                 className="relative p-5"
               >
                 {/* Header */}
@@ -820,8 +819,8 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
 
                 {/* Sentiment Gauge */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                   className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
                 >
@@ -833,8 +832,8 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
 
                 {/* Headline */}
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.5 }}
                   className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
                 >
@@ -849,8 +848,8 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
 
                 {/* Social media reaction */}
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.7 }}
                   className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
                 >
@@ -887,8 +886,8 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
 
                 {/* Effect Summary */}
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.9 }}
                   className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-5"
                 >

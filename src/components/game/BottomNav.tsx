@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -30,6 +30,7 @@ const moreItems: NavItem[] = [
   { screen: 'continental', icon: <Globe className="h-5 w-5" />, label: 'Europe' },
   { screen: 'international', icon: <Flag className="h-5 w-5" />, label: 'National' },
   { screen: 'morale', icon: <Heart className="h-5 w-5" />, label: 'Morale' },
+  { screen: 'injury_report', icon: <Activity className="h-5 w-5" />, label: 'Injuries' },
   { screen: 'social', icon: <MessageSquare className="h-5 w-5" />, label: 'Social Feed' },
   { screen: 'season_objectives', icon: <Target className="h-5 w-5" />, label: 'Objectives' },
   { screen: 'events', icon: <Bell className="h-5 w-5" />, label: 'Events' },

@@ -54,7 +54,7 @@ export default function SaveLoad() {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setMode('load')}
-          className={`flex-1 p-3 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex-1 p-3 rounded-lg text-sm font-semibold transition-all ${
             mode === 'load'
               ? 'bg-emerald-600/20 border border-emerald-500 text-emerald-300'
               : 'bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:bg-[#21262d]'
@@ -65,7 +65,7 @@ export default function SaveLoad() {
         </button>
         <button
           onClick={() => setMode('save')}
-          className={`flex-1 p-3 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex-1 p-3 rounded-lg text-sm font-semibold transition-all ${
             mode === 'save'
               ? 'bg-emerald-600/20 border border-emerald-500 text-emerald-300'
               : 'bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:bg-[#21262d]'
@@ -101,7 +101,7 @@ export default function SaveLoad() {
 
           <Button
             onClick={() => handleSave(`${gameState.player.name} - Season ${gameState.currentSeason}`)}
-            className="w-full h-14 text-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg"
+            className="w-full h-14 text-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm"
           >
             <Save className="mr-2 h-5 w-5" />
             Quick Save

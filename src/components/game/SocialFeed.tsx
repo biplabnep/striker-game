@@ -174,7 +174,7 @@ function EngagementBar({ value }: { value: number }) {
           className={`h-full rounded-full ${getEngagementColor(value)}`}
           initial={{ width: 0 }}
           animate={{ width: `${value}%` }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
         />
       </div>
       <span className="text-[10px] text-[#8b949e] w-8 text-right">{value}%</span>
@@ -237,7 +237,7 @@ function InteractionButtons({ type, engagement, onLike }: { type: PostType; enga
       >
         <motion.div
           animate={liked ? { scale: [1, 1.4, 1] } : {}}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
         >
           <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-rose-500 text-rose-500' : 'text-[#8b949e]'}`} />
         </motion.div>
@@ -502,10 +502,10 @@ function PostCard({ post, index }: { post: SocialPost; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{
-        duration: 0.35,
+        duration: 0.2,
         delay: index * 0.06,
         ease: 'easeOut',
       }}
@@ -523,9 +523,9 @@ function StorylineCard({ story, index }: { story: Storyline; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: index * 0.1 }}
       whileHover={{ y: 0 }}
     >
       <div className="bg-[#21262d] border border-[#30363d] rounded-lg p-4 space-y-3">
@@ -563,7 +563,7 @@ function StorylineCard({ story, index }: { story: Storyline; index: number }) {
                 className="h-full rounded-full bg-amber-500"
                 initial={{ width: 0 }}
                 animate={{ width: `${phaseProgress}%` }}
-                transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+                transition={{ duration: 0.2, ease: 'easeOut', delay: 0.3 }}
               />
             </div>
             {/* Phase dots */}
@@ -691,9 +691,9 @@ export default function SocialFeed() {
     <div className="p-4 max-w-lg mx-auto space-y-4">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
       >
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
@@ -717,9 +717,9 @@ export default function SocialFeed() {
       {/* Trending Section */}
       {trendingPosts.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.1 }}
         >
           <Card className="bg-[#161b22]/60 border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
@@ -741,9 +741,9 @@ export default function SocialFeed() {
       {/* Active Storylines */}
       {activeStorylines.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.15 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.15 }}
         >
           <Card className="bg-[#161b22]/60 border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
@@ -762,9 +762,9 @@ export default function SocialFeed() {
 
       {/* Feed Tabs */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.2 }}
       >
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full bg-[#21262d] h-9 p-0.5">

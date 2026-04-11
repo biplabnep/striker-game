@@ -363,9 +363,9 @@ export default function PlayerProfile() {
 
       {/* ===== 1. PLAYER HEADER CARD ===== */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
       >
         <Card className="bg-[#161b22] border-[#30363d] overflow-hidden relative">
           {/* Background accent */}
@@ -387,7 +387,7 @@ export default function PlayerProfile() {
                       strokeDasharray={`${2 * Math.PI * 36}`}
                       strokeDashoffset={2 * Math.PI * 36}
                       animate={{ strokeDashoffset: 2 * Math.PI * 36 * (1 - player.overall / 99) }}
-                      transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
+                      transition={{ duration: 0.2, ease: 'easeOut', delay: 0.3 }}
                       transform="rotate(-90 40 40)"
                     />
                   </svg>
@@ -434,9 +434,9 @@ export default function PlayerProfile() {
                 <div className="relative w-16 h-16 rounded-full flex items-center justify-center border-2 border-slate-600">
                   <span className="font-bold text-lg text-[#8b949e]">{player.potential}</span>
                   <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.3 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6, duration: 0.2 }}
                     className="absolute -bottom-1 -right-1"
                   >
                     <TrendingUp className="h-4 w-4 text-emerald-400" />
@@ -452,9 +452,9 @@ export default function PlayerProfile() {
 
       {/* ===== 2. ATTRIBUTE RADAR CHART ===== */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.1 }}
       >
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
@@ -498,7 +498,7 @@ export default function PlayerProfile() {
                 strokeDasharray="4 3"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.5 }}
-                transition={{ delay: 0.8, duration: 0.5 }}
+                transition={{ delay: 0.8, duration: 0.2 }}
               />
 
               {/* Current attributes filled area */}
@@ -507,9 +507,9 @@ export default function PlayerProfile() {
                 fill={`${overallColor}25`}
                 stroke={overallColor}
                 strokeWidth="2"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4, duration: 0.8, ease: 'easeOut' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.2, ease: 'easeOut' }}
                 style={{ transformOrigin: '120px 120px' }}
               />
 
@@ -526,7 +526,7 @@ export default function PlayerProfile() {
                       fill={overallColor}
                       initial={{ r: 0 }}
                       animate={{ r: 3 }}
-                      transition={{ delay: 0.6 + i * 0.08, duration: 0.3 }}
+                      transition={{ delay: 0.6 + i * 0.08, duration: 0.2 }}
                     />
                     <text
                       x={lbl.x}
@@ -558,9 +558,9 @@ export default function PlayerProfile() {
 
       {/* ===== 3. DETAILED ATTRIBUTE CARDS ===== */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.2 }}
         className="space-y-2"
       >
         <h3 className="text-xs text-[#8b949e]  font-semibold px-1">Detailed Attributes</h3>
@@ -599,14 +599,14 @@ export default function PlayerProfile() {
                         className="h-full rounded-full bg-slate-600"
                         initial={{ width: 0 }}
                         animate={{ width: `${current}%` }}
-                        transition={{ delay: i * 0.05, duration: 0.5 }}
+                        transition={{ delay: i * 0.05, duration: 0.2 }}
                       />
                       {/* Potential growth overlay */}
                       <motion.div
                         className="absolute top-0 h-full rounded-full bg-emerald-500/30"
                         initial={{ left: 0, width: 0 }}
                         animate={{ left: `${current}%`, width: `${Math.max(0, potentialVal - current)}%` }}
-                        transition={{ delay: 0.5 + i * 0.05, duration: 0.5 }}
+                        transition={{ delay: 0.5 + i * 0.05, duration: 0.2 }}
                       />
                     </div>
                     <span className="text-[9px] text-[#8b949e] w-6 text-right font-mono">{current}</span>
@@ -649,9 +649,9 @@ export default function PlayerProfile() {
           return (
             <motion.div
               key={attr}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.25 + i * 0.06, duration: 0.3 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 + i * 0.06, duration: 0.2 }}
             >
               <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
                 {/* Header Row */}
@@ -689,7 +689,7 @@ export default function PlayerProfile() {
                             }}
                             initial={{ width: 0 }}
                             animate={{ width: `${val}%` }}
-                            transition={{ delay: 0.4 + i * 0.06, duration: 0.6, ease: 'easeOut' }}
+                            transition={{ delay: 0.4 + i * 0.06, duration: 0.2, ease: 'easeOut' }}
                           />
                         </div>
                       </div>
@@ -758,9 +758,9 @@ export default function PlayerProfile() {
 
       {/* ===== 4. SEASON PERFORMANCE SUMMARY ===== */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.35 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.35 }}
       >
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
@@ -779,8 +779,8 @@ export default function PlayerProfile() {
                 {formIndicator.length > 0 ? formIndicator.map((result, i) => (
                   <motion.div
                     key={i}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 + i * 0.08, type: 'spring', stiffness: 300 }}
                     className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-sm ${
                       result === 'W' ? 'bg-emerald-600 text-white' :
@@ -809,7 +809,7 @@ export default function PlayerProfile() {
                   className="h-full rounded-full bg-cyan-500"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, minutesPct)}%` }}
-                  transition={{ delay: 0.6, duration: 0.6 }}
+                  transition={{ delay: 0.6, duration: 0.2 }}
                 />
               </div>
             </div>
@@ -875,9 +875,9 @@ export default function PlayerProfile() {
 
       {/* ===== 5. CAREER MILESTONES TIMELINE ===== */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.45 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.45 }}
       >
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
@@ -894,9 +894,9 @@ export default function PlayerProfile() {
                 {milestones.slice(0, 12).map((ms, i) => (
                   <motion.div
                     key={`${ms.label}-${i}`}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5 + i * 0.06, duration: 0.3 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 + i * 0.06, duration: 0.2 }}
                     className="relative flex items-start gap-3 pb-4 last:pb-0"
                   >
                     {/* Timeline dot */}
@@ -939,9 +939,9 @@ export default function PlayerProfile() {
 
       {/* ===== 6. MARKET VALUE HISTORY ===== */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.55 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.55 }}
       >
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
@@ -992,9 +992,9 @@ export default function PlayerProfile() {
                     <motion.div
                       key={i}
                       className="flex items-center gap-2"
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.6 + i * 0.08, duration: 0.3 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.6 + i * 0.08, duration: 0.2 }}
                     >
                       <span className="text-[9px] text-[#8b949e] w-8 text-right shrink-0">S{pt.season}</span>
                       <div className="flex-1 h-4 bg-[#21262d] rounded-full overflow-hidden">
@@ -1007,7 +1007,7 @@ export default function PlayerProfile() {
                           }}
                           initial={{ width: 0 }}
                           animate={{ width: `${barWidth}%` }}
-                          transition={{ delay: 0.7 + i * 0.08, duration: 0.5, ease: 'easeOut' }}
+                          transition={{ delay: 0.7 + i * 0.08, duration: 0.2, ease: 'easeOut' }}
                         />
                       </div>
                       <span className={`text-[10px] font-semibold w-16 text-right shrink-0 ${isLast ? 'text-emerald-400' : 'text-[#8b949e]'}`}>

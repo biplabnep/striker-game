@@ -118,7 +118,7 @@ export default function SeasonTrainingFocusModal({ open, onClose }: SeasonTraini
         >
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70"
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -127,10 +127,10 @@ export default function SeasonTrainingFocusModal({ open, onClose }: SeasonTraini
 
           {/* Modal Content */}
           <motion.div
-            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-[#0d1117] border border-[#30363d] rounded-lg shadow-lg"
-            initial={{ opacity: 0, y: 20, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
+            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-[#0d1117] border border-[#30363d] rounded-lg shadow-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
             {/* Close button */}
@@ -169,8 +169,8 @@ export default function SeasonTrainingFocusModal({ open, onClose }: SeasonTraini
                         ? 'bg-[#161b22] border-emerald-500/50 ring-1 ring-emerald-500/30'
                         : 'bg-[#161b22] border-[#30363d] hover:border-[#484f58]'
                     }`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ delay: index * 0.05, duration: 0.2 }}
                   >
                     <div className="flex items-start gap-3">
@@ -191,8 +191,8 @@ export default function SeasonTrainingFocusModal({ open, onClose }: SeasonTraini
                             </span>
                             {isSelected && (
                               <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
                                 transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                               >
                                 <Check className="h-4 w-4 text-emerald-400" />

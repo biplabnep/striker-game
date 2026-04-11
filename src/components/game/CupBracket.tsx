@@ -109,9 +109,9 @@ export default function CupBracket() {
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
       >
         <Card className="bg-[#161b22] border-amber-900/30 overflow-hidden">
           <div className="absolute inset-0 opacity-[0.04]" style={{
@@ -132,8 +132,8 @@ export default function CupBracket() {
               {/* Status Badge */}
               {isCupWinner ? (
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ type: 'spring', bounce: 0.5 }}
                 >
                   <Badge className="bg-amber-500 text-black font-bold px-3 py-1 text-xs">
@@ -166,7 +166,7 @@ export default function CupBracket() {
                     className="h-full bg-amber-500 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${(Math.min(cupRound - 1, maxRound) / maxRound) * 100}%` }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
                   />
                 </div>
               </div>
@@ -178,8 +178,8 @@ export default function CupBracket() {
       {/* Cup Winner Celebration */}
       {isCupWinner && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ type: 'spring', bounce: 0.4 }}
         >
           <Card className="bg-[#161b22] border-amber-500/40 overflow-hidden">
@@ -209,8 +209,8 @@ export default function CupBracket() {
       {/* Eliminated Message */}
       {cupEliminated && !isCupWinner && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
         >
           <Card className="bg-red-950/20 border-red-900/30">
@@ -236,8 +236,8 @@ export default function CupBracket() {
       {/* Next Cup Match */}
       {playerNextCupMatch && nextCupOpponent && !cupEliminated && !isCupWinner && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
         >
           <Card className="bg-[#161b22] border-amber-900/20 overflow-hidden">
@@ -308,8 +308,8 @@ export default function CupBracket() {
 
       {/* Bracket Rounds */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
         <Card className="bg-[#161b22] border-[#30363d]">
@@ -336,9 +336,9 @@ export default function CupBracket() {
                   return (
                     <motion.div
                       key={roundData.round}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.06, duration: 0.3 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: idx * 0.06, duration: 0.2 }}
                       className={`rounded-lg border p-3 ${
                         isCurrentRound
                           ? 'bg-amber-500/10 border-amber-600/30'
@@ -440,8 +440,8 @@ export default function CupBracket() {
 
       {/* Cup Info */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       >
         <Card className="bg-[#161b22]/50 border-[#30363d]">

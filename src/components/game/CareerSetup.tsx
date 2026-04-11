@@ -102,7 +102,7 @@ export default function CareerSetup() {
                     onClick={() => setPosition(pos)}
                     className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                       position === pos
-                        ? 'text-white shadow-lg'
+                        ? 'text-white shadow-sm'
                         : 'bg-[#21262d] text-[#c9d1d9] border border-[#30363d] hover:bg-slate-700'
                     }`}
                     style={position === pos ? { backgroundColor: getPositionColor(pos) } : {}}

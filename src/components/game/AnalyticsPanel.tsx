@@ -114,9 +114,9 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
     <motion.span
       className={className}
       key={value}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       {value}
     </motion.span>
@@ -322,9 +322,9 @@ export default function AnalyticsPanel() {
       {/* Overall & Potential - Gradient Header Card */}
       {/* ============================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
       >
         <Card className="overflow-hidden bg-[#161b22] border border-[#30363d]">
           <CardContent className="p-5">
@@ -378,9 +378,9 @@ export default function AnalyticsPanel() {
       {/* Radar / Spider Chart */}
       {/* ============================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.1 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-1 pt-3 px-4">
@@ -434,7 +434,7 @@ export default function AnalyticsPanel() {
                 opacity={0.5}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.5 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
+                transition={{ duration: 0.2, delay: 0.6 }}
               />
 
               {/* Current attributes polygon (emerald fill) */}
@@ -445,7 +445,7 @@ export default function AnalyticsPanel() {
                 strokeWidth={2}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
+                transition={{ duration: 0.2, delay: 0.2, ease: 'easeOut' }}
                 style={{ transformOrigin: `${RADAR_CX}px ${RADAR_CY}px` }}
               />
 
@@ -519,9 +519,9 @@ export default function AnalyticsPanel() {
       {/* Attribute Bars with Category Badges */}
       {/* ============================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.15 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.15 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
@@ -538,8 +538,8 @@ export default function AnalyticsPanel() {
                 <motion.div
                   key={attr}
                   className="space-y-1"
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.2 + idx * 0.05 }}
                 >
                   <div className="flex items-center justify-between">
@@ -571,7 +571,7 @@ export default function AnalyticsPanel() {
                       style={{ backgroundColor: cat.color }}
                       initial={{ width: 0 }}
                       animate={{ width: `${val}%` }}
-                      transition={{ duration: 0.6, delay: 0.3 + idx * 0.05, ease: 'easeOut' }}
+                      transition={{ duration: 0.2, delay: 0.3 + idx * 0.05, ease: 'easeOut' }}
                     />
                   </div>
                 </motion.div>
@@ -586,9 +586,9 @@ export default function AnalyticsPanel() {
       {/* ============================================= */}
       {last5Ratings.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.2 }}
         >
           <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
@@ -622,8 +622,8 @@ export default function AnalyticsPanel() {
                   <motion.div
                     key={i}
                     className={`flex-1 rounded-lg border p-2 text-center ${getRatingBg(rating)}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 + i * 0.08 }}
                   >
                     <p
@@ -664,9 +664,9 @@ export default function AnalyticsPanel() {
       {/* ============================================= */}
       {recentRatings.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.25 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.25 }}
         >
           <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
@@ -695,7 +695,7 @@ export default function AnalyticsPanel() {
                         style={{ backgroundColor: color }}
                         initial={{ height: 0 }}
                         animate={{ height: `${Math.max(height, 5)}%` }}
-                        transition={{ duration: 0.5, delay: 0.15 + i * 0.04, ease: 'easeOut' }}
+                        transition={{ duration: 0.2, delay: 0.15 + i * 0.04, ease: 'easeOut' }}
                       />
                     </motion.div>
                   );
@@ -715,9 +715,9 @@ export default function AnalyticsPanel() {
       {/* ============================================= */}
       {seasonComparison && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.3 }}
         >
           <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
@@ -749,8 +749,8 @@ export default function AnalyticsPanel() {
                     <motion.div
                       key={row.label}
                       className="flex items-center justify-between py-1.5 border-b border-[#30363d] last:border-0"
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       transition={{ delay: 0.35 + idx * 0.06 }}
                     >
                       <span className="text-xs text-[#8b949e] w-20">{row.label}</span>
@@ -798,9 +798,9 @@ export default function AnalyticsPanel() {
       {/* ============================================= */}
       {milestones.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.35 }}
         >
           <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
@@ -823,8 +823,8 @@ export default function AnalyticsPanel() {
                   <motion.div
                     key={m.label}
                     className="space-y-1.5"
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 + idx * 0.08 }}
                   >
                     <div className="flex items-center justify-between">
@@ -848,14 +848,14 @@ export default function AnalyticsPanel() {
                           className="h-full rounded-full bg-emerald-500"
                           initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.8, delay: 0.5 + idx * 0.08, ease: 'easeOut' }}
+                          transition={{ duration: 0.2, delay: 0.5 + idx * 0.08, ease: 'easeOut' }}
                         />
                       </div>
                       {pct >= 100 && (
                         <motion.div
                           className="absolute -right-1 -top-1"
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
                           transition={{ type: 'spring', delay: 0.7 }}
                         >
                           <Award className="h-4 w-4 text-emerald-400" />
@@ -879,9 +879,9 @@ export default function AnalyticsPanel() {
       {/* Season Stats with Animated Counters */}
       {/* ============================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.4 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.4 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
@@ -1006,9 +1006,9 @@ export default function AnalyticsPanel() {
       {/* Career Stats Summary */}
       {/* ============================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.45 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.45 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">

@@ -226,9 +226,9 @@ function EventTimeline({
               return (
                 <motion.div
                   key={event.id}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.06, duration: 0.3 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: index * 0.06, duration: 0.2 }}
                   className={`relative pl-6 ${isLast ? '' : 'pb-4'}`}
                 >
                   {/* Timeline dot */}
@@ -329,8 +329,8 @@ export default function EventsPanel() {
       <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           className="flex items-center justify-between"
         >
           <h2 className="text-xl font-bold flex items-center gap-2">
@@ -347,8 +347,8 @@ export default function EventsPanel() {
         {/* Filter Tabs */}
         {activeEvents.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ delay: 0.05 }}
           >
             <Tabs
@@ -381,9 +381,9 @@ export default function EventsPanel() {
         {/* Active Events */}
         {activeEvents.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
           >
             <Card className="bg-[#161b22]/50 border-[#30363d] overflow-hidden">
               <CardContent className="p-8 text-center">
@@ -405,8 +405,8 @@ export default function EventsPanel() {
           </motion.div>
         ) : filteredEvents.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
           >
             <Card className="bg-[#161b22]/50 border-[#30363d]">
               <CardContent className="p-6 text-center">
@@ -431,12 +431,12 @@ export default function EventsPanel() {
                   <motion.div
                     key={event.id}
                     layout
-                    initial={{ opacity: 0, y: 16, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     transition={{
                       delay: eventIndex * 0.06,
-                      duration: 0.3,
+                      duration: 0.2,
                       layout: { duration: 0.2 },
                     }}
                   >
@@ -512,7 +512,6 @@ export default function EventsPanel() {
                                         onClick={() => resolveEvent(event.id, choice.id)}
                                         className="w-full text-left p-3 rounded-lg bg-[#21262d] border border-[#30363d] hover:bg-[#2d333b] hover:border-[#444c56] transition-colors group relative overflow-hidden"
                                         whileHover={{ scale: 1 }}
-                                        whileTap={{ scale: 1 }}
                                       >
                                         {/* Hover glow effect */}
                                         <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />

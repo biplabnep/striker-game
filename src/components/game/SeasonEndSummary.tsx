@@ -177,15 +177,15 @@ function AwardBadge({
     common: '',
     rare: '',
     epic: 'shadow-purple-900/30',
-    legendary: 'shadow-amber-900/30 shadow-lg',
+    legendary: 'shadow-amber-900/30 shadow',
   };
 
   return (
     <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className={`relative rounded-xl border p-3 text-center transition-all ${
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
+      className={`relative rounded-lg border p-3 text-center transition-all ${
         earned ? rarityColors[rarity] : 'border-[#30363d] bg-[#161b22]/50 opacity-40'
       } ${earned ? rarityGlow[rarity] : ''}`}
     >
@@ -340,8 +340,8 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } },
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.15 } },
   };
 
   return (
@@ -352,10 +352,10 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3"
     >
       <motion.div
-        initial={{ scale: 0.85, y: 30 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.85, y: 30 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         className="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-lg max-h-[92vh] overflow-hidden shadow-sm"
         onClick={(e) => e.stopPropagation()}
       >
@@ -373,9 +373,9 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
 
           {/* Trophy animation */}
           <motion.div
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, delay: 0.2 }}
             className="relative"
           >
             <motion.div
@@ -394,9 +394,9 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, delay: 0.3 }}
             className="text-2xl font-black text-white"
           >
             Season {seasonNumber} Complete!
@@ -405,7 +405,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{ duration: 0.15, delay: 0.5 }}
             className="text-sm text-[#8b949e] mt-1"
           >
             {leagueInfo ? `${leagueInfo.emoji} ${leagueInfo.name}` : 'League'} • {currentClub.name}
@@ -441,7 +441,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-14 h-14 rounded-xl flex items-center justify-center font-black text-xl"
+                      className="w-14 h-14 rounded-lg flex items-center justify-center font-black text-xl"
                       style={{ backgroundColor: zone.bgColor, color: zone.color, border: `1px solid ${zone.color}30` }}
                     >
                       {getOrdinal(leaguePosition)}
@@ -572,7 +572,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Average Rating */}
-                <div className="bg-[#21262d] rounded-xl p-3 space-y-2">
+                <div className="bg-[#21262d] rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-[#8b949e]">Average Rating</span>
                     <div className="flex items-center gap-2">
@@ -730,7 +730,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
               </CardHeader>
               <CardContent className="px-4 pb-3 space-y-3">
                 {/* Overall Rating Change */}
-                <div className="bg-[#21262d] rounded-xl p-3">
+                <div className="bg-[#21262d] rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-[#8b949e]">Overall Rating</span>
                     <div className="flex items-center gap-2">
@@ -764,7 +764,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Market Value Change */}
-                <div className="bg-[#21262d] rounded-xl p-3">
+                <div className="bg-[#21262d] rounded-lg p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-[#8b949e]">Market Value</span>
                     <div className="flex items-center gap-2">
@@ -803,7 +803,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 )}
 
                 {attrChangeEntries.length === 0 && (
-                  <div className="bg-[#21262d] rounded-xl p-3 text-center">
+                  <div className="bg-[#21262d] rounded-lg p-3 text-center">
                     <p className="text-xs text-[#8b949e]">No significant attribute changes this season</p>
                   </div>
                 )}
@@ -824,7 +824,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
               </CardHeader>
               <CardContent className="px-4 pb-3 space-y-2">
                 {/* Contract Status */}
-                <div className="flex items-center justify-between bg-[#21262d] rounded-xl p-3">
+                <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-3">
                   <div className="flex items-center gap-2">
                     <ScrollText className="h-4 w-4 text-[#8b949e]" />
                     <span className="text-xs text-[#8b949e]">Contract</span>
@@ -846,7 +846,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Squad Status */}
-                <div className="flex items-center justify-between bg-[#21262d] rounded-xl p-3">
+                <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-3">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-[#8b949e]" />
                     <span className="text-xs text-[#8b949e]">Squad Status</span>
@@ -870,7 +870,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Age */}
-                <div className="flex items-center justify-between bg-[#21262d] rounded-xl p-3">
+                <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-3">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-[#8b949e]" />
                     <span className="text-xs text-[#8b949e]">Age</span>
@@ -880,7 +880,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
 
                 {/* Contract Warning */}
                 {contractYearsRemaining <= 1 && (
-                  <div className="bg-red-900/20 border border-red-800/30 rounded-xl p-3 flex items-center gap-3">
+                  <div className="bg-red-900/20 border border-red-800/30 rounded-lg p-3 flex items-center gap-3">
                     <span className="text-xl">⚠️</span>
                     <div>
                       <p className="text-sm font-semibold text-red-300">
@@ -908,7 +908,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
         <div className="px-4 py-4 border-t border-[#30363d] bg-[#161b22]">
           <Button
             onClick={onClose}
-            className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all text-base"
+            className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow shadow-emerald-900/30 transition-all text-base"
           >
             <ArrowRight className="mr-2 h-5 w-5" />
             Continue to Season {seasonNumber + 1}

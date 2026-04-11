@@ -29,6 +29,7 @@ const RelationshipsPanel = dynamic(() => import('@/components/game/Relationships
 const ContinentalPanel = dynamic(() => import('@/components/game/ContinentalPanel'), { ssr: false });
 const InternationalPanel = dynamic(() => import('@/components/game/InternationalPanel'), { ssr: false });
 const MoralePanel = dynamic(() => import('@/components/game/MoralePanel'), { ssr: false });
+const InjuryReport = dynamic(() => import('@/components/game/InjuryReport'), { ssr: false });
 const PWAInstallPrompt = dynamic(() => import('@/components/game/PWAInstallPrompt'), { ssr: false });
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -55,10 +56,11 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   continental: ContinentalPanel,
   international: InternationalPanel,
   morale: MoralePanel,
+  injury_report: InjuryReport,
 };
 
 const menuScreens: GameScreen[] = ['main_menu', 'career_setup', 'save_load'];
-const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy', 'relationships', 'continental', 'international', 'morale'];
+const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy', 'relationships', 'continental', 'international', 'morale', 'injury_report'];
 
 export default function Home() {
   const screen = useGameStore(state => state.screen);
@@ -84,10 +86,10 @@ export default function Home() {
         <AnimatePresence mode="wait">
           <motion.div
             key={screen}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             className="h-full"
           >
             <ScreenComponent />

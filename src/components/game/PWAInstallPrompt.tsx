@@ -77,13 +77,13 @@ export default function PWAInstallPrompt() {
     <AnimatePresence>
       {showPrompt && deferredPrompt && (
         <motion.div
-          initial={{ opacity: 0, y: 80 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 80 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto"
         >
-          <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 shadow-lg">
+          <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 shadow-sm">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center">
                 <Smartphone className="w-5 h-5 text-emerald-400" />

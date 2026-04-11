@@ -104,7 +104,7 @@ function TransferWindowTimeline({ currentWeek, leagueId }: { currentWeek: number
               key={i}
               initial={{ opacity: 0, scaleX: 0 }}
               animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: i * 0.15, duration: 0.4 }}
+              transition={{ delay: i * 0.15, duration: 0.2 }}
               className={`absolute top-0 h-full ${
                 w.color === 'emerald' ? 'bg-emerald-500/20' : 'bg-cyan-500/20'
               }`}
@@ -137,7 +137,7 @@ function TransferWindowTimeline({ currentWeek, leagueId }: { currentWeek: number
             style={{ left: `${getWeekPosition(Math.min(currentWeek, totalWeeks))}%` }}
           >
             <div className="w-0.5 h-full bg-amber-400/80" />
-            <div className="absolute -top-0.5 w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50" />
+            <div className="absolute -top-0.5 w-2 h-2 rounded-full bg-amber-400 shadow shadow-amber-400/50" />
           </motion.div>
 
           {/* Week labels */}
@@ -224,9 +224,9 @@ function ClubComparisonCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
       className="space-y-3"
     >
       <div className="text-[10px] text-[#8b949e]  flex items-center gap-1.5">
@@ -246,7 +246,7 @@ function ClubComparisonCard({
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${currentClub.quality}%` }}
-                transition={{ duration: 0.6, delay: 0.1 }}
+                transition={{ duration: 0.2, delay: 0.1 }}
                 className="h-full bg-emerald-500/70 rounded-full"
               />
             </div>
@@ -258,7 +258,7 @@ function ClubComparisonCard({
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${offerClub.quality}%` }}
-                transition={{ duration: 0.6, delay: 0.2 }}
+                transition={{ duration: 0.2, delay: 0.2 }}
                 className="h-full bg-cyan-500/70 rounded-full"
               />
             </div>
@@ -305,7 +305,7 @@ function ClubComparisonCard({
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${currentTime.pct}%` }}
-                transition={{ duration: 0.5, delay: 0.3 }}
+                transition={{ duration: 0.2, delay: 0.3 }}
                 className="h-full bg-emerald-500/60 rounded-full"
               />
             </div>
@@ -320,7 +320,7 @@ function ClubComparisonCard({
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${offeredTime.pct}%` }}
-                transition={{ duration: 0.5, delay: 0.4 }}
+                transition={{ duration: 0.2, delay: 0.4 }}
                 className={`h-full rounded-full ${offeredTime.pct >= currentTime.pct ? 'bg-cyan-500/60' : 'bg-red-500/40'}`}
               />
             </div>
@@ -383,7 +383,7 @@ function MarketValueSparkline({ player, recentResults }: { player: { marketValue
         fillOpacity={0.08}
         initial={{ fillOpacity: 0 }}
         animate={{ fillOpacity: 0.08 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.2 }}
       />
       {/* Line */}
       <motion.polyline
@@ -395,7 +395,7 @@ function MarketValueSparkline({ player, recentResults }: { player: { marketValue
         strokeLinejoin="round"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
+        transition={{ duration: 0.2, delay: 0.2 }}
       />
       {/* End dot */}
       <motion.circle
@@ -403,8 +403,8 @@ function MarketValueSparkline({ player, recentResults }: { player: { marketValue
         cy={points[points.length - 1].y}
         r={2.5}
         fill={color}
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.8, type: 'spring', stiffness: 200 }}
       />
     </svg>
@@ -468,7 +468,7 @@ function AgentQualityCard({ agentQuality, reputation }: { agentQuality: number; 
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${agentQuality}%` }}
-                transition={{ duration: 0.6 }}
+                transition={{ duration: 0.2 }}
                 className={`h-full rounded-full ${
                   agentQuality >= 70 ? 'bg-amber-500' :
                   agentQuality >= 50 ? 'bg-emerald-500' :
@@ -608,15 +608,15 @@ function ConfirmButton({
   const isAccept = variant === 'accept';
 
   return (
-    <motion.div className="flex-1" whileTap={{ scale: 1 }}>
+    <motion.div className="flex-1">
       <Button
         onClick={handleClick}
         size="sm"
         className={`w-full text-xs h-8 transition-all duration-200 ${
           confirming
             ? isAccept
-              ? 'bg-emerald-500 hover:bg-emerald-400 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
-              : 'bg-red-500 hover:bg-red-400 ring-2 ring-red-400/50 shadow-lg shadow-red-500/20'
+              ? 'bg-emerald-500 hover:bg-emerald-400 ring-2 ring-emerald-400/50 shadow shadow-emerald-500/20'
+              : 'bg-red-500 hover:bg-red-400 ring-2 ring-red-400/50 shadow shadow-red-500/20'
             : isAccept
               ? 'bg-emerald-700 hover:bg-emerald-600'
               : 'border-[#30363d] text-[#8b949e]'
@@ -627,9 +627,9 @@ function ConfirmButton({
           {confirming ? (
             <motion.span
               key="confirm"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="flex items-center gap-1"
             >
               {isAccept ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
@@ -638,9 +638,9 @@ function ConfirmButton({
           ) : (
             <motion.span
               key="default"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="flex items-center gap-1"
             >
               {children}
@@ -692,8 +692,8 @@ export default function TransferHub() {
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="flex items-center justify-between"
       >
         <h2 className="text-xl font-bold">Transfer Hub</h2>
@@ -704,8 +704,8 @@ export default function TransferHub() {
 
       {/* Transfer Window Timeline */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.05 }}
       >
         <TransferWindowTimeline currentWeek={currentWeek} leagueId={currentClub.league} />
@@ -713,8 +713,8 @@ export default function TransferHub() {
 
       {/* Current Contract Card */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
@@ -754,7 +754,7 @@ export default function TransferHub() {
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${contractPct}%` }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
                   className={`h-full rounded-full ${contractColors.bar}`}
                 />
               </div>
@@ -811,8 +811,8 @@ export default function TransferHub() {
 
       {/* Market Value Card */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.15 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
@@ -842,8 +842,8 @@ export default function TransferHub() {
 
       {/* Agent Quality Card */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
         <AgentQualityCard agentQuality={player.agentQuality} reputation={player.reputation} />
@@ -851,8 +851,8 @@ export default function TransferHub() {
 
       {/* Transfer Offers */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.25 }}
       >
         <h3 className="text-sm font-semibold text-[#8b949e] mb-2 flex items-center gap-2">
@@ -871,9 +871,9 @@ export default function TransferHub() {
               {transferOffers.map((offer, idx) => (
                 <motion.div
                   key={offer.id}
-                  initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ delay: idx * 0.06 }}
                 >
                   <Card
@@ -973,8 +973,8 @@ export default function TransferHub() {
 
       {/* Loan Offers */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       >
         <h3 className="text-sm font-semibold text-[#8b949e] mb-2 flex items-center gap-2">
@@ -993,9 +993,9 @@ export default function TransferHub() {
               {loanOffers.map((offer, idx) => (
                 <motion.div
                   key={offer.id}
-                  initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ delay: idx * 0.06 }}
                 >
                   <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden relative">
@@ -1020,11 +1020,11 @@ export default function TransferHub() {
                         </div>
                         {offer.guaranteedMinutes && (
                           <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
                           >
-                            <Badge className="bg-emerald-600/80 text-white text-[9px] flex items-center gap-1 shadow-lg shadow-emerald-500/20">
+                            <Badge className="bg-emerald-600/80 text-white text-[9px] flex items-center gap-1 shadow shadow-emerald-500/20">
                               <Timer className="h-2.5 w-2.5" />
                               Guaranteed Minutes
                             </Badge>
@@ -1056,7 +1056,7 @@ export default function TransferHub() {
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${offer.guaranteedMinutes ? 75 : 40}%` }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
+                            transition={{ duration: 0.2, delay: 0.2 }}
                             className={`h-full rounded-full ${offer.guaranteedMinutes ? 'bg-emerald-500/60' : 'bg-amber-500/50'}`}
                           />
                         </div>
