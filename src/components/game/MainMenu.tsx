@@ -32,9 +32,9 @@ export default function MainMenu() {
 
         {/* Menu Buttons */}
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.15 }}
           className="flex flex-col gap-3 w-full mt-4"
         >
           <Button
@@ -61,7 +61,7 @@ export default function MainMenu() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.3, duration: 0.15 }}
           className="mt-8 flex flex-col items-center gap-2"
         >
           <div className="flex items-center gap-2 text-[#8b949e] text-xs">

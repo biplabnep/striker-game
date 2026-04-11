@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -28,6 +29,7 @@ const RelationshipsPanel = dynamic(() => import('@/components/game/Relationships
 const ContinentalPanel = dynamic(() => import('@/components/game/ContinentalPanel'), { ssr: false });
 const InternationalPanel = dynamic(() => import('@/components/game/InternationalPanel'), { ssr: false });
 const MoralePanel = dynamic(() => import('@/components/game/MoralePanel'), { ssr: false });
+const PWAInstallPrompt = dynamic(() => import('@/components/game/PWAInstallPrompt'), { ssr: false });
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -63,6 +65,15 @@ export default function Home() {
   const gameState = useGameStore(state => state.gameState);
   const isProcessing = useGameStore(state => state.isProcessing);
 
+  // Register service worker for PWA
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Service worker registration failed - non-critical
+      });
+    }
+  }, []);
+
   const ScreenComponent = screenComponents[screen] || MainMenu;
   const isGameScreen = gameScreens.includes(screen);
 
@@ -86,6 +97,9 @@ export default function Home() {
 
       {/* Bottom Navigation for in-game screens */}
       {isGameScreen && gameState && <BottomNav />}
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
 
       {/* Processing overlay */}
       {isProcessing && (

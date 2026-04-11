@@ -39,6 +39,9 @@ import {
   PlayerTeamLevel,
   SeasonTrainingFocus,
   SeasonTrainingFocusArea,
+  Injury,
+  InjuryType,
+  InjuryCategory,
 } from '@/lib/game/types';
 
 // Engine imports
@@ -562,6 +565,99 @@ function applyPlayerUpdates(
 }
 
 // ============================================================
+// Injury System: Names, risk calculation, generation
+// ============================================================
+const INJURY_NAMES_BY_CATEGORY: Record<InjuryCategory, string[]> = {
+  muscle: ['Hamstring Strain', 'Calf Pull', 'Groin Pull', 'Thigh Strain', 'Back Spasm'],
+  ligament: ['ACL Tear', 'MCL Sprain', 'Ankle Ligament', 'Knee Cartilage', 'Shoulder Dislocation'],
+  bone: ['Fractured Metatarsal', 'Broken Rib', 'Hairline Fracture', 'Stress Fracture'],
+  concussion: ['Mild Concussion', 'Head Injury'],
+  illness: ['Viral Infection', 'Flu', 'Food Poisoning'],
+};
+
+function generateInjury(
+  player: Player,
+  week: number,
+  season: number,
+  difficulty: 'easy' | 'normal' | 'hard',
+  highIntensityTraining: boolean
+): Injury | null {
+  // Base risk per match: ~5%
+  let riskPercent = 5;
+
+  // Modifiers
+  if (highIntensityTraining) riskPercent += 3;
+  if (player.fitness < 20) riskPercent += 5; // fatigue > 80% means fitness < 20
+  if (player.age > 30) riskPercent += 3;
+  // Previous injury this season increases risk
+  if (player.injuryHistory.some(rec => rec.seasonOccured === season)) riskPercent += 2;
+  if (difficulty === 'hard') riskPercent += 4;
+
+  // Roll for injury
+  if (Math.random() * 100 > riskPercent) return null;
+
+  // Determine injury severity
+  const roll = Math.random() * 100;
+  let injuryType: InjuryType;
+  let weeksOut: number;
+
+  if (roll < 60) {
+    // Minor: 60%
+    injuryType = 'minor';
+    weeksOut = Math.floor(Math.random() * 3) + 1; // 1-3 weeks
+  } else if (roll < 85) {
+    // Moderate: 25%
+    injuryType = 'moderate';
+    weeksOut = Math.floor(Math.random() * 5) + 4; // 4-8 weeks
+  } else if (roll < 97) {
+    // Severe: 12%
+    injuryType = 'severe';
+    weeksOut = Math.floor(Math.random() * 13) + 12; // 12-24 weeks (~3-6 months)
+  } else {
+    // Career threatening: 3%
+    injuryType = 'career_threatening';
+    weeksOut = Math.floor(Math.random() * 17) + 32; // 32-48 weeks (~8-12 months)
+  }
+
+  // Pick category based on severity
+  const categoryRoll = Math.random();
+  let category: InjuryCategory;
+  if (injuryType === 'concussion' || (categoryRoll < 0.08 && injuryType === 'minor')) {
+    category = 'concussion';
+  } else if (categoryRoll < 0.10) {
+    category = 'illness';
+  } else if (categoryRoll < 0.35) {
+    category = 'bone';
+  } else if (categoryRoll < 0.55) {
+    category = 'ligament';
+  } else {
+    category = 'muscle';
+  }
+
+  // Severe/career_threatening more likely to be ligament or bone
+  if (injuryType === 'severe' || injuryType === 'career_threatening') {
+    if (categoryRoll < 0.5) category = 'ligament';
+    else if (categoryRoll < 0.8) category = 'bone';
+    // else keep whatever was assigned
+  }
+
+  const names = INJURY_NAMES_BY_CATEGORY[category];
+  const name = names[Math.floor(Math.random() * names.length)];
+
+  return {
+    id: generateId(),
+    type: injuryType,
+    category,
+    name,
+    weekSustained: week,
+    seasonSustained: season,
+    weeksOut,
+    weeksRemaining: weeksOut,
+    matchMissed: false,
+  };
+}
+
+// ============================================================
 // Helper: Migrate old GameState objects to include new fields
 // Ensures backward compatibility when loading old saves
 // ============================================================
@@ -612,6 +708,9 @@ function migrateGameState(gs: GameState | null): GameState | null {
     // Game mode / difficulty
     gameMode: gs.gameMode ?? 'career',
     difficulty: gs.difficulty ?? 'normal',
+    // Injury System
+    injuries: gs.injuries ?? [],
+    currentInjury: gs.currentInjury ?? null,
   };
 }
 
@@ -904,11 +1003,36 @@ export const useGameStore = create<GameStore>()(
         // Player team level & season training focus
         let playerTeamLevel = state.playerTeamLevel ?? 'senior';
         let seasonTrainingFocus = state.seasonTrainingFocus ?? null;
+        // Injury system
+        let injuries = [...(state.injuries ?? [])];
+        let currentInjury = state.currentInjury ?? null;
 
         // 1. Increment week
         state.currentWeek += 1;
         const week = state.currentWeek;
         const season = state.currentSeason;
+
+        // 1a. Decrement current injury weeksRemaining; heal if recovered
+        if (currentInjury) {
+          const updatedInjury = { ...currentInjury, weeksRemaining: currentInjury.weeksRemaining - 1 };
+          if (updatedInjury.weeksRemaining <= 0) {
+            // Injury healed!
+            const healedInjury = { ...updatedInjury, weeksRemaining: 0 };
+            injuries = injuries.map(inc => inc.id === healedInjury.id ? healedInjury : inc);
+            currentInjury = null;
+            player.injuryWeeks = 0;
+            get().addNotification({
+              type: 'career',
+              title: 'Injury Recovered!',
+              message: `You've recovered from your ${healedInjury.name} and are ready to play again!`,
+              actionRequired: false,
+            });
+          } else {
+            currentInjury = updatedInjury;
+            injuries = injuries.map(inc => inc.id === updatedInjury.id ? updatedInjury : inc);
+            player.injuryWeeks = updatedInjury.weeksRemaining;
+          }
+        }
 
         // 2. Match simulation - depends on player's team level
         // If player is at youth level, they play youth matches instead of senior
@@ -989,26 +1113,42 @@ export const useGameStore = create<GameStore>()(
             const matchPosts = processMediaReaction(player, matchResult, currentClub.id);
             socialFeed = [...matchPosts, ...socialFeed].slice(0, 50);
 
-            // Check for match injury
+            // Check for match injury — enhanced injury system
             const injuryEvent = matchResult.events.find(
               (e) => e.type === 'injury' && e.playerId === player.id
             );
-            if (injuryEvent) {
-              const weeksOut = randomBetween(1, 6);
-              player.injuryWeeks = weeksOut;
+            // Also use the risk-based injury system (can trigger even without match event)
+            const hadHighIntensityTraining = scheduledTraining?.intensity === 90;
+            const matchInjury = injuryEvent ? generateInjury(
+              player, week, season, state.difficulty, hadHighIntensityTraining
+            ) : null;
+            const randomInjury = !injuryEvent && matchResult.playerMinutesPlayed > 0
+              ? generateInjury(player, week, season, state.difficulty, hadHighIntensityTraining)
+              : null;
+            const newInjury = matchInjury ?? randomInjury;
+
+            if (newInjury) {
+              newInjury.matchMissed = true;
+              currentInjury = newInjury;
+              injuries = [...injuries, newInjury];
+              player.injuryWeeks = newInjury.weeksOut;
+              player.seasonStats.injuries += 1;
               player.injuryHistory = [
                 ...player.injuryHistory,
                 {
-                  type: 'Match Injury',
+                  type: newInjury.name,
                   weekOccured: week,
                   seasonOccured: season,
-                  weeksOut,
+                  weeksOut: newInjury.weeksOut,
                 },
               ];
+              const severityLabel = newInjury.type === 'career_threatening' ? 'CAREER-THREATENING' :
+                newInjury.type === 'severe' ? 'SEVERE' :
+                newInjury.type === 'moderate' ? 'Moderate' : 'Minor';
               get().addNotification({
                 type: 'match',
-                title: 'Injury!',
-                message: `You've been injured and will be out for ${weeksOut} weeks.`,
+                title: `${severityLabel} Injury!`,
+                message: `${newInjury.name} — out for ${newInjury.weeksOut} weeks.`,
                 actionRequired: false,
               });
             }
@@ -2215,6 +2355,8 @@ export const useGameStore = create<GameStore>()(
             internationalOnBreak,
             playerTeamLevel,
             seasonTrainingFocus,
+            injuries,
+            currentInjury,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,

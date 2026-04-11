@@ -1,24 +1,23 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
-import { TrainingType, TrainingSession, PlayerAttributes, SeasonTrainingFocusArea } from '@/lib/game/types';
+import { TrainingType, PlayerAttributes, SeasonTrainingFocusArea } from '@/lib/game/types';
 import { FOCUS_AREA_ATTRIBUTES } from '@/lib/game/progressionEngine';
 import SeasonTrainingFocusModal from './SeasonTrainingFocusModal';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
   Dumbbell, Sword, Shield, Zap, Brain, Heart,
-  TrendingUp, Clock, AlertTriangle, Flame,
-  ChevronRight, Activity, BarChart3, History,
-  Star, Target,
+  AlertTriangle, Flame,
+  Activity, BarChart3, History,
+  Star, Target, Check, TrendingUp,
 } from 'lucide-react';
 
 // ============================================================
-// Training type definitions with gradient + icon config
+// Training type definitions
 // ============================================================
 const trainingTypes: {
   type: TrainingType;
@@ -26,118 +25,97 @@ const trainingTypes: {
   label: string;
   description: string;
   color: string;
-  gradient: string;
   focusAttrs: (keyof PlayerAttributes)[];
   expectedGainRange: [number, number];
+  shortLabel: string;
 }[] = [
   {
     type: 'attacking',
-    icon: <Sword className="h-5 w-5" />,
+    icon: <Sword className="h-4 w-4" />,
     label: 'Attacking',
     description: 'Shooting & dribbling',
     color: '#ef4444',
-    gradient: 'from-red-950/60 to-red-900/20',
     focusAttrs: ['shooting', 'dribbling'],
     expectedGainRange: [1, 3],
+    shortLabel: 'SHO +2, DRI +1',
   },
   {
     type: 'defensive',
-    icon: <Shield className="h-5 w-5" />,
+    icon: <Shield className="h-4 w-4" />,
     label: 'Defensive',
     description: 'Defending & positioning',
     color: '#3b82f6',
-    gradient: 'from-blue-950/60 to-blue-900/20',
     focusAttrs: ['defending'],
     expectedGainRange: [1, 3],
+    shortLabel: 'DEF +2',
   },
   {
     type: 'physical',
-    icon: <Zap className="h-5 w-5" />,
+    icon: <Zap className="h-4 w-4" />,
     label: 'Physical',
     description: 'Pace & strength',
     color: '#f59e0b',
-    gradient: 'from-amber-950/60 to-amber-900/20',
     focusAttrs: ['pace', 'physical'],
     expectedGainRange: [1, 3],
+    shortLabel: 'PAC +1, PHY +2',
   },
   {
     type: 'technical',
-    icon: <Dumbbell className="h-5 w-5" />,
+    icon: <Dumbbell className="h-4 w-4" />,
     label: 'Technical',
     description: 'Passing & ball control',
     color: '#10b981',
-    gradient: 'from-emerald-950/60 to-emerald-900/20',
     focusAttrs: ['passing', 'dribbling'],
     expectedGainRange: [1, 3],
+    shortLabel: 'PAS +2, DRI +1',
   },
   {
     type: 'tactical',
-    icon: <Brain className="h-5 w-5" />,
+    icon: <Brain className="h-4 w-4" />,
     label: 'Tactical',
     description: 'Game awareness',
     color: '#8b5cf6',
-    gradient: 'from-violet-950/60 to-violet-900/20',
     focusAttrs: ['passing', 'defending'],
     expectedGainRange: [1, 2],
+    shortLabel: 'PAS +1, DEF +1',
   },
   {
     type: 'recovery',
-    icon: <Heart className="h-5 w-5" />,
+    icon: <Heart className="h-4 w-4" />,
     label: 'Recovery',
     description: 'Rest & recuperation',
     color: '#ec4899',
-    gradient: 'from-pink-950/60 to-pink-900/20',
     focusAttrs: [],
     expectedGainRange: [0, 0],
+    shortLabel: 'Rest',
   },
 ];
 
 // ============================================================
-// Intensity definitions with fatigue risk
+// Intensity definitions
 // ============================================================
 const intensities: {
   value: number;
   label: string;
-  risk: 'low' | 'medium' | 'high';
-  riskLabel: string;
   color: string;
-  bgColor: string;
   fatigueCost: number;
   gainMultiplier: number;
 }[] = [
-  {
-    value: 30,
-    label: 'Low',
-    risk: 'low',
-    riskLabel: 'Safe',
-    color: '#10b981',
-    bgColor: 'bg-emerald-900/30',
-    fatigueCost: 5,
-    gainMultiplier: 0.6,
-  },
-  {
-    value: 60,
-    label: 'Medium',
-    risk: 'medium',
-    riskLabel: 'Moderate',
-    color: '#f59e0b',
-    bgColor: 'bg-amber-900/30',
-    fatigueCost: 12,
-    gainMultiplier: 1.0,
-  },
-  {
-    value: 90,
-    label: 'High',
-    risk: 'high',
-    riskLabel: 'Risky',
-    color: '#ef4444',
-    bgColor: 'bg-red-900/30',
-    fatigueCost: 22,
-    gainMultiplier: 1.5,
-  },
+  { value: 30, label: 'Low', color: '#10b981', fatigueCost: 5, gainMultiplier: 1.0 },
+  { value: 60, label: 'Medium', color: '#f59e0b', fatigueCost: 12, gainMultiplier: 1.5 },
+  { value: 90, label: 'High', color: '#ef4444', fatigueCost: 22, gainMultiplier: 2.0 },
 ];
 
 const attrLabels: Record<keyof PlayerAttributes, string> = {
+  pace: 'Pace',
+  shooting: 'SHO',
+  passing: 'PAS',
+  dribbling: 'DRI',
+  defending: 'DEF',
+  physical: 'PHY',
+};
+
+const attrFullLabels: Record<keyof PlayerAttributes, string> = {
   pace: 'Pace',
   shooting: 'Shooting',
   passing: 'Passing',
@@ -161,11 +139,10 @@ const attrIcons: Record<keyof PlayerAttributes, React.ReactNode> = {
 export default function TrainingPanel() {
   const gameState = useGameStore(state => state.gameState);
   const scheduleTraining = useGameStore(state => state.scheduleTraining);
-  const advanceWeek = useGameStore(state => state.advanceWeek);
   const scheduledTraining = useGameStore(state => state.scheduledTraining);
 
   const [selectedType, setSelectedType] = useState<TrainingType | null>(null);
-  const [selectedIntensity, setSelectedIntensity] = useState(60);
+  const [selectedIntensity, setSelectedIntensity] = useState(30);
   const [focusAttr, setFocusAttr] = useState<keyof PlayerAttributes | undefined>(undefined);
   const [showFocusModal, setShowFocusModal] = useState(false);
 
@@ -178,7 +155,7 @@ export default function TrainingPanel() {
   );
 
   const selectedIntensityConfig = useMemo(
-    () => intensities.find(i => i.value === selectedIntensity) ?? intensities[1],
+    () => intensities.find(i => i.value === selectedIntensity) ?? intensities[0],
     [selectedIntensity]
   );
 
@@ -195,13 +172,11 @@ export default function TrainingPanel() {
     [fatigueRisk, selectedIntensity]
   );
 
-  // Season training focus attributes set (for highlighting)
   const seasonFocusAttrs = useMemo(() => {
     if (!gameState?.seasonTrainingFocus) return new Set<keyof PlayerAttributes>();
     return new Set(gameState.seasonTrainingFocus.focusAttributes);
   }, [gameState]);
 
-  // Season focus area label
   const seasonFocusAreaLabel = useMemo(() => {
     if (!gameState?.seasonTrainingFocus) return '';
     const area = gameState.seasonTrainingFocus.area;
@@ -215,11 +190,10 @@ export default function TrainingPanel() {
     return labels[area];
   }, [gameState]);
 
-  // Season focus attribute names joined
   const seasonFocusAttrNames = useMemo(() => {
     if (!gameState?.seasonTrainingFocus) return '';
     return gameState.seasonTrainingFocus.focusAttributes
-      .map(attr => attrLabels[attr])
+      .map(attr => attrFullLabels[attr])
       .join(' & ');
   }, [gameState]);
 
@@ -228,12 +202,39 @@ export default function TrainingPanel() {
     return gameState.trainingHistory.slice(-5).reverse();
   }, [gameState]);
 
-  // Weekly training progress dots (3 sessions per cycle)
   const weeklyProgress = useMemo(() => {
     if (!gameState) return [];
     const used = 3 - gameState.trainingAvailable;
     return Array.from({ length: 3 }, (_, i) => i < used);
   }, [gameState]);
+
+  // Compute attribute deltas from training history this season
+  const seasonAttrDeltas = useMemo(() => {
+    if (!gameState) return new Map<keyof PlayerAttributes, number>();
+    const deltas = new Map<keyof PlayerAttributes, number>();
+    const currentSeason = gameState.currentSeason;
+    for (const session of gameState.trainingHistory) {
+      // Count focusAttribute occurrences from this season's training
+      if (session.focusAttribute) {
+        const current = deltas.get(session.focusAttribute) ?? 0;
+        deltas.set(session.focusAttribute, current + 1);
+      }
+    }
+    return deltas;
+  }, [gameState]);
+
+  // Auto-schedule training when type, intensity, or focus attribute changes
+  useEffect(() => {
+    if (!selectedType || !gameState) return;
+    if (gameState.trainingAvailable <= 0) return;
+    if (isIntenseDisabled) return;
+    scheduleTraining({
+      type: selectedType,
+      intensity: selectedIntensity,
+      focusAttribute: focusAttr,
+      completedAt: Date.now(),
+    });
+  }, [selectedType, selectedIntensity, focusAttr, gameState, scheduleTraining, isIntenseDisabled]);
 
   // Expected gains for selected training type
   const expectedGains = useMemo(() => {
@@ -243,7 +244,6 @@ export default function TrainingPanel() {
 
     for (const attr of selectedTrainingConfig.focusAttrs) {
       const [minBase, maxBase] = selectedTrainingConfig.expectedGainRange;
-      // Focus attribute gets boosted
       const isFocused = focusAttr === attr;
       const boost = isFocused ? 1.5 : 1.0;
       gains[attr] = {
@@ -256,22 +256,11 @@ export default function TrainingPanel() {
 
   if (!gameState) return null;
 
-  const { player, trainingAvailable, trainingHistory } = gameState;
+  const { player, trainingAvailable } = gameState;
 
   // ============================================================
   // Handlers
   // ============================================================
-  const handleSchedule = () => {
-    if (!selectedType) return;
-    if (isIntenseDisabled) return;
-    scheduleTraining({
-      type: selectedType,
-      intensity: selectedIntensity,
-      focusAttribute: focusAttr,
-      completedAt: Date.now(),
-    });
-  };
-
   const handleTypeSelect = (type: TrainingType) => {
     setSelectedType(type);
     const config = trainingTypes.find(t => t.type === type);
@@ -291,29 +280,12 @@ export default function TrainingPanel() {
     return '#ef4444';
   };
 
-  const renderRiskIndicator = (risk: 'low' | 'medium' | 'high') => {
-    const dots = risk === 'low' ? 1 : risk === 'medium' ? 2 : 3;
-    const color = risk === 'low' ? '#10b981' : risk === 'medium' ? '#f59e0b' : '#ef4444';
-    return (
-      <div className="flex gap-0.5">
-        {[1, 2, 3].map(i => (
-          <div
-            key={i}
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              backgroundColor: i <= dots ? color : '#334155',
-            }}
-          />
-        ))}
-      </div>
-    );
-  };
-
   // ============================================================
   // Render
   // ============================================================
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-4">
+    <div className="p-4 max-w-lg mx-auto space-y-3">
+
       {/* Season Training Focus Banner */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-3">
@@ -322,42 +294,54 @@ export default function TrainingPanel() {
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span className="text-sm font-semibold text-[#c9d1d9]">
-                  🎯 {seasonFocusAreaLabel} Focus — {gameState.seasonTrainingFocus.bonusMultiplier}x bonus on {seasonFocusAttrNames}
+                  {seasonFocusAreaLabel} Focus
                 </span>
+                <Badge className="h-5 px-1.5 text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border-emerald-500/30 rounded-md">
+                  {gameState.seasonTrainingFocus.bonusMultiplier}x
+                </Badge>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs text-[#8b949e]">
+                Bonus applied to {seasonFocusAttrNames}
+              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {gameState.seasonTrainingFocus.focusAttributes.map(attr => (
                   <div
                     key={attr}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20"
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20"
                   >
-                    <Star className="h-3 w-3 text-emerald-400 fill-emerald-400" />
-                    <span className="text-xs font-medium text-emerald-300">{attrLabels[attr]}</span>
+                    <Star className="h-2.5 w-2.5 text-emerald-400 fill-emerald-400" />
+                    <span className="text-[11px] font-medium text-emerald-300">{attrFullLabels[attr]}</span>
                   </div>
                 ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFocusModal(true)}
+                  className="h-6 text-[11px] ml-auto border-[#30363d] text-[#8b949e] hover:text-emerald-400 hover:border-emerald-500/40 rounded-md px-2"
+                >
+                  Change
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFocusModal(true)}
-                className="h-7 text-xs border-[#30363d] text-[#8b949e] hover:text-emerald-400 hover:border-emerald-500/40 rounded-lg"
-              >
-                Change Focus
-              </Button>
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-                <span className="text-sm text-amber-300">
-                  No training focus set for this season. Set your focus to get 1.5x-2.0x bonus!
-                </span>
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping opacity-75" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-amber-300 font-medium">
+                  No training focus set
+                </p>
+                <p className="text-xs text-[#8b949e]">
+                  Set focus to get 1.5x–2.0x growth bonus
+                </p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFocusModal(true)}
-                className="h-7 text-xs border-emerald-600/40 text-emerald-400 hover:bg-emerald-600/10 rounded-lg"
+                className="h-7 text-xs border-emerald-600/40 text-emerald-400 hover:bg-emerald-600/10 rounded-md"
               >
                 Set Focus
               </Button>
@@ -370,25 +354,19 @@ export default function TrainingPanel() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-xl font-bold">Training</h2>
+          <h2 className="text-lg font-bold text-[#c9d1d9]">Training</h2>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Progress dots for weekly training */}
+        <div className="flex items-center gap-2.5">
           <div className="flex gap-1">
             {weeklyProgress.map((done, i) => (
-              <motion.div
+              <div
                 key={i}
-                className={`w-2.5 h-2.5 rounded-full ${
-                  done ? 'bg-emerald-400' : 'bg-slate-700'
-                }`}
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: i * 0.05 }}
+                className={`w-2 h-2 rounded-md ${done ? 'bg-emerald-400' : 'bg-[#30363d]'}`}
               />
             ))}
           </div>
-          <Badge variant="outline" className="border-emerald-600 text-emerald-400">
-            {trainingAvailable} session{trainingAvailable !== 1 ? 's' : ''} left
+          <Badge variant="outline" className="border-[#30363d] text-[#8b949e] text-[11px] h-5">
+            {trainingAvailable} left
           </Badge>
         </div>
       </div>
@@ -397,41 +375,42 @@ export default function TrainingPanel() {
       <AnimatePresence>
         {fatigueRisk !== 'none' && (
           <motion.div
-            initial={{ opacity: 0, y: -10, height: 0 }}
+            initial={{ opacity: 0, y: -8, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -10, height: 0 }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            transition={{ duration: 0.15 }}
           >
             <Card
-              className={`border-2 ${
+              className={`border ${
                 fatigueRisk === 'critical'
-                  ? 'bg-red-950/40 border-red-600'
-                  : 'bg-amber-950/40 border-amber-600'
+                  ? 'bg-[#161b22] border-red-600/60'
+                  : 'bg-[#161b22] border-amber-600/60'
               }`}
             >
-              <CardContent className="p-3 flex items-center gap-3">
+              <CardContent className="p-3 flex items-center gap-2.5">
                 <AlertTriangle
-                  className={`h-5 w-5 shrink-0 ${
+                  className={`h-4 w-4 shrink-0 ${
                     fatigueRisk === 'critical' ? 'text-red-400' : 'text-amber-400'
                   }`}
                 />
                 <div>
                   <p
-                    className={`text-sm font-semibold ${
+                    className={`text-sm font-medium ${
                       fatigueRisk === 'critical' ? 'text-red-300' : 'text-amber-300'
                     }`}
                   >
                     {fatigueRisk === 'critical'
-                      ? 'Danger: Extremely Low Fitness!'
-                      : 'Warning: Low Fitness'}
+                      ? 'Extremely Low Fitness'
+                      : 'Low Fitness Warning'}
                   </p>
                   <p
                     className={`text-xs mt-0.5 ${
-                      fatigueRisk === 'critical' ? 'text-red-400/80' : 'text-amber-400/80'
+                      fatigueRisk === 'critical' ? 'text-red-400/70' : 'text-amber-400/70'
                     }`}
                   >
                     {fatigueRisk === 'critical'
-                      ? `Fitness at ${player.fitness}%. Intense training is disabled. Consider recovery training.`
-                      : `Fitness at ${player.fitness}%. Training carries increased injury risk.`}
+                      ? `Fitness at ${player.fitness}%. Intense training disabled.`
+                      : `Fitness at ${player.fitness}%. Increased injury risk.`}
                   </p>
                 </div>
               </CardContent>
@@ -443,9 +422,9 @@ export default function TrainingPanel() {
       {/* Fitness Bar */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-pink-400" />
+              <Heart className="h-3.5 w-3.5 text-pink-400" />
               <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Fitness</span>
             </div>
             <span
@@ -455,218 +434,142 @@ export default function TrainingPanel() {
               {player.fitness}%
             </span>
           </div>
-          <div className="h-2.5 bg-[#21262d] rounded-full overflow-hidden">
+          <div className="h-2 bg-[#21262d] rounded-md overflow-hidden">
             <motion.div
-              className="h-full rounded-full"
+              className="h-full rounded-md"
               initial={{ width: 0 }}
               animate={{ width: `${player.fitness}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
               style={{ backgroundColor: getAttrBarColor(player.fitness) }}
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Training Type Selection - Cards with gradient backgrounds */}
-      <div className="grid grid-cols-2 gap-2">
-        {trainingTypes.map(t => {
+      {/* Training Type Selection — single column list with horizontal card layout */}
+      <div className="space-y-1.5">
+        {trainingTypes.map((t, idx) => {
           const isSelected = selectedType === t.type;
+          const isSeasonFocusType = gameState.seasonTrainingFocus?.area === t.type;
           return (
             <motion.button
               key={t.type}
               onClick={() => handleTypeSelect(t.type)}
-              className={`relative flex items-center gap-3 p-3 rounded-lg text-left transition-all overflow-hidden ${
+              className={`relative flex items-center w-full text-left rounded-md transition-all overflow-hidden ${
                 isSelected
-                  ? 'ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/20'
-                  : 'hover:scale-[1.02]'
+                  ? 'bg-[#21262d]'
+                  : 'bg-[#161b22] hover:bg-[#1c2129]'
               }`}
               style={{
-                background: isSelected
-                  ? undefined
-                  : `linear-gradient(135deg, ${t.color}15, transparent)`,
-                backgroundColor: isSelected ? undefined : '#0f172a',
-                borderColor: isSelected ? undefined : '#1e293b',
+                borderLeft: isSelected ? `3px solid ${t.color}` : '3px solid transparent',
               }}
-              whileTap={{ scale: 1 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, delay: idx * 0.03 }}
+              whileTap={{ scale: 0.995 }}
             >
-              {/* Gradient overlay on selected */}
-              {isSelected && (
-                <motion.div
-                  className={`absolute inset-0 ${t.gradient.includes('emerald') ? 'bg-emerald-500/5' : 'bg-[#21262d]'}`}
-                  layoutId="trainingGradient"
-                  transition={{ duration: 0.3 }}
-                />
-              )}
-              <div className="relative z-10 flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 p-2.5 flex-1 min-w-0">
+                {/* Icon */}
                 <div
-                  className="p-1.5 rounded-lg"
+                  className="p-1.5 rounded-md shrink-0"
                   style={{
-                    backgroundColor: `${t.color}20`,
-                    color: t.color,
+                    backgroundColor: `${t.color}15`,
+                    color: isSelected ? t.color : '#8b949e',
                   }}
                 >
                   {t.icon}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#c9d1d9]">{t.label}</p>
-                  <p className="text-[10px] text-[#8b949e] truncate">{t.description}</p>
+
+                {/* Label + description */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-sm font-medium ${isSelected ? 'text-[#c9d1d9]' : 'text-[#8b949e]'}`}>
+                      {t.label}
+                    </span>
+                    {/* Season focus dot indicator */}
+                    {isSeasonFocusType && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Season Focus" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#484f58] truncate">{t.description}</p>
                 </div>
-                {isSelected && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="ml-auto"
-                  >
-                    <ChevronRight className="h-4 w-4 text-emerald-400" />
-                  </motion.div>
-                )}
+
+                {/* Gain indicator on right */}
+                <div className="shrink-0 text-right">
+                  {t.focusAttrs.length > 0 ? (
+                    <span
+                      className="text-[11px] font-medium"
+                      style={{ color: isSelected ? t.color : '#484f58' }}
+                    >
+                      {t.shortLabel}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-pink-400/60">Rest</span>
+                  )}
+                </div>
               </div>
+
+              {/* Focus attribute pills — merged into type card when selected */}
+              {isSelected && t.focusAttrs.length > 0 && (
+                <div className="flex items-center gap-1 pr-2.5">
+                  {t.focusAttrs.map(attr => {
+                    const isSeasonFocus = seasonFocusAttrs.has(attr);
+                    const isFocus = focusAttr === attr;
+                    return (
+                      <motion.button
+                        key={attr}
+                        onClick={(e) => { e.stopPropagation(); setFocusAttr(attr); }}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                          isFocus
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : isSeasonFocus
+                            ? 'bg-emerald-500/10 text-emerald-400/70 border border-emerald-500/20'
+                            : 'bg-[#30363d] text-[#8b949e] border border-transparent hover:text-[#c9d1d9]'
+                        }`}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        {isFocus && <Star className="h-2.5 w-2.5 inline mr-0.5 text-emerald-400 fill-emerald-400" />}
+                        {attrLabels[attr]}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              )}
             </motion.button>
           );
         })}
       </div>
 
-      {/* Attribute Preview - shown when a type is selected */}
-      <AnimatePresence mode="wait">
-        {selectedTrainingConfig && (
-          <motion.div
-            key={selectedTrainingConfig.type}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Card className="bg-[#161b22] border-[#30363d]">
-              <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Attribute Preview — {selectedTrainingConfig.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-3 space-y-3">
-                {(Object.keys(attrLabels) as (keyof PlayerAttributes)[]).map(attr => {
-                  const isFocused = selectedTrainingConfig.focusAttrs.includes(attr);
-                  const gain = expectedGains?.[attr];
-                  const currentValue = player.attributes[attr];
-                  const isFocusAttr = focusAttr === attr;
-                  const isSeasonFocus = seasonFocusAttrs.has(attr);
-
-                  return (
-                    <div key={attr} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="text-[#8b949e] relative"
-                            style={{ color: isFocused ? selectedTrainingConfig.color : undefined }}
-                          >
-                            {attrIcons[attr]}
-                            {isSeasonFocus && (
-                              <Star className="h-2.5 w-2.5 text-emerald-400 fill-emerald-400 absolute -top-1 -right-1" />
-                            )}
-                          </span>
-                          <span
-                            className={`text-xs font-medium ${
-                              isFocused ? 'text-[#c9d1d9]' : 'text-[#8b949e]'
-                            }`}
-                          >
-                            {attrLabels[attr]}
-                          </span>
-                          {isSeasonFocus && (
-                            <Badge className="h-4 px-1 text-[9px] bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
-                              SEASON FOCUS
-                            </Badge>
-                          )}
-                          {isFocusAttr && !isSeasonFocus && (
-                            <Badge className="h-4 px-1 text-[9px] bg-emerald-600/30 text-emerald-300 border-emerald-700">
-                              FOCUS
-                            </Badge>
-                          )}
-                          {isFocused && !isFocusAttr && !isSeasonFocus && (
-                            <Badge className="h-4 px-1 text-[9px] bg-slate-700/50 text-[#8b949e] border-slate-600">
-                              TRAINED
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#c9d1d9]">
-                            {currentValue}
-                          </span>
-                          {gain && (
-                            <motion.span
-                              className="text-xs font-semibold text-emerald-400"
-                              initial={{ opacity: 0, x: -5 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.1 }}
-                            >
-                              +{gain.min}-{gain.max}
-                            </motion.span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Attribute bar with current + gain preview */}
-                      <div className={`relative h-2.5 bg-[#21262d] rounded-full overflow-hidden ${
-                        isSeasonFocus ? 'ring-1 ring-emerald-500/30' : ''
-                      }`}>
-                        {/* Current value bar */}
-                        <motion.div
-                          className="absolute h-full rounded-full"
-                          style={{
-                            backgroundColor: isSeasonFocus
-                              ? '#10b98180'
-                              : isFocused
-                              ? `${selectedTrainingConfig.color}60`
-                              : '#475569',
-                          }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${currentValue}%` }}
-                          transition={{ duration: 0.6, ease: 'easeOut' }}
-                        />
-                        {/* Gain preview bar (emerald overlay) */}
-                        {gain && (
-                          <motion.div
-                            className="absolute h-full rounded-full"
-                            style={{
-                              backgroundColor: isFocusAttr || isSeasonFocus
-                                ? '#10b981'
-                                : `${selectedTrainingConfig.color}`,
-                              opacity: isFocusAttr || isSeasonFocus ? 0.7 : 0.4,
-                            }}
-                            initial={{ left: `${currentValue}%`, width: 0 }}
-                            animate={{
-                              left: `${currentValue}%`,
-                              width: `${gain.max}%`,
-                            }}
-                            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.3 }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Training Intensity Selector */}
+      {/* Intensity Selector — horizontal segmented control */}
       <AnimatePresence>
         {selectedType && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.15 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
-              <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
-                  <Flame className="h-3.5 w-3.5" />
-                  Training Intensity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-3">
-                <div className="grid grid-cols-3 gap-2">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <Flame className="h-3.5 w-3.5 text-[#8b949e]" />
+                  <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Intensity</span>
+                </div>
+
+                {/* Segmented control */}
+                <div className="relative flex bg-[#21262d] rounded-md p-0.5">
+                  {/* Gradient bar background */}
+                  <div className="absolute inset-0.5 rounded-md overflow-hidden">
+                    <div
+                      className="h-full w-full"
+                      style={{
+                        background: 'linear-gradient(to right, #10b98120, #f59e0b20, #ef444420)',
+                      }}
+                    />
+                  </div>
+
                   {intensities.map(i => {
                     const isSelected = selectedIntensity === i.value;
                     const isDisabled = i.value === 90 && fatigueRisk === 'critical';
@@ -675,67 +578,56 @@ export default function TrainingPanel() {
                         key={i.value}
                         onClick={() => !isDisabled && setSelectedIntensity(i.value)}
                         disabled={isDisabled}
-                        className={`relative p-3 rounded-lg text-center transition-all overflow-hidden ${
+                        className={`relative z-10 flex-1 py-2 text-center rounded-md transition-colors ${
                           isSelected
-                            ? 'ring-2 ring-emerald-400'
+                            ? 'bg-[#161b22] shadow-sm'
                             : isDisabled
-                            ? 'opacity-40 cursor-not-allowed'
-                            : 'hover:bg-[#21262d]'
-                        } ${isSelected ? i.bgColor : 'bg-[#21262d] border border-[#30363d]'}`}
-                        whileTap={!isDisabled ? { scale: 1 } : undefined}
+                            ? 'opacity-30 cursor-not-allowed'
+                            : 'hover:bg-[#161b22]/50'
+                        }`}
+                        whileTap={!isDisabled ? { scale: 0.97 } : undefined}
+                        transition={{ duration: 0.1 }}
                       >
-                        <p className="text-sm font-semibold" style={{ color: isDisabled ? '#64748b' : i.color }}>
+                        <p className="text-sm font-semibold" style={{ color: isDisabled ? '#484f58' : isSelected ? i.color : '#8b949e' }}>
                           {i.label}
                         </p>
-                        <p className="text-[10px] text-[#8b949e] mt-0.5">{i.value}% effort</p>
-                        <div className="flex items-center justify-center gap-1 mt-1.5">
-                          {renderRiskIndicator(i.risk)}
-                          <span
-                            className="text-[9px] ml-1"
-                            style={{ color: isDisabled ? '#475569' : i.color }}
-                          >
-                            {i.riskLabel}
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-[#484f58] mt-1">
-                          Fatigue: -{i.fatigueCost}%
+                        <p className="text-[11px] font-bold mt-0.5" style={{ color: isSelected ? '#c9d1d9' : '#484f58' }}>
+                          x{i.gainMultiplier}
                         </p>
-                        <p className="text-[9px] text-emerald-500/80">
-                          Gain: x{i.gainMultiplier}
-                        </p>
-                        {isDisabled && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117]/60">
-                            <AlertTriangle className="h-4 w-4 text-red-500" />
-                          </div>
-                        )}
                       </motion.button>
                     );
                   })}
                 </div>
 
-                {/* Intensity effect preview */}
-                {selectedTrainingConfig && selectedTrainingConfig.focusAttrs.length > 0 && (
-                  <div className="mt-3 p-2.5 rounded-lg bg-[#21262d] border border-[#30363d]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-[#8b949e]">Estimated fatigue cost</span>
-                      <span className="text-xs font-semibold" style={{ color: selectedIntensityConfig.color }}>
-                        -{selectedIntensityConfig.fatigueCost}% fitness
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-[#8b949e]">Gain multiplier</span>
-                      <span className="text-xs font-semibold text-emerald-400">
-                        x{selectedIntensityConfig.gainMultiplier}
-                      </span>
-                    </div>
-                    {player.fitness - selectedIntensityConfig.fatigueCost < 30 && (
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <AlertTriangle className="h-3 w-3 text-red-400" />
-                        <span className="text-[10px] text-red-400">
-                          This will leave you very fatigued!
-                        </span>
-                      </div>
-                    )}
+                {/* Intensity detail row */}
+                <div className="flex items-center justify-between mt-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-[#8b949e]">Fatigue cost</span>
+                    <Badge
+                      className="h-4 px-1 text-[9px] rounded-md border-0"
+                      style={{
+                        backgroundColor: `${selectedIntensityConfig.color}15`,
+                        color: selectedIntensityConfig.color,
+                      }}
+                    >
+                      -{selectedIntensityConfig.fatigueCost}%
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-[#8b949e]">Gain</span>
+                    <span className="text-sm font-bold text-emerald-400">
+                      x{selectedIntensityConfig.gainMultiplier}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Fatigue warning */}
+                {player.fitness - selectedIntensityConfig.fatigueCost < 30 && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <AlertTriangle className="h-3 w-3 text-red-400" />
+                    <span className="text-[11px] text-red-400">
+                      Will leave you very fatigued
+                    </span>
                   </div>
                 )}
               </CardContent>
@@ -744,114 +636,226 @@ export default function TrainingPanel() {
         )}
       </AnimatePresence>
 
-      {/* Focus Attribute Selector */}
-      <AnimatePresence>
-        {selectedType && selectedTrainingConfig && selectedTrainingConfig.focusAttrs.length > 0 && (
+      {/* Training Status Indicator — enhanced detailed card */}
+      {scheduledTraining && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <Card className="bg-[#161b22] border-emerald-700/40 relative overflow-hidden">
+            {/* Subtle pulse border animation */}
+            <motion.div
+              className="absolute inset-0 border-2 border-emerald-500/20 rounded-md"
+              animate={{ opacity: [0.2, 0.5, 0.2] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <CardContent className="p-3 relative">
+              <div className="flex items-start gap-3">
+                {/* Training type icon */}
+                <div
+                  className="p-1.5 rounded-md shrink-0"
+                  style={{
+                    backgroundColor: `${trainingTypes.find(t => t.type === scheduledTraining.type)?.color ?? '#10b981'}15`,
+                    color: trainingTypes.find(t => t.type === scheduledTraining.type)?.color ?? '#10b981',
+                  }}
+                >
+                  {trainingTypes.find(t => t.type === scheduledTraining.type)?.icon ?? <Check className="h-4 w-4" />}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-emerald-300">Training Set</p>
+                    <span className="text-[10px] text-emerald-500/50">Applied on advance</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {/* Training type label */}
+                    <span className="text-xs text-[#c9d1d9]">
+                      {trainingTypes.find(t => t.type === scheduledTraining.type)?.label}
+                    </span>
+
+                    {/* Intensity badge */}
+                    <Badge
+                      className="h-4 px-1.5 text-[9px] rounded-md border-0 font-medium"
+                      style={{
+                        backgroundColor: `${selectedIntensityConfig.color}15`,
+                        color: selectedIntensityConfig.color,
+                      }}
+                    >
+                      {intensities.find(i => i.value === scheduledTraining.intensity)?.label}
+                    </Badge>
+
+                    {/* Focus attribute with star */}
+                    {scheduledTraining.focusAttribute && (
+                      <div className="flex items-center gap-0.5">
+                        <Star className="h-3 w-3 text-emerald-400 fill-emerald-400" />
+                        <span className="text-[11px] text-emerald-300">
+                          {attrFullLabels[scheduledTraining.focusAttribute]}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Estimated gains preview */}
+                  {expectedGains && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <TrendingUp className="h-3 w-3 text-emerald-500/60" />
+                      <span className="text-[11px] text-emerald-400/70">
+                        Est. gains: {Object.entries(expectedGains).map(([attr, gain]) =>
+                          `${attrLabels[attr as keyof PlayerAttributes].toUpperCase()} +${gain?.min}-${gain?.max}`
+                        ).join(', ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* No training available message */}
+      {!scheduledTraining && trainingAvailable <= 0 && (
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <p className="text-xs text-amber-300">No sessions remaining. Advance the week to refresh.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Attribute Preview — shown when a type is selected */}
+      <AnimatePresence mode="wait">
+        {selectedTrainingConfig && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            key={selectedTrainingConfig.type}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
           >
             <Card className="bg-[#161b22] border-[#30363d]">
-              <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
-                  <Dumbbell className="h-3.5 w-3.5" />
-                  Focus Attribute
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-3">
-                <div className="flex flex-wrap gap-2">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <BarChart3 className="h-3.5 w-3.5 text-[#8b949e]" />
+                  <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">
+                    Preview — {selectedTrainingConfig.label}
+                  </span>
+                </div>
+                <div className="space-y-2.5">
                   {(Object.keys(attrLabels) as (keyof PlayerAttributes)[]).map(attr => {
-                    const isTrained = selectedTrainingConfig.focusAttrs.includes(attr);
+                    const isFocused = selectedTrainingConfig.focusAttrs.includes(attr);
+                    const gain = expectedGains?.[attr];
+                    const currentValue = player.attributes[attr];
+                    const isFocusAttr = focusAttr === attr;
                     const isSeasonFocus = seasonFocusAttrs.has(attr);
+
                     return (
-                      <motion.button
-                        key={attr}
-                        onClick={() => setFocusAttr(attr)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                          focusAttr === attr
-                            ? 'bg-emerald-600/30 border border-emerald-500 text-emerald-300'
-                            : isTrained
-                            ? 'bg-[#21262d] border border-slate-600 text-[#c9d1d9] hover:bg-slate-700'
-                            : 'bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:bg-slate-700'
-                        }`}
-                        whileTap={{ scale: 1 }}
-                      >
-                        {isSeasonFocus && (
-                          <Star className="h-3 w-3 text-emerald-400 fill-emerald-400" />
-                        )}
-                        {attrIcons[attr]}
-                        {attrLabels[attr]}
-                        {isTrained && focusAttr !== attr && !isSeasonFocus && (
-                          <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                        )}
-                      </motion.button>
+                      <div key={attr} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              style={{ color: isFocused ? selectedTrainingConfig.color : '#484f58' }}
+                            >
+                              {attrIcons[attr]}
+                            </span>
+                            <span
+                              className={`text-xs font-medium ${
+                                isFocused ? 'text-[#c9d1d9]' : 'text-[#8b949e]'
+                              }`}
+                            >
+                              {attrFullLabels[attr]}
+                            </span>
+                            {isSeasonFocus && (
+                              <Badge className="h-3.5 px-1 text-[8px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20 rounded">
+                                FOCUS
+                              </Badge>
+                            )}
+                            {isFocusAttr && !isSeasonFocus && (
+                              <Badge className="h-3.5 px-1 text-[8px] bg-emerald-600/20 text-emerald-300 border-emerald-600/30 rounded">
+                                FOCUS
+                              </Badge>
+                            )}
+                            {isFocused && !isFocusAttr && !isSeasonFocus && (
+                              <Badge className="h-3.5 px-1 text-[8px] bg-[#30363d] text-[#8b949e] border-[#30363d] rounded">
+                                TRAINED
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-[#c9d1d9]">
+                              {currentValue}
+                            </span>
+                            {gain && (
+                              <motion.span
+                                className="text-[11px] font-semibold text-emerald-400"
+                                initial={{ opacity: 0, x: -4 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.15, delay: 0.05 }}
+                              >
+                                +{gain.min}–{gain.max}
+                              </motion.span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Attribute bar */}
+                        <div className={`relative h-2 bg-[#21262d] rounded-md overflow-hidden ${
+                          isSeasonFocus ? 'ring-1 ring-emerald-500/20' : ''
+                        }`}>
+                          <motion.div
+                            className="absolute h-full rounded-md"
+                            style={{
+                              backgroundColor: isSeasonFocus
+                                ? '#10b98160'
+                                : isFocused
+                                ? `${selectedTrainingConfig.color}50`
+                                : '#30363d',
+                            }}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${currentValue}%` }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                          />
+                          {gain && (
+                            <motion.div
+                              className="absolute h-full rounded-md"
+                              style={{
+                                backgroundColor: isFocusAttr || isSeasonFocus
+                                  ? '#10b981'
+                                  : `${selectedTrainingConfig.color}`,
+                                opacity: isFocusAttr || isSeasonFocus ? 0.6 : 0.3,
+                              }}
+                              initial={{ left: `${currentValue}%`, width: 0 }}
+                              animate={{
+                                left: `${currentValue}%`,
+                                width: `${gain.max}%`,
+                              }}
+                              transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
+                            />
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-[#484f58] mt-2">
-                  Focus attribute receives 1.5x gain bonus
-                </p>
               </CardContent>
             </Card>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Schedule Button */}
-      {scheduledTraining ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <Card className="bg-emerald-900/20 border-emerald-800">
-            <CardContent className="p-4 text-center">
-              <motion.div
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              >
-                <TrendingUp className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
-              </motion.div>
-              <p className="text-emerald-300 text-sm font-semibold">Training Scheduled!</p>
-              <p className="text-emerald-400/70 text-xs mt-1">
-                Will be applied when you advance the week
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ) : (
-        <Button
-          onClick={handleSchedule}
-          disabled={!selectedType || trainingAvailable <= 0 || isIntenseDisabled}
-          className="w-full h-12 bg-emerald-700 hover:bg-emerald-600 disabled:bg-[#21262d] disabled:text-[#484f58] rounded-lg font-semibold"
-        >
-          <TrendingUp className="mr-2 h-4 w-4" />
-          Schedule Training
-        </Button>
-      )}
-
-      {/* Advance Week */}
-      <Button
-        onClick={() => advanceWeek()}
-        variant="outline"
-        className="w-full border-[#30363d] text-[#c9d1d9] rounded-lg hover:bg-[#21262d]"
-      >
-        <Clock className="mr-2 h-4 w-4" />
-        Advance Week
-      </Button>
-
       {/* Training History */}
       {recentTrainingHistory.length > 0 && (
         <Card className="bg-[#161b22] border-[#30363d]">
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
-              <History className="h-3.5 w-3.5" />
-              Recent Training
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-2.5">
+              <History className="h-3.5 w-3.5 text-[#8b949e]" />
+              <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Recent</span>
+            </div>
+            <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
               {recentTrainingHistory.map((session, idx) => {
                 const config = trainingTypes.find(t => t.type === session.type);
                 const intensityConf = intensities.find(i => i.value === session.intensity);
@@ -862,54 +866,44 @@ export default function TrainingPanel() {
                 return (
                   <motion.div
                     key={`${session.completedAt}-${idx}`}
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#21262d] border border-[#30363d]"
+                    transition={{ duration: 0.15, delay: idx * 0.04 }}
+                    className="flex items-center gap-2.5 p-2 rounded-md bg-[#21262d] border border-[#30363d]"
                   >
                     <div
-                      className="p-1.5 rounded-md shrink-0"
+                      className="p-1 rounded-md shrink-0"
                       style={{
-                        backgroundColor: config ? `${config.color}20` : '#1e293b',
+                        backgroundColor: config ? `${config.color}15` : '#21262d',
                         color: config?.color ?? '#64748b',
                       }}
                     >
-                      {config?.icon ?? <Dumbbell className="h-4 w-4" />}
+                      {config?.icon ?? <Dumbbell className="h-3.5 w-3.5" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-[#c9d1d9]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-[#c9d1d9]">
                           {config?.label ?? session.type}
                         </span>
                         <Badge
-                          className="h-4 px-1 text-[9px]"
+                          className="h-3.5 px-1 text-[8px] border-0 rounded"
                           style={{
                             backgroundColor: intensityConf
-                              ? `${intensityConf.color}20`
-                              : '#1e293b',
+                              ? `${intensityConf.color}15`
+                              : '#21262d',
                             color: intensityConf?.color ?? '#64748b',
-                            borderColor: intensityConf
-                              ? `${intensityConf.color}40`
-                              : '#334155',
                           }}
                         >
                           {intensityConf?.label ?? `${session.intensity}%`}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {session.focusAttribute && (
-                          <span className="text-[10px] text-emerald-400/70">
-                            Focus: {attrLabels[session.focusAttribute]}
-                          </span>
-                        )}
-                        {session.type === 'recovery' && (
-                          <span className="text-[10px] text-pink-400/70">
-                            Recovery session
-                          </span>
-                        )}
-                      </div>
+                      {session.focusAttribute && (
+                        <span className="text-[10px] text-emerald-400/60">
+                          {attrFullLabels[session.focusAttribute]}
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[9px] text-[#484f58] shrink-0">
+                    <span className="text-[10px] text-[#484f58] shrink-0">
                       {timeAgo}
                     </span>
                   </motion.div>
@@ -920,79 +914,84 @@ export default function TrainingPanel() {
         </Card>
       )}
 
+      {/* Current Attributes Overview — with delta indicators */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="h-3.5 w-3.5 text-[#8b949e]" />
+            <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Attributes</span>
+          </div>
+          <div className="space-y-2">
+            {(Object.keys(attrLabels) as (keyof PlayerAttributes)[]).map((attr, idx) => {
+              const isSeasonFocus = seasonFocusAttrs.has(attr);
+              const delta = seasonAttrDeltas.get(attr);
+              return (
+                <div key={attr} className="flex items-center gap-2.5">
+                  <span
+                    style={{ color: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
+                  >
+                    {attrIcons[attr]}
+                  </span>
+                  <span className={`text-xs w-12 ${isSeasonFocus ? 'text-emerald-300 font-medium' : 'text-[#8b949e]'}`}>
+                    {attrFullLabels[attr]}
+                  </span>
+                  <div className={`flex-1 h-1.5 bg-[#21262d] rounded-md overflow-hidden ${
+                    isSeasonFocus ? 'ring-1 ring-emerald-500/20' : ''
+                  }`}>
+                    <motion.div
+                      className="h-full rounded-md"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${player.attributes[attr]}%` }}
+                      transition={{ duration: 0.5, ease: 'easeOut', delay: idx * 0.04 }}
+                      style={{ backgroundColor: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {isSeasonFocus && (
+                      <Star className="h-2.5 w-2.5 text-emerald-400 fill-emerald-400" />
+                    )}
+                    {/* Delta indicator from training history */}
+                    {delta != null && delta > 0 && (
+                      <motion.span
+                        className="text-[10px] font-semibold text-emerald-400"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        +{delta}
+                      </motion.span>
+                    )}
+                    <span className="text-xs font-bold w-6 text-right text-[#c9d1d9]">
+                      {player.attributes[attr]}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Season Training Focus Modal */}
       <SeasonTrainingFocusModal
         open={showFocusModal}
         onClose={() => setShowFocusModal(false)}
       />
-
-      {/* Current Attributes Overview */}
-      <Card className="bg-[#161b22] border-[#30363d]">
-        <CardHeader className="pb-2 pt-3 px-4">
-          <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
-            <BarChart3 className="h-3.5 w-3.5" />
-            Current Attributes
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-3 space-y-2.5">
-          {(Object.keys(attrLabels) as (keyof PlayerAttributes)[]).map((attr, idx) => {
-            const isSeasonFocus = seasonFocusAttrs.has(attr);
-            return (
-              <div key={attr} className="flex items-center gap-3">
-                <span
-                  className="relative"
-                  style={{ color: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
-                >
-                  {attrIcons[attr]}
-                  {isSeasonFocus && (
-                    <Star className="h-2.5 w-2.5 text-emerald-400 fill-emerald-400 absolute -top-1 -right-1" />
-                  )}
-                </span>
-                <span className={`text-xs w-14 ${isSeasonFocus ? 'text-emerald-300 font-medium' : 'text-[#8b949e]'}`}>
-                  {attrLabels[attr]}
-                </span>
-                <div className={`flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden ${
-                  isSeasonFocus ? 'ring-1 ring-emerald-500/30' : ''
-                }`}>
-                  <motion.div
-                    className="h-full rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${player.attributes[attr]}%` }}
-                    transition={{ duration: 0.6, ease: 'easeOut', delay: idx * 0.05 }}
-                    style={{ backgroundColor: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {isSeasonFocus && (
-                    <Badge className="h-4 px-1 text-[8px] bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
-                      SEASON
-                    </Badge>
-                  )}
-                  <span className="text-xs font-bold w-6 text-right text-[#c9d1d9]">
-                    {player.attributes[attr]}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
 // ============================================================
-// Utility: Human-readable time ago
+// Time ago utility
 // ============================================================
 function getTimeAgo(timestamp: number): string {
   const now = Date.now();
   const diff = now - timestamp;
   const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-
-  if (days > 0) return `${days}d ago`;
-  if (hours > 0) return `${hours}h ago`;
-  if (minutes > 0) return `${minutes}m ago`;
-  return 'Just now';
+  return `${days}d ago`;
 }

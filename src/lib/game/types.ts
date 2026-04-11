@@ -80,6 +80,22 @@ export interface InjuryRecord {
   weeksOut: number;
 }
 
+// --- Enhanced Injury System ---
+export type InjuryType = 'minor' | 'moderate' | 'severe' | 'career_threatening';
+export type InjuryCategory = 'muscle' | 'ligament' | 'bone' | 'concussion' | 'illness';
+
+export interface Injury {
+  id: string;
+  type: InjuryType;
+  category: InjuryCategory;
+  name: string; // e.g. "Hamstring Strain", "ACL Tear", "Ankle Sprain"
+  weekSustained: number;
+  seasonSustained: number;
+  weeksOut: number; // total weeks to recover
+  weeksRemaining: number;
+  matchMissed: boolean;
+}
+
 // --- Player Trait ---
 export type PlayerTrait =
   // Attacking
@@ -575,7 +591,7 @@ export type GameScreen =
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
-  | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental' | 'international' | 'morale';
+  | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental' | 'international' | 'morale' | 'injury_report';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
@@ -703,6 +719,9 @@ export interface GameState {
   // Mindset & Morale
   mindset: PlayerMindset;
   moraleFactors: MoraleFactor[];
+  // Injury System
+  injuries: Injury[];
+  currentInjury: Injury | null;
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;

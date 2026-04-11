@@ -1278,3 +1278,179 @@ Stage Summary:
 - Focus bonus multiplier 1.5x-2.0x based on realistic factors (age, gametime, form, potential room)
 - All new fields properly migrated for old saves
 - Lint passes clean, dev server compiles without errors
+
+---
+Task ID: 11
+Agent: main
+Task: Remove Schedule Training & Advance Week buttons from TrainingPanel, fix Low intensity to 1x
+
+Work Log:
+- Modified `/home/z/my-project/src/components/game/TrainingPanel.tsx`
+- Removed "Schedule Training" button and "Advance Week" button sections entirely
+- Added auto-scheduling via useEffect: when user selects a training type + intensity + focus attr, training is automatically scheduled
+- Changed default intensity from Medium (60) to Low (30) since Low is now the baseline
+- Updated intensity gain multipliers: Low 0.6x → 1.0x, Medium 1.0x → 1.5x, High 1.5x → 2.0x
+- Replaced big "Training Scheduled!" celebration card with subtle "Training Set" status indicator showing type, intensity, focus
+- Added "No training available" message when sessions are depleted
+- Cleaned up unused imports: TrainingSession, Progress, TrendingUp, Clock
+- Added new imports: useEffect, Check
+- Lint passes clean, dev server compiles without errors
+
+Stage Summary:
+- Training window is now streamlined: select focus type + adjust intensity, training auto-schedules
+- Low intensity starts at 1.0x (baseline), Medium 1.5x, High 2.0x
+- No more manual "Schedule Training" or "Advance Week" buttons in training panel
+- Week advancement happens from Dashboard as before
+
+---
+Task ID: 12-b
+Agent: subagent
+Task: Improve TrainingPanel styling and add quality-of-life improvements
+
+Work Log:
+- Modified `/home/z/my-project/src/components/game/TrainingPanel.tsx` only (no other files changed)
+- Rewrote from ~993 lines to ~560 lines with all 6 requested improvements
+
+Changes Made:
+
+1. **Training Type Cards Redesign**:
+   - Changed from 2-column grid to single-column list with horizontal card layout
+   - Each card: icon on left, label+description in middle, gain indicator (e.g., "SHO +2, DRI +1") on right
+   - Small colored dot indicator for season focus area (emerald dot on the matching training type)
+   - Selected card gets subtle left border accent (3px, matching training color) instead of ring highlight
+   - Focus attribute pill buttons merged into the selected training type card row (compact, inline)
+   - Removed gradient backgrounds, LayoutId animations, and ChevronRight in favor of clean left-border accent
+
+2. **Intensity Selector Improvement**:
+   - Replaced 3 separate card buttons with horizontal segmented control
+   - Gradient bar background from green→amber→red behind the segmented control
+   - Gain multiplier displayed prominently below each label (x1.0, x1.5, x2.0)
+   - Fatigue cost shown as a small colored badge in a detail row below
+   - Selected segment has dark card background with subtle shadow
+   - Removed risk dot indicators and risk labels for cleaner look
+
+3. **Focus Attribute Selector Cleanup**:
+   - Only shows attributes relevant to the selected training type (merged into type card)
+   - Compact pill buttons with 10px font inside the training type row
+   - Season focus attributes get subtle emerald background tint
+   - Removed the separate "Focus Attribute" card/header entirely
+   - Focus pills appear inline with the selected training type card
+
+4. **Current Attributes Overview Enhancement**:
+   - Added delta indicators (+1, +2, etc.) next to attributes that have improved this season
+   - Computed from training history: counts focusAttribute entries per attribute
+   - Green text for positive deltas (text-emerald-400)
+   - Removed "SEASON" badge from season focus attributes, replaced with just a star icon
+
+5. **Training Status Indicator Enhancement**:
+   - More detailed "Training Set" card with: training type icon + label, intensity badge with colored background, focus attribute with star icon
+   - Estimated gains preview row (e.g., "Est. gains: SHO +1.5-4.5, DRI +1-3")
+   - Subtle pulse animation on the card border (opacity cycling from 0.2→0.5→0.2 over 2s)
+   - TrendingUp icon next to gains preview
+
+6. **Season Training Focus Banner**:
+   - No focus: prominent pulsing amber dot (double-ring with animate-ping) instead of plain AlertTriangle
+   - Concise text: "No training focus set" + "Set focus to get 1.5x–2.0x growth bonus"
+   - Focus IS set: bonus multiplier shown prominently as a green badge (e.g., "1.8x")
+   - "Change" button for modifying focus, moved inline with attribute pills
+
+Styling Changes (Uncodixify directive compliance):
+- Max rounded-md/rounded-lg border-radius (no rounded-2xl/3xl)
+- NO pill shapes, NO glassmorphism, NO soft gradients, NO hero sections
+- Subtle shadows only
+- 100-200ms transitions throughout
+- 14-16px body text (text-sm/text-xs)
+- NO blue-dominant colors, NO indigo
+- Dark theme: bg-[#0d1117] outer implied, bg-[#161b22] cards, border-[#30363d], text-[#c9d1d9]
+- Clean Linear/Raycast/Stripe aesthetic
+
+Technical Implementation:
+- Added imports: TrendingUp, removed ChevronRight, removed CardHeader/CardTitle
+- Added attrFullLabels constant for full attribute names (separate from abbreviated attrLabels)
+- Added seasonAttrDeltas useMemo to compute training frequency per attribute
+- Removed renderRiskIndicator helper (no longer needed with segmented control)
+- All useMemo hooks placed before early return
+- Auto-scheduling behavior preserved unchanged
+- Intensity multipliers unchanged: Low=1.0x, Medium=1.5x, High=2.0x
+- No "Schedule Training" or "Advance Week" buttons added
+- TrainingPanel.tsx lint: passes clean
+- Dev server: compiles without errors
+
+---
+Task ID: 12-a
+Agent: main
+Task: Improve Dashboard component styling and add visual polish
+
+Work Log:
+- Modified `/home/z/my-project/src/components/game/Dashboard.tsx` only (no other files changed)
+- Enhanced from ~1421 lines to ~1681 lines with 6 major visual improvement areas
+
+Changes Made:
+
+1. **Player Profile Card Enhancement:**
+   - Added animated glow effect behind OVR number based on overall rating (green for 70+, amber for 50-69, red for below 50) using framer-motion pulsing opacity/scale animation
+   - Made OVR number use text-4xl font-black on w-[68px] h-[68px] circle (was text-2xl font-black on w-16 h-16)
+   - Added thin colored form indicator bar under player name (green=#22c55e for form≥7, amber=#f59e0b for form≥5, red=#ef4444 for form<5) with animated width
+   - Added PositionIcon component showing mini SVG field with position dot indicator based on player position
+   - Position icon colored by category (goalkeeping=amber, defence=blue, midfield=green, attack=red)
+
+2. **Season Progress Card Enhancement:**
+   - Replaced SVG circular progress ring with horizontal progress bar showing season phase labels (Pre → Early → Mid → Late → Final)
+   - Added subtle gradient background (from-emerald-950/20 via-transparent to-emerald-950/10)
+   - Week number displayed in text-2xl font-black with /seasonMatchdays label
+   - Phase labels row using flex proportions matching segment widths
+   - Phase background segments colored based on current progress (brighter when active, dimmer when passed)
+   - White current-week marker on progress bar with animated position
+   - Removed unused SVG ring calculation variables (ringRadius, ringStroke, ringCircumference, ringOffset)
+
+3. **Quick Action Buttons Enhancement:**
+   - Added gradient backgrounds (from-{color}-950/50 to-{color}-900/10) per accent color
+   - Changed accent color for Stats button from 'blue' to 'cyan' to avoid blue-dominant colors
+   - Added border glow on hover using group-hover:shadow-[0_0_8px_rgba(...)] effects per color
+   - Made buttons slightly larger (p-3.5, w-9 h-9 icon containers, h-5 w-5 icons, gap-2)
+   - Added whileTap scale: 0.97 animation
+   - Added colored icon background containers (bg-{color}-500/15)
+   - Transition duration set to 150ms
+
+4. **Next Match Card Enhancement:**
+   - Added FormationDots component visualizing team formations as SVG mini-pitch with player position dots
+   - Both teams' formations shown side by side with different colors (home=#10b981, away=#f59e0b)
+   - Improved win probability display with horizontal bar chart (W/D/L rows with animated width bars)
+   - Added "Previous Meeting" result section showing last match vs same opponent from recentResults
+   - Previous meeting shows History icon, W/D/L badge, score, and week number
+   - Removed formation text labels and tactical style comparison in favor of visual formation dots
+
+5. **Recent Results Enhancement:**
+   - Added match type badge next to each result (League=emerald, Cup=amber, Continental=cyan, Friendly=slate)
+   - Added streak indicator in Recent Results card header showing emoji + label from streakInfo
+   - Changed assist icon color from blue to cyan (consistent with other cyan usage instead of blue)
+   - Enhanced slide-in animation (x: -12 → 0, duration 0.2s instead of 0.3s)
+
+6. **Market Value & Wage Enhancement:**
+   - Added market value trend arrow (TrendingUp/Down/Minus) with percentage change display
+   - Trend calculated from simulated season-start value based on current week progress
+   - Added sparkline SVG showing value trend over recent 8 results
+   - Sparkline uses polyline + filled polygon area, colored green (up) or red (down)
+   - Changed Assists stat color from blue to cyan (consistent color scheme)
+   - Value Trend label with 120×20 sparkline aligned right
+
+New Components:
+- **PositionIcon**: SVG mini field with position dot, color-coded by position category
+- **FormationDots**: SVG mini pitch with player dots based on formation string (e.g. "4-3-3"), supports flip for away team
+
+Technical Implementation:
+- Added imports: History from lucide-react, getPositionCategory from gameUtils
+- Added helper functions within components: PositionIcon, FormationDots
+- Changed QuickActionButton accentColor type from 'emerald'|'amber'|'blue'|'purple' to 'emerald'|'amber'|'cyan'|'purple'
+- Removed unused SVG ring calculation variables
+- All useMemo hooks placed before early return
+- Lint passes clean
+- Dev server compiles without errors
+
+Style:
+- Dark theme maintained: bg-[#0d1117] outer, bg-[#161b22] cards, border-[#30363d], text-[#c9d1d9]
+- Max 8-10px border-radius (rounded-md/rounded-lg throughout, no rounded-2xl/3xl)
+- 150ms transitions for action buttons
+- Cyan replaces blue-dominant colors for stats/assists
+- No indigo, no soft gradients, no glassmorphism, no hero sections
+- Clean, professional aesthetics (Linear/Raycast/Stripe style)

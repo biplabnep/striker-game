@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { getOverallColor, getFormLabel, getMoraleLabel, formatCurrency, getSeasonWeekDescription, getMatchRatingLabel, getPositionColor } from '@/lib/game/gameUtils';
+import { getOverallColor, getFormLabel, getMoraleLabel, formatCurrency, getSeasonWeekDescription, getMatchRatingLabel, getPositionColor, getPositionCategory } from '@/lib/game/gameUtils';
 import { NATIONALITIES } from '@/lib/game/playerData';
 import { getClubById, LEAGUES, getLeagueById, getSeasonMatchdays, CUP_NAMES, CUP_MATCH_WEEKS } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import {
   ArrowRight, Bell, Star, Swords, Table, ChevronRight, Flame,
   ArrowUp, ArrowDown, Minus, Target, Goal, CircleDot, FileText, UserCircle,
   Dumbbell, BarChart3, Shield, MapPin, Clock, Users, Sparkles,
-  GraduationCap, ArrowUpCircle, Crosshair
+  GraduationCap, ArrowUpCircle, Crosshair, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WeeklySummary from '@/components/game/WeeklySummary';
@@ -360,12 +360,6 @@ export default function Dashboard() {
     return won ? 'W' : drew ? 'D' : 'L';
   };
 
-  // SVG progress ring calculations
-  const ringRadius = 58;
-  const ringStroke = 8;
-  const ringCircumference = 2 * Math.PI * ringRadius;
-  const ringOffset = ringCircumference - (seasonProgress / 100) * ringCircumference;
-
   return (
     <>
     <div className="p-4 max-w-lg mx-auto space-y-4">
@@ -390,12 +384,28 @@ export default function Dashboard() {
 
         <CardContent className="p-4 relative">
           <div className="flex items-center gap-4">
-            {/* Overall Rating */}
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center font-black text-2xl border-2" style={{ borderColor: overallColor, color: overallColor }}>
+            {/* Overall Rating with animated glow */}
+            <div className="flex flex-col items-center relative">
+              {/* Animated glow effect behind OVR */}
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  boxShadow: player.overall >= 70
+                    ? '0 0 20px 4px rgba(34,197,94,0.35), 0 0 40px 8px rgba(34,197,94,0.15)'
+                    : player.overall >= 50
+                    ? '0 0 20px 4px rgba(245,158,11,0.35), 0 0 40px 8px rgba(245,158,11,0.15)'
+                    : '0 0 20px 4px rgba(239,68,68,0.35), 0 0 40px 8px rgba(239,68,68,0.15)',
+                }}
+                animate={{
+                  opacity: [0.6, 1, 0.6],
+                  scale: [1, 1.05, 1],
+                }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <div className="w-[68px] h-[68px] rounded-full flex items-center justify-center font-black text-4xl border-2 relative z-10" style={{ borderColor: overallColor, color: overallColor }}>
                 {player.overall}
               </div>
-              <span className="text-[10px] text-[#8b949e] mt-1">OVR</span>
+              <span className="text-[10px] text-[#8b949e] mt-1.5 font-medium">OVR</span>
             </div>
 
             {/* Player Info */}
@@ -416,9 +426,25 @@ export default function Dashboard() {
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm text-[#8b949e]">
+              {/* Form indicator bar under name */}
+              <div className="mt-1.5 h-[3px] w-24 rounded-full overflow-hidden bg-[#21262d]">
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(player.form / 10) * 100}%` }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  style={{
+                    background: player.form >= 7 ? '#22c55e' : player.form >= 5 ? '#f59e0b' : '#ef4444',
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2 text-sm text-[#8b949e] mt-1.5">
                 <span>{nationInfo?.flag}</span>
-                <Badge variant="outline" className="text-xs font-bold" style={{ color: posColor, borderColor: posColor }}>{player.position}</Badge>
+                <Badge variant="outline" className="text-xs font-bold gap-1" style={{ color: posColor, borderColor: posColor }}>
+                  {/* Field position indicator icon */}
+                  <PositionIcon position={player.position} size={10} />
+                  {player.position}
+                </Badge>
                 <span className="text-xs">Age {player.age}</span>
               </div>
               <div className="flex items-center gap-2 mt-1">
@@ -576,28 +602,28 @@ export default function Dashboard() {
       {/* Quick Actions Panel */}
       <div className="grid grid-cols-4 gap-2">
         <QuickActionButton
-          icon={<Dumbbell className="h-4 w-4" />}
+          icon={<Dumbbell className="h-5 w-5" />}
           label="Train"
           description="Improve skills"
           onClick={() => setScreen('training')}
           accentColor="emerald"
         />
         <QuickActionButton
-          icon={<Swords className="h-4 w-4" />}
+          icon={<Swords className="h-5 w-5" />}
           label="Match"
           description="Play next"
           onClick={() => setScreen('match_day')}
           accentColor="amber"
         />
         <QuickActionButton
-          icon={<BarChart3 className="h-4 w-4" />}
+          icon={<BarChart3 className="h-5 w-5" />}
           label="Stats"
           description="Analytics"
           onClick={() => setScreen('analytics')}
-          accentColor="blue"
+          accentColor="cyan"
         />
         <QuickActionButton
-          icon={<UserCircle className="h-4 w-4" />}
+          icon={<UserCircle className="h-5 w-5" />}
           label="Profile"
           description="View details"
           onClick={() => setScreen('player_profile')}
@@ -605,83 +631,76 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Season Info Bar + Progress Ring */}
-      <Card className="bg-[#161b22] border-[#30363d]">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            {/* SVG Circular Progress Ring */}
-            <div className="relative w-32 h-32 flex-shrink-0">
-              <svg className="w-32 h-32 -rotate-90" viewBox="0 0 140 140">
-                {/* Background track */}
-                <circle
-                  cx="70" cy="70" r={ringRadius}
-                  fill="none"
-                  stroke="#1e293b"
-                  strokeWidth={ringStroke}
-                />
-                {/* Progress arc */}
-                <motion.circle
-                  cx="70" cy="70" r={ringRadius}
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth={ringStroke}
-                  strokeLinecap="round"
-                  strokeDasharray={ringCircumference}
-                  initial={{ strokeDashoffset: ringCircumference }}
-                  animate={{ strokeDashoffset: ringOffset }}
-                  transition={{ duration: 1.2, ease: 'easeOut' }}
-                />
-                {/* Week markers - show at key intervals */}
-                {Array.from({ length: 9 }, (_, i) => Math.round((i / 8) * seasonMatchdays) || 1).map(week => {
-                  const angle = ((week / seasonMatchdays) * 360 - 90) * (Math.PI / 180);
-                  const markerRadius = ringRadius + 13;
-                  const x = 70 + markerRadius * Math.cos(angle);
-                  const y = 70 + markerRadius * Math.sin(angle);
-                  const isCurrentWeek = week === currentWeek;
-                  return (
-                    <g key={week}>
-                      {isCurrentWeek && (
-                        <circle cx={x} cy={y} r="5" fill="#10b981" opacity="0.3">
-                          <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite" />
-                          <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" repeatCount="indefinite" />
-                        </circle>
-                      )}
-                      <circle
-                        cx={x} cy={y}
-                        r={isCurrentWeek ? 3 : 1.5}
-                        fill={isCurrentWeek ? '#10b981' : week <= currentWeek ? '#475569' : '#1e293b'}
-                      />
-                      {(week === 1 || week === Math.round(seasonMatchdays / 2) || week === seasonMatchdays) && (
-                        <text
-                          x={70 + (markerRadius + 9) * Math.cos(angle)}
-                          y={70 + (markerRadius + 9) * Math.sin(angle)}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill={week <= currentWeek ? '#94a3b8' : '#334155'}
-                          fontSize="7"
-                          fontWeight={isCurrentWeek ? 'bold' : 'normal'}
-                        >
-                          {week}
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
-              </svg>
-              {/* Center text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-black text-emerald-400">{seasonProgress}%</span>
-                <span className="text-[9px] text-[#8b949e]">Complete</span>
+      {/* Season Progress Card */}
+      <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+        <div className="relative">
+          {/* Subtle gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/20 via-transparent to-emerald-950/10 pointer-events-none" />
+          <CardContent className="p-4 relative z-10">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-xs text-[#8b949e]">Season {currentSeason}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-2xl font-black text-[#c9d1d9]">{currentWeek}</span>
+                <span className="text-xs text-[#8b949e]">/ {seasonMatchdays}</span>
               </div>
             </div>
 
-            {/* Season info */}
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2 text-[#8b949e]">
-                <Calendar className="h-3 w-3" />
-                <span className="text-xs">Season {currentSeason} &bull; Week {currentWeek}/{seasonMatchdays}</span>
+            {/* Phase label */}
+            <div className="mb-2">
+              <span className="text-[10px] font-medium text-emerald-400 uppercase tracking-wider">
+                {getSeasonWeekDescription(currentWeek, seasonMatchdays)}
+              </span>
+            </div>
+
+            {/* Horizontal progress bar with phase segments */}
+            <div className="relative mb-2">
+              {/* Phase background segments */}
+              <div className="flex h-3 rounded-md overflow-hidden bg-[#21262d]">
+                {/* Pre-Season (0-10%) */}
+                <div className={`${seasonProgress > 0 ? (seasonProgress <= 10 ? 'bg-emerald-600/40' : 'bg-emerald-600/20') : ''}`} style={{ width: '10%' }} />
+                {/* Early Season (10-26%) */}
+                <div className={`${seasonProgress > 10 ? (seasonProgress <= 26 ? 'bg-emerald-500/40' : 'bg-emerald-500/20') : ''}`} style={{ width: '16%' }} />
+                {/* Mid Season (26-52%) */}
+                <div className={`${seasonProgress > 26 ? (seasonProgress <= 52 ? 'bg-emerald-400/40' : 'bg-emerald-400/20') : ''}`} style={{ width: '26%' }} />
+                {/* Late Season (52-78%) */}
+                <div className={`${seasonProgress > 52 ? (seasonProgress <= 78 ? 'bg-amber-500/40' : 'bg-amber-500/20') : ''}`} style={{ width: '26%' }} />
+                {/* Final Run (78-100%) */}
+                <div className={`${seasonProgress > 78 ? 'bg-red-500/40' : ''}`} style={{ width: '22%' }} />
               </div>
-              <p className="text-[10px] text-[#8b949e]">{getSeasonWeekDescription(currentWeek)}</p>
+              {/* Actual progress overlay */}
+              <motion.div
+                className="absolute top-0 left-0 h-3 rounded-md bg-emerald-500"
+                initial={{ width: 0 }}
+                animate={{ width: `${seasonProgress}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+              {/* Current week marker */}
+              <motion.div
+                className="absolute top-0 h-3 w-0.5 bg-white z-10"
+                initial={{ left: 0 }}
+                animate={{ left: `${seasonProgress}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+            </div>
+
+            {/* Phase labels row */}
+            <div className="flex text-[7px] text-[#484f58] font-medium uppercase tracking-wider mb-3">
+              <span className="flex-1">Pre</span>
+              <span className="flex-[1.6]">Early</span>
+              <span className="flex-[2.6]">Mid</span>
+              <span className="flex-[2.6]">Late</span>
+              <span className="flex-[2.2]">Final</span>
+            </div>
+
+            {/* Season info */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#8b949e]">
+                <span className="text-xs">{getSeasonWeekDescription(currentWeek, seasonMatchdays)} &bull; {seasonProgress}% complete</span>
+              </div>
               {pendingEvents > 0 && (
                 <Badge className="bg-amber-600 text-white text-[10px] px-1.5">
                   {pendingEvents} event{pendingEvents > 1 ? 's' : ''}
@@ -721,8 +740,8 @@ export default function Dashboard() {
                 </motion.div>
               )}
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        </div>
       </Card>
 
       {/* Cup Status Card */}
@@ -853,20 +872,19 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="px-4 pb-4 relative">
             {/* Team logos with pulsing VS */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               {/* Home Team */}
               <div className="flex flex-col items-center gap-1.5 flex-1">
                 <span className="text-3xl">{isHome ? currentClub.logo : nextOpponent.logo}</span>
                 <span className="text-xs font-semibold text-[#c9d1d9] truncate max-w-[80px] text-center">
                   {isHome ? currentClub.shortName : nextOpponent.shortName}
                 </span>
-                <span className="text-[9px] text-[#8b949e]">{isHome ? currentClub.formation : nextOpponent.formation}</span>
               </div>
 
               {/* VS Divider */}
               <div className="flex flex-col items-center mx-2">
                 <div className="text-lg font-black text-emerald-400/80">VS</div>
-                <div className="w-px h-6 bg-[#30363d] mt-1" />
+                <div className="w-px h-4 bg-[#30363d] mt-1" />
               </div>
 
               {/* Away Team */}
@@ -875,59 +893,110 @@ export default function Dashboard() {
                 <span className="text-xs font-semibold text-[#c9d1d9] truncate max-w-[80px] text-center">
                   {isHome ? nextOpponent.shortName : currentClub.shortName}
                 </span>
-                <span className="text-[9px] text-[#8b949e]">{isHome ? nextOpponent.formation : currentClub.formation}</span>
               </div>
             </div>
 
-            {/* Formation comparison mini */}
-            <div className="flex items-center justify-between mb-3 px-2">
-              <div className="flex items-center gap-1.5">
-                <Shield className="h-3 w-3 text-[#8b949e]" />
-                <span className="text-[10px] text-[#8b949e]">{isHome ? currentClub.tacticalStyle : nextOpponent.tacticalStyle}</span>
-              </div>
-              <MapPin className="h-3 w-3 text-[#484f58]" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-[#8b949e]">{isHome ? nextOpponent.tacticalStyle : currentClub.tacticalStyle}</span>
-                <Shield className="h-3 w-3 text-[#8b949e]" />
-              </div>
+            {/* Formation Dots Visualization */}
+            <div className="flex items-center justify-between mb-3 px-1">
+              <FormationDots formation={isHome ? currentClub.formation : nextOpponent.formation} color="#10b981" />
+              <FormationDots formation={isHome ? nextOpponent.formation : currentClub.formation} color="#f59e0b" flip />
             </div>
 
-            {/* Win probability mini bar */}
-            <div className="space-y-1.5">
+            {/* Win probability mini bar chart */}
+            <div className="space-y-1.5 mb-3">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-emerald-400 font-semibold">{winProbability.win}%</span>
-                <span className="text-[#8b949e]">Win Probability</span>
-                <span className="text-[#8b949e]">{100 - winProbability.win - winProbability.draw}%</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-emerald-400">{winProbability.win}%</span>
+                  <span className="text-[#8b949e]">Win</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[#8b949e]">Draw</span>
+                  <span className="font-bold text-[#8b949e]">{winProbability.draw}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[#8b949e]">Loss</span>
+                  <span className="font-bold text-red-400">{100 - winProbability.win - winProbability.draw}%</span>
+                </div>
               </div>
-              <div className="flex h-2 rounded-full overflow-hidden bg-[#21262d]">
-                <motion.div
-                  className="bg-emerald-500"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${winProbability.win}%` }}
-                  transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
-                />
-                <motion.div
-                  className="bg-slate-500"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${winProbability.draw}%` }}
-                  transition={{ duration: 0.8, delay: 0.5, ease: 'easeOut' }}
-                />
-                <motion.div
-                  className="bg-red-500/70"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${100 - winProbability.win - winProbability.draw}%` }}
-                  transition={{ duration: 0.8, delay: 0.7, ease: 'easeOut' }}
-                />
-              </div>
-              <div className="flex justify-between text-[8px] text-[#484f58]">
-                <span>Win</span>
-                <span>Draw</span>
-                <span>Loss</span>
+              {/* Stacked horizontal bar chart */}
+              <div className="space-y-1">
+                {/* Win bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[8px] text-[#484f58] w-7">W</span>
+                  <div className="flex-1 h-2 bg-[#21262d] rounded-sm overflow-hidden">
+                    <motion.div
+                      className="h-full bg-emerald-500 rounded-sm"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${winProbability.win}%` }}
+                      transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
+                {/* Draw bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[8px] text-[#484f58] w-7">D</span>
+                  <div className="flex-1 h-2 bg-[#21262d] rounded-sm overflow-hidden">
+                    <motion.div
+                      className="h-full bg-slate-500 rounded-sm"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${winProbability.draw}%` }}
+                      transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
+                {/* Loss bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[8px] text-[#484f58] w-7">L</span>
+                  <div className="flex-1 h-2 bg-[#21262d] rounded-sm overflow-hidden">
+                    <motion.div
+                      className="h-full bg-red-500/70 rounded-sm"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${100 - winProbability.win - winProbability.draw}%` }}
+                      transition={{ duration: 0.8, delay: 0.6, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Previous Meeting */}
+            {(() => {
+              const prevMeeting = recentResults.find(r =>
+                (r.homeClub.id === currentClub.id && r.awayClub.id === nextOpponent.id) ||
+                (r.homeClub.id === nextOpponent.id && r.awayClub.id === currentClub.id)
+              );
+              if (!prevMeeting) return null;
+              const prevPlayerScore = prevMeeting.homeClub.id === currentClub.id ? prevMeeting.homeScore : prevMeeting.awayScore;
+              const prevOppScore = prevMeeting.homeClub.id === currentClub.id ? prevMeeting.awayScore : prevMeeting.homeScore;
+              const prevResult = prevPlayerScore > prevOppScore ? 'W' : prevPlayerScore < prevOppScore ? 'L' : 'D';
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.2 }}
+                  className="flex items-center justify-between mb-3 px-2 py-1.5 rounded-md bg-[#21262d] border border-[#30363d]"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <History className="h-3 w-3 text-[#8b949e]" />
+                    <span className="text-[10px] text-[#8b949e]">Previous Meeting</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge className={`text-[9px] px-1 font-bold ${
+                      prevResult === 'W' ? 'bg-emerald-600 text-white' :
+                      prevResult === 'D' ? 'bg-amber-600 text-white' :
+                      'bg-red-600 text-white'
+                    }`}>
+                      {prevResult}
+                    </Badge>
+                    <span className="text-[10px] font-semibold text-[#c9d1d9]">{prevPlayerScore}-{prevOppScore}</span>
+                    <span className="text-[8px] text-[#484f58]">Wk {prevMeeting.week}</span>
+                  </div>
+                </motion.div>
+              );
+            })()}
 
             {/* Week info */}
-            <div className="flex items-center justify-center gap-1.5 mt-3 pt-2 border-t border-[#30363d]">
+            <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-[#30363d]">
               <Clock className="h-3 w-3 text-[#8b949e]" />
               <span className="text-[10px] text-[#8b949e]">Week {nextFixture.matchday} &bull; Season {nextFixture.season}</span>
             </div>
@@ -980,7 +1049,7 @@ export default function Dashboard() {
               <p className="text-[10px] text-[#8b949e]">Goals</p>
             </div>
             <div>
-              <p className="text-lg font-bold text-blue-400">{player.seasonStats.assists}</p>
+              <p className="text-lg font-bold text-cyan-400">{player.seasonStats.assists}</p>
               <p className="text-[10px] text-[#8b949e]">Assists</p>
             </div>
             <div>
@@ -994,8 +1063,78 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#30363d]">
             <span className="text-xs text-[#8b949e]">Market Value</span>
-            <span className="text-sm font-semibold text-emerald-400">{formatCurrency(player.marketValue, 'M')}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-emerald-400">{formatCurrency(player.marketValue, 'M')}</span>
+              {/* Market value trend arrow */}
+              {(() => {
+                const seasonStartValue = seasons.length > 0
+                  ? player.marketValue - (player.marketValue * (currentWeek / seasonMatchdays) * 0.05)
+                  : player.marketValue;
+                const valueDiff = player.marketValue - seasonStartValue;
+                const pctChange = seasonStartValue > 0 ? (valueDiff / seasonStartValue) * 100 : 0;
+                if (Math.abs(pctChange) < 1) {
+                  return <Minus className="h-3 w-3 text-[#484f58]" />;
+                }
+                if (pctChange > 0) {
+                  return (
+                    <span className="flex items-center text-[10px] text-emerald-400 font-semibold">
+                      <TrendingUp className="h-3 w-3 mr-0.5" />
+                      +{pctChange.toFixed(0)}%
+                    </span>
+                  );
+                }
+                return (
+                  <span className="flex items-center text-[10px] text-red-400 font-semibold">
+                    <TrendingDown className="h-3 w-3 mr-0.5" />
+                    {pctChange.toFixed(0)}%
+                  </span>
+                );
+              })()}
+            </div>
           </div>
+          {/* Market value sparkline */}
+          {(() => {
+            // Generate sparkline data points from recent results (simulated value trend)
+            const sparkData = recentResults.slice(0, 8).reverse().map((_, idx) => {
+              const progress = idx / 7;
+              const baseValue = player.marketValue * 0.9;
+              const growthValue = player.marketValue;
+              const noise = Math.sin(idx * 1.5) * player.marketValue * 0.02;
+              return baseValue + (growthValue - baseValue) * progress + noise;
+            });
+            if (sparkData.length < 2) return null;
+            const minVal = Math.min(...sparkData);
+            const maxVal = Math.max(...sparkData);
+            const range = maxVal - minVal || 1;
+            const w = 120;
+            const h = 20;
+            const points = sparkData.map((v, i) => {
+              const x = (i / (sparkData.length - 1)) * w;
+              const y = h - ((v - minVal) / range) * (h - 4) - 2;
+              return `${x},${y}`;
+            }).join(' ');
+            const isUp = sparkData[sparkData.length - 1] >= sparkData[0];
+            return (
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-[#8b949e]">Value Trend</span>
+                <svg width={w} height={h} className="overflow-visible">
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={isUp ? '#10b981' : '#ef4444'}
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                  {/* Fill area under the line */}
+                  <polygon
+                    points={`0,${h} ${points} ${w},${h}`}
+                    fill={isUp ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}
+                  />
+                </svg>
+              </div>
+            );
+          })()}
           <div className="flex items-center justify-between mt-1">
             <span className="text-xs text-[#8b949e]">Weekly Wage</span>
             <span className="text-sm text-[#c9d1d9]">{formatCurrency(player.contract.weeklyWage, 'K')}</span>
@@ -1061,8 +1200,18 @@ export default function Dashboard() {
       {/* Enhanced Recent Results */}
       {recentResults.length > 0 && (
         <Card className="bg-[#161b22] border-[#30363d]">
-          <CardHeader className="pb-2 pt-3 px-4">
+          <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
             <CardTitle className="text-xs text-[#8b949e]">Recent Results</CardTitle>
+            {/* Streak indicator in header */}
+            {streakInfo && (
+              <span className={`text-[10px] font-semibold flex items-center gap-1 ${
+                streakInfo.color === 'emerald' ? 'text-emerald-400' :
+                streakInfo.color === 'amber' ? 'text-amber-400' :
+                'text-red-400'
+              }`}>
+                {streakInfo.emoji} {streakInfo.label}
+              </span>
+            )}
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-2">
             {recentResults.slice(0, 5).map((result, i) => {
@@ -1079,12 +1228,21 @@ export default function Dashboard() {
               // Rating circle size
               const ratingColor = getRatingColor(result.playerRating);
 
+              // Match type badge
+              const matchType = result.competition === 'league' ? 'League' :
+                               result.competition === 'cup' ? 'Cup' :
+                               result.competition === 'continental' ? 'Continental' : 'Friendly';
+              const matchTypeStyle = result.competition === 'league' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                    result.competition === 'cup' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                    result.competition === 'continental' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
+                                    'bg-[#21262d] text-[#8b949e] border-[#30363d]';
+
               return (
                 <motion.div
                   key={`${result.week}-${result.season}-${i}`}
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.06, duration: 0.3 }}
+                  transition={{ delay: i * 0.06, duration: 0.2 }}
                   className={`rounded-lg bg-[#161b22] border ${borderClass} p-2.5 hover:bg-[#21262d] transition-colors`}
                 >
                   <div className="flex items-center justify-between">
@@ -1114,6 +1272,10 @@ export default function Dashboard() {
                           <span>Wk {result.week}</span>
                           <span>&bull;</span>
                           <span>S{result.season}</span>
+                          {/* Match type badge */}
+                          <Badge className={`text-[7px] px-1 py-0 border font-medium ${matchTypeStyle}`}>
+                            {matchType}
+                          </Badge>
                         </div>
                       </div>
                     </div>
@@ -1138,7 +1300,7 @@ export default function Dashboard() {
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             transition={{ delay: i * 0.06 + 0.3, type: 'spring', stiffness: 400, damping: 15 }}
-                            className="flex items-center text-[10px] text-blue-400 font-semibold"
+                            className="flex items-center text-[10px] text-cyan-400 font-semibold"
                           >
                             <CircleDot className="h-3 w-3 mr-0.5" />
                             {result.playerAssists}
@@ -1389,33 +1551,128 @@ function QuickActionButton({
   label: string;
   description: string;
   onClick: () => void;
-  accentColor: 'emerald' | 'amber' | 'blue' | 'purple';
+  accentColor: 'emerald' | 'amber' | 'cyan' | 'purple';
 }) {
   const colorClasses = {
-    emerald: 'bg-[#21262d] text-emerald-400 group-hover:bg-emerald-800/40',
-    amber: 'bg-[#21262d] text-amber-400 group-hover:bg-amber-800/40',
-    blue: 'bg-blue-900/30 text-blue-400 group-hover:bg-blue-800/40',
-    purple: 'bg-purple-900/30 text-purple-400 group-hover:bg-purple-800/40',
+    emerald: 'from-emerald-950/50 to-emerald-900/10 text-emerald-400 group-hover:from-emerald-900/60 group-hover:to-emerald-800/20',
+    amber: 'from-amber-950/50 to-amber-900/10 text-amber-400 group-hover:from-amber-900/60 group-hover:to-amber-800/20',
+    cyan: 'from-cyan-950/50 to-cyan-900/10 text-cyan-400 group-hover:from-cyan-900/60 group-hover:to-cyan-800/20',
+    purple: 'from-purple-950/50 to-purple-900/10 text-purple-400 group-hover:from-purple-900/60 group-hover:to-purple-800/20',
   };
 
   const borderClasses = {
-    emerald: 'border-[#30363d] hover:border-emerald-700/40',
-    amber: 'border-amber-900/30 hover:border-amber-700/40',
-    blue: 'border-blue-900/30 hover:border-blue-700/40',
-    purple: 'border-purple-900/30 hover:border-purple-700/40',
+    emerald: 'border-[#30363d] hover:border-emerald-600/50 group-hover:shadow-[0_0_8px_rgba(16,185,129,0.15)]',
+    amber: 'border-[#30363d] hover:border-amber-600/50 group-hover:shadow-[0_0_8px_rgba(245,158,11,0.15)]',
+    cyan: 'border-[#30363d] hover:border-cyan-600/50 group-hover:shadow-[0_0_8px_rgba(6,182,212,0.15)]',
+    purple: 'border-[#30363d] hover:border-purple-600/50 group-hover:shadow-[0_0_8px_rgba(168,85,247,0.15)]',
+  };
+
+  const iconBgClasses = {
+    emerald: 'bg-emerald-500/15',
+    amber: 'bg-amber-500/15',
+    cyan: 'bg-cyan-500/15',
+    purple: 'bg-purple-500/15',
   };
 
   return (
     <motion.button
       onClick={onClick}
-      className={`group flex flex-col items-center gap-1.5 p-3 rounded-lg border bg-[#161b22] ${borderClasses[accentColor]} transition-colors`}
-
+      className={`group flex flex-col items-center gap-2 p-3.5 rounded-lg border bg-gradient-to-b ${colorClasses[accentColor]} ${borderClasses[accentColor]} transition-all duration-150`}
+      whileTap={{ scale: 0.97 }}
     >
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${colorClasses[accentColor]}`}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${iconBgClasses[accentColor]}`}>
         {icon}
       </div>
       <span className="text-[11px] font-semibold text-[#c9d1d9]">{label}</span>
-      <span className="text-[8px] text-[#8b949e] leading-tight text-center">{description}</span>
+      <span className="text-[7px] text-[#8b949e] leading-tight text-center">{description}</span>
     </motion.button>
+  );
+}
+
+// ==========================================
+// Position Icon Component - field position indicator
+// ==========================================
+function PositionIcon({ position, size = 10 }: { position: string; size?: number }) {
+  const category = getPositionCategory(position);
+  // SVG mini field position indicator
+  const positions: Record<string, { x: number; y: number }> = {
+    'GK': { x: 50, y: 90 },
+    'CB': { x: 50, y: 72 },
+    'LB': { x: 20, y: 72 },
+    'RB': { x: 80, y: 72 },
+    'CDM': { x: 50, y: 55 },
+    'CM': { x: 50, y: 45 },
+    'CAM': { x: 50, y: 35 },
+    'LM': { x: 20, y: 45 },
+    'RM': { x: 80, y: 45 },
+    'LW': { x: 20, y: 20 },
+    'RW': { x: 80, y: 20 },
+    'ST': { x: 50, y: 15 },
+    'CF': { x: 50, y: 20 },
+  };
+  const pos = positions[position] ?? { x: 50, y: 50 };
+  const colorMap: Record<string, string> = {
+    goalkeeping: '#F59E0B',
+    defence: '#3B82F6',
+    midfield: '#22C55E',
+    attack: '#EF4444',
+  };
+  const color = colorMap[category] ?? '#8b949e';
+
+  return (
+    <svg width={size} height={size * 1.3} viewBox="0 0 100 130" className="inline-block">
+      {/* Mini field outline */}
+      <rect x="5" y="5" width="90" height="120" fill="none" stroke="#30363d" strokeWidth="4" rx="2" />
+      <line x1="5" y1="65" x2="95" y2="65" stroke="#30363d" strokeWidth="2" />
+      <circle cx="50" cy="65" r="12" fill="none" stroke="#30363d" strokeWidth="2" />
+      {/* Position dot */}
+      <circle cx={pos.x} cy={pos.y} r="7" fill={color} opacity="0.9" />
+    </svg>
+  );
+}
+
+// ==========================================
+// Formation Dots Visualization Component
+// ==========================================
+function FormationDots({ formation, color, flip = false }: { formation: string; color: string; flip?: boolean }) {
+  // Parse formation like "4-3-3" into rows of players
+  const rows = formation.split('-').map(Number);
+
+  // Build positions for each player
+  const positions: { x: number; y: number }[] = [];
+  // GK
+  positions.push({ x: 50, y: flip ? 10 : 90 });
+  // Field players
+  let currentY = flip ? 25 : 75;
+  const yStep = flip ? 18 : -18;
+  for (const count of rows) {
+    for (let i = 0; i < count; i++) {
+      const x = count === 1 ? 50 : (20 + (i * 60 / (count - 1)));
+      positions.push({ x, y: currentY });
+    }
+    currentY += yStep;
+  }
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width="60" height="80" viewBox="0 0 100 100">
+        {/* Mini pitch outline */}
+        <rect x="5" y="2" width="90" height="96" fill="none" stroke="#30363d" strokeWidth="2" rx="1" />
+        <line x1="5" y1="50" x2="95" y2="50" stroke="#30363d" strokeWidth="1" opacity="0.5" />
+        <circle cx="50" cy="50" r="10" fill="none" stroke="#30363d" strokeWidth="1" opacity="0.5" />
+        {/* Player dots */}
+        {positions.map((pos, i) => (
+          <circle
+            key={i}
+            cx={pos.x}
+            cy={pos.y}
+            r="5"
+            fill={color}
+            opacity={i === 0 ? 0.7 : 0.9}
+          />
+        ))}
+      </svg>
+      <span className="text-[8px] text-[#484f58] mt-0.5">{formation}</span>
+    </div>
   );
 }
