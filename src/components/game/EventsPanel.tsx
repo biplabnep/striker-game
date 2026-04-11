@@ -216,7 +216,7 @@ function EventTimeline({
       <CardContent className="px-4 pb-4">
         <div className="relative ml-3">
           {/* Vertical line */}
-          <div className="absolute left-0 top-1 bottom-1 w-px bg-gradient-to-b from-emerald-500/60 via-slate-700/40 to-transparent" />
+          <div className="absolute left-0 top-1 bottom-1 w-px bg-[#30363d]" />
 
           <div className="space-y-0">
             {displayed.map((event, index) => {
