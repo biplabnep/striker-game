@@ -374,7 +374,7 @@ function SentimentGauge({ value }: { value: number }) {
       </svg>
       <div className="text-center -mt-2">
         <span className="text-2xl font-black" style={{ color: bgColor }}>{value}</span>
-        <span className="text-xs text-slate-400 ml-1">/ 100</span>
+        <span className="text-xs text-[#8b949e] ml-1">/ 100</span>
       </div>
       <Badge className={`mt-1 text-[10px] ${value < 33 ? 'bg-red-500/20 text-red-400 border-red-500/30' : value < 66 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>
         {label} Sentiment
@@ -599,26 +599,26 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 "
         >
           <motion.div
             initial={{ y: 60, opacity: 0, scale: 0.95 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 40, opacity: 0, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 250, damping: 25 }}
-            className="relative w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin rounded-2xl"
+            className="relative w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin rounded-lg"
             style={{
               background: 'linear-gradient(145deg, #1a0a0a 0%, #1c1117 30%, #18121a 60%, #150e10 100%)',
               border: '1px solid rgba(220, 38, 38, 0.15)',
             }}
           >
             {/* Red carpet / warm gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-b from-red-950/20 via-transparent to-red-950/10 pointer-events-none rounded-2xl" />
+            <div className="absolute inset-0 bg-red-950/5 pointer-events-none rounded-lg" />
 
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-slate-900/80 border border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+              className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:text-white hover:border-slate-600 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -631,7 +631,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   initial={{ opacity: 1 }}
                   animate={{ opacity: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
-                  className="absolute inset-0 bg-white/30 pointer-events-none rounded-2xl"
+                  className="absolute inset-0 bg-white/30 pointer-events-none rounded-lg"
                 />
 
                 <motion.div
@@ -660,8 +660,8 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                 >
                   <span className="text-2xl">{currentClub.logo}</span>
                   <div>
-                    <p className="text-sm text-slate-300 font-medium">{player.name.split(' ').pop()}</p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-sm text-[#c9d1d9] font-medium">{player.name.split(' ').pop()}</p>
+                    <p className="text-[10px] text-[#8b949e]">
                       {won ? 'After Victory' : drew ? 'After Draw' : 'After Defeat'} • {matchResult.homeClub.shortName || matchResult.homeClub.name.slice(0, 3)} {matchResult.homeScore}-{matchResult.awayScore} {matchResult.awayClub.shortName || matchResult.awayClub.name.slice(0, 3)}
                     </p>
                   </div>
@@ -691,11 +691,11 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                     <Mic className="w-3 h-3 text-red-400" />
                     <span className="text-[10px] font-bold text-red-400 tracking-wider">LIVE</span>
                   </div>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-[#8b949e]">
                     Question {currentQuestionIdx + 1} of {questions.length}
                   </span>
                   <div className="flex-1" />
-                  <Badge variant="outline" className="text-[9px] border-slate-700 text-slate-400">
+                  <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e]">
                     🎙️ Press Room
                   </Badge>
                 </div>
@@ -728,12 +728,12 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                     >
                       {/* Reporter avatar + name */}
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-xl">
+                        <div className="w-10 h-10 rounded-full bg-[#21262d] border border-[#30363d] flex items-center justify-center text-xl">
                           {reporterAvatar}
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-slate-300">{reporterName}</p>
-                          <p className="text-[9px] text-slate-500">Senior Football Correspondent</p>
+                          <p className="text-xs font-semibold text-[#c9d1d9]">{reporterName}</p>
+                          <p className="text-[9px] text-[#8b949e]">Senior Football Correspondent</p>
                         </div>
                         <div className="ml-auto">
                           <Badge className="text-[8px] bg-red-500/15 text-red-400 border-red-500/25">
@@ -744,8 +744,8 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                       </div>
 
                       {/* Question with typewriter */}
-                      <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-4 mb-5">
-                        <p className="text-sm text-slate-200 leading-relaxed">
+                      <div className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-5">
+                        <p className="text-sm text-[#c9d1d9] leading-relaxed">
                           <TypewriterText text={currentQuestion.text} speed={20} />
                         </p>
                       </div>
@@ -758,9 +758,9 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                             <motion.button
                               key={answer.style}
                               onClick={() => handleAnswer(answer.style)}
-                              whileHover={{ scale: 1.01 }}
-                              whileTap={{ scale: 0.99 }}
-                              className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 ${config.borderColor} ${config.bgColor} group`}
+                              whileHover={{ scale: 1 }}
+                              whileTap={{ scale: 1 }}
+                              className={`w-full text-left p-3.5 rounded-lg border transition-all duration-200 ${config.borderColor} ${config.bgColor} group`}
                             >
                               <div className="flex items-start gap-3">
                                 <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${config.bgColor} border ${config.borderColor}`}>
@@ -773,7 +773,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                                       {config.riskLabel}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-slate-300 leading-relaxed pr-8">
+                                  <p className="text-xs text-[#c9d1d9] leading-relaxed pr-8">
                                     {answer.text}
                                   </p>
                                   {/* Effect indicators */}
@@ -823,9 +823,9 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                  className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-4 mb-4"
+                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
                 >
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-3 text-center">
+                  <p className="text-[10px] text-[#8b949e]  font-semibold mb-3 text-center">
                     Media Sentiment
                   </p>
                   <SentimentGauge value={sentiment} />
@@ -836,11 +836,11 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-4 mb-4"
+                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Newspaper className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Key Headline</span>
+                    <span className="text-[10px] text-amber-400 font-bold ">Key Headline</span>
                   </div>
                   <p className="text-sm font-bold text-white leading-snug">
                     &ldquo;{headline}&rdquo;
@@ -852,11 +852,11 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
-                  className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-4 mb-4"
+                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
-                    <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wider">Social Reaction</span>
+                    <span className="text-[10px] text-sky-400 font-bold ">Social Reaction</span>
                   </div>
                   <div className="flex items-center justify-around">
                     <div className="flex flex-col items-center">
@@ -864,7 +864,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                         <Heart className="w-4 h-4 text-rose-400" />
                         <span className="text-lg font-black text-white">{socialLikes.toLocaleString()}</span>
                       </div>
-                      <span className="text-[9px] text-slate-500">Likes</span>
+                      <span className="text-[9px] text-[#8b949e]">Likes</span>
                     </div>
                     <div className="w-px h-8 bg-slate-700/50" />
                     <div className="flex flex-col items-center">
@@ -872,7 +872,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                         <Share2 className="w-4 h-4 text-sky-400" />
                         <span className="text-lg font-black text-white">{socialRetweets.toLocaleString()}</span>
                       </div>
-                      <span className="text-[9px] text-slate-500">Retweets</span>
+                      <span className="text-[9px] text-[#8b949e]">Retweets</span>
                     </div>
                     <div className="w-px h-8 bg-slate-700/50" />
                     <div className="flex flex-col items-center">
@@ -880,7 +880,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                         <Eye className="w-4 h-4 text-emerald-400" />
                         <span className="text-lg font-black text-white">{((socialLikes + socialRetweets) * 3.2).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                       </div>
-                      <span className="text-[9px] text-slate-500">Impressions</span>
+                      <span className="text-[9px] text-[#8b949e]">Impressions</span>
                     </div>
                   </div>
                 </motion.div>
@@ -890,46 +890,46 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9 }}
-                  className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-4 mb-5"
+                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-5"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Effect Summary</span>
+                    <span className="text-[10px] text-amber-400 font-bold ">Effect Summary</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-800/40 rounded-lg p-3 text-center">
-                      <p className="text-[9px] text-slate-500 uppercase mb-1">Morale</p>
+                    <div className="bg-[#21262d] rounded-lg p-3 text-center">
+                      <p className="text-[9px] text-[#8b949e] uppercase mb-1">Morale</p>
                       <div className="flex items-center justify-center gap-1">
                         {totalMoraleEffect > 0 ? (
                           <TrendingUp className="w-4 h-4 text-emerald-400" />
                         ) : totalMoraleEffect < 0 ? (
                           <TrendingDown className="w-4 h-4 text-red-400" />
                         ) : (
-                          <Minus className="w-4 h-4 text-slate-400" />
+                          <Minus className="w-4 h-4 text-[#8b949e]" />
                         )}
-                        <span className={`text-lg font-black ${totalMoraleEffect > 0 ? 'text-emerald-400' : totalMoraleEffect < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                        <span className={`text-lg font-black ${totalMoraleEffect > 0 ? 'text-emerald-400' : totalMoraleEffect < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
                           {totalMoraleEffect > 0 ? '+' : ''}{totalMoraleEffect}
                         </span>
                       </div>
-                      <p className="text-[9px] text-slate-500 mt-0.5">
+                      <p className="text-[9px] text-[#8b949e] mt-0.5">
                         {player.morale} → {Math.max(0, Math.min(100, player.morale + totalMoraleEffect))}
                       </p>
                     </div>
-                    <div className="bg-slate-800/40 rounded-lg p-3 text-center">
-                      <p className="text-[9px] text-slate-500 uppercase mb-1">Reputation</p>
+                    <div className="bg-[#21262d] rounded-lg p-3 text-center">
+                      <p className="text-[9px] text-[#8b949e] uppercase mb-1">Reputation</p>
                       <div className="flex items-center justify-center gap-1">
                         {totalReputationEffect > 0 ? (
                           <TrendingUp className="w-4 h-4 text-emerald-400" />
                         ) : totalReputationEffect < 0 ? (
                           <TrendingDown className="w-4 h-4 text-red-400" />
                         ) : (
-                          <Minus className="w-4 h-4 text-slate-400" />
+                          <Minus className="w-4 h-4 text-[#8b949e]" />
                         )}
-                        <span className={`text-lg font-black ${totalReputationEffect > 0 ? 'text-emerald-400' : totalReputationEffect < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                        <span className={`text-lg font-black ${totalReputationEffect > 0 ? 'text-emerald-400' : totalReputationEffect < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
                           {totalReputationEffect > 0 ? '+' : ''}{totalReputationEffect}
                         </span>
                       </div>
-                      <p className="text-[9px] text-slate-500 mt-0.5">
+                      <p className="text-[9px] text-[#8b949e] mt-0.5">
                         {player.reputation} → {Math.max(0, Math.min(100, player.reputation + totalReputationEffect))}
                       </p>
                     </div>
@@ -944,7 +944,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                 >
                   <Button
                     onClick={handleApplyEffects}
-                    className="w-full h-12 bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 rounded-xl font-semibold text-white"
+                    className="w-full h-12 bg-red-700 hover:bg-red-600 rounded-lg font-semibold text-white transition-colors"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
                     Leave Press Conference

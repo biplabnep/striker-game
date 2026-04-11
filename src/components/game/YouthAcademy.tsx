@@ -53,7 +53,7 @@ function getPromotionBadge(status: YouthPlayer['promotionStatus']): { label: str
   switch (status) {
     case 'ready': return { label: 'Ready', color: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/30' };
     case 'overdue': return { label: 'Overdue', color: 'text-amber-400', bg: 'bg-amber-500/15 border-amber-500/30' };
-    default: return { label: 'Developing', color: 'text-slate-400', bg: 'bg-slate-500/15 border-slate-500/30' };
+    default: return { label: 'Developing', color: 'text-[#8b949e]', bg: 'bg-slate-500/15 border-slate-500/30' };
   }
 }
 
@@ -83,11 +83,11 @@ function YouthPlayerCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
-      className="bg-slate-900/80 backdrop-blur-sm border border-slate-800/60 rounded-xl overflow-hidden"
+      className="bg-[#161b22]  border border-[#30363d] rounded-lg overflow-hidden"
     >
       {/* Header row */}
       <div
-        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-800/40 transition-colors"
+        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-[#21262d] transition-colors"
         onClick={onToggle}
       >
         {/* Overall */}
@@ -96,7 +96,7 @@ function YouthPlayerCard({
         </div>
 
         {/* Position badge */}
-        <div className="text-xs font-semibold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+        <div className="text-xs font-semibold text-[#8b949e] bg-[#21262d] px-1.5 py-0.5 rounded">
           {player.position}
         </div>
 
@@ -112,7 +112,7 @@ function YouthPlayerCard({
         </div>
 
         {/* Age */}
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-[#8b949e]">
           Age {player.age}
         </div>
 
@@ -126,7 +126,7 @@ function YouthPlayerCard({
           animate={{ rotate: expanded ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown className="h-4 w-4 text-slate-500" />
+          <ChevronDown className="h-4 w-4 text-[#8b949e]" />
         </motion.div>
       </div>
 
@@ -140,7 +140,7 @@ function YouthPlayerCard({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 pt-1 border-t border-slate-800/50 space-y-3">
+            <div className="px-3 pb-3 pt-1 border-t border-[#30363d] space-y-3">
               {/* Attributes */}
               <div className="grid grid-cols-3 gap-2">
                 {(Object.keys(player.attributes) as (keyof PlayerAttributes)[]).map((key) => {
@@ -151,12 +151,12 @@ function YouthPlayerCard({
                     <div
                       key={key}
                       className={`relative flex items-center gap-1.5 p-1.5 rounded-lg cursor-pointer transition-colors ${
-                        isFocus ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-slate-800/50 hover:bg-slate-800'
+                        isFocus ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-[#21262d] hover:bg-[#21262d]'
                       }`}
                       onClick={() => onSetFocus(key)}
                     >
-                      <span className="text-slate-500">{attrInfo.icon}</span>
-                      <span className="text-[10px] text-slate-400 w-6">{attrInfo.short}</span>
+                      <span className="text-[#8b949e]">{attrInfo.icon}</span>
+                      <span className="text-[10px] text-[#8b949e] w-6">{attrInfo.short}</span>
                       <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
                         <motion.div
                           className={`h-full rounded-full ${getAttrColor(val)}`}
@@ -165,7 +165,7 @@ function YouthPlayerCard({
                           transition={{ duration: 0.5, delay: 0.1 }}
                         />
                       </div>
-                      <span className={`text-xs font-semibold min-w-[20px] text-right ${isFocus ? 'text-emerald-400' : 'text-slate-300'}`}>
+                      <span className={`text-xs font-semibold min-w-[20px] text-right ${isFocus ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
                         {val}
                       </span>
                     </div>
@@ -177,22 +177,22 @@ function YouthPlayerCard({
               <div className="flex gap-3 text-xs">
                 <div className="flex items-center gap-1">
                   <Trophy className="h-3 w-3 text-emerald-400" />
-                  <span className="text-slate-400">Apps:</span>
+                  <span className="text-[#8b949e]">Apps:</span>
                   <span className="text-white font-medium">{player.seasonStats.appearances}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Target className="h-3 w-3 text-red-400" />
-                  <span className="text-slate-400">Goals:</span>
+                  <span className="text-[#8b949e]">Goals:</span>
                   <span className="text-white font-medium">{player.seasonStats.goals}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-blue-400" />
-                  <span className="text-slate-400">Assists:</span>
+                  <span className="text-[#8b949e]">Assists:</span>
                   <span className="text-white font-medium">{player.seasonStats.assists}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Star className="h-3 w-3 text-amber-400" />
-                  <span className="text-slate-400">Avg:</span>
+                  <span className="text-[#8b949e]">Avg:</span>
                   <span className="text-white font-medium">{player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'}</span>
                 </div>
               </div>
@@ -201,15 +201,15 @@ function YouthPlayerCard({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-slate-500">Fitness</span>
-                    <span className="text-[10px] text-slate-400">{player.fitness}%</span>
+                    <span className="text-[10px] text-[#8b949e]">Fitness</span>
+                    <span className="text-[10px] text-[#8b949e]">{player.fitness}%</span>
                   </div>
                   <Progress value={player.fitness} className="h-1.5" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-slate-500">Morale</span>
-                    <span className="text-[10px] text-slate-400">{player.morale}%</span>
+                    <span className="text-[10px] text-[#8b949e]">Morale</span>
+                    <span className="text-[10px] text-[#8b949e]">{player.morale}%</span>
                   </div>
                   <Progress value={player.morale} className="h-1.5" />
                 </div>
@@ -217,13 +217,13 @@ function YouthPlayerCard({
 
               {/* Potential stars */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-500">Potential:</span>
+                <span className="text-[10px] text-[#8b949e]">Potential:</span>
                 <span className="text-sm">{getPotentialStars(player.potential)}</span>
                 <span className={`text-[10px] ${potentialInfo.color}`}>({potentialInfo.label})</span>
               </div>
 
               {/* Training focus hint */}
-              <div className="text-[10px] text-slate-500 italic">
+              <div className="text-[10px] text-[#8b949e] italic">
                 Tap an attribute to set training focus
               </div>
 
@@ -248,7 +248,7 @@ function YouthPlayerCard({
                   </button>
                 )}
                 {player.promotionStatus === 'developing' && (
-                  <div className="flex-1 text-center text-[10px] text-slate-600 py-1.5">
+                  <div className="flex-1 text-center text-[10px] text-[#484f58] py-1.5">
                     Still developing — keep training!
                   </div>
                 )}
@@ -291,12 +291,12 @@ function YouthLeagueTableView({
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-lg">{emoji}</span>
-        <h3 className="text-sm font-semibold text-slate-300">{title}</h3>
+        <h3 className="text-sm font-semibold text-[#c9d1d9]">{title}</h3>
       </div>
-      <div className="bg-slate-900/80 border border-slate-800/60 rounded-xl overflow-hidden">
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-slate-800/50 text-slate-500">
+            <tr className="bg-[#21262d] text-[#8b949e]">
               <th className="py-2 px-2 text-left w-6">#</th>
               <th className="py-2 px-2 text-left">Team</th>
               <th className="py-2 px-2 text-center w-8">P</th>
@@ -314,19 +314,19 @@ function YouthLeagueTableView({
               return (
                 <tr
                   key={team.clubId}
-                  className={`border-t border-slate-800/40 ${isPlayer ? 'bg-emerald-500/10' : 'hover:bg-slate-800/30'}`}
+                  className={`border-t border-[#30363d] ${isPlayer ? 'bg-emerald-500/10' : 'hover:bg-[#21262d]'}`}
                 >
-                  <td className={`py-1.5 px-2 ${idx < 3 ? 'text-emerald-400' : idx >= sorted.length - 3 ? 'text-red-400' : 'text-slate-500'}`}>
+                  <td className={`py-1.5 px-2 ${idx < 3 ? 'text-emerald-400' : idx >= sorted.length - 3 ? 'text-red-400' : 'text-[#8b949e]'}`}>
                     {idx + 1}
                   </td>
-                  <td className={`py-1.5 px-2 font-medium ${isPlayer ? 'text-emerald-400' : 'text-slate-300'}`}>
+                  <td className={`py-1.5 px-2 font-medium ${isPlayer ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
                     {team.clubName}
                   </td>
-                  <td className="py-1.5 px-2 text-center text-slate-400">{team.played}</td>
-                  <td className="py-1.5 px-2 text-center text-slate-400">{team.won}</td>
-                  <td className="py-1.5 px-2 text-center text-slate-400">{team.drawn}</td>
-                  <td className="py-1.5 px-2 text-center text-slate-400">{team.lost}</td>
-                  <td className={`py-1.5 px-2 text-center ${gd > 0 ? 'text-emerald-400' : gd < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                  <td className="py-1.5 px-2 text-center text-[#8b949e]">{team.played}</td>
+                  <td className="py-1.5 px-2 text-center text-[#8b949e]">{team.won}</td>
+                  <td className="py-1.5 px-2 text-center text-[#8b949e]">{team.drawn}</td>
+                  <td className="py-1.5 px-2 text-center text-[#8b949e]">{team.lost}</td>
+                  <td className={`py-1.5 px-2 text-center ${gd > 0 ? 'text-emerald-400' : gd < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
                     {gd > 0 ? '+' : ''}{gd}
                   </td>
                   <td className="py-1.5 px-2 text-center font-bold text-white">{team.points}</td>
@@ -356,7 +356,10 @@ export default function YouthAcademy() {
 
   if (!gameState) return null;
 
-  const { currentClub, youthTeams, youthLeagueTables, youthMatchResults } = gameState;
+  const { currentClub } = gameState;
+  const youthTeams = gameState.youthTeams ?? [];
+  const youthLeagueTables = gameState.youthLeagueTables ?? [];
+  const youthMatchResults = gameState.youthMatchResults ?? [];
   const u18Team = youthTeams.find(t => t.clubId === currentClub.id && t.category === 'u18');
   const u21Team = youthTeams.find(t => t.clubId === currentClub.id && t.category === 'u21');
   const u18Standings = youthLeagueTables.filter(s => s.category === 'u18');
@@ -394,15 +397,15 @@ export default function YouthAcademy() {
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950/30 rounded-2xl p-4 border border-slate-800/60"
+        className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]"
       >
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-lg bg-emerald-500/15 flex items-center justify-center">
             <GraduationCap className="h-6 w-6 text-emerald-400" />
           </div>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-white">Youth Academy</h1>
-            <p className="text-xs text-slate-400">{currentClub.name} • Youth Development: {currentClub.youthDevelopment}/100</p>
+            <p className="text-xs text-[#8b949e]">{currentClub.name} • Youth Development: {currentClub.youthDevelopment}/100</p>
           </div>
           <button
             onClick={generateNewYouthIntake}
@@ -415,42 +418,42 @@ export default function YouthAcademy() {
 
         {/* Quick stats */}
         <div className="grid grid-cols-4 gap-2 mt-3">
-          <div className="bg-slate-800/60 rounded-lg p-2 text-center">
+          <div className="bg-[#21262d] rounded-lg p-2 text-center">
             <div className="text-lg font-bold text-white">{u18Team?.players.length ?? 0}</div>
-            <div className="text-[10px] text-slate-500">U18 Players</div>
+            <div className="text-[10px] text-[#8b949e]">U18 Players</div>
           </div>
-          <div className="bg-slate-800/60 rounded-lg p-2 text-center">
+          <div className="bg-[#21262d] rounded-lg p-2 text-center">
             <div className="text-lg font-bold text-white">{u21Team?.players.length ?? 0}</div>
-            <div className="text-[10px] text-slate-500">U21 Players</div>
+            <div className="text-[10px] text-[#8b949e]">U21 Players</div>
           </div>
-          <div className="bg-slate-800/60 rounded-lg p-2 text-center">
+          <div className="bg-[#21262d] rounded-lg p-2 text-center">
             <div className="text-lg font-bold text-emerald-400">{readyCount}</div>
-            <div className="text-[10px] text-slate-500">Ready</div>
+            <div className="text-[10px] text-[#8b949e]">Ready</div>
           </div>
-          <div className="bg-slate-800/60 rounded-lg p-2 text-center">
+          <div className="bg-[#21262d] rounded-lg p-2 text-center">
             <div className="text-lg font-bold text-amber-400">{wonderkidCount}</div>
-            <div className="text-[10px] text-slate-500">Wonderkids</div>
+            <div className="text-[10px] text-[#8b949e]">Wonderkids</div>
           </div>
         </div>
 
         {/* Average overall */}
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <div className="bg-slate-800/40 rounded-lg p-2 flex items-center gap-2">
+          <div className="bg-[#21262d] rounded-lg p-2 flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
               <Users className="h-4 w-4 text-blue-400" />
             </div>
             <div>
               <div className="text-xs font-bold text-white">U18 Avg OVR</div>
-              <div className="text-xs text-slate-400">{avgOverallU18}</div>
+              <div className="text-xs text-[#8b949e]">{avgOverallU18}</div>
             </div>
           </div>
-          <div className="bg-slate-800/40 rounded-lg p-2 flex items-center gap-2">
+          <div className="bg-[#21262d] rounded-lg p-2 flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
               <Crown className="h-4 w-4 text-purple-400" />
             </div>
             <div>
               <div className="text-xs font-bold text-white">U21 Avg OVR</div>
-              <div className="text-xs text-slate-400">{avgOverallU21}</div>
+              <div className="text-xs text-[#8b949e]">{avgOverallU21}</div>
             </div>
           </div>
         </div>
@@ -458,7 +461,7 @@ export default function YouthAcademy() {
         {/* Youth dev quality bar */}
         <div className="mt-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-slate-500">Academy Quality</span>
+            <span className="text-[10px] text-[#8b949e]">Academy Quality</span>
             <span className="text-[10px] text-emerald-400">{currentClub.youthDevelopment}%</span>
           </div>
           <Progress value={currentClub.youthDevelopment} className="h-2" />
@@ -467,7 +470,7 @@ export default function YouthAcademy() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full bg-slate-900/80 border border-slate-800/60">
+        <TabsList className="w-full bg-[#161b22] border border-[#30363d]">
           <TabsTrigger value="squad" className="flex-1 text-xs">
             <Users className="h-3.5 w-3.5 mr-1" /> Squad
           </TabsTrigger>
@@ -486,7 +489,7 @@ export default function YouthAcademy() {
             <button
               onClick={() => setPositionFilter('all')}
               className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${
-                positionFilter === 'all' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'
+                positionFilter === 'all' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[#21262d] text-[#8b949e] hover:text-[#c9d1d9]'
               }`}
             >
               All
@@ -496,7 +499,7 @@ export default function YouthAcademy() {
                 key={group}
                 onClick={() => setPositionFilter(group)}
                 className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${
-                  positionFilter === group ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'
+                  positionFilter === group ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[#21262d] text-[#8b949e] hover:text-[#c9d1d9]'
                 }`}
               >
                 {config.icon} {group}
@@ -510,7 +513,7 @@ export default function YouthAcademy() {
               <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
                 U18 Squad
               </Badge>
-              <span className="text-[10px] text-slate-500">{u18Players.length} players</span>
+              <span className="text-[10px] text-[#8b949e]">{u18Players.length} players</span>
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
               <AnimatePresence mode="popLayout">
@@ -528,7 +531,7 @@ export default function YouthAcademy() {
                   ))}
               </AnimatePresence>
               {u18Players.length === 0 && (
-                <div className="text-center py-6 text-slate-600 text-xs">
+                <div className="text-center py-6 text-[#484f58] text-xs">
                   No U18 players matching filter
                 </div>
               )}
@@ -541,7 +544,7 @@ export default function YouthAcademy() {
               <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
                 U21 Squad
               </Badge>
-              <span className="text-[10px] text-slate-500">{u21Players.length} players</span>
+              <span className="text-[10px] text-[#8b949e]">{u21Players.length} players</span>
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
               <AnimatePresence mode="popLayout">
@@ -559,7 +562,7 @@ export default function YouthAcademy() {
                   ))}
               </AnimatePresence>
               {u21Players.length === 0 && (
-                <div className="text-center py-6 text-slate-600 text-xs">
+                <div className="text-center py-6 text-[#484f58] text-xs">
                   No U21 players matching filter
                 </div>
               )}
@@ -567,25 +570,25 @@ export default function YouthAcademy() {
           </div>
 
           {/* Promotion Pipeline */}
-          <div className="bg-slate-900/80 border border-slate-800/60 rounded-xl p-3 space-y-2">
+          <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
               <ArrowUpRight className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm font-semibold text-slate-300">Promotion Pipeline</span>
+              <span className="text-sm font-semibold text-[#c9d1d9]">Promotion Pipeline</span>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-slate-800/50 rounded-lg p-2">
+              <div className="bg-[#21262d] rounded-lg p-2">
                 <div className="text-xs text-blue-400 font-semibold">U18</div>
-                <div className="text-[10px] text-slate-500">Ages 14-17</div>
-                <div className="text-[10px] text-slate-400 mt-1">→ U21</div>
+                <div className="text-[10px] text-[#8b949e]">Ages 14-17</div>
+                <div className="text-[10px] text-[#8b949e] mt-1">→ U21</div>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-2">
+              <div className="bg-[#21262d] rounded-lg p-2">
                 <div className="text-xs text-purple-400 font-semibold">U21</div>
-                <div className="text-[10px] text-slate-500">Ages 18-21</div>
-                <div className="text-[10px] text-slate-400 mt-1">→ First Team</div>
+                <div className="text-[10px] text-[#8b949e]">Ages 18-21</div>
+                <div className="text-[10px] text-[#8b949e] mt-1">→ First Team</div>
               </div>
               <div className="bg-emerald-500/10 rounded-lg p-2 border border-emerald-500/20">
                 <div className="text-xs text-emerald-400 font-semibold">First Team</div>
-                <div className="text-[10px] text-slate-500">Senior Squad</div>
+                <div className="text-[10px] text-[#8b949e]">Senior Squad</div>
                 <div className="text-[10px] text-emerald-400 mt-1">Active</div>
               </div>
             </div>
@@ -616,14 +619,14 @@ export default function YouthAcademy() {
         <TabsContent value="results" className="space-y-3 mt-3">
           <div className="flex items-center gap-2">
             <Award className="h-4 w-4 text-emerald-400" />
-            <span className="text-sm font-semibold text-slate-300">Recent Youth Results</span>
+            <span className="text-sm font-semibold text-[#c9d1d9]">Recent Youth Results</span>
           </div>
 
           {recentYouthResults.length === 0 ? (
-            <div className="bg-slate-900/80 border border-slate-800/60 rounded-xl p-6 text-center">
-              <Trophy className="h-8 w-8 text-slate-700 mx-auto mb-2" />
-              <p className="text-xs text-slate-500">No youth matches played yet</p>
-              <p className="text-[10px] text-slate-600 mt-1">Results will appear as weeks advance</p>
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 text-center">
+              <Trophy className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+              <p className="text-xs text-[#8b949e]">No youth matches played yet</p>
+              <p className="text-[10px] text-[#484f58] mt-1">Results will appear as weeks advance</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -642,7 +645,7 @@ export default function YouthAcademy() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="bg-slate-900/80 border border-slate-800/60 rounded-xl p-3 flex items-center gap-3"
+                    className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex items-center gap-3"
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
                       resultLabel === 'W' ? 'bg-emerald-500/15 text-emerald-400' :
@@ -659,11 +662,11 @@ export default function YouthAcademy() {
                         }`}>
                           {result.category.toUpperCase()}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-600/30">
+                        <Badge variant="outline" className="text-[10px] text-[#8b949e] border-slate-600/30">
                           {result.competition === 'youth_league' ? 'League' : 'Cup'}
                         </Badge>
                       </div>
-                      <div className="text-[10px] text-slate-500">Week {result.week} • Season {result.season}</div>
+                      <div className="text-[10px] text-[#8b949e]">Week {result.week} • Season {result.season}</div>
                     </div>
                   </motion.div>
                 );

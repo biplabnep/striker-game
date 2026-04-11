@@ -124,12 +124,12 @@ function StatItem({
 }) {
   return (
     <div className="flex flex-col items-center gap-1 p-2">
-      {icon && <div className="text-slate-500">{icon}</div>}
+      {icon && <div className="text-[#8b949e]">{icon}</div>}
       <p className="text-xl font-bold" style={{ color }}>
         {value}
       </p>
-      <p className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</p>
-      {sublabel && <p className="text-[9px] text-slate-600">{sublabel}</p>}
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wider">{label}</p>
+      {sublabel && <p className="text-[9px] text-[#484f58]">{sublabel}</p>}
     </div>
   );
 }
@@ -138,8 +138,8 @@ function AttributeChange({ attr, change }: { attr: string; change: number }) {
   const isPositive = change > 0;
   const displayChange = isPositive ? `+${change.toFixed(1)}` : change.toFixed(1);
   return (
-    <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-slate-800/50">
-      <span className="text-xs text-slate-400 capitalize">{attr}</span>
+    <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-[#21262d]">
+      <span className="text-xs text-[#8b949e] capitalize">{attr}</span>
       <div className="flex items-center gap-1.5">
         {isPositive ? (
           <TrendingUp className="h-3 w-3 text-emerald-400" />
@@ -168,7 +168,7 @@ function AwardBadge({
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
 }) {
   const rarityColors = {
-    common: 'border-slate-600 bg-slate-800/50',
+    common: 'border-slate-600 bg-[#21262d]',
     rare: 'border-blue-700/50 bg-blue-900/20',
     epic: 'border-purple-700/50 bg-purple-900/20',
     legendary: 'border-amber-600/50 bg-amber-900/20',
@@ -186,12 +186,12 @@ function AwardBadge({
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={`relative rounded-xl border p-3 text-center transition-all ${
-        earned ? rarityColors[rarity] : 'border-slate-800 bg-slate-900/50 opacity-40'
+        earned ? rarityColors[rarity] : 'border-[#30363d] bg-[#161b22]/50 opacity-40'
       } ${earned ? rarityGlow[rarity] : ''}`}
     >
       <div className="text-2xl mb-1">{earned ? emoji : '🔒'}</div>
-      <p className={`text-xs font-bold ${earned ? 'text-slate-200' : 'text-slate-600'}`}>{title}</p>
-      <p className="text-[9px] text-slate-500 mt-0.5">{description}</p>
+      <p className={`text-xs font-bold ${earned ? 'text-[#c9d1d9]' : 'text-[#484f58]'}`}>{title}</p>
+      <p className="text-[9px] text-[#8b949e] mt-0.5">{description}</p>
       {earned && rarity === 'legendary' && (
         <div className="absolute -top-1 -right-1">
           <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
@@ -349,14 +349,14 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-3"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3"
     >
       <motion.div
         initial={{ scale: 0.85, y: 30 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.85, y: 30 }}
         transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-        className="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-slate-700/40 rounded-2xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl"
+        className="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-lg max-h-[92vh] overflow-hidden shadow-sm"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ============================================ */}
@@ -406,7 +406,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-sm text-slate-400 mt-1"
+            className="text-sm text-[#8b949e] mt-1"
           >
             {leagueInfo ? `${leagueInfo.emoji} ${leagueInfo.name}` : 'League'} • {currentClub.name}
           </motion.p>
@@ -429,9 +429,9 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           {/* League Finish Card */}
           {/* ============================================ */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-slate-900/80 border-slate-800 overflow-hidden">
+            <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider flex items-center gap-2">
                   <Shield className="h-3.5 w-3.5" />
                   League Finish
                 </CardTitle>
@@ -447,7 +447,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                       {getOrdinal(leaguePosition)}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-200">
+                      <p className="text-sm font-semibold text-[#c9d1d9]">
                         {zone.emoji} {zone.label}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5" style={{ color: expectation.color }}>
@@ -457,15 +457,15 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-slate-500">Out of</p>
-                    <p className="text-sm font-bold text-slate-300">{totalTeams} teams</p>
+                    <p className="text-[10px] text-[#8b949e]">Out of</p>
+                    <p className="text-sm font-bold text-[#c9d1d9]">{totalTeams} teams</p>
                   </div>
                 </div>
 
                 {/* Mini League Table */}
                 {miniTable.length > 0 && (
-                  <div className="mt-2 rounded-lg border border-slate-800 overflow-hidden">
-                    <div className="bg-slate-800/50 px-3 py-1.5 flex items-center text-[10px] text-slate-500 uppercase tracking-wider">
+                  <div className="mt-2 rounded-lg border border-[#30363d] overflow-hidden">
+                    <div className="bg-[#21262d] px-3 py-1.5 flex items-center text-[10px] text-[#8b949e] uppercase tracking-wider">
                       <span className="w-6">#</span>
                       <span className="flex-1">Club</span>
                       <span className="w-8 text-center">P</span>
@@ -483,7 +483,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                       return (
                         <div
                           key={entry.clubId}
-                          className={`px-3 py-1.5 flex items-center text-xs border-t border-slate-800/50 ${
+                          className={`px-3 py-1.5 flex items-center text-xs border-t border-[#30363d] ${
                             isPlayerClub ? 'bg-emerald-900/15' : 'bg-transparent'
                           }`}
                         >
@@ -495,7 +495,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                           </span>
                           <span className="flex-1 flex items-center gap-1.5">
                             <span className="text-sm">{clubData?.logo}</span>
-                            <span className={`truncate ${isPlayerClub ? 'text-emerald-300 font-bold' : 'text-slate-300'}`}>
+                            <span className={`truncate ${isPlayerClub ? 'text-emerald-300 font-bold' : 'text-[#c9d1d9]'}`}>
                               {clubData?.shortName || entry.clubName.slice(0, 3)}
                             </span>
                             {isPlayerClub && (
@@ -504,11 +504,11 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                               </Badge>
                             )}
                           </span>
-                          <span className="w-8 text-center text-slate-400">{entry.played}</span>
-                          <span className="w-8 text-center text-slate-400">{entry.won}</span>
-                          <span className="w-8 text-center text-slate-400">{entry.drawn}</span>
-                          <span className="w-8 text-center text-slate-400">{entry.lost}</span>
-                          <span className="w-10 text-right font-bold text-slate-200">{entry.points}</span>
+                          <span className="w-8 text-center text-[#8b949e]">{entry.played}</span>
+                          <span className="w-8 text-center text-[#8b949e]">{entry.won}</span>
+                          <span className="w-8 text-center text-[#8b949e]">{entry.drawn}</span>
+                          <span className="w-8 text-center text-[#8b949e]">{entry.lost}</span>
+                          <span className="w-10 text-right font-bold text-[#c9d1d9]">{entry.points}</span>
                         </div>
                       );
                     })}
@@ -522,9 +522,9 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           {/* Player Stats Card */}
           {/* ============================================ */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-slate-900/80 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider flex items-center gap-2">
                   <ScrollText className="h-3.5 w-3.5" />
                   Season Stats
                 </CardTitle>
@@ -572,9 +572,9 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Average Rating */}
-                <div className="bg-slate-800/50 rounded-xl p-3 space-y-2">
+                <div className="bg-[#21262d] rounded-xl p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Average Rating</span>
+                    <span className="text-xs text-[#8b949e]">Average Rating</span>
                     <div className="flex items-center gap-2">
                       <span
                         className="text-xl font-black"
@@ -633,18 +633,18 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                   )}
 
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-[#8b949e]">
                       Goals/game: <span className="text-emerald-400 font-semibold">{goalsPerGame}</span>
                     </span>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-[#8b949e]">
                       Assists/game: <span className="text-blue-400 font-semibold">{assistsPerGame}</span>
                     </span>
                   </div>
 
                   {playerStats.manOfTheMatch > 0 && (
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-slate-700/50">
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-[#30363d]">
                       <Crown className="h-3 w-3 text-amber-400" />
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-[#8b949e]">
                         <span className="text-amber-400 font-bold">{playerStats.manOfTheMatch}</span> Man of the Match
                       </span>
                     </div>
@@ -658,9 +658,9 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           {/* Awards Section */}
           {/* ============================================ */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-slate-900/80 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider flex items-center gap-2">
                   <Award className="h-3.5 w-3.5" />
                   Season Awards
                 </CardTitle>
@@ -681,19 +681,19 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
 
                 {/* Unlocked achievements from the game */}
                 {unlockedAchievements.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-800 space-y-1.5">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                  <div className="mt-3 pt-3 border-t border-[#30363d] space-y-1.5">
+                    <p className="text-[10px] text-[#8b949e] uppercase tracking-wider font-semibold">
                       Achievements Unlocked
                     </p>
                     {unlockedAchievements.map((ach) => (
                       <div
                         key={ach.id}
-                        className="flex items-center gap-2 bg-slate-800/40 rounded-lg p-2"
+                        className="flex items-center gap-2 bg-[#21262d] rounded-lg p-2"
                       >
                         <span className="text-lg">{ach.icon}</span>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-slate-200 truncate">{ach.name}</p>
-                          <p className="text-[9px] text-slate-500 truncate">{ach.description}</p>
+                          <p className="text-xs font-semibold text-[#c9d1d9] truncate">{ach.name}</p>
+                          <p className="text-[9px] text-[#8b949e] truncate">{ach.description}</p>
                         </div>
                         <Badge
                           variant="outline"
@@ -704,7 +704,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                               ? 'border-purple-600 text-purple-400'
                               : ach.rarity === 'rare'
                               ? 'border-blue-600 text-blue-400'
-                              : 'border-slate-600 text-slate-400'
+                              : 'border-slate-600 text-[#8b949e]'
                           }`}
                         >
                           {ach.rarity}
@@ -721,21 +721,21 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           {/* Progress Card */}
           {/* ============================================ */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-slate-900/80 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider flex items-center gap-2">
                   <TrendingUp className="h-3.5 w-3.5" />
                   Progress
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-3 space-y-3">
                 {/* Overall Rating Change */}
-                <div className="bg-slate-800/50 rounded-xl p-3">
+                <div className="bg-[#21262d] rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-slate-500">Overall Rating</span>
+                    <span className="text-xs text-[#8b949e]">Overall Rating</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-400">{previousOverall}</span>
-                      <ArrowRight className="h-3 w-3 text-slate-600" />
+                      <span className="text-sm font-bold text-[#8b949e]">{previousOverall}</span>
+                      <ArrowRight className="h-3 w-3 text-[#484f58]" />
                       <span className="text-lg font-black" style={{ color: overallColor }}>
                         {currentOverall}
                       </span>
@@ -745,7 +745,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                             ? 'bg-emerald-800 text-emerald-300'
                             : overallChange < 0
                             ? 'bg-red-800 text-red-300'
-                            : 'bg-slate-700 text-slate-400'
+                            : 'bg-slate-700 text-[#8b949e]'
                         }`}
                       >
                         {overallChange > 0 ? `+${overallChange}` : overallChange < 0 ? `${overallChange}` : '±0'}
@@ -764,12 +764,12 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Market Value Change */}
-                <div className="bg-slate-800/50 rounded-xl p-3">
+                <div className="bg-[#21262d] rounded-xl p-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">Market Value</span>
+                    <span className="text-xs text-[#8b949e]">Market Value</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-400">{formatCurrency(previousMarketValue, 'M')}</span>
-                      <ArrowRight className="h-3 w-3 text-slate-600" />
+                      <span className="text-sm text-[#8b949e]">{formatCurrency(previousMarketValue, 'M')}</span>
+                      <ArrowRight className="h-3 w-3 text-[#484f58]" />
                       <span className="text-sm font-bold text-emerald-400">{formatCurrency(currentMarketValue, 'M')}</span>
                       <Badge
                         className={`text-[10px] px-1.5 ${
@@ -777,7 +777,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                             ? 'bg-emerald-800 text-emerald-300'
                             : marketValueChange < 0
                             ? 'bg-red-800 text-red-300'
-                            : 'bg-slate-700 text-slate-400'
+                            : 'bg-slate-700 text-[#8b949e]'
                         }`}
                       >
                         {marketValueChange > 0
@@ -793,7 +793,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 {/* Key Attribute Improvements */}
                 {attrChangeEntries.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                    <p className="text-[10px] text-[#8b949e] uppercase tracking-wider font-semibold">
                       Key Attribute Changes
                     </p>
                     {attrChangeEntries.map(([attr, change]) => (
@@ -803,8 +803,8 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 )}
 
                 {attrChangeEntries.length === 0 && (
-                  <div className="bg-slate-800/30 rounded-xl p-3 text-center">
-                    <p className="text-xs text-slate-500">No significant attribute changes this season</p>
+                  <div className="bg-[#21262d] rounded-xl p-3 text-center">
+                    <p className="text-xs text-[#8b949e]">No significant attribute changes this season</p>
                   </div>
                 )}
               </CardContent>
@@ -815,19 +815,19 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           {/* Next Season Preview */}
           {/* ============================================ */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-slate-900/80 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider flex items-center gap-2">
                   <ArrowRight className="h-3.5 w-3.5" />
                   Next Season Preview
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-3 space-y-2">
                 {/* Contract Status */}
-                <div className="flex items-center justify-between bg-slate-800/50 rounded-xl p-3">
+                <div className="flex items-center justify-between bg-[#21262d] rounded-xl p-3">
                   <div className="flex items-center gap-2">
-                    <ScrollText className="h-4 w-4 text-slate-500" />
-                    <span className="text-xs text-slate-400">Contract</span>
+                    <ScrollText className="h-4 w-4 text-[#8b949e]" />
+                    <span className="text-xs text-[#8b949e]">Contract</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge
@@ -846,10 +846,10 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Squad Status */}
-                <div className="flex items-center justify-between bg-slate-800/50 rounded-xl p-3">
+                <div className="flex items-center justify-between bg-[#21262d] rounded-xl p-3">
                   <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-slate-500" />
-                    <span className="text-xs text-slate-400">Squad Status</span>
+                    <Users className="h-4 w-4 text-[#8b949e]" />
+                    <span className="text-xs text-[#8b949e]">Squad Status</span>
                   </div>
                   <Badge
                     variant="outline"
@@ -862,7 +862,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                         ? 'border-amber-600 text-amber-400'
                         : squadStatus === 'prospect'
                         ? 'border-purple-600 text-purple-400'
-                        : 'border-slate-600 text-slate-400'
+                        : 'border-slate-600 text-[#8b949e]'
                     }`}
                   >
                     {getSquadStatusLabel(squadStatus)}
@@ -870,12 +870,12 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
                 </div>
 
                 {/* Age */}
-                <div className="flex items-center justify-between bg-slate-800/50 rounded-xl p-3">
+                <div className="flex items-center justify-between bg-[#21262d] rounded-xl p-3">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-slate-500" />
-                    <span className="text-xs text-slate-400">Age</span>
+                    <Clock className="h-4 w-4 text-[#8b949e]" />
+                    <span className="text-xs text-[#8b949e]">Age</span>
                   </div>
-                  <span className="text-sm font-semibold text-slate-200">{player.age} years old</span>
+                  <span className="text-sm font-semibold text-[#c9d1d9]">{player.age} years old</span>
                 </div>
 
                 {/* Contract Warning */}
@@ -905,10 +905,10 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
         {/* ============================================ */}
         {/* Footer - Continue Button */}
         {/* ============================================ */}
-        <div className="px-4 py-4 border-t border-slate-800 bg-gradient-to-t from-slate-900 to-slate-900/80">
+        <div className="px-4 py-4 border-t border-[#30363d] bg-[#161b22]">
           <Button
             onClick={onClose}
-            className="w-full h-12 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all text-base"
+            className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all text-base"
           >
             <ArrowRight className="mr-2 h-5 w-5" />
             Continue to Season {seasonNumber + 1}

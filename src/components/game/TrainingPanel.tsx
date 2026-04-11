@@ -357,12 +357,12 @@ export default function TrainingPanel() {
       </AnimatePresence>
 
       {/* Fitness Bar */}
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Heart className="h-4 w-4 text-pink-400" />
-              <span className="text-xs text-slate-400 uppercase tracking-wide font-medium">Fitness</span>
+              <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Fitness</span>
             </div>
             <span
               className="text-sm font-bold"
@@ -371,7 +371,7 @@ export default function TrainingPanel() {
               {player.fitness}%
             </span>
           </div>
-          <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-[#21262d] rounded-full overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               initial={{ width: 0 }}
@@ -391,7 +391,7 @@ export default function TrainingPanel() {
             <motion.button
               key={t.type}
               onClick={() => handleTypeSelect(t.type)}
-              className={`relative flex items-center gap-3 p-3 rounded-xl text-left transition-all overflow-hidden ${
+              className={`relative flex items-center gap-3 p-3 rounded-lg text-left transition-all overflow-hidden ${
                 isSelected
                   ? 'ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/20'
                   : 'hover:scale-[1.02]'
@@ -403,12 +403,12 @@ export default function TrainingPanel() {
                 backgroundColor: isSelected ? undefined : '#0f172a',
                 borderColor: isSelected ? undefined : '#1e293b',
               }}
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 1 }}
             >
               {/* Gradient overlay on selected */}
               {isSelected && (
                 <motion.div
-                  className={`absolute inset-0 bg-gradient-to-br ${t.gradient}`}
+                  className={`absolute inset-0 ${t.gradient.includes('emerald') ? 'bg-emerald-500/5' : 'bg-[#21262d]'}`}
                   layoutId="trainingGradient"
                   transition={{ duration: 0.3 }}
                 />
@@ -424,8 +424,8 @@ export default function TrainingPanel() {
                   {t.icon}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-200">{t.label}</p>
-                  <p className="text-[10px] text-slate-500 truncate">{t.description}</p>
+                  <p className="text-sm font-semibold text-[#c9d1d9]">{t.label}</p>
+                  <p className="text-[10px] text-[#8b949e] truncate">{t.description}</p>
                 </div>
                 {isSelected && (
                   <motion.div
@@ -452,9 +452,9 @@ export default function TrainingPanel() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
                   <BarChart3 className="h-3.5 w-3.5" />
                   Attribute Preview — {selectedTrainingConfig.label}
                 </CardTitle>
@@ -471,14 +471,14 @@ export default function TrainingPanel() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span
-                            className="text-slate-400"
+                            className="text-[#8b949e]"
                             style={{ color: isFocused ? selectedTrainingConfig.color : undefined }}
                           >
                             {attrIcons[attr]}
                           </span>
                           <span
                             className={`text-xs font-medium ${
-                              isFocused ? 'text-slate-200' : 'text-slate-400'
+                              isFocused ? 'text-[#c9d1d9]' : 'text-[#8b949e]'
                             }`}
                           >
                             {attrLabels[attr]}
@@ -489,13 +489,13 @@ export default function TrainingPanel() {
                             </Badge>
                           )}
                           {isFocused && !isFocusAttr && (
-                            <Badge className="h-4 px-1 text-[9px] bg-slate-700/50 text-slate-400 border-slate-600">
+                            <Badge className="h-4 px-1 text-[9px] bg-slate-700/50 text-[#8b949e] border-slate-600">
                               TRAINED
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-300">
+                          <span className="text-xs font-bold text-[#c9d1d9]">
                             {currentValue}
                           </span>
                           {gain && (
@@ -512,7 +512,7 @@ export default function TrainingPanel() {
                       </div>
 
                       {/* Attribute bar with current + gain preview */}
-                      <div className="relative h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="relative h-2.5 bg-[#21262d] rounded-full overflow-hidden">
                         {/* Current value bar (slate) */}
                         <motion.div
                           className="absolute h-full rounded-full"
@@ -561,9 +561,9 @@ export default function TrainingPanel() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
           >
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
                   <Flame className="h-3.5 w-3.5" />
                   Training Intensity
                 </CardTitle>
@@ -583,14 +583,14 @@ export default function TrainingPanel() {
                             ? 'ring-2 ring-emerald-400'
                             : isDisabled
                             ? 'opacity-40 cursor-not-allowed'
-                            : 'hover:bg-slate-800'
-                        } ${isSelected ? i.bgColor : 'bg-slate-800/50 border border-slate-700'}`}
-                        whileTap={!isDisabled ? { scale: 0.96 } : undefined}
+                            : 'hover:bg-[#21262d]'
+                        } ${isSelected ? i.bgColor : 'bg-[#21262d] border border-[#30363d]'}`}
+                        whileTap={!isDisabled ? { scale: 1 } : undefined}
                       >
                         <p className="text-sm font-semibold" style={{ color: isDisabled ? '#64748b' : i.color }}>
                           {i.label}
                         </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">{i.value}% effort</p>
+                        <p className="text-[10px] text-[#8b949e] mt-0.5">{i.value}% effort</p>
                         <div className="flex items-center justify-center gap-1 mt-1.5">
                           {renderRiskIndicator(i.risk)}
                           <span
@@ -600,14 +600,14 @@ export default function TrainingPanel() {
                             {i.riskLabel}
                           </span>
                         </div>
-                        <p className="text-[9px] text-slate-600 mt-1">
+                        <p className="text-[9px] text-[#484f58] mt-1">
                           Fatigue: -{i.fatigueCost}%
                         </p>
                         <p className="text-[9px] text-emerald-500/80">
                           Gain: x{i.gainMultiplier}
                         </p>
                         {isDisabled && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60">
+                          <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117]/60">
                             <AlertTriangle className="h-4 w-4 text-red-500" />
                           </div>
                         )}
@@ -618,15 +618,15 @@ export default function TrainingPanel() {
 
                 {/* Intensity effect preview */}
                 {selectedTrainingConfig && selectedTrainingConfig.focusAttrs.length > 0 && (
-                  <div className="mt-3 p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                  <div className="mt-3 p-2.5 rounded-lg bg-[#21262d] border border-[#30363d]">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500">Estimated fatigue cost</span>
+                      <span className="text-[10px] text-[#8b949e]">Estimated fatigue cost</span>
                       <span className="text-xs font-semibold" style={{ color: selectedIntensityConfig.color }}>
                         -{selectedIntensityConfig.fatigueCost}% fitness
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-slate-500">Gain multiplier</span>
+                      <span className="text-[10px] text-[#8b949e]">Gain multiplier</span>
                       <span className="text-xs font-semibold text-emerald-400">
                         x{selectedIntensityConfig.gainMultiplier}
                       </span>
@@ -655,9 +655,9 @@ export default function TrainingPanel() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
           >
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
                   <Dumbbell className="h-3.5 w-3.5" />
                   Focus Attribute
                 </CardTitle>
@@ -674,10 +674,10 @@ export default function TrainingPanel() {
                           focusAttr === attr
                             ? 'bg-emerald-600/30 border border-emerald-500 text-emerald-300'
                             : isTrained
-                            ? 'bg-slate-800 border border-slate-600 text-slate-300 hover:bg-slate-700'
-                            : 'bg-slate-800/50 border border-slate-700 text-slate-500 hover:bg-slate-700'
+                            ? 'bg-[#21262d] border border-slate-600 text-[#c9d1d9] hover:bg-slate-700'
+                            : 'bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:bg-slate-700'
                         }`}
-                        whileTap={{ scale: 0.95 }}
+                        whileTap={{ scale: 1 }}
                       >
                         {attrIcons[attr]}
                         {attrLabels[attr]}
@@ -688,7 +688,7 @@ export default function TrainingPanel() {
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-slate-600 mt-2">
+                <p className="text-[10px] text-[#484f58] mt-2">
                   Focus attribute receives 1.5x gain bonus
                 </p>
               </CardContent>
@@ -723,7 +723,7 @@ export default function TrainingPanel() {
         <Button
           onClick={handleSchedule}
           disabled={!selectedType || trainingAvailable <= 0 || isIntenseDisabled}
-          className="w-full h-12 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-semibold"
+          className="w-full h-12 bg-emerald-700 hover:bg-emerald-600 disabled:bg-[#21262d] disabled:text-[#484f58] rounded-lg font-semibold"
         >
           <TrendingUp className="mr-2 h-4 w-4" />
           Schedule Training
@@ -734,7 +734,7 @@ export default function TrainingPanel() {
       <Button
         onClick={() => advanceWeek()}
         variant="outline"
-        className="w-full border-slate-700 text-slate-300 rounded-xl hover:bg-slate-800"
+        className="w-full border-[#30363d] text-[#c9d1d9] rounded-lg hover:bg-[#21262d]"
       >
         <Clock className="mr-2 h-4 w-4" />
         Advance Week
@@ -742,9 +742,9 @@ export default function TrainingPanel() {
 
       {/* Training History */}
       {recentTrainingHistory.length > 0 && (
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
               <History className="h-3.5 w-3.5" />
               Recent Training
             </CardTitle>
@@ -764,7 +764,7 @@ export default function TrainingPanel() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/50"
+                    className="flex items-center gap-3 p-2.5 rounded-lg bg-[#21262d] border border-[#30363d]"
                   >
                     <div
                       className="p-1.5 rounded-md shrink-0"
@@ -777,7 +777,7 @@ export default function TrainingPanel() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-300">
+                        <span className="text-xs font-semibold text-[#c9d1d9]">
                           {config?.label ?? session.type}
                         </span>
                         <Badge
@@ -808,7 +808,7 @@ export default function TrainingPanel() {
                         )}
                       </div>
                     </div>
-                    <span className="text-[9px] text-slate-600 shrink-0">
+                    <span className="text-[9px] text-[#484f58] shrink-0">
                       {timeAgo}
                     </span>
                   </motion.div>
@@ -820,9 +820,9 @@ export default function TrainingPanel() {
       )}
 
       {/* Current Attributes Overview */}
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-[#161b22] border-[#30363d]">
         <CardHeader className="pb-2 pt-3 px-4">
-          <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+          <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
             <BarChart3 className="h-3.5 w-3.5" />
             Current Attributes
           </CardTitle>
@@ -833,8 +833,8 @@ export default function TrainingPanel() {
               <span style={{ color: getAttrBarColor(player.attributes[attr]) }}>
                 {attrIcons[attr]}
               </span>
-              <span className="text-xs text-slate-400 w-14">{attrLabels[attr]}</span>
-              <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+              <span className="text-xs text-[#8b949e] w-14">{attrLabels[attr]}</span>
+              <div className="flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
                   initial={{ width: 0 }}
@@ -843,7 +843,7 @@ export default function TrainingPanel() {
                   style={{ backgroundColor: getAttrBarColor(player.attributes[attr]) }}
                 />
               </div>
-              <span className="text-xs font-bold w-8 text-right text-slate-300">
+              <span className="text-xs font-bold w-8 text-right text-[#c9d1d9]">
                 {player.attributes[attr]}
               </span>
             </div>

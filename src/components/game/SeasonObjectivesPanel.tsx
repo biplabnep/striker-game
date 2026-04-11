@@ -39,7 +39,7 @@ function ObjectiveCard({ objective, index }: { objective: SeasonObjective; index
       initial={{ opacity: 0, y: 12, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
-      className={`relative rounded-xl border ${isCompleted ? 'border-emerald-500/30 bg-emerald-500/5' : isFailed ? 'border-red-500/20 bg-red-500/5' : 'border-slate-700/50 bg-slate-900/60'} p-3 transition-all hover:border-slate-600/50`}
+      className={`relative rounded-lg border ${isCompleted ? 'border-emerald-500/30 bg-emerald-500/5' : isFailed ? 'border-red-500/20 bg-red-500/5' : 'border-[#30363d] bg-[#161b22]/60'} p-3 transition-all hover:border-slate-600/50`}
     >
       <div className="flex items-start gap-3">
         {/* Icon */}
@@ -56,13 +56,13 @@ function ObjectiveCard({ objective, index }: { objective: SeasonObjective; index
             {isCompleted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
             {isFailed && <XCircle className="w-3.5 h-3.5 text-red-400" />}
           </div>
-          <h4 className="text-sm font-semibold text-slate-200 truncate">{objective.title}</h4>
-          <p className="text-[11px] text-slate-400 mt-0.5">{objective.description}</p>
+          <h4 className="text-sm font-semibold text-[#c9d1d9] truncate">{objective.title}</h4>
+          <p className="text-[11px] text-[#8b949e] mt-0.5">{objective.description}</p>
 
           {/* Progress Bar */}
           {!isCompleted && !isFailed && (
             <div className="mt-2">
-              <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+              <div className="flex justify-between text-[10px] text-[#8b949e] mb-1">
                 <span>
                   {objective.title === 'League Position'
                     ? `Current: ${objective.current}${getOrdinal(objective.current)}`
@@ -72,7 +72,7 @@ function ObjectiveCard({ objective, index }: { objective: SeasonObjective; index
                 </span>
                 <span>{Math.round(progress)}%</span>
               </div>
-              <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
                 <motion.div
                   className={`h-full rounded-full ${
                     progress >= 80 ? 'bg-emerald-500' : progress >= 40 ? 'bg-amber-500' : 'bg-red-500'
@@ -143,8 +143,8 @@ export default function SeasonObjectivesPanel() {
   if (!gameState || !currentObjectives) {
     return (
       <div className="px-4 py-6 text-center">
-        <Target className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-        <p className="text-sm text-slate-500">No objectives set for this season</p>
+        <Target className="w-10 h-10 text-[#484f58] mx-auto mb-2" />
+        <p className="text-sm text-[#8b949e]">No objectives set for this season</p>
       </div>
     );
   }
@@ -158,11 +158,11 @@ export default function SeasonObjectivesPanel() {
         className="flex items-center justify-between mb-4"
       >
         <div>
-          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-[#c9d1d9] flex items-center gap-2">
             <Target className="w-5 h-5 text-emerald-400" />
             Season Objectives
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">Season {currentObjectives.season}</p>
+          <p className="text-xs text-[#8b949e] mt-0.5">Season {currentObjectives.season}</p>
         </div>
         <div className={`px-3 py-1.5 rounded-lg border ${getBoardExpectationBg(currentObjectives.boardExpectation)}`}>
           <span className={`text-xs font-semibold ${getBoardExpectationColor(currentObjectives.boardExpectation)}`}>
@@ -178,28 +178,28 @@ export default function SeasonObjectivesPanel() {
         transition={{ delay: 0.05 }}
         className="mb-4"
       >
-        <Card className="bg-slate-900/80 border-slate-800/60 backdrop-blur-sm">
+        <Card className="bg-[#161b22] border-[#30363d] ">
           <CardContent className="p-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center">
                 <div className="text-2xl font-bold text-emerald-400">{completedCount}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Completed</div>
+                <div className="text-[10px] text-[#8b949e] mt-0.5">Completed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-slate-300">
+                <div className="text-2xl font-bold text-[#c9d1d9]">
                   {currentObjectives.objectives.filter(o => o.status === 'in_progress').length}
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">In Progress</div>
+                <div className="text-[10px] text-[#8b949e] mt-0.5">In Progress</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-amber-400">€{totalBonus > 0 ? `${(totalBonus / 1000).toFixed(0)}K` : '0'}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Bonus Earned</div>
+                <div className="text-[10px] text-[#8b949e] mt-0.5">Bonus Earned</div>
               </div>
             </div>
 
             {/* Overall Progress */}
             <div className="mt-3">
-              <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+              <div className="flex justify-between text-[10px] text-[#8b949e] mb-1">
                 <span>Overall Progress</span>
                 <span>{completedCount} / {currentObjectives.objectives.length}</span>
               </div>
@@ -247,7 +247,7 @@ export default function SeasonObjectivesPanel() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="mt-4 p-3 rounded-xl border border-red-500/20 bg-red-500/5"
+          className="mt-4 p-3 rounded-lg border border-red-500/20 bg-red-500/5"
         >
           <div className="flex items-center gap-2 mb-1">
             <XCircle className="w-4 h-4 text-red-400" />
@@ -278,7 +278,7 @@ function ObjectiveSection({
     <div className="mb-4">
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <h3 className="text-sm font-semibold text-slate-300">{title}</h3>
+        <h3 className="text-sm font-semibold text-[#c9d1d9]">{title}</h3>
       </div>
       <div className="space-y-2">
         {objectives.map((obj, i) => (

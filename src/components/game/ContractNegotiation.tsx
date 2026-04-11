@@ -422,7 +422,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) { onClose(); } }}>
-      <DialogContent className="bg-slate-950 border-slate-800 text-white max-w-md max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="bg-[#0d1117] border-[#30363d] text-white max-w-md max-h-[90vh] overflow-y-auto p-0">
         <DialogHeader className="sr-only">
           <DialogTitle>Contract Negotiation</DialogTitle>
           <DialogDescription>Negotiate your contract with {currentClub.name}</DialogDescription>
@@ -443,14 +443,14 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">Contract Negotiation</h3>
-                  <p className="text-xs text-slate-400">{currentClub.name} wants to discuss your contract</p>
+                  <p className="text-xs text-[#8b949e]">{currentClub.name} wants to discuss your contract</p>
                 </div>
               </div>
 
               {/* Current Contract Status */}
-              <Card className="bg-slate-900 border-slate-800">
+              <Card className="bg-[#161b22] border-[#30363d]">
                 <CardHeader className="pb-2 pt-3 px-4">
-                  <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider flex items-center gap-2">
                     <Clock className="h-3 w-3" />
                     Current Contract Status
                   </CardTitle>
@@ -458,7 +458,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <CardContent className="px-4 pb-3 space-y-3">
                   {/* Weekly Wage */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 flex items-center gap-1.5">
+                    <span className="text-sm text-[#8b949e] flex items-center gap-1.5">
                       <DollarSign className="h-3.5 w-3.5" />
                       Weekly Wage
                     </span>
@@ -469,7 +469,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
                   {/* Years Remaining */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 flex items-center gap-1.5">
+                    <span className="text-sm text-[#8b949e] flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5" />
                       Years Remaining
                     </span>
@@ -480,7 +480,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
                   {/* Market Value */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400 flex items-center gap-1.5">
+                    <span className="text-sm text-[#8b949e] flex items-center gap-1.5">
                       <TrendingUp className="h-3.5 w-3.5" />
                       Market Value
                     </span>
@@ -492,7 +492,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   {/* Release Clause */}
                   {player.contract.releaseClause && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-400 flex items-center gap-1.5">
+                      <span className="text-sm text-[#8b949e] flex items-center gap-1.5">
                         <AlertTriangle className="h-3.5 w-3.5" />
                         Release Clause
                       </span>
@@ -505,7 +505,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   {/* Signing Bonus */}
                   {player.contract.signingBonus ? (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-400 flex items-center gap-1.5">
+                      <span className="text-sm text-[#8b949e] flex items-center gap-1.5">
                         <DollarSign className="h-3.5 w-3.5" />
                         Signing Bonus
                       </span>
@@ -545,7 +545,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
               {/* Start Negotiation Button */}
               <Button
                 onClick={startNegotiation}
-                className="w-full h-12 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white font-semibold rounded-xl"
+                className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl"
               >
                 <Handshake className="mr-2 h-4 w-4" />
                 Start Negotiation
@@ -588,9 +588,9 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
               </div>
 
               {/* Club's Offer Card */}
-              <Card className="bg-slate-900 border-slate-800">
+              <Card className="bg-[#161b22] border-[#30363d]">
                 <CardHeader className="pb-2 pt-3 px-4">
-                  <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider flex items-center gap-2">
                     <span className="text-base">{currentClub.logo}</span>
                     {currentClub.name}&apos;s Offer
                   </CardTitle>
@@ -598,9 +598,9 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <CardContent className="px-4 pb-3 space-y-2">
                   {/* Wage Comparison */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Weekly Wage</span>
+                    <span className="text-xs text-[#8b949e]">Weekly Wage</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-600 line-through">
+                      <span className="text-[10px] text-[#484f58] line-through">
                         {formatCurrency(player.contract.weeklyWage, 'K')}
                       </span>
                       <span className="text-sm font-bold text-emerald-400">
@@ -616,7 +616,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
                   {/* Contract Length */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Contract Length</span>
+                    <span className="text-xs text-[#8b949e]">Contract Length</span>
                     <span className={`text-sm font-semibold ${getYearsColor(currentClubOffer.yearsRemaining)}`}>
                       {currentClubOffer.yearsRemaining} year{currentClubOffer.yearsRemaining !== 1 ? 's' : ''}
                     </span>
@@ -624,7 +624,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
                   {/* Signing Bonus */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Signing Bonus</span>
+                    <span className="text-xs text-[#8b949e]">Signing Bonus</span>
                     <span className="text-sm text-white">
                       {formatCurrency(currentClubOffer.signingBonus, 'K')}
                     </span>
@@ -632,23 +632,23 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
                   {/* Performance Bonuses */}
                   {currentClubOffer.performanceBonuses && (
-                    <div className="pt-2 border-t border-slate-800 space-y-1.5">
-                      <span className="text-[10px] text-slate-500 uppercase tracking-wider">Performance Bonuses</span>
+                    <div className="pt-2 border-t border-[#30363d] space-y-1.5">
+                      <span className="text-[10px] text-[#8b949e] uppercase tracking-wider">Performance Bonuses</span>
                       {currentClubOffer.performanceBonuses.goalsBonus && (
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-500">Goal Bonus</span>
+                          <span className="text-[10px] text-[#8b949e]">Goal Bonus</span>
                           <span className="text-xs text-emerald-400">{formatCurrency(currentClubOffer.performanceBonuses.goalsBonus, 'K')}/goal</span>
                         </div>
                       )}
                       {currentClubOffer.performanceBonuses.assistBonus && (
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-500">Assist Bonus</span>
+                          <span className="text-[10px] text-[#8b949e]">Assist Bonus</span>
                           <span className="text-xs text-blue-400">{formatCurrency(currentClubOffer.performanceBonuses.assistBonus, 'K')}/assist</span>
                         </div>
                       )}
                       {currentClubOffer.performanceBonuses.cleanSheetBonus && (
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-500">Clean Sheet Bonus</span>
+                          <span className="text-[10px] text-[#8b949e]">Clean Sheet Bonus</span>
                           <span className="text-xs text-amber-400">{formatCurrency(currentClubOffer.performanceBonuses.cleanSheetBonus, 'K')}/CS</span>
                         </div>
                       )}
@@ -657,9 +657,9 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
                   {/* Release Clause */}
                   {currentClubOffer.releaseClause && (
-                    <div className="pt-2 border-t border-slate-800">
+                    <div className="pt-2 border-t border-[#30363d]">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-500">Release Clause</span>
+                        <span className="text-[10px] text-[#8b949e]">Release Clause</span>
                         <span className="text-xs text-amber-400">{formatCurrency(currentClubOffer.releaseClause, 'M')}</span>
                       </div>
                     </div>
@@ -690,7 +690,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   onClick={handleReject}
                   disabled={isAnimating}
                   variant="outline"
-                  className="w-full h-11 border-slate-700 text-slate-400 hover:bg-slate-800 rounded-xl"
+                  className="w-full h-11 border-[#30363d] text-[#8b949e] hover:bg-[#21262d] rounded-xl"
                 >
                   <XCircle className="mr-2 h-4 w-4" />
                   Reject & Walk Away
@@ -712,11 +712,11 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
               </div>
 
               {/* Wage Slider */}
-              <Card className="bg-slate-900 border-slate-800">
+              <Card className="bg-[#161b22] border-[#30363d]">
                 <CardContent className="p-4 space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-slate-400">Weekly Wage Demand</span>
+                      <span className="text-xs text-[#8b949e]">Weekly Wage Demand</span>
                       <span className="text-sm font-bold text-emerald-400">
                         {formatCurrency(counterWage, 'K')}
                       </span>
@@ -730,27 +730,27 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                       className="w-full"
                     />
                     <div className="flex justify-between mt-1">
-                      <span className="text-[10px] text-slate-600">{formatCurrency(wageMin, 'K')}</span>
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-[#484f58]">{formatCurrency(wageMin, 'K')}</span>
+                      <span className="text-[10px] text-[#8b949e]">
                         Club offer: {formatCurrency(currentClubOffer.weeklyWage, 'K')}
                       </span>
-                      <span className="text-[10px] text-slate-600">{formatCurrency(wageMax, 'K')}</span>
+                      <span className="text-[10px] text-[#484f58]">{formatCurrency(wageMax, 'K')}</span>
                     </div>
                   </div>
 
                   {/* Contract Length Dropdown */}
                   <div>
-                    <span className="text-xs text-slate-400 mb-2 block">Contract Length</span>
+                    <span className="text-xs text-[#8b949e] mb-2 block">Contract Length</span>
                     <Select
                       value={String(counterYears)}
                       onValueChange={(val) => setCounterYears(Number(val))}
                     >
-                      <SelectTrigger className="w-full bg-slate-800 border-slate-700 text-white">
+                      <SelectTrigger className="w-full bg-[#21262d] border-[#30363d] text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-700">
+                      <SelectContent className="bg-[#161b22] border-[#30363d]">
                         {[1, 2, 3, 4, 5].map(year => (
-                          <SelectItem key={year} value={String(year)} className="text-white focus:bg-slate-800 focus:text-white">
+                          <SelectItem key={year} value={String(year)} className="text-white focus:bg-[#21262d] focus:text-white">
                             {year} year{year !== 1 ? 's' : ''}
                           </SelectItem>
                         ))}
@@ -759,25 +759,25 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   </div>
 
                   {/* Quick comparison */}
-                  <div className="bg-slate-800/50 rounded-lg p-3 space-y-1.5">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">Comparison</span>
+                  <div className="bg-[#21262d] rounded-lg p-3 space-y-1.5">
+                    <span className="text-[10px] text-[#8b949e] uppercase tracking-wider">Comparison</span>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Current Wage</span>
-                      <span className="text-slate-300">{formatCurrency(player.contract.weeklyWage, 'K')}</span>
+                      <span className="text-[#8b949e]">Current Wage</span>
+                      <span className="text-[#c9d1d9]">{formatCurrency(player.contract.weeklyWage, 'K')}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Club Offer</span>
+                      <span className="text-[#8b949e]">Club Offer</span>
                       <span className="text-emerald-400">{formatCurrency(currentClubOffer.weeklyWage, 'K')}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Your Demand</span>
+                      <span className="text-[#8b949e]">Your Demand</span>
                       <span className={`font-semibold ${counterWage > currentClubOffer.weeklyWage ? 'text-amber-400' : 'text-emerald-400'}`}>
                         {formatCurrency(counterWage, 'K')}
                       </span>
                     </div>
                     {counterWage > currentClubOffer.weeklyWage && (
                       <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-slate-500">Difference</span>
+                        <span className="text-[#8b949e]">Difference</span>
                         <span className="text-amber-400">
                           +{((counterWage - currentClubOffer.weeklyWage) / currentClubOffer.weeklyWage * 100).toFixed(0)}% above offer
                         </span>
@@ -800,7 +800,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <Button
                   onClick={() => setPhase('offer')}
                   variant="outline"
-                  className="w-full h-10 border-slate-700 text-slate-400 hover:bg-slate-800 rounded-xl text-sm"
+                  className="w-full h-10 border-[#30363d] text-[#8b949e] hover:bg-[#21262d] rounded-xl text-sm"
                 >
                   Back to Offer
                 </Button>
@@ -819,12 +819,12 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  className="w-12 h-12 rounded-full border-2 border-slate-700 border-t-emerald-400"
+                  className="w-12 h-12 rounded-full border-2 border-[#30363d] border-t-emerald-400"
                 />
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-white">{currentClub.name} is considering...</p>
-                <p className="text-xs text-slate-400 mt-1">The board is reviewing your counter-offer</p>
+                <p className="text-xs text-[#8b949e] mt-1">The board is reviewing your counter-offer</p>
               </div>
             </motion.div>
           )}
@@ -855,7 +855,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                     </motion.div>
                     <div>
                       <h3 className="font-bold text-lg text-emerald-400">Contract Signed!</h3>
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-xs text-[#8b949e] mt-1">
                         {outcome === 'accepted'
                           ? 'You accepted the club\'s offer!'
                           : 'The club accepted your counter-offer!'}
@@ -880,7 +880,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                     </motion.div>
                     <div>
                       <h3 className="font-bold text-lg text-red-400">Offer Rejected</h3>
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-xs text-[#8b949e] mt-1">
                         You walked away from the negotiation table. The club may be reluctant to negotiate again soon.
                       </p>
                     </div>
@@ -903,7 +903,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                     </motion.div>
                     <div>
                       <h3 className="font-bold text-lg text-red-400">Negotiations Failed</h3>
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-xs text-[#8b949e] mt-1">
                         After 3 rounds, no agreement could be reached. Your contract remains unchanged.
                       </p>
                     </div>
@@ -913,15 +913,15 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
               {/* Final Contract Summary (for successful outcomes) */}
               {(outcome === 'accepted' || outcome === 'counter_accepted') && (
-                <Card className="bg-slate-900 border-emerald-800/50">
+                <Card className="bg-[#161b22] border-emerald-800/50">
                   <CardHeader className="pb-2 pt-3 px-4">
                     <CardTitle className="text-xs text-emerald-500 uppercase tracking-wider">New Contract</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400">Weekly Wage</span>
+                      <span className="text-xs text-[#8b949e]">Weekly Wage</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-600 line-through">
+                        <span className="text-[10px] text-[#484f58] line-through">
                           {formatCurrency(player.contract.weeklyWage, 'K')}
                         </span>
                         <span className="text-sm font-bold text-emerald-400">
@@ -930,18 +930,18 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400">Contract Length</span>
+                      <span className="text-xs text-[#8b949e]">Contract Length</span>
                       <span className={`text-sm font-semibold ${getYearsColor(finalOffer.yearsRemaining)}`}>
                         {finalOffer.yearsRemaining} year{finalOffer.yearsRemaining !== 1 ? 's' : ''}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400">Signing Bonus</span>
+                      <span className="text-xs text-[#8b949e]">Signing Bonus</span>
                       <span className="text-sm text-white">{formatCurrency(finalOffer.signingBonus, 'K')}</span>
                     </div>
                     {finalOffer.releaseClause && (
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-400">Release Clause</span>
+                        <span className="text-xs text-[#8b949e]">Release Clause</span>
                         <span className="text-xs text-amber-400">{formatCurrency(finalOffer.releaseClause, 'M')}</span>
                       </div>
                     )}
@@ -951,28 +951,28 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
 
               {/* Negotiation History (for failed outcomes) */}
               {(outcome === 'walked_away') && rounds.length > 0 && (
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-[#161b22] border-[#30363d]">
                   <CardHeader className="pb-2 pt-3 px-4">
-                    <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">Negotiation Summary</CardTitle>
+                    <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Negotiation Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-3 space-y-2">
                     {rounds.map((r, idx) => (
-                      <div key={idx} className="bg-slate-800/50 rounded-lg p-2.5 text-xs">
+                      <div key={idx} className="bg-[#21262d] rounded-lg p-2.5 text-xs">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-slate-500">Round {r.round}</span>
-                          <span className="text-slate-400">
+                          <span className="text-[#8b949e]">Round {r.round}</span>
+                          <span className="text-[#8b949e]">
                             Club: {formatCurrency(r.clubOffer.weeklyWage, 'K')}
                           </span>
                         </div>
                         {r.playerDemand && (
                           <div className="flex items-center justify-between text-[10px]">
-                            <span className="text-slate-600">Your demand:</span>
+                            <span className="text-[#484f58]">Your demand:</span>
                             <span className="text-amber-400">{formatCurrency(r.playerDemand.weeklyWage, 'K')}</span>
                           </div>
                         )}
                         {r.clubResponse && (
                           <div className="flex items-center justify-between text-[10px]">
-                            <span className="text-slate-600">Club response:</span>
+                            <span className="text-[#484f58]">Club response:</span>
                             <span className="text-emerald-400">{formatCurrency(r.clubResponse.weeklyWage, 'K')}</span>
                           </div>
                         )}
@@ -988,7 +988,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   resetNegotiation();
                   onClose();
                 }}
-                className="w-full h-11 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl"
+                className="w-full h-11 bg-[#21262d] hover:bg-slate-700 text-white font-semibold rounded-xl"
               >
                 {outcome === 'accepted' || outcome === 'counter_accepted' ? 'Continue' : 'Close'}
               </Button>

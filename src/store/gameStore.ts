@@ -32,6 +32,10 @@ import {
   YouthPlayer,
   Relationship,
   TeamDynamics,
+  InternationalFixture,
+  InternationalCareer,
+  PlayerMindset,
+  MoraleFactor,
 } from '@/lib/game/types';
 
 // Engine imports
@@ -117,6 +121,17 @@ import {
   getContinentalName,
   getStageName,
 } from '@/lib/game/continentalEngine';
+import {
+  shouldCallUp,
+  isInternationalBreakWeek,
+  processInternationalMatch,
+  updateInternationalCareer,
+  getCallUpReputationBoost,
+  getInternationalMoraleChange,
+  getInternationalFatigueCost,
+  generateSeasonInternationalFixtures,
+  getMatchTypeLabel,
+} from '@/lib/game/internationalEngine';
 
 // Persistence
 import {
@@ -209,6 +224,9 @@ interface GameStoreActions {
 
   // Relationships
   promoteRelationshipLevel: (relationshipId: string) => void;
+
+  // Mindset
+  setMindset: (mindset: PlayerMindset) => void;
 
   // Save/Load
   saveGame: (slotName: string) => void;
@@ -532,6 +550,56 @@ function applyPlayerUpdates(
 }
 
 // ============================================================
+// Helper: Migrate old GameState objects to include new fields
+// Ensures backward compatibility when loading old saves
+// ============================================================
+function migrateGameState(gs: GameState | null): GameState | null {
+  if (!gs) return null;
+  return {
+    ...gs,
+    // Cup fields (added in earlier iteration)
+    cupFixtures: gs.cupFixtures ?? [],
+    cupRound: gs.cupRound ?? 1,
+    cupEliminated: gs.cupEliminated ?? false,
+    // Youth Academy fields
+    youthTeams: gs.youthTeams ?? [],
+    youthLeagueTables: gs.youthLeagueTables ?? [],
+    youthFixtures: gs.youthFixtures ?? [],
+    youthCupFixtures: gs.youthCupFixtures ?? [],
+    youthCupRound: gs.youthCupRound ?? 1,
+    youthCupEliminated: gs.youthCupEliminated ?? false,
+    youthMatchResults: gs.youthMatchResults ?? [],
+    youthLeagueMatchWeek: gs.youthLeagueMatchWeek ?? 1,
+    // Relationships & Team Dynamics
+    relationships: gs.relationships ?? [],
+    teamDynamics: gs.teamDynamics ?? getDefaultTeamDynamics(),
+    // Continental Competitions
+    continentalFixtures: gs.continentalFixtures ?? [],
+    continentalGroupStandings: gs.continentalGroupStandings ?? [],
+    continentalQualified: gs.continentalQualified ?? false,
+    continentalCompetition: gs.continentalCompetition ?? null,
+    continentalKnockoutRound: gs.continentalKnockoutRound ?? 0,
+    continentalEliminated: gs.continentalEliminated ?? false,
+    // International Duty
+    internationalFixtures: gs.internationalFixtures ?? [],
+    internationalCareer: gs.internationalCareer ?? {
+      caps: 0, goals: 0, assists: 0, averageRating: 0, tournaments: [],
+      lastCallUpSeason: 0, lastCallUpWeek: 0,
+    },
+    internationalCalledUp: gs.internationalCalledUp ?? false,
+    internationalOnBreak: gs.internationalOnBreak ?? false,
+    // Mindset & Morale
+    mindset: gs.mindset ?? 'balanced',
+    moraleFactors: gs.moraleFactors ?? [],
+    // Season awards
+    seasonAwards: gs.seasonAwards ?? [],
+    // Game mode / difficulty
+    gameMode: gs.gameMode ?? 'career',
+    difficulty: gs.difficulty ?? 'normal',
+  };
+}
+
+// ============================================================
 // Create the Zustand store
 // ============================================================
 export const useGameStore = create<GameStore>()(
@@ -693,7 +761,23 @@ export const useGameStore = create<GameStore>()(
           continentalCompetition: null,
           continentalKnockoutRound: 0,
           continentalEliminated: false,
-          gameMode: 'career',
+          // International Duty
+          internationalFixtures: [],
+          internationalCareer: {
+            caps: 0,
+            goals: 0,
+            assists: 0,
+            averageRating: 0,
+            tournaments: [],
+            lastCallUpSeason: 0,
+            lastCallUpWeek: 0,
+          },
+          internationalCalledUp: false,
+          internationalOnBreak: false,
+  // Mindset & Morale
+  mindset: 'balanced' as PlayerMindset,
+  moraleFactors: [],
+  gameMode: 'career',
           difficulty: config.difficulty,
           createdAt: new Date().toISOString(),
           lastSaved: new Date().toISOString(),
@@ -717,20 +801,23 @@ export const useGameStore = create<GameStore>()(
       },
 
       loadCareer: (saveSlot) => {
+        const migratedGameState = migrateGameState(saveSlot.gameState);
         set({
-          gameState: saveSlot.gameState,
+          gameState: migratedGameState,
           screen: 'dashboard' as GameScreen,
           notifications: [],
           scheduledTraining: null,
           matchAnimation: { isPlaying: false, events: [], currentMinute: 0 },
         });
 
-        get().addNotification({
-          type: 'career',
-          title: 'Career Loaded',
-          message: `Welcome back! ${saveSlot.gameState.player.name} at ${saveSlot.gameState.currentClub.name}`,
-          actionRequired: false,
-        });
+        if (migratedGameState) {
+          get().addNotification({
+            type: 'career',
+            title: 'Career Loaded',
+            message: `Welcome back! ${migratedGameState.player.name} at ${migratedGameState.currentClub.name}`,
+            actionRequired: false,
+          });
+        }
       },
 
       deleteCareer: (saveSlotId) => {
@@ -786,6 +873,14 @@ export const useGameStore = create<GameStore>()(
         let continentalCompetition = state.continentalCompetition ?? null;
         let continentalKnockoutRound = state.continentalKnockoutRound ?? 0;
         let continentalEliminated = state.continentalEliminated ?? false;
+        // International Duty state
+        let internationalFixtures = [...(state.internationalFixtures ?? [])];
+        let internationalCareer = state.internationalCareer ?? {
+          caps: 0, goals: 0, assists: 0, averageRating: 0, tournaments: [],
+          lastCallUpSeason: 0, lastCallUpWeek: 0,
+        };
+        let internationalCalledUp = state.internationalCalledUp ?? false;
+        let internationalOnBreak = state.internationalOnBreak ?? false;
 
         // 1. Increment week
         state.currentWeek += 1;
@@ -1544,6 +1639,86 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
+        // 3b. International Duty processing
+        internationalOnBreak = isInternationalBreakWeek(week, currentClub.league);
+        if (internationalOnBreak) {
+          // Check if player gets called up
+          const callUp = shouldCallUp(player, season, week);
+
+          if (callUp) {
+            internationalCalledUp = true;
+
+            // Find or generate a fixture for this break
+            let existingFixture = internationalFixtures.find(
+              f => f.week === week && f.season === season && !f.played
+            );
+
+            if (!existingFixture) {
+              // Generate fixtures for this break
+              const newFixtures = generateSeasonInternationalFixtures(
+                player.nationality, season, currentClub.league
+              );
+              // Filter to just the current break week's fixtures
+              const thisWeekFixtures = newFixtures.filter(f => Math.abs(f.week - week) <= 2);
+              if (thisWeekFixtures.length > 0) {
+                existingFixture = thisWeekFixtures[0];
+                // Add all new fixtures if not already present
+                for (const nf of newFixtures) {
+                  if (!internationalFixtures.find(ef => ef.id === nf.id)) {
+                    internationalFixtures.push(nf);
+                  }
+                }
+              }
+            }
+
+            if (existingFixture) {
+              // Process the international match
+              existingFixture.playerCalledUp = true;
+              const processedFixture = processInternationalMatch(existingFixture, player);
+
+              // Update fixture in list
+              const fixIdx = internationalFixtures.findIndex(f => f.id === existingFixture!.id);
+              if (fixIdx >= 0) {
+                internationalFixtures[fixIdx] = processedFixture;
+              }
+
+              // Update international career stats
+              internationalCareer = updateInternationalCareer(internationalCareer, processedFixture);
+
+              // Apply effects to player
+              // Fatigue
+              const fatigueCost = getInternationalFatigueCost(processedFixture);
+              player.fitness = clamp(player.fitness - fatigueCost, 0, 100);
+
+              // Morale
+              const moraleChange = getInternationalMoraleChange(processedFixture);
+              player.morale = clamp(player.morale + moraleChange, 0, 100);
+
+              // Reputation boost
+              const repBoost = getCallUpReputationBoost(processedFixture);
+              player.reputation = clamp(player.reputation + repBoost, 0, 100);
+
+              // Notification
+              const matchTypeLabel = getMatchTypeLabel(processedFixture.matchType);
+              const playerNation = player.nationality;
+              const opponentNation = processedFixture.homeNation === playerNation
+                ? processedFixture.awayNation
+                : processedFixture.homeNation;
+
+              get().addNotification({
+                type: 'match',
+                title: `🌐 International Duty!`,
+                message: `Called up by ${playerNation}! ${processedFixture.homeFlag} ${processedFixture.homeNation} ${processedFixture.homeScore}-${processedFixture.awayScore} ${processedFixture.awayNation} ${processedFixture.awayFlag} (${matchTypeLabel}). Rating: ${processedFixture.playerRating?.toFixed(1) ?? 'N/A'}`,
+                actionRequired: false,
+              });
+            }
+          } else {
+            internationalCalledUp = false;
+          }
+        } else {
+          internationalCalledUp = false;
+        }
+
         // 4. Check for random events
         const newEvent = generateRandomEvent(player, currentClub, season, week);
         if (newEvent) {
@@ -1743,6 +1918,10 @@ export const useGameStore = create<GameStore>()(
             continentalGroupStandings = [];
           }
 
+          // Reset international duty for new season
+          internationalCalledUp = false;
+          internationalOnBreak = false;
+
           // Generate new season objectives
           seasonObjectives = [...seasonObjectives, generateSeasonObjectives(
             currentClub, player, state.currentSeason, getSeasonMatchdays(currentClub.league)
@@ -1867,6 +2046,10 @@ export const useGameStore = create<GameStore>()(
             continentalCompetition,
             continentalKnockoutRound,
             continentalEliminated,
+            internationalFixtures,
+            internationalCareer,
+            internationalCalledUp,
+            internationalOnBreak,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,
@@ -2389,6 +2572,17 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
+      // ---- Mindset ----
+
+      setMindset: (mindset: PlayerMindset) => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        set({
+          gameState: { ...gameState, mindset },
+        });
+      },
+
       // ---- Save/Load ----
 
       saveGame: (slotName) => {
@@ -2438,6 +2632,17 @@ export const useGameStore = create<GameStore>()(
         screen: state.screen,
         scheduledTraining: state.scheduledTraining,
       }),
+      // Merge persisted state with current, migrating old GameState objects
+      merge: (persistedState, currentState) => {
+        const merged = { ...currentState, ...(persistedState as Partial<GameStoreState>) };
+        if (merged.gameState) {
+          merged.gameState = migrateGameState(merged.gameState);
+        }
+        return merged;
+      },
     }
   )
 );
+
+// DEBUG: expose store to window for QA testing
+if (typeof window !== 'undefined') { (window as any).__useGameStore = useGameStore; }

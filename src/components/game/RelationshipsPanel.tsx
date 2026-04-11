@@ -81,7 +81,7 @@ function getRelTypeBadgeColor(type: RelationshipType): string {
     case 'agent': return 'bg-purple-500/15 text-purple-400 border-purple-500/20';
     case 'media': return 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20';
     case 'fan_favorite': return 'bg-pink-500/15 text-pink-400 border-pink-500/20';
-    default: return 'bg-slate-500/15 text-slate-400 border-slate-500/20';
+    default: return 'bg-slate-500/15 text-[#8b949e] border-slate-500/20';
   }
 }
 
@@ -91,10 +91,10 @@ function getLevelBadgeStyle(level: RelationshipLevel): string {
     case 'legendary': return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
     case 'close': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
     case 'friendly': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-    case 'neutral': return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+    case 'neutral': return 'bg-slate-500/20 text-[#c9d1d9] border-slate-500/30';
     case 'cold': return 'bg-orange-500/20 text-orange-300 border-orange-500/30';
     case 'hostile': return 'bg-red-500/20 text-red-300 border-red-500/30';
-    default: return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+    default: return 'bg-slate-500/20 text-[#c9d1d9] border-slate-500/30';
   }
 }
 
@@ -104,7 +104,7 @@ function getPositionColor(position: string): string {
   if (['CAM', 'CM', 'CDM'].includes(position)) return 'bg-green-500/15 text-green-400';
   if (['CB', 'LB', 'RB'].includes(position)) return 'bg-blue-500/15 text-blue-400';
   if (position === 'GK') return 'bg-amber-500/15 text-amber-400';
-  return 'bg-slate-500/15 text-slate-400';
+  return 'bg-slate-500/15 text-[#8b949e]';
 }
 
 // --- Helper: Trait badge style ---
@@ -116,7 +116,7 @@ function getTraitStyle(trait: string): string {
     case 'loyal': return 'bg-blue-500/15 text-blue-400';
     case 'ambitious': return 'bg-amber-500/15 text-amber-400';
     case 'relaxed': return 'bg-cyan-500/15 text-cyan-400';
-    default: return 'bg-slate-500/15 text-slate-400';
+    default: return 'bg-slate-500/15 text-[#8b949e]';
   }
 }
 
@@ -129,7 +129,7 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="rounded-2xl bg-slate-900/80 backdrop-blur-sm border border-slate-800/60 p-4 mb-4"
+      className="rounded-lg bg-[#161b22]  border border-[#30363d] p-4 mb-4"
     >
       <div className="flex items-center gap-2 mb-4">
         <div className="p-1.5 rounded-lg bg-emerald-500/15">
@@ -140,7 +140,7 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
 
       {/* Atmosphere Badge */}
       <div className="mb-4">
-        <span className="text-xs text-slate-400 mb-1.5 block">Dressing Room Atmosphere</span>
+        <span className="text-xs text-[#8b949e] mb-1.5 block">Dressing Room Atmosphere</span>
         <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-semibold ${atmosphere.color}`}>
           <span>{atmosphere.icon}</span>
           <span>{atmosphere.label}</span>
@@ -152,14 +152,14 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
         {/* Morale */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-400 flex items-center gap-1">
+            <span className="text-xs text-[#8b949e] flex items-center gap-1">
               <Heart className="h-3 w-3" /> Team Morale
             </span>
             <span className={`text-xs font-semibold ${dynamics.morale >= 70 ? 'text-emerald-400' : dynamics.morale >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
               {dynamics.morale}%
             </span>
           </div>
-          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${dynamics.morale}%` }}
@@ -174,14 +174,14 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
         {/* Cohesion */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-400 flex items-center gap-1">
+            <span className="text-xs text-[#8b949e] flex items-center gap-1">
               <UserCheck className="h-3 w-3" /> Cohesion
             </span>
             <span className={`text-xs font-semibold ${dynamics.cohesion >= 70 ? 'text-emerald-400' : dynamics.cohesion >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
               {dynamics.cohesion}%
             </span>
           </div>
-          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${dynamics.cohesion}%` }}
@@ -195,15 +195,15 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
 
         {/* Influence + Captain */}
         <div className="grid grid-cols-2 gap-3 pt-1">
-          <div className="bg-slate-800/50 rounded-xl p-3 text-center">
+          <div className="bg-[#21262d] rounded-lg p-3 text-center">
             <Flame className="h-4 w-4 text-orange-400 mx-auto mb-1" />
             <span className="text-lg font-bold text-white">{dynamics.playerInfluence}</span>
-            <span className="block text-[10px] text-slate-400 mt-0.5">Influence</span>
+            <span className="block text-[10px] text-[#8b949e] mt-0.5">Influence</span>
           </div>
-          <div className="bg-slate-800/50 rounded-xl p-3 text-center">
+          <div className="bg-[#21262d] rounded-lg p-3 text-center">
             <Crown className="h-4 w-4 text-amber-400 mx-auto mb-1" />
             <span className="text-lg font-bold text-white">{dynamics.captainRating}</span>
-            <span className="block text-[10px] text-slate-400 mt-0.5">Leadership</span>
+            <span className="block text-[10px] text-[#8b949e] mt-0.5">Leadership</span>
           </div>
         </div>
       </div>
@@ -228,15 +228,15 @@ function RelationshipCard({
       initial={{ opacity: 0, y: 16, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, delay: index * 0.04 }}
-      className={`rounded-xl border ${
+      className={`rounded-lg border ${
         rel.isCurrent
-          ? 'bg-slate-900/80 border-slate-800/60'
-          : 'bg-slate-900/40 border-slate-800/30 opacity-60'
-      } backdrop-blur-sm overflow-hidden`}
+          ? 'bg-[#161b22] border-[#30363d]'
+          : 'bg-[#161b22]/40 border-[#30363d] opacity-60'
+      }  overflow-hidden`}
     >
       {/* Main row */}
       <div
-        className="p-3 cursor-pointer hover:bg-slate-800/30 transition-colors"
+        className="p-3 cursor-pointer hover:bg-[#21262d] transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3">
@@ -255,7 +255,7 @@ function RelationshipCard({
                 </span>
               )}
               {!rel.isCurrent && (
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-400">
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-700/50 text-[#8b949e]">
                   Former
                 </span>
               )}
@@ -282,7 +282,7 @@ function RelationshipCard({
             <span className={`text-sm font-bold ${getAffinityColor(rel.affinity)}`}>
               {rel.affinity}
             </span>
-            <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+            <div className="w-16 h-1.5 bg-[#21262d] rounded-full overflow-hidden mt-1">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${rel.affinity}%` }}
@@ -293,7 +293,7 @@ function RelationshipCard({
           </div>
 
           {/* Expand icon */}
-          <div className="shrink-0 text-slate-500">
+          <div className="shrink-0 text-[#8b949e]">
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </div>
         </div>
@@ -309,11 +309,11 @@ function RelationshipCard({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 pt-1 border-t border-slate-800/40">
+            <div className="px-3 pb-3 pt-1 border-t border-[#30363d]">
               {/* Full affinity bar */}
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-slate-400">Affinity</span>
+                  <span className="text-xs text-[#8b949e]">Affinity</span>
                   <span className={`text-xs font-semibold ${getAffinityColor(rel.affinity)}`}>
                     {rel.affinity}/100
                   </span>
@@ -324,7 +324,7 @@ function RelationshipCard({
               {/* History */}
               {rel.history.length > 0 && (
                 <div className="mb-3">
-                  <span className="text-xs text-slate-400 mb-1.5 block">Key Moments</span>
+                  <span className="text-xs text-[#8b949e] mb-1.5 block">Key Moments</span>
                   <div className="space-y-1">
                     {rel.history.slice().reverse().map((entry, i) => (
                       <div
@@ -332,7 +332,7 @@ function RelationshipCard({
                         className="flex items-start gap-2 text-xs"
                       >
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1.5 shrink-0" />
-                        <span className="text-slate-300">{entry}</span>
+                        <span className="text-[#c9d1d9]">{entry}</span>
                       </div>
                     ))}
                   </div>
@@ -394,7 +394,7 @@ export default function RelationshipsPanel() {
 
   if (!gameState || !teamDynamics) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 text-center text-slate-400">
+      <div className="max-w-lg mx-auto px-4 py-8 text-center text-[#8b949e]">
         <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
         <p>No team data available</p>
       </div>
@@ -421,12 +421,12 @@ export default function RelationshipsPanel() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3 mb-4"
       >
-        <div className="p-2 rounded-xl bg-emerald-500/15">
+        <div className="p-2 rounded-lg bg-emerald-500/15">
           <Users className="h-6 w-6 text-emerald-400" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-white">Team & Relationships</h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[#8b949e]">
             {gameState.currentClub.name} &middot; S{gameState.currentSeason} W{gameState.currentWeek}
           </p>
         </div>
@@ -443,7 +443,7 @@ export default function RelationshipsPanel() {
         className="mb-4"
       >
         <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList className="bg-slate-900/80 border border-slate-800/60 w-full h-auto p-1 flex-wrap gap-1">
+          <TabsList className="bg-[#161b22] border border-[#30363d] w-full h-auto p-1 flex-wrap gap-1">
             {filterTabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -478,9 +478,9 @@ export default function RelationshipsPanel() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-12"
             >
-              <Users className="h-12 w-12 mx-auto mb-3 text-slate-600" />
-              <p className="text-slate-400 text-sm">No relationships found</p>
-              <p className="text-slate-500 text-xs mt-1">Try a different filter</p>
+              <Users className="h-12 w-12 mx-auto mb-3 text-[#484f58]" />
+              <p className="text-[#8b949e] text-sm">No relationships found</p>
+              <p className="text-[#8b949e] text-xs mt-1">Try a different filter</p>
             </motion.div>
           )}
         </AnimatePresence>

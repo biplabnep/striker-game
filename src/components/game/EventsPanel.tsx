@@ -113,7 +113,7 @@ const importanceConfig = {
   },
   low: {
     label: 'Low',
-    color: 'text-slate-400',
+    color: 'text-[#8b949e]',
     bg: 'bg-slate-500/15 border-slate-500/30',
     dot: 'bg-slate-500',
   },
@@ -169,7 +169,7 @@ function ConsequencePreview({ effects }: { effects: EventEffects }) {
 
   return (
     <div className="space-y-1.5">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+      <div className="text-[10px] font-semibold  text-[#8b949e] mb-1">
         Consequences
       </div>
       {consequences.map((c, i) => (
@@ -177,7 +177,7 @@ function ConsequencePreview({ effects }: { effects: EventEffects }) {
           <span className={c.value > 0 ? 'text-emerald-400' : 'text-red-400'}>
             {c.icon}
           </span>
-          <span className="text-xs text-slate-300">{c.label}</span>
+          <span className="text-xs text-[#c9d1d9]">{c.label}</span>
           <span
             className={`text-xs font-bold ml-auto ${
               c.value > 0 ? 'text-emerald-400' : 'text-red-400'
@@ -206,9 +206,9 @@ function EventTimeline({
   const displayed = resolvedEvents.slice(0, 10);
 
   return (
-    <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60 overflow-hidden">
+    <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
+        <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
           <Clock className="h-3.5 w-3.5" />
           Decision History
         </CardTitle>
@@ -238,7 +238,7 @@ function EventTimeline({
                   />
 
                   {/* Event card */}
-                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-800/40">
+                  <div className="bg-[#21262d] rounded-lg p-3 border border-[#30363d]">
                     <div className="flex items-center gap-2 mb-1">
                       <div
                         className="p-1 rounded"
@@ -261,12 +261,12 @@ function EventTimeline({
                             return <Icon className="h-3.5 w-3.5" />;
                           })()}
                       </div>
-                      <span className="text-xs font-semibold text-slate-200 truncate flex-1">
+                      <span className="text-xs font-semibold text-[#c9d1d9] truncate flex-1">
                         {event.title}
                       </span>
                       <Badge
                         variant="outline"
-                        className="text-[9px] border-slate-700/60 text-slate-500 shrink-0"
+                        className="text-[9px] border-[#30363d]/60 text-[#8b949e] shrink-0"
                         style={{ color: color, borderColor: `${color}40` }}
                       >
                         {eventLabels[event.type]}
@@ -276,13 +276,13 @@ function EventTimeline({
                     {/* Show chosen choice */}
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                      <span className="text-[11px] text-slate-400 truncate">
+                      <span className="text-[11px] text-[#8b949e] truncate">
                         Decision made
                       </span>
                     </div>
 
                     {/* Week/Season label */}
-                    <div className="text-[10px] text-slate-600 mt-1">
+                    <div className="text-[10px] text-[#484f58] mt-1">
                       S{event.season} W{event.week}
                     </div>
                   </div>
@@ -355,7 +355,7 @@ export default function EventsPanel() {
               value={activeFilter}
               onValueChange={v => setActiveFilter(v as EventFilter)}
             >
-              <TabsList className="bg-slate-900/80 h-8 p-0.5 w-full overflow-x-auto">
+              <TabsList className="bg-[#161b22] h-8 p-0.5 w-full overflow-x-auto">
                 {filterOptions.map(f => {
                   const count = filterCounts[f.value] ?? 0;
                   if (f.value !== 'ALL' && count === 0) return null;
@@ -363,7 +363,7 @@ export default function EventsPanel() {
                     <TabsTrigger
                       key={f.value}
                       value={f.value}
-                      className="h-7 text-[11px] px-2 gap-1 data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-400"
+                      className="h-7 text-[11px] px-2 gap-1 data-[state=active]:bg-[#21262d] data-[state=active]:text-emerald-400"
                     >
                       {f.icon}
                       <span className="hidden sm:inline">{f.label}</span>
@@ -385,17 +385,17 @@ export default function EventsPanel() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            <Card className="bg-slate-900/50 border-slate-800/50 overflow-hidden">
+            <Card className="bg-[#161b22]/50 border-[#30363d] overflow-hidden">
               <CardContent className="p-8 text-center">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="p-4 rounded-2xl bg-slate-800/60">
-                    <Inbox className="h-10 w-10 text-slate-600" />
+                  <div className="p-4 rounded-lg bg-[#21262d]">
+                    <Inbox className="h-10 w-10 text-[#484f58]" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-400">
+                    <p className="text-sm font-medium text-[#8b949e]">
                       No pending events
                     </p>
-                    <p className="text-xs text-slate-600 mt-1 max-w-[220px] mx-auto">
+                    <p className="text-xs text-[#484f58] mt-1 max-w-[220px] mx-auto">
                       Events will appear as you progress through your career. Keep playing to trigger new storylines!
                     </p>
                   </div>
@@ -408,11 +408,11 @@ export default function EventsPanel() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <Card className="bg-slate-900/50 border-slate-800/50">
+            <Card className="bg-[#161b22]/50 border-[#30363d]">
               <CardContent className="p-6 text-center">
                 <div className="flex flex-col items-center gap-2">
-                  <Filter className="h-6 w-6 text-slate-600" />
-                  <p className="text-sm text-slate-500">
+                  <Filter className="h-6 w-6 text-[#484f58]" />
+                  <p className="text-sm text-[#8b949e]">
                     No events matching this filter
                   </p>
                 </div>
@@ -440,7 +440,7 @@ export default function EventsPanel() {
                       layout: { duration: 0.2 },
                     }}
                   >
-                    <Card className="bg-slate-900/90 backdrop-blur-sm border-slate-800/60 overflow-hidden">
+                    <Card className="bg-[#161b22]/90  border-[#30363d] overflow-hidden">
                       {/* Gradient left border */}
                       <div className="flex">
                         <div
@@ -466,7 +466,7 @@ export default function EventsPanel() {
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <Badge
                                     variant="outline"
-                                    className="text-[10px] border-slate-700/60 capitalize shrink-0"
+                                    className="text-[10px] border-[#30363d]/60 capitalize shrink-0"
                                     style={{ color: color, borderColor: `${color}40` }}
                                   >
                                     {eventLabels[event.type]}
@@ -489,14 +489,14 @@ export default function EventsPanel() {
                                     </span>
                                   )}
                                 </div>
-                                <h3 className="font-bold text-sm text-slate-100 leading-tight">
+                                <h3 className="font-bold text-sm text-[#c9d1d9] leading-tight">
                                   {event.title}
                                 </h3>
                               </div>
                             </div>
 
                             {/* Description */}
-                            <p className="text-sm text-slate-300 mb-4 leading-relaxed">
+                            <p className="text-sm text-[#c9d1d9] mb-4 leading-relaxed">
                               {event.description}
                             </p>
 
@@ -510,20 +510,20 @@ export default function EventsPanel() {
                                     <TooltipTrigger asChild>
                                       <motion.button
                                         onClick={() => resolveEvent(event.id, choice.id)}
-                                        className="w-full text-left p-3 rounded-xl bg-slate-800/70 border border-slate-700/50 hover:bg-slate-750 hover:border-slate-600/60 transition-all group relative overflow-hidden"
-                                        whileHover={{ scale: 1.01 }}
-                                        whileTap={{ scale: 0.99 }}
+                                        className="w-full text-left p-3 rounded-lg bg-[#21262d] border border-[#30363d] hover:bg-[#2d333b] hover:border-[#444c56] transition-colors group relative overflow-hidden"
+                                        whileHover={{ scale: 1 }}
+                                        whileTap={{ scale: 1 }}
                                       >
                                         {/* Hover glow effect */}
-                                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                                         <div className="relative flex items-center justify-between">
-                                          <span className="text-sm font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">
+                                          <span className="text-sm font-semibold text-[#c9d1d9] group-hover:text-emerald-300 transition-colors">
                                             {choice.label}
                                           </span>
-                                          <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-emerald-400 transition-all group-hover:translate-x-0.5" />
+                                          <ArrowRight className="h-4 w-4 text-[#484f58] group-hover:text-emerald-400 transition-all group-hover:translate-x-0.5" />
                                         </div>
-                                        <p className="text-xs text-slate-500 mt-1 relative group-hover:text-slate-400 transition-colors">
+                                        <p className="text-xs text-[#8b949e] mt-1 relative group-hover:text-[#8b949e] transition-colors">
                                           {choice.description}
                                         </p>
 
@@ -551,7 +551,7 @@ export default function EventsPanel() {
                                     <TooltipContent
                                       side="left"
                                       align="center"
-                                      className="bg-slate-800 border border-slate-700/60 text-slate-200 px-3 py-2.5 rounded-lg shadow-xl max-w-[200px]"
+                                      className="bg-[#21262d] border border-[#30363d] text-[#c9d1d9] px-3 py-2.5 rounded-lg shadow-sm max-w-[200px]"
                                       sideOffset={8}
                                     >
                                       <ConsequencePreview effects={choice.effects as EventEffects} />

@@ -108,7 +108,7 @@ function getSentimentLabel(s: number): string {
 function getSentimentColor(s: number): string {
   if (s >= 40) return 'text-emerald-400';
   if (s >= 10) return 'text-green-400';
-  if (s >= -10) return 'text-slate-400';
+  if (s >= -10) return 'text-[#8b949e]';
   if (s >= -40) return 'text-orange-400';
   return 'text-red-400';
 }
@@ -177,7 +177,7 @@ function EngagementBar({ value }: { value: number }) {
           transition={{ duration: 0.8, ease: 'easeOut' }}
         />
       </div>
-      <span className="text-[10px] text-slate-500 w-8 text-right">{value}%</span>
+      <span className="text-[10px] text-[#8b949e] w-8 text-right">{value}%</span>
     </div>
   );
 }
@@ -189,7 +189,7 @@ function SentimentGauge({ value }: { value: number }) {
 
   return (
     <div className="w-full">
-      <div className="h-2 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500 opacity-30" />
+      <div className="h-2 rounded-full bg-amber-500/30" />
       <div className="relative -mt-2 h-2">
         <motion.div
           className="absolute top-0 w-2.5 h-2.5 rounded-full bg-white border-2 border-slate-900 shadow-md"
@@ -210,7 +210,7 @@ function StarRating({ count }: { count: number }) {
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
-          className={`h-3 w-3 ${i <= count ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`}
+          className={`h-3 w-3 ${i <= count ? 'text-amber-400 fill-amber-400' : 'text-[#484f58]'}`}
         />
       ))}
     </div>
@@ -228,7 +228,7 @@ function InteractionButtons({ type, engagement, onLike }: { type: PostType; enga
   };
 
   return (
-    <div className="flex items-center gap-1 mt-2.5 pt-2 border-t border-slate-800/50">
+    <div className="flex items-center gap-1 mt-2.5 pt-2 border-t border-[#30363d]">
       <Button
         variant="ghost"
         size="sm"
@@ -239,9 +239,9 @@ function InteractionButtons({ type, engagement, onLike }: { type: PostType; enga
           animate={liked ? { scale: [1, 1.4, 1] } : {}}
           transition={{ duration: 0.3 }}
         >
-          <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-rose-500 text-rose-500' : 'text-slate-500'}`} />
+          <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-rose-500 text-rose-500' : 'text-[#8b949e]'}`} />
         </motion.div>
-        <span className={liked ? 'text-rose-400' : 'text-slate-500'}>
+        <span className={liked ? 'text-rose-400' : 'text-[#8b949e]'}>
           {liked ? Math.floor(engagement * 2.3) + 1 : Math.floor(engagement * 2.3)}
         </span>
       </Button>
@@ -251,8 +251,8 @@ function InteractionButtons({ type, engagement, onLike }: { type: PostType; enga
         className="h-7 px-2 text-[11px] gap-1 hover:bg-sky-500/10"
         onClick={() => setShared(!shared)}
       >
-        <Share2 className={`h-3.5 w-3.5 ${shared ? 'text-sky-400' : 'text-slate-500'}`} />
-        <span className={shared ? 'text-sky-400' : 'text-slate-500'}>
+        <Share2 className={`h-3.5 w-3.5 ${shared ? 'text-sky-400' : 'text-[#8b949e]'}`} />
+        <span className={shared ? 'text-sky-400' : 'text-[#8b949e]'}>
           {shared ? Math.floor(engagement * 0.8) + 1 : Math.floor(engagement * 0.8)}
         </span>
       </Button>
@@ -261,8 +261,8 @@ function InteractionButtons({ type, engagement, onLike }: { type: PostType; enga
         size="sm"
         className="h-7 px-2 text-[11px] gap-1 hover:bg-slate-500/10"
       >
-        <Reply className="h-3.5 w-3.5 text-slate-500" />
-        <span className="text-slate-500">{Math.floor(engagement * 0.4)}</span>
+        <Reply className="h-3.5 w-3.5 text-[#8b949e]" />
+        <span className="text-[#8b949e]">{Math.floor(engagement * 0.4)}</span>
       </Button>
     </div>
   );
@@ -274,20 +274,20 @@ function FanPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01, y: -2 }}
+      whileHover={{ y: -1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <Card className={`bg-slate-900/80 ${config.borderColor} border overflow-hidden`}>
+      <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
           <div className={`w-8 h-8 rounded-full ${config.iconBg} flex items-center justify-center text-sm`}>
             {config.emoji}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-200 truncate">{post.source}</span>
+              <span className="text-xs font-semibold text-[#c9d1d9] truncate">{post.source}</span>
               <Users className="h-3 w-3 text-rose-400/60" />
             </div>
-            <span className="text-[10px] text-slate-500">{formatTimestamp(post.week, post.season)}</span>
+            <span className="text-[10px] text-[#8b949e]">{formatTimestamp(post.week, post.season)}</span>
           </div>
           <Badge variant="outline" className={`text-[9px] px-1.5 border ${getSentimentBg(post.sentiment)}`}>
             <span className="mr-0.5">{getSentimentEmoji(post.sentiment)}</span>
@@ -295,11 +295,11 @@ function FanPostCard({ post }: { post: SocialPost }) {
           </Badge>
         </div>
         <CardContent className="p-3 pt-2.5">
-          <p className="text-sm text-slate-200 leading-relaxed">{post.content}</p>
+          <p className="text-sm text-[#c9d1d9] leading-relaxed">{post.content}</p>
           <div className="mt-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <Heart className="h-3 w-3 text-rose-400" />
-              <span className="text-[10px] text-slate-500">Engagement</span>
+              <span className="text-[10px] text-[#8b949e]">Engagement</span>
             </div>
             <EngagementBar value={post.engagement} />
           </div>
@@ -316,20 +316,20 @@ function MediaPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01, y: -2 }}
+      whileHover={{ y: -1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <Card className={`bg-slate-900/80 ${config.borderColor} border overflow-hidden`}>
+      <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
           <div className={`w-8 h-8 rounded-lg ${config.iconBg} flex items-center justify-center`}>
             <Newspaper className="h-4 w-4 text-sky-400" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-200 truncate">{post.source}</span>
+              <span className="text-xs font-semibold text-[#c9d1d9] truncate">{post.source}</span>
               <CheckCircle2 className="h-3 w-3 text-sky-400" />
             </div>
-            <span className="text-[10px] text-slate-500 italic">{formatTimestamp(post.week, post.season)}</span>
+            <span className="text-[10px] text-[#8b949e] italic">{formatTimestamp(post.week, post.season)}</span>
           </div>
           <Badge variant="outline" className={`text-[9px] px-1.5 border ${getSentimentBg(post.sentiment)}`}>
             <span className="mr-0.5">{getSentimentEmoji(post.sentiment)}</span>
@@ -339,12 +339,12 @@ function MediaPostCard({ post }: { post: SocialPost }) {
         <CardContent className="p-3 pt-2.5">
           <div className="relative pl-4">
             <Quote className="absolute left-0 top-0 h-4 w-4 text-sky-500/30" />
-            <p className="text-sm text-slate-200 leading-relaxed italic">{post.content}</p>
+            <p className="text-sm text-[#c9d1d9] leading-relaxed italic">{post.content}</p>
           </div>
           <div className="mt-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <Eye className="h-3 w-3 text-sky-400" />
-              <span className="text-[10px] text-slate-500">Readership</span>
+              <span className="text-[10px] text-[#8b949e]">Readership</span>
             </div>
             <EngagementBar value={post.engagement} />
           </div>
@@ -361,22 +361,22 @@ function OfficialPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01, y: -2 }}
+      whileHover={{ y: -1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <Card className={`bg-slate-900/80 ${config.borderColor} border overflow-hidden`}>
+      <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         {/* Top accent bar */}
-        <div className="h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-500" />
+        <div className="h-1 bg-emerald-500" />
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
           <div className={`w-8 h-8 rounded-lg ${config.iconBg} flex items-center justify-center text-sm`}>
             {config.emoji}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-200 truncate">{post.source}</span>
+              <span className="text-xs font-bold text-[#c9d1d9] truncate">{post.source}</span>
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
             </div>
-            <span className="text-[10px] text-slate-500">{formatTimestamp(post.week, post.season)}</span>
+            <span className="text-[10px] text-[#8b949e]">{formatTimestamp(post.week, post.season)}</span>
           </div>
           <Badge variant="outline" className={`text-[9px] px-1.5 border ${getSentimentBg(post.sentiment)}`}>
             <span className="mr-0.5">{getSentimentEmoji(post.sentiment)}</span>
@@ -384,11 +384,11 @@ function OfficialPostCard({ post }: { post: SocialPost }) {
           </Badge>
         </div>
         <CardContent className="p-3 pt-2.5">
-          <p className="text-sm text-slate-200 leading-relaxed">{post.content}</p>
+          <p className="text-sm text-[#c9d1d9] leading-relaxed">{post.content}</p>
           <div className="mt-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <MessageSquare className="h-3 w-3 text-emerald-400" />
-              <span className="text-[10px] text-slate-500">Reach</span>
+              <span className="text-[10px] text-[#8b949e]">Reach</span>
             </div>
             <EngagementBar value={post.engagement} />
           </div>
@@ -405,22 +405,22 @@ function AgentPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01, y: -2 }}
+      whileHover={{ y: -1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <Card className={`bg-slate-900/80 ${config.borderColor} border overflow-hidden`}>
+      <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
           <div className={`w-8 h-8 rounded-full ${config.iconBg} flex items-center justify-center`}>
             <Briefcase className="h-4 w-4 text-amber-400" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-200 truncate">{post.source}</span>
+              <span className="text-xs font-semibold text-[#c9d1d9] truncate">{post.source}</span>
               <Badge className="text-[8px] px-1 py-0 bg-amber-500/20 text-amber-400 border-amber-500/30 border">
                 AGENT
               </Badge>
             </div>
-            <span className="text-[10px] text-slate-500">{formatTimestamp(post.week, post.season)}</span>
+            <span className="text-[10px] text-[#8b949e]">{formatTimestamp(post.week, post.season)}</span>
           </div>
           <Badge variant="outline" className={`text-[9px] px-1.5 border ${getSentimentBg(post.sentiment)}`}>
             <span className="mr-0.5">{getSentimentEmoji(post.sentiment)}</span>
@@ -428,11 +428,11 @@ function AgentPostCard({ post }: { post: SocialPost }) {
           </Badge>
         </div>
         <CardContent className="p-3 pt-2.5">
-          <p className="text-sm text-slate-200 leading-relaxed">{post.content}</p>
+          <p className="text-sm text-[#c9d1d9] leading-relaxed">{post.content}</p>
           <div className="mt-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <TrendingUp className="h-3 w-3 text-amber-400" />
-              <span className="text-[10px] text-slate-500">Market Interest</span>
+              <span className="text-[10px] text-[#8b949e]">Market Interest</span>
             </div>
             <EngagementBar value={post.engagement} />
           </div>
@@ -449,20 +449,20 @@ function PunditPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01, y: -2 }}
+      whileHover={{ y: -1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
-      <Card className={`bg-slate-900/80 ${config.borderColor} border overflow-hidden`}>
+      <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
           <div className={`w-8 h-8 rounded-full ${config.iconBg} flex items-center justify-center`}>
             <Mic className="h-4 w-4 text-violet-400" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-200 truncate">{post.source}</span>
+              <span className="text-xs font-semibold text-[#c9d1d9] truncate">{post.source}</span>
               <StarRating count={getStarsForSentiment(post.sentiment)} />
             </div>
-            <span className="text-[10px] text-slate-500">{formatTimestamp(post.week, post.season)}</span>
+            <span className="text-[10px] text-[#8b949e]">{formatTimestamp(post.week, post.season)}</span>
           </div>
           <Badge variant="outline" className={`text-[9px] px-1.5 border ${getSentimentBg(post.sentiment)}`}>
             <span className="mr-0.5">{getSentimentEmoji(post.sentiment)}</span>
@@ -471,13 +471,13 @@ function PunditPostCard({ post }: { post: SocialPost }) {
         </div>
         <CardContent className="p-3 pt-2.5">
           {/* Speech bubble style */}
-          <div className="bg-violet-500/5 border border-violet-500/10 rounded-xl rounded-tl-sm p-2.5">
-            <p className="text-sm text-slate-200 leading-relaxed">{post.content}</p>
+          <div className="bg-violet-500/5 border border-violet-500/10 rounded-lg rounded-tl-sm p-2.5">
+            <p className="text-sm text-[#c9d1d9] leading-relaxed">{post.content}</p>
           </div>
           <div className="mt-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <Flame className="h-3 w-3 text-violet-400" />
-              <span className="text-[10px] text-slate-500">Hot Takes</span>
+              <span className="text-[10px] text-[#8b949e]">Hot Takes</span>
             </div>
             <EngagementBar value={post.engagement} />
           </div>
@@ -526,17 +526,17 @@ function StorylineCard({ story, index }: { story: Storyline; index: number }) {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ y: 0 }}
     >
-      <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-4 space-y-3">
+      <div className="bg-[#21262d] border border-[#30363d] rounded-lg p-4 space-y-3">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Flame className="h-4 w-4 text-amber-400 shrink-0" />
-              <p className="text-sm font-semibold text-slate-100 truncate">{story.title}</p>
+              <p className="text-sm font-semibold text-[#c9d1d9] truncate">{story.title}</p>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">{story.description}</p>
+            <p className="text-xs text-[#8b949e] leading-relaxed">{story.description}</p>
           </div>
           <Badge
             variant="outline"
@@ -552,15 +552,15 @@ function StorylineCard({ story, index }: { story: Storyline; index: number }) {
         {/* Phase Progress */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Phase Progress</span>
-            <span className="text-[10px] text-slate-400 font-medium">
+            <span className="text-[10px] text-[#8b949e]  font-medium">Phase Progress</span>
+            <span className="text-[10px] text-[#8b949e] font-medium">
               {story.currentPhase} / {story.totalPhases}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="flex-1 h-2 bg-slate-700/60 rounded-full overflow-hidden">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400"
+                className="h-full rounded-full bg-amber-500"
                 initial={{ width: 0 }}
                 animate={{ width: `${phaseProgress}%` }}
                 transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
@@ -582,16 +582,16 @@ function StorylineCard({ story, index }: { story: Storyline; index: number }) {
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-slate-500 mt-1 italic">{phaseDesc}</p>
+          <p className="text-[10px] text-[#8b949e] mt-1 italic">{phaseDesc}</p>
         </div>
 
         {/* Sentiment Gauge */}
         <div>
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Public Sentiment</span>
+          <span className="text-[10px] text-[#8b949e]  font-medium">Public Sentiment</span>
           <div className="mt-1.5">
             <SentimentGauge value={story.sentiment} />
           </div>
-          <p className="text-[10px] text-slate-500 mt-1.5 italic">{mediaNarrative}</p>
+          <p className="text-[10px] text-[#8b949e] mt-1.5 italic">{mediaNarrative}</p>
         </div>
 
         {/* Tags */}
@@ -601,7 +601,7 @@ function StorylineCard({ story, index }: { story: Storyline; index: number }) {
               <Badge
                 key={tag}
                 variant="outline"
-                className="text-[9px] px-1.5 py-0 border-slate-700 text-slate-500"
+                className="text-[9px] px-1.5 py-0 border-[#30363d] text-[#8b949e]"
               >
                 #{tag}
               </Badge>
@@ -619,17 +619,17 @@ function TrendingPost({ post, rank }: { post: SocialPost; rank: number }) {
 
   return (
     <motion.div
-      className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-800/60 transition-colors"
+      className="flex items-center gap-2 p-2 rounded-lg hover:bg-[#21262d] transition-colors"
       whileHover={{ x: 2 }}
     >
       <div className={`w-6 h-6 rounded-full ${config.iconBg} flex items-center justify-center text-[10px] font-bold ${config.accentColor}`}>
         {rank}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] text-slate-300 truncate">{post.content}</p>
+        <p className="text-[11px] text-[#c9d1d9] truncate">{post.content}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[9px] text-slate-500">{post.source}</span>
-          <span className="text-[9px] text-slate-600">•</span>
+          <span className="text-[9px] text-[#8b949e]">{post.source}</span>
+          <span className="text-[9px] text-[#484f58]">•</span>
           <span className="text-[9px] text-rose-400 flex items-center gap-0.5">
             <Flame className="h-2.5 w-2.5" /> {post.engagement}%
           </span>
@@ -697,8 +697,8 @@ export default function SocialFeed() {
       >
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-slate-100">Social Feed</h2>
-            <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-400">
+            <h2 className="text-xl font-bold text-[#c9d1d9]">Social Feed</h2>
+            <Badge variant="outline" className="text-[10px] border-[#30363d] text-[#8b949e]">
               {postCounts.all} posts
             </Badge>
           </div>
@@ -709,8 +709,8 @@ export default function SocialFeed() {
             </span>
           </div>
         </div>
-        <p className="text-xs text-slate-500">
-          How the world sees <span className="text-slate-300 font-medium">{player?.name || 'you'}</span>
+        <p className="text-xs text-[#8b949e]">
+          How the world sees <span className="text-[#c9d1d9] font-medium">{player?.name || 'you'}</span>
         </p>
       </motion.div>
 
@@ -721,9 +721,9 @@ export default function SocialFeed() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          <Card className="bg-slate-900/60 border-slate-800/60">
+          <Card className="bg-[#161b22]/60 border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
                 <Flame className="h-3.5 w-3.5 text-rose-400" /> Trending
               </CardTitle>
             </CardHeader>
@@ -745,9 +745,9 @@ export default function SocialFeed() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.15 }}
         >
-          <Card className="bg-slate-900/60 border-slate-800/60">
+          <Card className="bg-[#161b22]/60 border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
                 <TrendingUp className="h-3.5 w-3.5 text-amber-400" /> Active Storylines
               </CardTitle>
             </CardHeader>
@@ -767,14 +767,14 @@ export default function SocialFeed() {
         transition={{ duration: 0.3, delay: 0.2 }}
       >
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full bg-slate-800/60 h-9 p-0.5">
+          <TabsList className="w-full bg-[#21262d] h-9 p-0.5">
             <TabsTrigger
               value="all"
-              className="flex-1 text-[11px] data-[state=active]:bg-slate-700 data-[state=active]:text-slate-100"
+              className="flex-1 text-[11px] data-[state=active]:bg-slate-700 data-[state=active]:text-[#c9d1d9]"
             >
               All
               {postCounts.all > 0 && (
-                <span className="ml-1 text-[9px] text-slate-500">({postCounts.all})</span>
+                <span className="ml-1 text-[9px] text-[#8b949e]">({postCounts.all})</span>
               )}
             </TabsTrigger>
             <TabsTrigger
@@ -811,10 +811,10 @@ export default function SocialFeed() {
                 transition={{ duration: 0.2 }}
               >
                 {filteredPosts.length === 0 ? (
-                  <Card className="bg-slate-900/50 border-slate-800/50">
+                  <Card className="bg-[#161b22]/50 border-[#30363d]">
                     <CardContent className="p-6 text-center">
-                      <MessageSquare className="h-8 w-8 text-slate-700 mx-auto mb-2" />
-                      <p className="text-sm text-slate-500">
+                      <MessageSquare className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+                      <p className="text-sm text-[#8b949e]">
                         {socialFeed.length === 0
                           ? 'No posts yet. Play matches to generate social media reactions!'
                           : 'No posts in this category yet.'}

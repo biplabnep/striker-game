@@ -354,11 +354,11 @@ export default function PlayerProfile() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => setScreen('dashboard')}
-          className="p-2 rounded-xl hover:bg-slate-800 transition-colors"
+          className="p-2 rounded-lg hover:bg-[#21262d] transition-colors"
         >
-          <ArrowLeft className="h-5 w-5 text-slate-400" />
+          <ArrowLeft className="h-5 w-5 text-[#8b949e]" />
         </button>
-        <h2 className="text-lg font-bold text-slate-200">Player Profile</h2>
+        <h2 className="text-lg font-bold text-[#c9d1d9]">Player Profile</h2>
       </div>
 
       {/* ===== 1. PLAYER HEADER CARD ===== */}
@@ -367,7 +367,7 @@ export default function PlayerProfile() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden relative">
+        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden relative">
           {/* Background accent */}
           <div className="absolute inset-0 opacity-[0.04]" style={{ background: `linear-gradient(135deg, ${currentClub.primaryColor}, transparent)` }} />
 
@@ -395,7 +395,7 @@ export default function PlayerProfile() {
                     <span className="font-black text-2xl" style={{ color: overallColor }}>{player.overall}</span>
                   </div>
                 </div>
-                <span className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Overall</span>
+                <span className="text-[10px] text-[#8b949e] mt-1 ">Overall</span>
               </div>
 
               {/* Player Info */}
@@ -406,12 +406,12 @@ export default function PlayerProfile() {
                   <Badge variant="outline" className="text-xs font-bold px-2" style={{ color: posColor, borderColor: posColor }}>
                     {player.position}
                   </Badge>
-                  <span className="text-xs text-slate-400">Age {player.age}</span>
+                  <span className="text-xs text-[#8b949e]">Age {player.age}</span>
                 </div>
 
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-xl">{currentClub.logo}</span>
-                  <span className="text-sm text-slate-300 font-medium">{currentClub.name}</span>
+                  <span className="text-sm text-[#c9d1d9] font-medium">{currentClub.name}</span>
                 </div>
 
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -423,7 +423,7 @@ export default function PlayerProfile() {
                     {getSquadStatusLabel(player.squadStatus)}
                   </Badge>
                   {/* Preferred Foot */}
-                  <Badge variant="outline" className="text-[10px] border-slate-600 text-slate-400 capitalize">
+                  <Badge variant="outline" className="text-[10px] border-slate-600 text-[#8b949e] capitalize">
                     {player.preferredFoot} foot
                   </Badge>
                 </div>
@@ -432,7 +432,7 @@ export default function PlayerProfile() {
               {/* Potential with growth arrow */}
               <div className="flex flex-col items-center shrink-0">
                 <div className="relative w-16 h-16 rounded-full flex items-center justify-center border-2 border-slate-600">
-                  <span className="font-bold text-lg text-slate-400">{player.potential}</span>
+                  <span className="font-bold text-lg text-[#8b949e]">{player.potential}</span>
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -442,7 +442,7 @@ export default function PlayerProfile() {
                     <TrendingUp className="h-4 w-4 text-emerald-400" />
                   </motion.div>
                 </div>
-                <span className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Potential</span>
+                <span className="text-[10px] text-[#8b949e] mt-1 ">Potential</span>
                 <span className="text-[10px] text-emerald-400 font-semibold">+{player.potential - player.overall} growth</span>
               </div>
             </div>
@@ -456,9 +456,9 @@ export default function PlayerProfile() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
               <ShieldCheck className="h-3.5 w-3.5" /> Attribute Radar
             </CardTitle>
           </CardHeader>
@@ -563,12 +563,12 @@ export default function PlayerProfile() {
         transition={{ duration: 0.3, delay: 0.2 }}
         className="space-y-2"
       >
-        <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold px-1">Detailed Attributes</h3>
+        <h3 className="text-xs text-[#8b949e]  font-semibold px-1">Detailed Attributes</h3>
         {/* Growth Potential Overview - compact inline card */}
-        <Card className="bg-gradient-to-br from-slate-900 via-emerald-950/10 to-slate-900 border-emerald-900/20">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium flex items-center gap-1">
+              <span className="text-[10px] text-[#8b949e]  font-medium flex items-center gap-1">
                 <TrendingUp className="w-3 h-3 text-emerald-400" /> Growth Potential
               </span>
               <span className="text-[10px] text-emerald-400 font-bold">+{player.potential - player.overall} OVR room</span>
@@ -592,8 +592,8 @@ export default function PlayerProfile() {
 
                 return (
                   <div key={attr} className="flex items-center gap-2">
-                    <span className="text-[9px] text-slate-500 w-8 font-mono">{meta.shortLabel}</span>
-                    <div className="flex-1 h-3 bg-slate-800 rounded-full overflow-hidden relative">
+                    <span className="text-[9px] text-[#8b949e] w-8 font-mono">{meta.shortLabel}</span>
+                    <div className="flex-1 h-3 bg-[#21262d] rounded-full overflow-hidden relative">
                       {/* Current value */}
                       <motion.div
                         className="h-full rounded-full bg-slate-600"
@@ -609,14 +609,14 @@ export default function PlayerProfile() {
                         transition={{ delay: 0.5 + i * 0.05, duration: 0.5 }}
                       />
                     </div>
-                    <span className="text-[9px] text-slate-400 w-6 text-right font-mono">{current}</span>
+                    <span className="text-[9px] text-[#8b949e] w-6 text-right font-mono">{current}</span>
                     <span className="text-[9px] text-emerald-400/60">→</span>
                     <span className="text-[9px] text-emerald-400 w-6 text-right font-mono font-bold">{potentialVal}</span>
                   </div>
                 );
               })}
             </div>
-            <p className="text-[8px] text-slate-600 mt-2 text-center">Estimated potential based on position & growth room</p>
+            <p className="text-[8px] text-[#484f58] mt-2 text-center">Estimated potential based on position & growth room</p>
           </CardContent>
         </Card>
         {ATTR_KEYS.map((attr, i) => {
@@ -653,7 +653,7 @@ export default function PlayerProfile() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.25 + i * 0.06, duration: 0.3 }}
             >
-              <Card className="bg-slate-900 border-slate-800 overflow-hidden">
+              <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
                 {/* Header Row */}
                 <button
                   onClick={() => setExpandedAttr(isExpanded ? null : attr)}
@@ -664,7 +664,7 @@ export default function PlayerProfile() {
                       <div className="shrink-0" style={{ color: cat.color }}>{meta.icon}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-slate-200">{meta.label}</span>
+                          <span className="text-sm font-semibold text-[#c9d1d9]">{meta.label}</span>
                           <div className="flex items-center gap-2">
                             <Badge
                               className="text-[9px] font-bold border-0"
@@ -674,14 +674,14 @@ export default function PlayerProfile() {
                             </Badge>
                             <span className="text-lg font-black" style={{ color: cat.color }}>{val}</span>
                             {isExpanded ? (
-                              <ChevronUp className="h-4 w-4 text-slate-500" />
+                              <ChevronUp className="h-4 w-4 text-[#8b949e]" />
                             ) : (
-                              <ChevronDown className="h-4 w-4 text-slate-500" />
+                              <ChevronDown className="h-4 w-4 text-[#8b949e]" />
                             )}
                           </div>
                         </div>
                         {/* Progress bar */}
-                        <div className="mt-1.5 h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="mt-1.5 h-2 bg-[#21262d] rounded-full overflow-hidden">
                           <motion.div
                             className="h-full rounded-full"
                             style={{
@@ -707,41 +707,41 @@ export default function PlayerProfile() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-4 pb-3 pt-0 border-t border-slate-800">
+                      <div className="px-4 pb-3 pt-0 border-t border-[#30363d]">
                         <div className="grid grid-cols-3 gap-3 mt-3">
                           {/* Growth this season */}
-                          <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+                          <div className="bg-[#21262d] rounded-lg p-2 text-center">
                             {seasonGrowth > 0 ? (
                               <TrendingUp className="h-3.5 w-3.5 text-emerald-400 mx-auto mb-1" />
                             ) : (
-                              <Minus className="h-3.5 w-3.5 text-slate-500 mx-auto mb-1" />
+                              <Minus className="h-3.5 w-3.5 text-[#8b949e] mx-auto mb-1" />
                             )}
-                            <p className={`text-sm font-bold ${seasonGrowth > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                            <p className={`text-sm font-bold ${seasonGrowth > 0 ? 'text-emerald-400' : 'text-[#8b949e]'}`}>
                               {seasonGrowth > 0 ? `+${seasonGrowth}` : '—'}
                             </p>
-                            <p className="text-[9px] text-slate-500">This Season</p>
+                            <p className="text-[9px] text-[#8b949e]">This Season</p>
                           </div>
 
                           {/* Position comparison */}
-                          <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+                          <div className="bg-[#21262d] rounded-lg p-2 text-center">
                             <Target className="h-3.5 w-3.5 text-blue-400 mx-auto mb-1" />
                             <p className="text-sm font-bold text-blue-400">{percentileLabel}</p>
-                            <p className="text-[9px] text-slate-500">For {player.position}</p>
+                            <p className="text-[9px] text-[#8b949e]">For {player.position}</p>
                           </div>
 
                           {/* Training recommendation */}
-                          <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+                          <div className="bg-[#21262d] rounded-lg p-2 text-center">
                             {isLowForPosition ? (
                               <>
                                 <Dumbbell className="h-3.5 w-3.5 text-amber-400 mx-auto mb-1" />
                                 <p className="text-[10px] font-bold text-amber-400">Focus</p>
-                                <p className="text-[9px] text-slate-500">Recommended</p>
+                                <p className="text-[9px] text-[#8b949e]">Recommended</p>
                               </>
                             ) : (
                               <>
-                                <Star className="h-3.5 w-3.5 text-slate-500 mx-auto mb-1" />
-                                <p className="text-[10px] font-bold text-slate-400">On Track</p>
-                                <p className="text-[9px] text-slate-500">No focus needed</p>
+                                <Star className="h-3.5 w-3.5 text-[#8b949e] mx-auto mb-1" />
+                                <p className="text-[10px] font-bold text-[#8b949e]">On Track</p>
+                                <p className="text-[9px] text-[#8b949e]">No focus needed</p>
                               </>
                             )}
                           </div>
@@ -762,9 +762,9 @@ export default function PlayerProfile() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.35 }}
       >
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
               <Activity className="h-3.5 w-3.5" /> Season Performance
             </CardTitle>
           </CardHeader>
@@ -772,8 +772,8 @@ export default function PlayerProfile() {
             {/* Form Indicator - Last 5 Matches */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Recent Form</span>
-                <span className="text-[10px] text-slate-600">Last 5 matches</span>
+                <span className="text-[10px] text-[#8b949e] ">Recent Form</span>
+                <span className="text-[10px] text-[#484f58]">Last 5 matches</span>
               </div>
               <div className="flex items-center gap-1.5">
                 {formIndicator.length > 0 ? formIndicator.map((result, i) => (
@@ -791,7 +791,7 @@ export default function PlayerProfile() {
                     {result}
                   </motion.div>
                 )) : (
-                  <span className="text-xs text-slate-600">No matches yet</span>
+                  <span className="text-xs text-[#484f58]">No matches yet</span>
                 )}
               </div>
             </div>
@@ -799,14 +799,14 @@ export default function PlayerProfile() {
             {/* Minutes played */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-400">Minutes Played</span>
-                <span className="text-xs text-slate-300 font-semibold">
+                <span className="text-xs text-[#8b949e]">Minutes Played</span>
+                <span className="text-xs text-[#c9d1d9] font-semibold">
                   {player.seasonStats.minutesPlayed} min ({minutesPct}%)
                 </span>
               </div>
-              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400"
+                  className="h-full rounded-full bg-cyan-500"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, minutesPct)}%` }}
                   transition={{ delay: 0.6, duration: 0.6 }}
@@ -816,44 +816,44 @@ export default function PlayerProfile() {
 
             {/* Season Stats Grid */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-emerald-400">{player.seasonStats.goals}</p>
-                <p className="text-[9px] text-slate-500">Goals</p>
+                <p className="text-[9px] text-[#8b949e]">Goals</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-blue-400">{player.seasonStats.assists}</p>
-                <p className="text-[9px] text-slate-500">Assists</p>
+                <p className="text-[9px] text-[#8b949e]">Assists</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-amber-400">
                   {player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '—'}
                 </p>
-                <p className="text-[9px] text-slate-500">Avg Rating</p>
+                <p className="text-[9px] text-[#8b949e]">Avg Rating</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-slate-300">{player.seasonStats.appearances}</p>
-                <p className="text-[9px] text-slate-500">Apps</p>
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-[#c9d1d9]">{player.seasonStats.appearances}</p>
+                <p className="text-[9px] text-[#8b949e]">Apps</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-cyan-400">{player.seasonStats.cleanSheets}</p>
-                <p className="text-[9px] text-slate-500">Clean Sheets</p>
+                <p className="text-[9px] text-[#8b949e]">Clean Sheets</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-rose-400">{player.seasonStats.yellowCards + player.seasonStats.redCards}</p>
-                <p className="text-[9px] text-slate-500">Cards</p>
+                <p className="text-[9px] text-[#8b949e]">Cards</p>
               </div>
             </div>
 
             {/* Season Comparison Mini Radar */}
             {seasonComparison && (
-              <div className="mt-4 pt-3 border-t border-slate-800">
+              <div className="mt-4 pt-3 border-t border-[#30363d]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider">This Season vs Last Season</span>
+                  <span className="text-[10px] text-[#8b949e] ">This Season vs Last Season</span>
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1 text-[9px] text-emerald-400">
                       <span className="w-2 h-2 rounded-full bg-emerald-400" /> Current
                     </span>
-                    <span className="flex items-center gap-1 text-[9px] text-slate-500">
+                    <span className="flex items-center gap-1 text-[9px] text-[#8b949e]">
                       <span className="w-2 h-2 rounded-full bg-slate-500" /> Previous
                     </span>
                   </div>
@@ -879,9 +879,9 @@ export default function PlayerProfile() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.45 }}
       >
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
               <Award className="h-3.5 w-3.5" /> Career Milestones
             </CardTitle>
           </CardHeader>
@@ -901,9 +901,9 @@ export default function PlayerProfile() {
                   >
                     {/* Timeline dot */}
                     <div className={`relative z-10 shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      ms.unlocked ? 'bg-slate-800 border-2 border-emerald-500/50' : 'bg-slate-800 border-2 border-slate-700'
+                      ms.unlocked ? 'bg-[#21262d] border-2 border-emerald-500/50' : 'bg-[#21262d] border-2 border-[#30363d]'
                     }`}>
-                      <span className={ms.unlocked ? 'text-emerald-400' : 'text-slate-600'}>
+                      <span className={ms.unlocked ? 'text-emerald-400' : 'text-[#484f58]'}>
                         {ms.icon}
                       </span>
                     </div>
@@ -911,23 +911,23 @@ export default function PlayerProfile() {
                     {/* Content */}
                     <div className="flex-1 min-w-0 pt-1">
                       <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold ${ms.unlocked ? 'text-slate-200' : 'text-slate-600'}`}>
+                        <span className={`text-sm font-semibold ${ms.unlocked ? 'text-[#c9d1d9]' : 'text-[#484f58]'}`}>
                           {ms.label}
                         </span>
                         {ms.unlocked && ms.season > 0 && (
-                          <Badge variant="outline" className="text-[8px] border-slate-700 text-slate-500 px-1 py-0">
+                          <Badge variant="outline" className="text-[8px] border-[#30363d] text-[#8b949e] px-1 py-0">
                             S{ms.season}
                           </Badge>
                         )}
                       </div>
-                      <p className={`text-xs mt-0.5 ${ms.unlocked ? 'text-slate-400' : 'text-slate-700'}`}>
+                      <p className={`text-xs mt-0.5 ${ms.unlocked ? 'text-[#8b949e]' : 'text-[#30363d]'}`}>
                         {ms.description}
                       </p>
                     </div>
 
                     {/* Lock icon for unachieved */}
                     {!ms.unlocked && (
-                      <span className="text-slate-700 text-xs shrink-0 pt-1">🔒</span>
+                      <span className="text-[#30363d] text-xs shrink-0 pt-1">🔒</span>
                     )}
                   </motion.div>
                 ))}
@@ -943,9 +943,9 @@ export default function PlayerProfile() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.55 }}
       >
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
               <DollarSign className="h-3.5 w-3.5" /> Market Value
             </CardTitle>
           </CardHeader>
@@ -974,7 +974,7 @@ export default function PlayerProfile() {
                   );
                 }
                 return (
-                  <Badge className="bg-slate-500/20 text-slate-400 border-0 text-xs font-bold">
+                  <Badge className="bg-slate-500/20 text-[#8b949e] border-0 text-xs font-bold">
                     <MinusCircle className="h-3 w-3 mr-0.5" />Stable
                   </Badge>
                 );
@@ -996,8 +996,8 @@ export default function PlayerProfile() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.6 + i * 0.08, duration: 0.3 }}
                     >
-                      <span className="text-[9px] text-slate-500 w-8 text-right shrink-0">S{pt.season}</span>
-                      <div className="flex-1 h-4 bg-slate-800 rounded-full overflow-hidden">
+                      <span className="text-[9px] text-[#8b949e] w-8 text-right shrink-0">S{pt.season}</span>
+                      <div className="flex-1 h-4 bg-[#21262d] rounded-full overflow-hidden">
                         <motion.div
                           className="h-full rounded-full"
                           style={{
@@ -1010,7 +1010,7 @@ export default function PlayerProfile() {
                           transition={{ delay: 0.7 + i * 0.08, duration: 0.5, ease: 'easeOut' }}
                         />
                       </div>
-                      <span className={`text-[10px] font-semibold w-16 text-right shrink-0 ${isLast ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      <span className={`text-[10px] font-semibold w-16 text-right shrink-0 ${isLast ? 'text-emerald-400' : 'text-[#8b949e]'}`}>
                         {formatCurrency(pt.value, 'M')}
                       </span>
                     </motion.div>
@@ -1020,15 +1020,15 @@ export default function PlayerProfile() {
             )}
 
             {/* Comparison to similar players (simulated) */}
-            <div className="mt-4 pt-3 border-t border-slate-800">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Similar Players Market</span>
+            <div className="mt-4 pt-3 border-t border-[#30363d]">
+              <span className="text-[10px] text-[#8b949e] ">Similar Players Market</span>
               <div className="mt-2 flex items-center gap-3">
                 <div className="flex-1">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-slate-400">Your Value</span>
+                    <span className="text-[#8b949e]">Your Value</span>
                     <span className="text-emerald-400 font-bold">{formatCurrency(player.marketValue, 'M')}</span>
                   </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, (player.marketValue / Math.max(player.marketValue * 1.5, 10)) * 100)}%` }} />
                   </div>
                 </div>
@@ -1036,10 +1036,10 @@ export default function PlayerProfile() {
               <div className="flex items-center gap-3 mt-2">
                 <div className="flex-1">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-slate-400">Position Average</span>
-                    <span className="text-slate-500 font-bold">{formatCurrency(player.marketValue * 0.75, 'M')}</span>
+                    <span className="text-[#8b949e]">Position Average</span>
+                    <span className="text-[#8b949e] font-bold">{formatCurrency(player.marketValue * 0.75, 'M')}</span>
                   </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
                     <div className="h-full bg-slate-600 rounded-full" style={{ width: `${Math.min(100, (player.marketValue * 0.75 / Math.max(player.marketValue * 1.5, 10)) * 100)}%` }} />
                   </div>
                 </div>
@@ -1047,10 +1047,10 @@ export default function PlayerProfile() {
               <div className="flex items-center gap-3 mt-2">
                 <div className="flex-1">
                   <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-slate-400">Top 10% {player.position}</span>
+                    <span className="text-[#8b949e]">Top 10% {player.position}</span>
                     <span className="text-amber-400 font-bold">{formatCurrency(player.marketValue * 2.5, 'M')}</span>
                   </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
                     <div className="h-full bg-amber-600 rounded-full" style={{ width: `${Math.min(100, (player.marketValue * 2.5 / Math.max(player.marketValue * 1.5, 10)) * 100)}%` }} />
                   </div>
                 </div>

@@ -54,7 +54,7 @@ function AnimatedNumber({ value, duration = 1200 }: { value: number; duration?: 
 // Rarity config
 // -----------------------------------------------------------
 const RARITY_CONFIG: Record<string, { color: string; bg: string; border: string; glow: string; label: string }> = {
-  common: { color: 'text-slate-400', bg: 'bg-slate-800/60', border: 'border-slate-700/60', glow: '', label: 'Common' },
+  common: { color: 'text-[#8b949e]', bg: 'bg-[#21262d]', border: 'border-[#30363d]/60', glow: '', label: 'Common' },
   rare: { color: 'text-blue-400', bg: 'bg-blue-950/40', border: 'border-blue-800/50', glow: 'shadow-blue-500/20', label: 'Rare' },
   epic: { color: 'text-purple-400', bg: 'bg-purple-950/40', border: 'border-purple-800/50', glow: 'shadow-purple-500/20', label: 'Epic' },
   legendary: { color: 'text-amber-400', bg: 'bg-amber-950/40', border: 'border-amber-800/50', glow: 'shadow-amber-500/20', label: 'Legendary' },
@@ -64,7 +64,7 @@ const RARITY_CONFIG: Record<string, { color: string; bg: string; border: string;
 // Category config
 // -----------------------------------------------------------
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  all: { label: 'All', icon: <Sparkles className="h-3 w-3" />, color: 'text-slate-400' },
+  all: { label: 'All', icon: <Sparkles className="h-3 w-3" />, color: 'text-[#8b949e]' },
   career: { label: 'Career', icon: <Calendar className="h-3 w-3" />, color: 'text-emerald-400' },
   match: { label: 'Match', icon: <Target className="h-3 w-3" />, color: 'text-red-400' },
   training: { label: 'Training', icon: <Activity className="h-3 w-3" />, color: 'text-blue-400' },
@@ -86,7 +86,7 @@ function getPositionBg(pos: number): string {
   if (pos === 1) return 'bg-amber-500/20 text-amber-300';
   if (pos <= 4) return 'bg-emerald-500/20 text-emerald-300';
   if (pos <= 6) return 'bg-cyan-500/20 text-cyan-300';
-  return 'bg-slate-700/50 text-slate-400';
+  return 'bg-slate-700/50 text-[#8b949e]';
 }
 
 function getOrdinal(n: number): string {
@@ -162,43 +162,40 @@ export default function CareerHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="relative overflow-hidden border-0">
-          {/* Gradient Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950/40" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
+        <Card className="relative overflow-hidden bg-[#161b22] border border-[#30363d]">
 
           <CardContent className="relative p-5">
             <div className="flex items-center gap-4 mb-5">
               {/* Overall Badge */}
               <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
                 className="relative"
               >
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl border-2 backdrop-blur-sm"
+                  className="w-16 h-16 rounded-lg flex items-center justify-center font-black text-2xl border-2 "
                   style={{
                     borderColor: getOverallColor(player.overall),
                     color: getOverallColor(player.overall),
-                    background: `linear-gradient(135deg, ${getOverallColor(player.overall)}15, ${getOverallColor(player.overall)}05)`,
+                    background: `${getOverallColor(player.overall)}15`,
                   }}
                 >
                   {player.overall}
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5 text-[8px] text-slate-400">
+                <div className="absolute -bottom-1 -right-1 bg-[#161b22] border border-[#30363d] rounded-md px-1 py-0.5 text-[8px] text-[#8b949e]">
                   OVR
                 </div>
               </motion.div>
 
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-lg text-white truncate">{player.name}</h3>
-                <p className="text-sm text-slate-400">{player.nationality} · {player.position}</p>
+                <p className="text-sm text-[#8b949e]">{player.nationality} · {player.position}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm">{currentClub.logo}</span>
-                  <span className="text-xs text-slate-300 truncate">{currentClub.name}</span>
-                  <span className="text-xs text-slate-500">·</span>
-                  <span className="text-xs text-slate-500">Age {player.age}</span>
+                  <span className="text-xs text-[#c9d1d9] truncate">{currentClub.name}</span>
+                  <span className="text-xs text-[#8b949e]">·</span>
+                  <span className="text-xs text-[#8b949e]">Age {player.age}</span>
                 </div>
               </div>
 
@@ -211,7 +208,7 @@ export default function CareerHub() {
               >
                 <TrendingUp className="h-3 w-3 text-emerald-400 mb-1" />
                 <span className="text-xs font-bold text-emerald-400">{player.potential}</span>
-                <span className="text-[8px] text-slate-500">POT</span>
+                <span className="text-[8px] text-[#8b949e]">POT</span>
               </motion.div>
             </div>
 
@@ -221,19 +218,19 @@ export default function CareerHub() {
                 { label: 'Goals', value: careerStats.totalGoals, color: 'text-emerald-400' },
                 { label: 'Assists', value: careerStats.totalAssists, color: 'text-blue-400' },
                 { label: 'Apps', value: careerStats.totalAppearances, color: 'text-amber-400' },
-                { label: 'Seasons', value: careerStats.seasonsPlayed, color: 'text-slate-300' },
+                { label: 'Seasons', value: careerStats.seasonsPlayed, color: 'text-[#c9d1d9]' },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 + i * 0.08 }}
-                  className="text-center bg-slate-800/40 backdrop-blur-sm rounded-lg p-2 border border-slate-700/30"
+                  className="text-center bg-[#21262d]  rounded-lg p-2 border border-[#30363d]"
                 >
                   <p className={`text-lg font-bold ${stat.color}`}>
                     <AnimatedNumber value={stat.value} />
                   </p>
-                  <p className="text-[10px] text-slate-500">{stat.label}</p>
+                  <p className="text-[10px] text-[#8b949e]">{stat.label}</p>
                 </motion.div>
               ))}
             </div>
@@ -249,9 +246,9 @@ export default function CareerHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60 overflow-hidden">
+        <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
               <FileText className="h-3 w-3" /> Contract Details
             </CardTitle>
           </CardHeader>
@@ -262,8 +259,8 @@ export default function CareerHub() {
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{currentClub.logo}</span>
                   <div>
-                    <p className="text-sm font-semibold text-slate-200">{currentClub.name}</p>
-                    <p className="text-[10px] text-slate-500">{getLeagueById(currentClub.league)?.name ?? currentClub.league}</p>
+                    <p className="text-sm font-semibold text-[#c9d1d9]">{currentClub.name}</p>
+                    <p className="text-[10px] text-[#8b949e]">{getLeagueById(currentClub.league)?.name ?? currentClub.league}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -276,25 +273,25 @@ export default function CareerHub() {
 
               {/* Contract Details Grid */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-slate-800/50 rounded-lg p-2.5">
-                  <p className="text-[10px] text-slate-500 mb-0.5">Weekly Wage</p>
+                <div className="bg-[#21262d] rounded-lg p-2.5">
+                  <p className="text-[10px] text-[#8b949e] mb-0.5">Weekly Wage</p>
                   <p className="text-sm font-bold text-emerald-400">{formatCurrency(contract.weeklyWage, 'K')}</p>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-2.5">
-                  <p className="text-[10px] text-slate-500 mb-0.5">Years Remaining</p>
-                  <p className={`text-sm font-bold ${contract.yearsRemaining <= 1 ? 'text-amber-400' : 'text-slate-200'}`}>
+                <div className="bg-[#21262d] rounded-lg p-2.5">
+                  <p className="text-[10px] text-[#8b949e] mb-0.5">Years Remaining</p>
+                  <p className={`text-sm font-bold ${contract.yearsRemaining <= 1 ? 'text-amber-400' : 'text-[#c9d1d9]'}`}>
                     {contract.yearsRemaining} {contract.yearsRemaining === 1 ? 'year' : 'years'}
                   </p>
                 </div>
                 {contract.releaseClause != null && contract.releaseClause > 0 && (
-                  <div className="bg-slate-800/50 rounded-lg p-2.5">
-                    <p className="text-[10px] text-slate-500 mb-0.5">Release Clause</p>
+                  <div className="bg-[#21262d] rounded-lg p-2.5">
+                    <p className="text-[10px] text-[#8b949e] mb-0.5">Release Clause</p>
                     <p className="text-sm font-bold text-amber-400">{formatCurrency(contract.releaseClause, 'M')}</p>
                   </div>
                 )}
                 {contract.signingBonus != null && contract.signingBonus > 0 && (
-                  <div className="bg-slate-800/50 rounded-lg p-2.5">
-                    <p className="text-[10px] text-slate-500 mb-0.5">Signing Bonus</p>
+                  <div className="bg-[#21262d] rounded-lg p-2.5">
+                    <p className="text-[10px] text-[#8b949e] mb-0.5">Signing Bonus</p>
                     <p className="text-sm font-bold text-blue-400">{formatCurrency(contract.signingBonus, 'M')}</p>
                   </div>
                 )}
@@ -305,8 +302,8 @@ export default function CareerHub() {
                 k => contract.performanceBonuses![k as keyof typeof contract.performanceBonuses] != null &&
                      contract.performanceBonuses![k as keyof typeof contract.performanceBonuses]! > 0
               ) && (
-                <div className="bg-slate-800/30 rounded-lg p-2.5 border border-slate-700/30">
-                  <p className="text-[10px] text-slate-500 uppercase mb-1.5">Performance Bonuses</p>
+                <div className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]">
+                  <p className="text-[10px] text-[#8b949e] uppercase mb-1.5">Performance Bonuses</p>
                   <div className="flex flex-wrap gap-1.5">
                     {contract.performanceBonuses.goalsBonus != null && contract.performanceBonuses.goalsBonus > 0 && (
                       <Badge variant="outline" className="text-[10px] bg-emerald-950/30 border-emerald-800/40 text-emerald-400">
@@ -330,18 +327,18 @@ export default function CareerHub() {
               {/* Contract Progress Bar */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] text-slate-500">Contract Duration</span>
-                  <span className="text-[10px] text-slate-400">{contract.yearsRemaining} yr(s) left</span>
+                  <span className="text-[10px] text-[#8b949e]">Contract Duration</span>
+                  <span className="text-[10px] text-[#8b949e]">{contract.yearsRemaining} yr(s) left</span>
                 </div>
-                <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.max(5, (contract.yearsRemaining / 5) * 100)}%` }}
                     transition={{ duration: 1, delay: 0.5 }}
                     className={`h-full rounded-full ${
-                      contract.yearsRemaining <= 1 ? 'bg-gradient-to-r from-red-500 to-amber-500' :
-                      contract.yearsRemaining <= 2 ? 'bg-gradient-to-r from-amber-500 to-amber-400' :
-                      'bg-gradient-to-r from-emerald-600 to-emerald-400'
+                      contract.yearsRemaining <= 1 ? 'bg-red-500' :
+                      contract.yearsRemaining <= 2 ? 'bg-amber-500' :
+                      'bg-emerald-500'
                     }`}
                   />
                 </div>
@@ -359,23 +356,23 @@ export default function CareerHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
               <Calendar className="h-3 w-3" /> Career Timeline
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             {seasons.length === 0 ? (
               <div className="text-center py-6">
-                <Calendar className="h-8 w-8 text-slate-700 mx-auto mb-2" />
-                <p className="text-sm text-slate-600">No completed seasons yet</p>
-                <p className="text-xs text-slate-700">Your career timeline will appear here</p>
+                <Calendar className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+                <p className="text-sm text-[#484f58]">No completed seasons yet</p>
+                <p className="text-xs text-[#30363d]">Your career timeline will appear here</p>
               </div>
             ) : (
               <div className="relative">
                 {/* Timeline line */}
-                <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-600/40 via-slate-700/40 to-slate-800/20" />
+                <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-[#30363d]" />
 
                 <div className="space-y-0">
                   {seasons.map((s, i) => {
@@ -406,27 +403,27 @@ export default function CareerHub() {
                         </div>
 
                         {/* Season Card */}
-                        <div className="flex-1 bg-slate-800/40 rounded-lg p-2.5 border border-slate-700/30 hover:border-slate-600/50 transition-colors">
+                        <div className="flex-1 bg-[#21262d] rounded-lg p-2.5 border border-[#30363d] hover:border-slate-600/50 transition-colors">
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-slate-200">S{s.number}</span>
-                              <span className="text-[10px] text-slate-500">{s.year}</span>
+                              <span className="text-xs font-bold text-[#c9d1d9]">S{s.number}</span>
+                              <span className="text-[10px] text-[#8b949e]">{s.year}</span>
                             </div>
                             <Badge className={`text-[9px] px-1.5 py-0 h-4 ${getPositionBg(s.leaguePosition)}`}>
                               {getOrdinal(s.leaguePosition)}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-3 text-[11px]">
-                            <span className="text-slate-400 flex items-center gap-1">
+                            <span className="text-[#8b949e] flex items-center gap-1">
                               <Target className="h-2.5 w-2.5 text-emerald-500" /> {s.playerStats.goals}G
                             </span>
-                            <span className="text-slate-400 flex items-center gap-1">
+                            <span className="text-[#8b949e] flex items-center gap-1">
                               <Zap className="h-2.5 w-2.5 text-blue-500" /> {s.playerStats.assists}A
                             </span>
-                            <span className="text-slate-400 flex items-center gap-1">
+                            <span className="text-[#8b949e] flex items-center gap-1">
                               <Activity className="h-2.5 w-2.5 text-amber-500" /> {s.playerStats.averageRating > 0 ? s.playerStats.averageRating.toFixed(1) : '-'}
                             </span>
-                            <span className="text-slate-500 flex items-center gap-1">
+                            <span className="text-[#8b949e] flex items-center gap-1">
                               <Calendar className="h-2.5 w-2.5" /> {s.playerStats.appearances} apps
                             </span>
                           </div>
@@ -449,9 +446,9 @@ export default function CareerHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
               <BarChart3 className="h-3 w-3" /> Stats Deep Dive
             </CardTitle>
           </CardHeader>
@@ -459,7 +456,7 @@ export default function CareerHub() {
             {/* Goals Per Season Bar Chart */}
             {seasons.length > 0 && (
               <div>
-                <p className="text-[10px] text-slate-500 uppercase mb-2">Goals Per Season</p>
+                <p className="text-[10px] text-[#8b949e] uppercase mb-2">Goals Per Season</p>
                 <div className="flex items-end gap-1.5 h-20">
                   {seasons.map((s, i) => {
                     const maxGoals = Math.max(...seasons.map(ss => ss.playerStats.goals), 1);
@@ -472,14 +469,14 @@ export default function CareerHub() {
                         animate={{ height: '100%' }}
                         transition={{ delay: 0.5 + i * 0.08 }}
                       >
-                        <span className="text-[9px] text-slate-400 mb-0.5">{s.playerStats.goals}</span>
+                        <span className="text-[9px] text-[#8b949e] mb-0.5">{s.playerStats.goals}</span>
                         <motion.div
                           initial={{ height: 0 }}
                           animate={{ height: `${Math.max(4, heightPct)}%` }}
                           transition={{ duration: 0.6, delay: 0.5 + i * 0.08, ease: 'easeOut' }}
-                          className="w-full rounded-t-sm bg-gradient-to-t from-emerald-600 to-emerald-400 min-h-[4px]"
+                          className="w-full rounded-t-sm bg-emerald-500 min-h-[4px]"
                         />
-                        <span className="text-[8px] text-slate-600 mt-0.5">S{s.number}</span>
+                        <span className="text-[8px] text-[#484f58] mt-0.5">S{s.number}</span>
                       </motion.div>
                     );
                   })}
@@ -490,7 +487,7 @@ export default function CareerHub() {
             {/* Rating Progression Sparkline */}
             {seasons.length > 1 && (
               <div>
-                <p className="text-[10px] text-slate-500 uppercase mb-2">Rating Progression</p>
+                <p className="text-[10px] text-[#8b949e] uppercase mb-2">Rating Progression</p>
                 <div className="h-12 relative">
                   <svg viewBox="0 0 300 50" className="w-full h-full" preserveAspectRatio="none">
                     {/* Grid lines */}
@@ -547,8 +544,8 @@ export default function CareerHub() {
                                 fill="#0F172A"
                                 stroke="#10B981"
                                 strokeWidth="1.5"
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
                                 transition={{ delay: 1 + i * 0.1 }}
                               />
                             );
@@ -566,7 +563,7 @@ export default function CareerHub() {
                   {/* Season labels */}
                   <div className="flex justify-between mt-0.5 px-1">
                     {seasons.filter(s => s.playerStats.averageRating > 0).map((s, i) => (
-                      <span key={i} className="text-[8px] text-slate-600">S{s.number}</span>
+                      <span key={i} className="text-[8px] text-[#484f58]">S{s.number}</span>
                     ))}
                   </div>
                 </div>
@@ -576,14 +573,14 @@ export default function CareerHub() {
             {/* Trophy Cabinet */}
             {careerStats.trophies.length > 0 && (
               <div>
-                <p className="text-[10px] text-slate-500 uppercase mb-2">Trophy Cabinet</p>
+                <p className="text-[10px] text-[#8b949e] uppercase mb-2">Trophy Cabinet</p>
                 <div className="flex flex-wrap gap-2">
                   {careerStats.trophies.map((t, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.6 + i * 0.1, type: 'spring' }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.6 + i * 0.1 }}
                       className="flex items-center gap-1.5 bg-amber-950/30 border border-amber-800/40 rounded-lg px-2.5 py-1.5"
                     >
                       <Trophy className="h-3.5 w-3.5 text-amber-400" />
@@ -600,27 +597,27 @@ export default function CareerHub() {
             {/* Records */}
             {records && (
               <div>
-                <p className="text-[10px] text-slate-500 uppercase mb-2">Career Records</p>
+                <p className="text-[10px] text-[#8b949e] uppercase mb-2">Career Records</p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {[
                     { icon: <Target className="h-3 w-3 text-emerald-400" />, label: 'Most Goals', value: records.mostGoals.value, season: records.mostGoals.season, color: 'text-emerald-400' },
                     { icon: <Zap className="h-3 w-3 text-blue-400" />, label: 'Most Assists', value: records.mostAssists.value, season: records.mostAssists.season, color: 'text-blue-400' },
                     { icon: <Star className="h-3 w-3 text-amber-400" />, label: 'Best Rating', value: records.bestRating.value > 0 ? records.bestRating.value.toFixed(1) : '-', season: records.bestRating.season, color: 'text-amber-400' },
-                    { icon: <Calendar className="h-3 w-3 text-slate-400" />, label: 'Most Apps', value: records.mostApps.value, season: records.mostApps.season, color: 'text-slate-300' },
+                    { icon: <Calendar className="h-3 w-3 text-[#8b949e]" />, label: 'Most Apps', value: records.mostApps.value, season: records.mostApps.season, color: 'text-[#c9d1d9]' },
                   ].map((rec, i) => (
                     <motion.div
                       key={i}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.7 + i * 0.05 }}
-                      className="bg-slate-800/40 rounded-lg p-2 border border-slate-700/30"
+                      className="bg-[#21262d] rounded-lg p-2 border border-[#30363d]"
                     >
                       <div className="flex items-center gap-1 mb-0.5">
                         {rec.icon}
-                        <span className="text-[9px] text-slate-500">{rec.label}</span>
+                        <span className="text-[9px] text-[#8b949e]">{rec.label}</span>
                       </div>
                       <p className={`text-sm font-bold ${rec.color}`}>{rec.value}</p>
-                      <p className="text-[8px] text-slate-600">Season {rec.season}</p>
+                      <p className="text-[8px] text-[#484f58]">Season {rec.season}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -630,16 +627,16 @@ export default function CareerHub() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.9 }}
-                    className="mt-1.5 bg-slate-800/40 rounded-lg p-2 border border-slate-700/30 flex items-center gap-2"
+                    className="mt-1.5 bg-[#21262d] rounded-lg p-2 border border-[#30363d] flex items-center gap-2"
                   >
                     <Medal className="h-4 w-4" style={{ color: getPositionColor(records.bestLeaguePos.value) }} />
                     <div>
-                      <p className="text-[9px] text-slate-500">Best League Finish</p>
+                      <p className="text-[9px] text-[#8b949e]">Best League Finish</p>
                       <p className="text-sm font-bold" style={{ color: getPositionColor(records.bestLeaguePos.value) }}>
                         {getOrdinal(records.bestLeaguePos.value)}
                       </p>
                     </div>
-                    <span className="ml-auto text-[9px] text-slate-600">Season {records.bestLeaguePos.season}</span>
+                    <span className="ml-auto text-[9px] text-[#484f58]">Season {records.bestLeaguePos.season}</span>
                   </motion.div>
                 )}
               </div>
@@ -647,8 +644,8 @@ export default function CareerHub() {
 
             {seasons.length === 0 && (
               <div className="text-center py-4">
-                <BarChart3 className="h-8 w-8 text-slate-700 mx-auto mb-2" />
-                <p className="text-sm text-slate-600">Complete a season to unlock deep stats</p>
+                <BarChart3 className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+                <p className="text-sm text-[#484f58]">Complete a season to unlock deep stats</p>
               </div>
             )}
           </CardContent>
@@ -663,13 +660,13 @@ export default function CareerHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+              <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
                 <Award className="h-3 w-3" /> Achievements
               </CardTitle>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-[#8b949e]">
                 <span className="text-emerald-400 font-semibold">{unlockedCount}</span> / {achievements.length}
               </span>
             </div>
@@ -677,14 +674,14 @@ export default function CareerHub() {
             <div className="mt-2">
               <Progress
                 value={achievements.length > 0 ? (unlockedCount / achievements.length) * 100 : 0}
-                className="h-1.5 bg-slate-800"
+                className="h-1.5 bg-[#21262d]"
               />
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             {/* Category Filter Tabs */}
             <Tabs value={achievementFilter} onValueChange={setAchievementFilter} className="w-full">
-              <TabsList className="w-full h-7 bg-slate-800/60 p-0.5 mb-3">
+              <TabsList className="w-full h-7 bg-[#21262d] p-0.5 mb-3">
                 {Object.entries(CATEGORY_CONFIG).map(([key, config]) => (
                   <TabsTrigger
                     key={key}
@@ -706,55 +703,29 @@ export default function CareerHub() {
                         <motion.div
                           key={a.id}
                           layout
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 300, damping: 25 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ delay: i * 0.04 }}
                           className={`relative flex items-center gap-3 p-2.5 rounded-lg border ${
                             a.unlocked
-                              ? `${rarity.bg} ${rarity.border} ${rarity.glow ? `shadow-lg ${rarity.glow}` : ''}`
-                              : 'bg-slate-800/30 border-slate-800/50'
-                          } transition-all hover:scale-[1.01]`}
+                              ? `${rarity.bg} ${rarity.border}`
+                              : 'bg-[#21262d] border-[#30363d]'
+                          } transition-colors`}
                         >
-                          {/* Glow effect for unlocked */}
-                          {a.unlocked && a.rarity === 'legendary' && (
-                            <motion.div
-                              className="absolute inset-0 rounded-lg"
-                              animate={{
-                                boxShadow: [
-                                  '0 0 0px rgba(245,158,11,0)',
-                                  '0 0 12px rgba(245,158,11,0.3)',
-                                  '0 0 0px rgba(245,158,11,0)',
-                                ],
-                              }}
-                              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                            />
-                          )}
-                          {a.unlocked && a.rarity === 'epic' && (
-                            <motion.div
-                              className="absolute inset-0 rounded-lg"
-                              animate={{
-                                boxShadow: [
-                                  '0 0 0px rgba(168,85,247,0)',
-                                  '0 0 8px rgba(168,85,247,0.25)',
-                                  '0 0 0px rgba(168,85,247,0)',
-                                ],
-                              }}
-                              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-                            />
-                          )}
+                          {/* Rarity indicator */}
 
                           {/* Icon */}
                           <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${
-                            a.unlocked ? 'bg-slate-800/60' : 'bg-slate-800/30'
+                            a.unlocked ? 'bg-[#21262d]' : 'bg-[#21262d]'
                           }`}>
-                            {a.unlocked ? a.icon : <Lock className="h-4 w-4 text-slate-600" />}
+                            {a.unlocked ? a.icon : <Lock className="h-4 w-4 text-[#484f58]" />}
                           </div>
 
                           {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 mb-0.5">
-                              <p className={`text-xs font-semibold truncate ${a.unlocked ? rarity.color : 'text-slate-600'}`}>
+                              <p className={`text-xs font-semibold truncate ${a.unlocked ? rarity.color : 'text-[#484f58]'}`}>
                                 {a.name}
                               </p>
                               {/* Rarity Badge */}
@@ -763,12 +734,12 @@ export default function CareerHub() {
                                 {rarity.label}
                               </Badge>
                             </div>
-                            <p className={`text-[10px] truncate ${a.unlocked ? 'text-slate-400' : 'text-slate-700'}`}>
+                            <p className={`text-[10px] truncate ${a.unlocked ? 'text-[#8b949e]' : 'text-[#30363d]'}`}>
                               {a.description}
                             </p>
                             {/* Unlocked Season */}
                             {a.unlocked && a.unlockedSeason != null && (
-                              <p className="text-[9px] text-slate-600 mt-0.5 flex items-center gap-1">
+                              <p className="text-[9px] text-[#484f58] mt-0.5 flex items-center gap-1">
                                 <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
                                 Unlocked in Season {a.unlockedSeason}
                               </p>
@@ -777,13 +748,7 @@ export default function CareerHub() {
 
                           {/* Unlocked indicator */}
                           {a.unlocked && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{ type: 'spring', delay: 0.2 }}
-                            >
-                              <Sparkles className={`h-4 w-4 ${rarity.color}`} />
-                            </motion.div>
+                            <Sparkles className={`h-4 w-4 ${rarity.color}`} />
                           )}
                         </motion.div>
                       );
@@ -793,8 +758,8 @@ export default function CareerHub() {
 
                 {filteredAchievements.length === 0 && (
                   <div className="text-center py-4">
-                    <Award className="h-8 w-8 text-slate-700 mx-auto mb-2" />
-                    <p className="text-sm text-slate-600">No achievements in this category</p>
+                    <Award className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+                    <p className="text-sm text-[#484f58]">No achievements in this category</p>
                   </div>
                 )}
               </TabsContent>
@@ -811,45 +776,45 @@ export default function CareerHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
               <Flame className="h-3 w-3" /> Current Season · S{currentSeason}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="grid grid-cols-3 gap-2 mb-2">
-              <div className="bg-slate-800/40 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-sm font-bold text-emerald-400">{player.seasonStats.goals}</p>
-                <p className="text-[9px] text-slate-500">Goals</p>
+                <p className="text-[9px] text-[#8b949e]">Goals</p>
               </div>
-              <div className="bg-slate-800/40 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-sm font-bold text-blue-400">{player.seasonStats.assists}</p>
-                <p className="text-[9px] text-slate-500">Assists</p>
+                <p className="text-[9px] text-[#8b949e]">Assists</p>
               </div>
-              <div className="bg-slate-800/40 rounded-lg p-2 text-center">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
                 <p className="text-sm font-bold text-amber-400">
                   {player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'}
                 </p>
-                <p className="text-[9px] text-slate-500">Avg Rating</p>
+                <p className="text-[9px] text-[#8b949e]">Avg Rating</p>
               </div>
             </div>
             <div className="grid grid-cols-4 gap-1.5">
               <div className="text-center">
-                <p className="text-xs font-semibold text-slate-300">{player.seasonStats.appearances}</p>
-                <p className="text-[8px] text-slate-600">Apps</p>
+                <p className="text-xs font-semibold text-[#c9d1d9]">{player.seasonStats.appearances}</p>
+                <p className="text-[8px] text-[#484f58]">Apps</p>
               </div>
               <div className="text-center">
-                <p className="text-xs font-semibold text-slate-300">{player.seasonStats.starts}</p>
-                <p className="text-[8px] text-slate-600">Starts</p>
+                <p className="text-xs font-semibold text-[#c9d1d9]">{player.seasonStats.starts}</p>
+                <p className="text-[8px] text-[#484f58]">Starts</p>
               </div>
               <div className="text-center">
                 <p className="text-xs font-semibold text-yellow-500">{player.seasonStats.yellowCards}</p>
-                <p className="text-[8px] text-slate-600">Yellows</p>
+                <p className="text-[8px] text-[#484f58]">Yellows</p>
               </div>
               <div className="text-center">
                 <p className="text-xs font-semibold text-red-400">{player.seasonStats.redCards}</p>
-                <p className="text-[8px] text-slate-600">Reds</p>
+                <p className="text-[8px] text-[#484f58]">Reds</p>
               </div>
             </div>
           </CardContent>
@@ -864,18 +829,18 @@ export default function CareerHub() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
         onClick={() => setScreen('analytics')}
-        className="w-full bg-slate-900/80 backdrop-blur-sm border border-slate-800/60 rounded-xl p-4 flex items-center justify-between hover:bg-slate-800/80 hover:border-emerald-800/40 transition-all group"
+        className="w-full bg-[#161b22]  border border-[#30363d] rounded-lg p-4 flex items-center justify-between hover:bg-[#21262d] hover:border-emerald-800/40 transition-all group"
       >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-emerald-950/40 border border-emerald-800/30 flex items-center justify-center">
             <TrendingUp className="h-4 w-4 text-emerald-400" />
           </div>
           <div className="text-left">
-            <span className="text-sm font-semibold text-slate-200">View Full Analytics</span>
-            <p className="text-[10px] text-slate-500">Radar charts, attributes & form breakdown</p>
+            <span className="text-sm font-semibold text-[#c9d1d9]">View Full Analytics</span>
+            <p className="text-[10px] text-[#8b949e]">Radar charts, attributes & form breakdown</p>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-emerald-400 transition-colors" />
+        <ChevronRight className="h-4 w-4 text-[#484f58] group-hover:text-emerald-400 transition-colors" />
       </motion.button>
     </div>
   );

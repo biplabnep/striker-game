@@ -44,7 +44,7 @@ export default function SaveLoad() {
     <div className="min-h-screen p-4 max-w-lg mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => setScreen('main_menu')} className="text-slate-400">
+        <Button variant="ghost" size="icon" onClick={() => setScreen('main_menu')} className="text-[#8b949e]">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-2xl font-bold">Save / Load</h1>
@@ -57,7 +57,7 @@ export default function SaveLoad() {
           className={`flex-1 p-3 rounded-xl text-sm font-semibold transition-all ${
             mode === 'load'
               ? 'bg-emerald-600/20 border border-emerald-500 text-emerald-300'
-              : 'bg-slate-900 border border-slate-800 text-slate-500 hover:bg-slate-800'
+              : 'bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:bg-[#21262d]'
           }`}
         >
           <HardDrive className="h-4 w-4 inline mr-2" />
@@ -68,7 +68,7 @@ export default function SaveLoad() {
           className={`flex-1 p-3 rounded-xl text-sm font-semibold transition-all ${
             mode === 'save'
               ? 'bg-emerald-600/20 border border-emerald-500 text-emerald-300'
-              : 'bg-slate-900 border border-slate-800 text-slate-500 hover:bg-slate-800'
+              : 'bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:bg-[#21262d]'
           }`}
         >
           <Save className="h-4 w-4 inline mr-2" />
@@ -79,16 +79,16 @@ export default function SaveLoad() {
       {/* Save Mode */}
       {mode === 'save' && gameState && (
         <div className="space-y-4">
-          <Card className="bg-slate-900 border-slate-800">
+          <Card className="bg-[#161b22] border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-xs text-slate-500 uppercase">Current Game</CardTitle>
+              <CardTitle className="text-xs text-[#8b949e] uppercase">Current Game</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{gameState.currentClub.logo}</span>
                 <div className="flex-1">
                   <p className="font-semibold">{gameState.player.name}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[#8b949e]">
                     {gameState.currentClub.name} • Season {gameState.currentSeason} • Week {gameState.currentWeek}
                   </p>
                 </div>
@@ -101,7 +101,7 @@ export default function SaveLoad() {
 
           <Button
             onClick={() => handleSave(`${gameState.player.name} - Season ${gameState.currentSeason}`)}
-            className="w-full h-14 text-lg font-bold bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white rounded-xl shadow-lg"
+            className="w-full h-14 text-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg"
           >
             <Save className="mr-2 h-5 w-5" />
             Quick Save
@@ -110,10 +110,10 @@ export default function SaveLoad() {
       )}
 
       {mode === 'save' && !gameState && (
-        <Card className="bg-slate-900/50 border-slate-800/50">
+        <Card className="bg-[#161b22]/50 border-[#30363d]">
           <CardContent className="p-8 text-center">
-            <p className="text-slate-500">No active game to save</p>
-            <p className="text-xs text-slate-700 mt-1">Start a new career first</p>
+            <p className="text-[#8b949e]">No active game to save</p>
+            <p className="text-xs text-[#30363d] mt-1">Start a new career first</p>
           </CardContent>
         </Card>
       )}
@@ -122,28 +122,28 @@ export default function SaveLoad() {
       {mode === 'load' && (
         <div className="space-y-3">
           {saves.length === 0 ? (
-            <Card className="bg-slate-900/50 border-slate-800/50">
+            <Card className="bg-[#161b22]/50 border-[#30363d]">
               <CardContent className="p-8 text-center">
-                <HardDrive className="h-12 w-12 mx-auto text-slate-700 mb-3" />
-                <p className="text-slate-500">No saved games found</p>
-                <p className="text-xs text-slate-700 mt-1">Start a new career to create your first save</p>
+                <HardDrive className="h-12 w-12 mx-auto text-[#30363d] mb-3" />
+                <p className="text-[#8b949e]">No saved games found</p>
+                <p className="text-xs text-[#30363d] mt-1">Start a new career to create your first save</p>
               </CardContent>
             </Card>
           ) : (
             saves.map(save => (
-              <Card key={save.id} className="bg-slate-900 border-slate-800 overflow-hidden">
+              <Card key={save.id} className="bg-[#161b22] border-[#30363d] overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-3">
                     <span className="text-2xl">{save.gameState.currentClub.logo}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{save.name}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-[#8b949e]">
                         {save.gameState.player.name} • {save.gameState.currentClub.name}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Clock className="h-3 w-3 text-slate-600" />
-                        <span className="text-[10px] text-slate-600">{formatDate(save.savedAt)}</span>
-                        <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-500">
+                        <Clock className="h-3 w-3 text-[#484f58]" />
+                        <span className="text-[10px] text-[#484f58]">{formatDate(save.savedAt)}</span>
+                        <Badge variant="outline" className="text-[10px] border-[#30363d] text-[#8b949e]">
                           Season {save.gameState.currentSeason}
                         </Badge>
                       </div>
@@ -154,21 +154,21 @@ export default function SaveLoad() {
                   </div>
 
                   <div className="grid grid-cols-4 gap-2 mb-3 text-center text-xs">
-                    <div className="bg-slate-800 rounded-lg p-1.5">
+                    <div className="bg-[#21262d] rounded-lg p-1.5">
                       <p className="font-bold text-emerald-400">{save.gameState.player.seasonStats.goals}</p>
-                      <p className="text-slate-600">Goals</p>
+                      <p className="text-[#484f58]">Goals</p>
                     </div>
-                    <div className="bg-slate-800 rounded-lg p-1.5">
+                    <div className="bg-[#21262d] rounded-lg p-1.5">
                       <p className="font-bold text-blue-400">{save.gameState.player.seasonStats.assists}</p>
-                      <p className="text-slate-600">Assists</p>
+                      <p className="text-[#484f58]">Assists</p>
                     </div>
-                    <div className="bg-slate-800 rounded-lg p-1.5">
+                    <div className="bg-[#21262d] rounded-lg p-1.5">
                       <p className="font-bold text-amber-400">{save.gameState.player.seasonStats.appearances}</p>
-                      <p className="text-slate-600">Apps</p>
+                      <p className="text-[#484f58]">Apps</p>
                     </div>
-                    <div className="bg-slate-800 rounded-lg p-1.5">
-                      <p className="font-bold text-slate-300">{save.gameState.player.age}</p>
-                      <p className="text-slate-600">Age</p>
+                    <div className="bg-[#21262d] rounded-lg p-1.5">
+                      <p className="font-bold text-[#c9d1d9]">{save.gameState.player.age}</p>
+                      <p className="text-[#484f58]">Age</p>
                     </div>
                   </div>
 

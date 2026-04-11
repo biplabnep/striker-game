@@ -1065,3 +1065,67 @@ Stage Summary:
 - New "Objectives" navigation item in BottomNav More panel
 - All lint checks pass clean
 - Dev server compiles without errors
+
+---
+Task ID: 11
+Agent: main
+Task: Fix localStorage migration crash, apply Uncodixify styling, add Morale & Mindset feature
+
+Work Log:
+- Fixed critical YouthAcademy crash: `youthTeams.find()` on undefined
+  - Root cause: Old saves in localStorage lack new fields like `youthTeams`, `continentalFixtures`, `internationalCareer`, etc.
+  - Fixed in YouthAcademy.tsx: Changed destructuring to use null coalescing (`gameState.youthTeams ?? []`)
+  - Added `migrateGameState()` helper function to gameStore.ts that fills in defaults for all missing fields
+  - Added `merge` option to Zustand persist config that applies migration on load
+  - Updated `loadCareer()` to use `migrateGameState()` when loading save slots
+
+- Applied Uncodixify styling standard across 12 components:
+  - Removed all `bg-gradient-to-*` patterns and replaced with solid `bg-[#161b22]` or `bg-[#21262d]`
+  - Removed all `backdrop-blur-*` (glassmorphism) and replaced with solid backgrounds
+  - Removed all `whileHover={{ scale: 1.0* }}` and `whileTap={{ scale: 0.* }}` scale animations
+  - Removed `shadow-xl` and `shadow-2xl` and replaced with `shadow-sm` or removed
+  - Replaced `rounded-full` on badges/buttons with `rounded-md`
+  - Removed hover glow gradient overlays
+  - Files modified:
+    - MainMenu.tsx: Removed gradient backgrounds, title gradient, scale spring, button gradients
+    - CareerSetup.tsx: Removed gradient preview card and start button gradient
+    - MatchDay.tsx: Removed 6 gradient instances, replaced with solid backgrounds
+    - TrainingPanel.tsx: Removed gradient overlays, scale animations
+    - EventsPanel.tsx: Removed gradient overlays, scale animations, shadow-xl
+    - LeagueTable.tsx: Removed gradient headers and progress bars
+    - CupBracket.tsx: Removed gradient card backgrounds and progress bars
+    - SocialFeed.tsx: Removed scale hover animations and gradient accents
+    - WeeklySummary.tsx: Removed gradient header, shadow-2xl
+    - SeasonEndSummary.tsx: Removed backdrop-blur, shadow-2xl
+    - PressConference.tsx: Removed gradient overlay, scale animations, gradient button
+    - AnalyticsPanel.tsx: Removed gradient separators
+
+- Added new feature: Morale & Mindset Panel
+  - Created `/home/z/my-project/src/components/game/MoralePanel.tsx` (~280 lines)
+  - New types in types.ts: `PlayerMindset` ('aggressive' | 'balanced' | 'conservative'), `MoraleFactor` interface
+  - Added `mindset` and `moraleFactors` fields to GameState
+  - Added `setMindset()` action to gameStore
+  - Registered in page.tsx and BottomNav
+  - Features:
+    - Morale level indicator with color-coded bar and labels
+    - Mindset selection: Aggressive (risk/reward), Balanced (steady), Conservative (safe)
+    - Each mindset shows effects on match performance
+    - Computed morale factors from game state (recent results, form, injury, squad status, contract, fitness)
+    - Positive and negative factors displayed separately with category icons
+    - Net morale influence indicator
+    - "How Morale Works" tips section
+  - All styling follows Uncodixify standard: solid backgrounds, no gradients, no scale animations, rounded-lg max
+
+Stage Summary:
+- Critical localStorage migration bug fixed - old saves no longer crash
+- Uncodixify styling applied across 12 components - no more AI-typical UI patterns
+- New Morale & Mindset feature provides deeper player engagement
+- All lint checks pass clean
+- Dev server compiles without errors
+- App tested and working across all screens including new Morale panel
+
+Unresolved issues or risks:
+- Some components may still have residual gradient patterns in deeply nested sub-components
+- The mindset system currently only stores the selection but doesn't yet affect match engine calculations
+- MoraleFactors are computed on-the-fly rather than stored/accumulated over time
+- The BottomNav "More" panel now has 14 items which is quite dense on small screens

@@ -46,28 +46,28 @@ export default function CareerSetup() {
     <div className="min-h-screen p-4 pb-8 max-w-lg mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => setScreen('main_menu')} className="text-slate-400">
+        <Button variant="ghost" size="icon" onClick={() => setScreen('main_menu')} className="text-[#8b949e]">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-2xl font-bold">New Career</h1>
       </div>
 
       {/* Name */}
-      <Card className="bg-slate-900 border-slate-800 mb-4">
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-400">Player Name</CardTitle></CardHeader>
+      <Card className="bg-[#161b22] border-[#30363d] mb-4">
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-[#8b949e]">Player Name</CardTitle></CardHeader>
         <CardContent>
           <Input
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Leave blank for random name"
-            className="bg-slate-800 border-slate-700 text-white"
+            className="bg-[#21262d] border-[#30363d] text-white"
           />
         </CardContent>
       </Card>
 
       {/* Nationality */}
-      <Card className="bg-slate-900 border-slate-800 mb-4">
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-400">Nationality</CardTitle></CardHeader>
+      <Card className="bg-[#161b22] border-[#30363d] mb-4">
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-[#8b949e]">Nationality</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
             {NATIONALITIES.map(n => (
@@ -77,11 +77,11 @@ export default function CareerSetup() {
                 className={`flex flex-col items-center p-2 rounded-lg text-xs transition-all ${
                   nationality === n.name
                     ? 'bg-emerald-600/30 border border-emerald-500'
-                    : 'bg-slate-800 border border-slate-700 hover:bg-slate-700'
+                    : 'bg-[#21262d] border border-[#30363d] hover:bg-slate-700'
                 }`}
               >
                 <span className="text-lg">{n.flag}</span>
-                <span className="text-slate-300 truncate w-full text-center">{n.name}</span>
+                <span className="text-[#c9d1d9] truncate w-full text-center">{n.name}</span>
               </button>
             ))}
           </div>
@@ -89,12 +89,12 @@ export default function CareerSetup() {
       </Card>
 
       {/* Position */}
-      <Card className="bg-slate-900 border-slate-800 mb-4">
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-400">Position</CardTitle></CardHeader>
+      <Card className="bg-[#161b22] border-[#30363d] mb-4">
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-[#8b949e]">Position</CardTitle></CardHeader>
         <CardContent>
           {Object.entries(POSITION_GROUPS).map(([group, posList]) => (
             <div key={group} className="mb-3">
-              <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider">{group}</p>
+              <p className="text-xs text-[#8b949e] mb-1 ">{group}</p>
               <div className="flex flex-wrap gap-2">
                 {posList.map(pos => (
                   <button
@@ -103,7 +103,7 @@ export default function CareerSetup() {
                     className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                       position === pos
                         ? 'text-white shadow-lg'
-                        : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                        : 'bg-[#21262d] text-[#c9d1d9] border border-[#30363d] hover:bg-slate-700'
                     }`}
                     style={position === pos ? { backgroundColor: getPositionColor(pos) } : {}}
                   >
@@ -117,8 +117,8 @@ export default function CareerSetup() {
       </Card>
 
       {/* Club */}
-      <Card className="bg-slate-900 border-slate-800 mb-4">
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-400">Starting Club</CardTitle></CardHeader>
+      <Card className="bg-[#161b22] border-[#30363d] mb-4">
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-[#8b949e]">Starting Club</CardTitle></CardHeader>
         <CardContent className="space-y-1">
           {LEAGUES.map(league => {
             const clubs = ENRICHED_CLUBS.filter(c => c.league === league.id);
@@ -129,18 +129,18 @@ export default function CareerSetup() {
                 <button
                   onClick={() => toggleLeague(league.id)}
                   className={`w-full flex items-center justify-between p-2.5 rounded-lg text-sm transition-all ${
-                    isSelected ? 'bg-emerald-900/20' : 'bg-slate-800/50 hover:bg-slate-800'
+                    isSelected ? 'bg-emerald-900/20' : 'bg-[#21262d] hover:bg-[#21262d]'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span>{league.emoji}</span>
-                    <span className="font-medium text-slate-300">{league.name}</span>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-700 text-slate-500">
+                    <span className="font-medium text-[#c9d1d9]">{league.name}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-[#30363d] text-[#8b949e]">
                       {clubs.length}
                     </Badge>
                   </div>
                   <svg
-                    className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 text-[#8b949e] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -155,11 +155,11 @@ export default function CareerSetup() {
                         className={`flex items-center gap-2 p-2 rounded-lg text-sm transition-all text-left ${
                           clubId === club.id
                             ? 'bg-emerald-600/20 border border-emerald-500'
-                            : 'bg-slate-800 border border-slate-700/50 hover:bg-slate-700'
+                            : 'bg-[#21262d] border border-[#30363d] hover:bg-slate-700'
                         }`}
                       >
                         <span className="text-base">{club.logo}</span>
-                        <span className="text-slate-200 text-xs truncate">{club.name}</span>
+                        <span className="text-[#c9d1d9] text-xs truncate">{club.name}</span>
                         <Badge variant="outline" className="ml-auto text-[10px] px-1 py-0 border-slate-600">
                           {club.squadQuality}
                         </Badge>
@@ -174,8 +174,8 @@ export default function CareerSetup() {
       </Card>
 
       {/* Difficulty */}
-      <Card className="bg-slate-900 border-slate-800 mb-4">
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-400">Difficulty</CardTitle></CardHeader>
+      <Card className="bg-[#161b22] border-[#30363d] mb-4">
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-[#8b949e]">Difficulty</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-2">
             {(['easy', 'normal', 'hard'] as const).map(d => (
@@ -187,7 +187,7 @@ export default function CareerSetup() {
                     ? d === 'easy' ? 'bg-green-600/30 border border-green-500 text-green-300'
                       : d === 'normal' ? 'bg-amber-600/30 border border-amber-500 text-amber-300'
                       : 'bg-red-600/30 border border-red-500 text-red-300'
-                    : 'bg-slate-800 border border-slate-700 text-slate-400'
+                    : 'bg-[#21262d] border border-[#30363d] text-[#8b949e]'
                 }`}
               >
                 {d}
@@ -199,15 +199,15 @@ export default function CareerSetup() {
 
       {/* Preview */}
       {selectedClub && (
-        <Card className="bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700 mb-6">
+        <Card className="bg-[#161b22] border-[#30363d] mb-6">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="text-4xl">{selectedClub.logo}</div>
             <div className="flex-1">
               <p className="font-bold text-lg">{name || 'Random Name'}</p>
-              <p className="text-slate-400 text-sm">{nationality} • {position} • {selectedClub.name}</p>
-              <p className="text-slate-500 text-xs">Academy Prospect • Age 14</p>
+              <p className="text-[#8b949e] text-sm">{nationality} • {position} • {selectedClub.name}</p>
+              <p className="text-[#8b949e] text-xs">Academy Prospect • Age 14</p>
             </div>
-            <ChevronRight className="h-5 w-5 text-slate-500" />
+            <ChevronRight className="h-5 w-5 text-[#8b949e]" />
           </CardContent>
         </Card>
       )}
@@ -215,7 +215,7 @@ export default function CareerSetup() {
       {/* Start Button */}
       <Button
         onClick={handleStart}
-        className="w-full h-14 text-lg font-bold bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white rounded-xl shadow-lg shadow-emerald-900/50"
+        className="w-full h-14 text-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
       >
         Start Career
       </Button>

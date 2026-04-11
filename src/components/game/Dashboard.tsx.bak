@@ -91,7 +91,7 @@ function getQualityColor(quality: number): string {
   if (quality >= 85) return 'text-purple-400';
   if (quality >= 70) return 'text-emerald-400';
   if (quality >= 55) return 'text-amber-400';
-  return 'text-[#8b949e]';
+  return 'text-slate-400';
 }
 
 export default function Dashboard() {
@@ -351,9 +351,9 @@ export default function Dashboard() {
         <div />
         <button
           onClick={() => setScreen('settings')}
-          className="relative p-2 rounded-lg hover:bg-[#21262d] transition-colors"
+          className="relative p-2 rounded-xl hover:bg-slate-800/80 transition-colors"
         >
-          <Bell className="h-5 w-5 text-[#8b949e]" />
+          <Bell className="h-5 w-5 text-slate-400" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -363,8 +363,8 @@ export default function Dashboard() {
       </div>
 
       {/* Player Profile Card */}
-      <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
-
+      <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
+        <div className="absolute inset-0 opacity-5" style={{ background: `linear-gradient(135deg, ${currentClub.primaryColor}, transparent)` }} />
         <CardContent className="p-4 relative">
           <div className="flex items-center gap-4">
             {/* Overall Rating */}
@@ -372,30 +372,30 @@ export default function Dashboard() {
               <div className="w-16 h-16 rounded-full flex items-center justify-center font-black text-2xl border-2" style={{ borderColor: overallColor, color: overallColor }}>
                 {player.overall}
               </div>
-              <span className="text-[10px] text-[#8b949e] mt-1">OVR</span>
+              <span className="text-[10px] text-slate-500 mt-1">OVR</span>
             </div>
 
             {/* Player Info */}
             <div className="flex-1 min-w-0">
               <h2 className="font-bold text-lg truncate">{player.name}</h2>
-              <div className="flex items-center gap-2 text-sm text-[#8b949e]">
+              <div className="flex items-center gap-2 text-sm text-slate-400">
                 <span>{nationInfo?.flag}</span>
                 <Badge variant="outline" className="text-xs font-bold" style={{ color: posColor, borderColor: posColor }}>{player.position}</Badge>
                 <span className="text-xs">Age {player.age}</span>
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-base">{currentClub.logo}</span>
-                <span className="text-sm text-[#c9d1d9]">{currentClub.name}</span>
-                <Badge variant="outline" className="text-[10px] border-[#30363d] capitalize">{player.squadStatus.replace('_', ' ')}</Badge>
+                <span className="text-sm text-slate-300">{currentClub.name}</span>
+                <Badge variant="outline" className="text-[10px] border-slate-600 capitalize">{player.squadStatus.replace('_', ' ')}</Badge>
               </div>
             </div>
 
             {/* Potential */}
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm border border-[#30363d] text-[#8b949e]">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm border border-slate-600 text-slate-400">
                 {player.potential}
               </div>
-              <span className="text-[10px] text-[#8b949e] mt-1">POT</span>
+              <span className="text-[10px] text-slate-500 mt-1">POT</span>
             </div>
           </div>
 
@@ -429,11 +429,11 @@ export default function Dashboard() {
 
           {/* Player Form Trend Graph */}
           {formTrendData.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-[#30363d]">
+            <div className="mt-4 pt-3 border-t border-slate-700/50">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] text-[#8b949e] font-medium">Match Rating Trend</span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Match Rating Trend</span>
                 {formTrendData.length > 0 && (
-                  <span className="text-[10px] text-[#8b949e]">
+                  <span className="text-[10px] text-slate-500">
                     Last {formTrendData.length} games
                   </span>
                 )}
@@ -458,7 +458,7 @@ export default function Dashboard() {
                           minHeight: '4px',
                         }}
                       />
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#21262d] text-[9px] font-semibold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-800 text-[9px] font-semibold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
                         style={{ color }}
                       >
                         {rating.toFixed(1)}
@@ -468,8 +468,8 @@ export default function Dashboard() {
                 })}
               </div>
               <div className="flex justify-between mt-1">
-                <span className="text-[8px] text-[#484f58]">Oldest</span>
-                <span className="text-[8px] text-[#484f58]">Recent</span>
+                <span className="text-[8px] text-slate-600">Oldest</span>
+                <span className="text-[8px] text-slate-600">Recent</span>
               </div>
             </div>
           )}
@@ -481,9 +481,9 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.3 }}
               className={`mt-3 px-3 py-2 rounded-lg flex items-center gap-2 border ${
-                streakInfo.color === 'emerald' ? 'bg-emerald-500/8 border-emerald-500/20' :
+                streakInfo.color === 'emerald' ? 'bg-emerald-500/10 border-emerald-500/20' :
                 streakInfo.color === 'blue' ? 'bg-blue-500/10 border-blue-500/20' :
-                streakInfo.color === 'amber' ? 'bg-amber-500/8 border-amber-500/15' :
+                streakInfo.color === 'amber' ? 'bg-amber-500/10 border-amber-500/20' :
                 'bg-red-500/10 border-red-500/20'
               }`}
             >
@@ -541,7 +541,7 @@ export default function Dashboard() {
       </div>
 
       {/* Season Info Bar + Progress Ring */}
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-slate-900 border-slate-800">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             {/* SVG Circular Progress Ring */}
@@ -558,7 +558,7 @@ export default function Dashboard() {
                 <motion.circle
                   cx="70" cy="70" r={ringRadius}
                   fill="none"
-                  stroke="#10b981"
+                  stroke="url(#progressGradient)"
                   strokeWidth={ringStroke}
                   strokeLinecap="round"
                   strokeDasharray={ringCircumference}
@@ -566,6 +566,13 @@ export default function Dashboard() {
                   animate={{ strokeDashoffset: ringOffset }}
                   transition={{ duration: 1.2, ease: 'easeOut' }}
                 />
+                {/* Gradient definition */}
+                <defs>
+                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#047857" />
+                    <stop offset="100%" stopColor="#34d399" />
+                  </linearGradient>
+                </defs>
                 {/* Week markers - show at key intervals */}
                 {Array.from({ length: 9 }, (_, i) => Math.round((i / 8) * seasonMatchdays) || 1).map(week => {
                   const angle = ((week / seasonMatchdays) * 360 - 90) * (Math.PI / 180);
@@ -606,17 +613,17 @@ export default function Dashboard() {
               {/* Center text */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-2xl font-black text-emerald-400">{seasonProgress}%</span>
-                <span className="text-[9px] text-[#8b949e]">Complete</span>
+                <span className="text-[9px] text-slate-500 uppercase tracking-wider">Complete</span>
               </div>
             </div>
 
             {/* Season info */}
             <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2 text-[#8b949e]">
+              <div className="flex items-center gap-2 text-slate-400">
                 <Calendar className="h-3 w-3" />
                 <span className="text-xs">Season {currentSeason} &bull; Week {currentWeek}/{seasonMatchdays}</span>
               </div>
-              <p className="text-[10px] text-[#8b949e]">{getSeasonWeekDescription(currentWeek)}</p>
+              <p className="text-[10px] text-slate-500">{getSeasonWeekDescription(currentWeek)}</p>
               {pendingEvents > 0 && (
                 <Badge className="bg-amber-600 text-white text-[10px] px-1.5">
                   {pendingEvents} event{pendingEvents > 1 ? 's' : ''}
@@ -630,7 +637,7 @@ export default function Dashboard() {
                   className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 border ${
                     player.contract.yearsRemaining <= 1
                       ? 'bg-red-500/10 border-red-500/20'
-                      : 'bg-amber-500/8 border-amber-500/15'
+                      : 'bg-amber-500/10 border-amber-500/20'
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
@@ -661,11 +668,11 @@ export default function Dashboard() {
       </Card>
 
       {/* Cup Status Card */}
-      <Card className="bg-[#161b22] border-[#30363d] cursor-pointer hover:bg-[#21262d] transition-colors">
+      <Card className="bg-slate-900 border-amber-900/20 cursor-pointer hover:bg-slate-800/80 transition-colors">
         <CardContent className="p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#21262d] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-amber-900/30 flex items-center justify-center">
                 <Trophy className="h-5 w-5 text-amber-400" />
               </div>
               <div>
@@ -698,7 +705,7 @@ export default function Dashboard() {
                   if (isCupWinner) {
                     return (
                       <div>
-                        <p className="text-xs text-[#8b949e]">{cupEmoji} {cupName}</p>
+                        <p className="text-xs text-slate-500">{cupEmoji} {cupName}</p>
                         <p className="text-sm font-semibold">
                           <span className="text-amber-400">Winner! 🏆</span>
                         </p>
@@ -708,23 +715,23 @@ export default function Dashboard() {
                   if (cupElim) {
                     return (
                       <div>
-                        <p className="text-xs text-[#8b949e]">{cupEmoji} {cupName}</p>
+                        <p className="text-xs text-slate-500">{cupEmoji} {cupName}</p>
                         <p className="text-sm font-semibold">
                           <span className="text-red-400">Eliminated</span>
-                          <span className="text-[#8b949e]"> in {getRoundLabel(Math.max(1, cupRoundVal - 1), maxCupRound)}</span>
+                          <span className="text-slate-400"> in {getRoundLabel(Math.max(1, cupRoundVal - 1), maxCupRound)}</span>
                         </p>
                       </div>
                     );
                   }
                   return (
                     <div>
-                      <p className="text-xs text-[#8b949e]">{cupEmoji} {cupName}</p>
+                      <p className="text-xs text-slate-500">{cupEmoji} {cupName}</p>
                       <p className="text-sm font-semibold">
                         <span className="text-amber-400">{getRoundLabel(cupRoundVal, maxCupRound)}</span>
-                        <span className="text-[#8b949e]"> in cup</span>
+                        <span className="text-slate-400"> in cup</span>
                       </p>
                       {cupOpponent && nextCupMatch && (
-                        <p className="text-[10px] text-[#8b949e] mt-0.5">
+                        <p className="text-[10px] text-slate-500 mt-0.5">
                           Next: vs {cupOpponent.shortName} (Wk {CUP_MATCH_WEEKS[cupRoundVal - 1] ?? cupRoundVal * 4})
                         </p>
                       )}
@@ -739,47 +746,47 @@ export default function Dashboard() {
 
       {/* League Table Quick Link Card */}
       <Card
-        className="bg-[#161b22] border-[#30363d] cursor-pointer hover:bg-[#21262d] transition-colors"
+        className="bg-slate-900 border-slate-800 cursor-pointer hover:bg-slate-800/80 transition-colors"
         onClick={() => setScreen('league_table')}
       >
         <CardContent className="p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#21262d] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-emerald-900/30 flex items-center justify-center">
                 <Table className="h-5 w-5 text-emerald-400" />
               </div>
               <div>
-                <p className="text-xs text-[#8b949e]">
+                <p className="text-xs text-slate-500">
                   {leagueInfo ? `${leagueInfo.emoji} ${leagueInfo.name}` : 'League Table'}
                 </p>
                 <p className="text-sm font-semibold">
                   <span className="text-emerald-400">{leaguePos}{posSuffix}</span>
-                  <span className="text-[#8b949e]"> in the league</span>
+                  <span className="text-slate-400"> in the league</span>
                 </p>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-[#484f58]" />
+            <ChevronRight className="h-4 w-4 text-slate-600" />
           </div>
         </CardContent>
       </Card>
 
       {/* Match Day Countdown Card */}
       {nextOpponent && nextFixture && winProbability && (
-        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
-
+        <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-emerald-900/30 overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.03]" style={{ background: `linear-gradient(135deg, ${currentClub.primaryColor}, ${nextOpponent.primaryColor})` }} />
           <CardHeader className="pb-2 pt-3 px-4 relative">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs text-[#8b949e]">Next Match</CardTitle>
+              <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">Next Match</CardTitle>
               <div className="flex items-center gap-1.5">
                 {/* Competition Badge */}
-                <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e]">
+                <Badge variant="outline" className="text-[9px] border-slate-700 text-slate-400">
                   {nextFixture.competition === 'league' ? '🏆 League' :
                    nextFixture.competition === 'cup' ? '🏆 Cup' :
                    nextFixture.competition === 'continental' ? '🌍 Continental' : '🤝 Friendly'}
                 </Badge>
                 {/* Home/Away Badge */}
                 <Badge className={`text-[10px] font-bold ${
-                  isHome ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
+                  isHome ? 'bg-emerald-600/80 text-white' : 'bg-slate-600/80 text-white'
                 }`}>
                   {isHome ? 'HOME' : 'AWAY'}
                 </Badge>
@@ -791,39 +798,49 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               {/* Home Team */}
               <div className="flex flex-col items-center gap-1.5 flex-1">
-                <span className="text-3xl">{isHome ? currentClub.logo : nextOpponent.logo}</span>
-                <span className="text-xs font-semibold text-[#c9d1d9] truncate max-w-[80px] text-center">
+                <div className="w-14 h-14 rounded-xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-3xl">
+                  {isHome ? currentClub.logo : nextOpponent.logo}
+                </div>
+                <span className="text-xs font-semibold text-slate-200 truncate max-w-[80px] text-center">
                   {isHome ? currentClub.shortName : nextOpponent.shortName}
                 </span>
-                <span className="text-[9px] text-[#8b949e]">{isHome ? currentClub.formation : nextOpponent.formation}</span>
+                <span className="text-[9px] text-slate-500">{isHome ? currentClub.formation : nextOpponent.formation}</span>
               </div>
 
               {/* VS Divider */}
               <div className="flex flex-col items-center mx-2">
-                <div className="text-lg font-black text-emerald-400/80">VS</div>
-                <div className="w-px h-6 bg-[#30363d] mt-1" />
+                <motion.div
+                  className="text-lg font-black text-emerald-400/80"
+                  animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  VS
+                </motion.div>
+                <div className="w-px h-6 bg-gradient-to-b from-transparent via-slate-600 to-transparent mt-1" />
               </div>
 
               {/* Away Team */}
               <div className="flex flex-col items-center gap-1.5 flex-1">
-                <span className="text-3xl">{isHome ? nextOpponent.logo : currentClub.logo}</span>
-                <span className="text-xs font-semibold text-[#c9d1d9] truncate max-w-[80px] text-center">
+                <div className="w-14 h-14 rounded-xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-3xl">
+                  {isHome ? nextOpponent.logo : currentClub.logo}
+                </div>
+                <span className="text-xs font-semibold text-slate-200 truncate max-w-[80px] text-center">
                   {isHome ? nextOpponent.shortName : currentClub.shortName}
                 </span>
-                <span className="text-[9px] text-[#8b949e]">{isHome ? nextOpponent.formation : currentClub.formation}</span>
+                <span className="text-[9px] text-slate-500">{isHome ? nextOpponent.formation : currentClub.formation}</span>
               </div>
             </div>
 
             {/* Formation comparison mini */}
             <div className="flex items-center justify-between mb-3 px-2">
               <div className="flex items-center gap-1.5">
-                <Shield className="h-3 w-3 text-[#8b949e]" />
-                <span className="text-[10px] text-[#8b949e]">{isHome ? currentClub.tacticalStyle : nextOpponent.tacticalStyle}</span>
+                <Shield className="h-3 w-3 text-slate-500" />
+                <span className="text-[10px] text-slate-500">{isHome ? currentClub.tacticalStyle : nextOpponent.tacticalStyle}</span>
               </div>
-              <MapPin className="h-3 w-3 text-[#484f58]" />
+              <MapPin className="h-3 w-3 text-slate-600" />
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-[#8b949e]">{isHome ? nextOpponent.tacticalStyle : currentClub.tacticalStyle}</span>
-                <Shield className="h-3 w-3 text-[#8b949e]" />
+                <span className="text-[10px] text-slate-500">{isHome ? nextOpponent.tacticalStyle : currentClub.tacticalStyle}</span>
+                <Shield className="h-3 w-3 text-slate-500" />
               </div>
             </div>
 
@@ -831,10 +848,10 @@ export default function Dashboard() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-emerald-400 font-semibold">{winProbability.win}%</span>
-                <span className="text-[#8b949e]">Win Probability</span>
-                <span className="text-[#8b949e]">{100 - winProbability.win - winProbability.draw}%</span>
+                <span className="text-slate-500">Win Probability</span>
+                <span className="text-slate-400">{100 - winProbability.win - winProbability.draw}%</span>
               </div>
-              <div className="flex h-2 rounded-full overflow-hidden bg-[#21262d]">
+              <div className="flex h-2 rounded-full overflow-hidden bg-slate-800">
                 <motion.div
                   className="bg-emerald-500"
                   initial={{ width: 0 }}
@@ -854,7 +871,7 @@ export default function Dashboard() {
                   transition={{ duration: 0.8, delay: 0.7, ease: 'easeOut' }}
                 />
               </div>
-              <div className="flex justify-between text-[8px] text-[#484f58]">
+              <div className="flex justify-between text-[8px] text-slate-600">
                 <span>Win</span>
                 <span>Draw</span>
                 <span>Loss</span>
@@ -862,9 +879,9 @@ export default function Dashboard() {
             </div>
 
             {/* Week info */}
-            <div className="flex items-center justify-center gap-1.5 mt-3 pt-2 border-t border-[#30363d]">
-              <Clock className="h-3 w-3 text-[#8b949e]" />
-              <span className="text-[10px] text-[#8b949e]">Week {nextFixture.matchday} &bull; Season {nextFixture.season}</span>
+            <div className="flex items-center justify-center gap-1.5 mt-3 pt-2 border-t border-slate-800/50">
+              <Clock className="h-3 w-3 text-slate-500" />
+              <span className="text-[10px] text-slate-500">Week {nextFixture.matchday} &bull; Season {nextFixture.season}</span>
             </div>
           </CardContent>
         </Card>
@@ -874,7 +891,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-3">
         <Button
           onClick={handleAdvanceWeek}
-          className="h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-sm transition-all"
+          className="h-14 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-900/30 transition-all hover:shadow-emerald-800/40"
         >
           <ArrowRight className="mr-2 h-5 w-5" />
           <div className="flex flex-col items-start">
@@ -885,7 +902,7 @@ export default function Dashboard() {
         <Button
           onClick={() => setScreen('match_day')}
           variant="outline"
-          className="h-14 border-[#30363d] bg-[#21262d] text-amber-300 hover:bg-[#30363d] font-semibold rounded-lg transition-all"
+          className="h-14 border-amber-700/50 bg-gradient-to-r from-amber-900/20 to-amber-800/10 text-amber-300 hover:from-amber-900/30 hover:to-amber-800/20 font-semibold rounded-xl transition-all"
         >
           <Swords className="mr-2 h-5 w-5" />
           <div className="flex flex-col items-start">
@@ -896,9 +913,9 @@ export default function Dashboard() {
       </div>
 
       {/* Season Stats Summary */}
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-slate-900 border-slate-800">
         <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
-          <CardTitle className="text-xs text-[#8b949e]">Season Stats</CardTitle>
+          <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">Season Stats</CardTitle>
           <button
             onClick={() => setScreen('league_table')}
             className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -912,38 +929,38 @@ export default function Dashboard() {
           <div className="grid grid-cols-4 gap-3 text-center">
             <div>
               <p className="text-lg font-bold text-emerald-400">{player.seasonStats.goals}</p>
-              <p className="text-[10px] text-[#8b949e]">Goals</p>
+              <p className="text-[10px] text-slate-500">Goals</p>
             </div>
             <div>
               <p className="text-lg font-bold text-blue-400">{player.seasonStats.assists}</p>
-              <p className="text-[10px] text-[#8b949e]">Assists</p>
+              <p className="text-[10px] text-slate-500">Assists</p>
             </div>
             <div>
               <p className="text-lg font-bold text-amber-400">{player.seasonStats.appearances}</p>
-              <p className="text-[10px] text-[#8b949e]">Apps</p>
+              <p className="text-[10px] text-slate-500">Apps</p>
             </div>
             <div>
-              <p className="text-lg font-bold text-[#c9d1d9]">{player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'}</p>
-              <p className="text-[10px] text-[#8b949e]">Avg Rating</p>
+              <p className="text-lg font-bold text-slate-300">{player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'}</p>
+              <p className="text-[10px] text-slate-500">Avg Rating</p>
             </div>
           </div>
-          <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#30363d]">
-            <span className="text-xs text-[#8b949e]">Market Value</span>
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-800">
+            <span className="text-xs text-slate-500">Market Value</span>
             <span className="text-sm font-semibold text-emerald-400">{formatCurrency(player.marketValue, 'M')}</span>
           </div>
           <div className="flex items-center justify-between mt-1">
-            <span className="text-xs text-[#8b949e]">Weekly Wage</span>
-            <span className="text-sm text-[#c9d1d9]">{formatCurrency(player.contract.weeklyWage, 'K')}</span>
+            <span className="text-xs text-slate-500">Weekly Wage</span>
+            <span className="text-sm text-slate-300">{formatCurrency(player.contract.weeklyWage, 'K')}</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Quick Stats Comparison */}
       {statsComparison && (
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-slate-900 border-slate-800">
           <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
-            <CardTitle className="text-xs text-[#8b949e]">vs Last Season</CardTitle>
-            <Badge variant="outline" className="text-[10px] border-[#30363d] text-[#8b949e]">
+            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">vs Last Season</CardTitle>
+            <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-400">
               Season {seasons[seasons.length - 1]?.number ?? '?'}
             </Badge>
           </CardHeader>
@@ -958,14 +975,14 @@ export default function Dashboard() {
 
                 return (
                   <div key={stat.label} className="flex items-center justify-between py-1">
-                    <span className="text-xs text-[#8b949e] w-20">{stat.label}</span>
+                    <span className="text-xs text-slate-400 w-20">{stat.label}</span>
                     <div className="flex items-center gap-3 flex-1 justify-end">
-                      <span className="text-xs text-[#484f58]">{prevVal}</span>
-                      <span className="text-[#30363d]">&rarr;</span>
+                      <span className="text-xs text-slate-600">{prevVal}</span>
+                      <span className="text-slate-700">&rarr;</span>
                       <span className={`text-sm font-bold ${
                         isPositive ? 'text-emerald-400' :
                         isNegative ? 'text-red-400' :
-                        'text-[#c9d1d9]'
+                        'text-slate-300'
                       }`}>
                         {currVal}
                       </span>
@@ -982,7 +999,7 @@ export default function Dashboard() {
                         </span>
                       )}
                       {diff === 0 && (
-                        <Minus className="h-2.5 w-2.5 text-[#484f58]" />
+                        <Minus className="h-2.5 w-2.5 text-slate-600" />
                       )}
                     </div>
                   </div>
@@ -995,9 +1012,9 @@ export default function Dashboard() {
 
       {/* Enhanced Recent Results */}
       {recentResults.length > 0 && (
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-slate-900 border-slate-800">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-[#8b949e]">Recent Results</CardTitle>
+            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">Recent Results</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-2">
             {recentResults.slice(0, 5).map((result, i) => {
@@ -1007,9 +1024,11 @@ export default function Dashboard() {
               const opponentScore = result.homeClub.id === currentClub.id ? result.awayScore : result.homeScore;
 
               // Background gradient based on result
-              const borderClass = resultType === 'W' ? 'border-emerald-500/20'
-                : resultType === 'D' ? 'border-[#30363d]'
-                : 'border-red-500/15';
+              const bgGradient = resultType === 'W'
+                ? 'from-emerald-950/30 to-slate-800/50 border-emerald-900/20'
+                : resultType === 'D'
+                ? 'from-amber-950/20 to-slate-800/50 border-amber-900/15'
+                : 'from-red-950/20 to-slate-800/50 border-red-900/15';
 
               // Rating circle size
               const ratingColor = getRatingColor(result.playerRating);
@@ -1020,7 +1039,7 @@ export default function Dashboard() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.06, duration: 0.3 }}
-                  className={`rounded-lg bg-[#161b22] border ${borderClass} p-2.5 hover:bg-[#21262d] transition-colors`}
+                  className={`rounded-lg bg-gradient-to-r ${bgGradient} border p-2.5 hover:bg-slate-800/70 transition-colors relative overflow-hidden`}
                 >
                   <div className="flex items-center justify-between">
                     {/* Left: Result badge + Opponent info + Quality */}
@@ -1034,18 +1053,18 @@ export default function Dashboard() {
                       </Badge>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-[#c9d1d9] truncate">
+                          <span className="text-xs text-slate-300 truncate">
                             {opponentClub.shortName || opponentClub.name.slice(0, 3)}
                           </span>
                           {/* Opponent quality badge */}
                           <span className={`text-[8px] font-semibold ${getQualityColor(opponentClub.quality)}`}>
                             {getQualityLabel(opponentClub.quality)}
                           </span>
-                          <span className="text-xs font-bold text-[#c9d1d9]">
+                          <span className="text-xs font-bold text-slate-200">
                             {playerScore}-{opponentScore}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 text-[9px] text-[#8b949e]">
+                        <div className="flex items-center gap-1 text-[9px] text-slate-500">
                           <span>Wk {result.week}</span>
                           <span>&bull;</span>
                           <span>S{result.season}</span>
@@ -1116,7 +1135,7 @@ export default function Dashboard() {
         <Button
           onClick={() => setScreen('events')}
           variant="outline"
-          className="w-full h-12 border-amber-700 text-amber-300 hover:bg-[#21262d] font-semibold rounded-lg"
+          className="w-full h-12 border-amber-700 text-amber-300 hover:bg-amber-900/30 font-semibold rounded-xl"
         >
           <Bell className="mr-2 h-4 w-4" />
           {activeEvents.length} Pending Event{activeEvents.length > 1 ? 's' : ''}
@@ -1128,7 +1147,7 @@ export default function Dashboard() {
         <Button
           onClick={() => setScreen('training')}
           variant="outline"
-          className="w-full h-10 border-[#30363d] text-[#c9d1d9] hover:bg-[#21262d] rounded-lg text-sm"
+          className="w-full h-10 border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl text-sm"
         >
           <TrendingUp className="mr-2 h-4 w-4" />
           {trainingAvailable} Training Session{trainingAvailable > 1 ? 's' : ''} Available
@@ -1173,17 +1192,21 @@ function EnhancedStatBar({
   const statusLabel = getStatusLabel(value, type);
   const statusColor = getStatusColor(value, type);
 
-  // Solid status color
-  const statusHexColor = statusColor === 'emerald' ? '#10b981' :
-                         statusColor === 'amber' ? '#f59e0b' :
-                         statusColor === 'orange' ? '#f97316' :
-                         '#ef4444';
+  // Gradient colors based on status
+  const gradientFrom = statusColor === 'emerald' ? '#047857' :
+                       statusColor === 'amber' ? '#92400e' :
+                       statusColor === 'orange' ? '#9a3412' :
+                       '#991b1b';
+  const gradientTo = statusColor === 'emerald' ? '#34d399' :
+                     statusColor === 'amber' ? '#fbbf24' :
+                     statusColor === 'orange' ? '#fb923c' :
+                     '#f87171';
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="flex items-center gap-1 text-[#8b949e]">
+      <div className="flex items-center gap-1 text-slate-400">
         {icon}
-        <span className="text-[10px]">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider">{label}</span>
         {/* Trend arrow */}
         {trend === 'up' && (
           <motion.div initial={{ y: 3, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -1197,7 +1220,7 @@ function EnhancedStatBar({
         )}
       </div>
       {/* Color-coded segmented bar */}
-      <div className="w-full h-2 bg-[#21262d] rounded-full overflow-hidden relative">
+      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden relative">
         {/* Zone indicators (background) */}
         <div className="absolute inset-0 flex">
           <div className="h-full bg-red-900/30" style={{ width: '35%' }} />
@@ -1211,7 +1234,7 @@ function EnhancedStatBar({
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
           style={{
-            background: statusHexColor,
+            background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})`,
           }}
         />
       </div>
@@ -1236,14 +1259,14 @@ function QuickActionButton({
   accentColor: 'emerald' | 'amber' | 'blue' | 'purple';
 }) {
   const colorClasses = {
-    emerald: 'bg-[#21262d] text-emerald-400 group-hover:bg-emerald-800/40',
-    amber: 'bg-[#21262d] text-amber-400 group-hover:bg-amber-800/40',
+    emerald: 'bg-emerald-900/30 text-emerald-400 group-hover:bg-emerald-800/40',
+    amber: 'bg-amber-900/30 text-amber-400 group-hover:bg-amber-800/40',
     blue: 'bg-blue-900/30 text-blue-400 group-hover:bg-blue-800/40',
     purple: 'bg-purple-900/30 text-purple-400 group-hover:bg-purple-800/40',
   };
 
   const borderClasses = {
-    emerald: 'border-[#30363d] hover:border-emerald-700/40',
+    emerald: 'border-emerald-900/30 hover:border-emerald-700/40',
     amber: 'border-amber-900/30 hover:border-amber-700/40',
     blue: 'border-blue-900/30 hover:border-blue-700/40',
     purple: 'border-purple-900/30 hover:border-purple-700/40',
@@ -1252,14 +1275,15 @@ function QuickActionButton({
   return (
     <motion.button
       onClick={onClick}
-      className={`group flex flex-col items-center gap-1.5 p-3 rounded-lg border bg-[#161b22] ${borderClasses[accentColor]} transition-colors`}
-
+      className={`group flex flex-col items-center gap-1.5 p-3 rounded-xl border bg-slate-900/80 ${borderClasses[accentColor]} transition-colors`}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
     >
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${colorClasses[accentColor]}`}>
         {icon}
       </div>
-      <span className="text-[11px] font-semibold text-[#c9d1d9]">{label}</span>
-      <span className="text-[8px] text-[#8b949e] leading-tight text-center">{description}</span>
+      <span className="text-[11px] font-semibold text-slate-200">{label}</span>
+      <span className="text-[8px] text-slate-500 leading-tight text-center">{description}</span>
     </motion.button>
   );
 }

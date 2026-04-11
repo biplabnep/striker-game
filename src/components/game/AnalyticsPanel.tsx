@@ -326,45 +326,44 @@ export default function AnalyticsPanel() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950/30">
+        <Card className="overflow-hidden bg-[#161b22] border border-[#30363d]">
           <CardContent className="p-5">
             <div className="flex items-center justify-around">
               <div className="text-center">
                 <motion.div
-                  className="w-24 h-24 rounded-full flex items-center justify-center font-black text-3xl border-[3px] shadow-lg"
+                  className="w-24 h-24 rounded-full flex items-center justify-center font-black text-3xl border-[3px]"
                   style={{
                     borderColor: getOverallColor(player.overall),
                     color: getOverallColor(player.overall),
-                    boxShadow: `0 0 20px ${getOverallColor(player.overall)}30`,
                   }}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
                 >
                   <AnimatedNumber value={player.overall} />
                 </motion.div>
-                <p className="text-xs text-slate-400 mt-2 font-medium">Overall</p>
+                <p className="text-xs text-[#8b949e] mt-2 font-medium">Overall</p>
               </div>
               <div className="flex flex-col items-center gap-1">
-                <div className="w-0.5 h-6 bg-gradient-to-b from-transparent via-slate-600 to-transparent" />
+                <div className="w-0.5 h-6 bg-[#30363d]" />
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.3, type: 'spring' }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
                 >
                   <TrendingUp className="h-4 w-4 text-emerald-500/60" />
                 </motion.div>
-                <div className="w-0.5 h-6 bg-gradient-to-b from-transparent via-slate-600 to-transparent" />
+                <div className="w-0.5 h-6 bg-[#30363d]" />
               </div>
               <div className="text-center">
-                <div className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-2xl border-2 border-dashed border-slate-600 text-slate-500">
+                <div className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-2xl border-2 border-dashed border-slate-600 text-[#8b949e]">
                   {player.potential}
                 </div>
-                <p className="text-xs text-slate-500 mt-2">Potential</p>
+                <p className="text-xs text-[#8b949e] mt-2">Potential</p>
               </div>
             </div>
             <div className="text-center mt-3">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#8b949e]">
                 Room to grow:{' '}
                 <span className="text-emerald-400 font-semibold">
                   +{player.potential - player.overall}
@@ -383,9 +382,9 @@ export default function AnalyticsPanel() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
               <Swords className="h-3 w-3 text-emerald-400" /> Attribute Radar
             </CardTitle>
           </CardHeader>
@@ -444,8 +443,8 @@ export default function AnalyticsPanel() {
                 fill="rgba(16, 185, 129, 0.15)"
                 stroke="#10b981"
                 strokeWidth={2}
-                initial={{ opacity: 0, scale: 0.3 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
                 style={{ transformOrigin: `${RADAR_CX}px ${RADAR_CY}px` }}
               />
@@ -524,9 +523,9 @@ export default function AnalyticsPanel() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.15 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">
+            <CardTitle className="text-xs text-[#8b949e] ">
               Detailed Attributes
             </CardTitle>
           </CardHeader>
@@ -545,8 +544,8 @@ export default function AnalyticsPanel() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400">{ATTR_ICONS[attr]}</span>
-                      <span className="text-sm text-slate-300">{ATTR_FULL_LABELS[attr]}</span>
+                      <span className="text-[#8b949e]">{ATTR_ICONS[attr]}</span>
+                      <span className="text-sm text-[#c9d1d9]">{ATTR_FULL_LABELS[attr]}</span>
                       <Badge
                         variant="outline"
                         className={`text-[8px] px-1.5 py-0 border ${CATEGORY_COLORS[category]}`}
@@ -566,7 +565,7 @@ export default function AnalyticsPanel() {
                       </span>
                     </div>
                   </div>
-                  <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-[#21262d] rounded-full overflow-hidden">
                     <motion.div
                       className="h-full rounded-full"
                       style={{ backgroundColor: cat.color }}
@@ -591,10 +590,10 @@ export default function AnalyticsPanel() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+          <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
                   <Flame className="h-3 w-3 text-amber-400" /> Recent Form
                 </CardTitle>
                 <div className="flex items-center gap-1.5">
@@ -609,7 +608,7 @@ export default function AnalyticsPanel() {
                     </Badge>
                   )}
                   {formTrend === 'stable' && (
-                    <Badge className="bg-slate-500/15 text-slate-400 border-slate-500/25 text-[10px]">
+                    <Badge className="bg-slate-500/15 text-[#8b949e] border-slate-500/25 text-[10px]">
                       <Minus className="h-2.5 w-2.5 mr-1" /> Stable
                     </Badge>
                   )}
@@ -623,7 +622,7 @@ export default function AnalyticsPanel() {
                   <motion.div
                     key={i}
                     className={`flex-1 rounded-lg border p-2 text-center ${getRatingBg(rating)}`}
-                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ delay: 0.3 + i * 0.08 }}
                   >
@@ -633,7 +632,7 @@ export default function AnalyticsPanel() {
                     >
                       {rating.toFixed(1)}
                     </p>
-                    <p className="text-[9px] text-slate-500 mt-0.5">
+                    <p className="text-[9px] text-[#8b949e] mt-0.5">
                       {i === 0 ? 'Latest' : `${i + 1} ago`}
                     </p>
                   </motion.div>
@@ -669,9 +668,9 @@ export default function AnalyticsPanel() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.25 }}
         >
-          <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+          <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
                 <BarChart3 className="h-3 w-3 text-emerald-400" /> Rating Trend
               </CardTitle>
             </CardHeader>
@@ -688,7 +687,7 @@ export default function AnalyticsPanel() {
                       animate={{ opacity: 1, height: 'auto' }}
                       transition={{ delay: 0.1 + i * 0.04 }}
                     >
-                      <span className="text-[8px] text-slate-500 tabular-nums">
+                      <span className="text-[8px] text-[#8b949e] tabular-nums">
                         {rating.toFixed(1)}
                       </span>
                       <motion.div
@@ -702,7 +701,7 @@ export default function AnalyticsPanel() {
                   );
                 })}
               </div>
-              <div className="flex justify-between mt-2 text-[10px] text-slate-600">
+              <div className="flex justify-between mt-2 text-[10px] text-[#484f58]">
                 <span>Latest</span>
                 <span>Oldest</span>
               </div>
@@ -720,10 +719,10 @@ export default function AnalyticsPanel() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
         >
-          <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+          <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
                   <Trophy className="h-3 w-3 text-amber-400" /> Season Comparison
                 </CardTitle>
                 <Badge
@@ -749,22 +748,22 @@ export default function AnalyticsPanel() {
                   return (
                     <motion.div
                       key={row.label}
-                      className="flex items-center justify-between py-1.5 border-b border-slate-800/50 last:border-0"
+                      className="flex items-center justify-between py-1.5 border-b border-[#30363d] last:border-0"
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.35 + idx * 0.06 }}
                     >
-                      <span className="text-xs text-slate-400 w-20">{row.label}</span>
+                      <span className="text-xs text-[#8b949e] w-20">{row.label}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500 tabular-nums">{prev}</span>
-                        <span className="text-slate-700">→</span>
+                        <span className="text-xs text-[#8b949e] tabular-nums">{prev}</span>
+                        <span className="text-[#30363d]">→</span>
                         <span
                           className={`text-xs font-semibold tabular-nums ${
                             isUp
                               ? 'text-emerald-400'
                               : isDown
                               ? 'text-red-400'
-                              : 'text-slate-300'
+                              : 'text-[#c9d1d9]'
                           }`}
                         >
                           {curr}
@@ -782,7 +781,7 @@ export default function AnalyticsPanel() {
                           </span>
                         )}
                         {!isUp && !isDown && (
-                          <Minus className="h-3 w-3 text-slate-600" />
+                          <Minus className="h-3 w-3 text-[#484f58]" />
                         )}
                       </div>
                     </motion.div>
@@ -803,9 +802,9 @@ export default function AnalyticsPanel() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.35 }}
         >
-          <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+          <Card className="bg-[#161b22]  border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
                 <Target className="h-3 w-3 text-emerald-400" /> Milestones
               </CardTitle>
             </CardHeader>
@@ -831,22 +830,22 @@ export default function AnalyticsPanel() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className={m.color}>{m.icon}</span>
-                        <span className="text-xs text-slate-300">{m.label}</span>
+                        <span className="text-xs text-[#c9d1d9]">{m.label}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-slate-500 tabular-nums">
+                        <span className="text-[10px] text-[#8b949e] tabular-nums">
                           {displayCurrent}
                         </span>
-                        <span className="text-[10px] text-slate-600">/</span>
-                        <span className="text-[10px] font-semibold text-slate-400 tabular-nums">
+                        <span className="text-[10px] text-[#484f58]">/</span>
+                        <span className="text-[10px] font-semibold text-[#8b949e] tabular-nums">
                           {displayTarget}
                         </span>
                       </div>
                     </div>
                     <div className="relative">
-                      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
                         <motion.div
-                          className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400"
+                          className="h-full rounded-full bg-emerald-500"
                           initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
                           transition={{ duration: 0.8, delay: 0.5 + idx * 0.08, ease: 'easeOut' }}
@@ -863,7 +862,7 @@ export default function AnalyticsPanel() {
                         </motion.div>
                       )}
                     </div>
-                    <p className="text-[9px] text-slate-600">
+                    <p className="text-[9px] text-[#484f58]">
                       {pct >= 100
                         ? 'Achieved! ✓'
                         : `${100 - pct}% remaining`}
@@ -884,73 +883,73 @@ export default function AnalyticsPanel() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.4 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">
+            <CardTitle className="text-xs text-[#8b949e] ">
               Season Stats
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="grid grid-cols-3 gap-2 text-center">
               <motion.div
-                className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-2.5 border border-slate-700/30"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#21262d]  rounded-lg p-2.5 border border-[#30363d]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.45 }}
               >
                 <p className="text-xl font-bold text-emerald-400 tabular-nums">
                   <AnimatedNumber value={player.seasonStats.goals} />
                 </p>
-                <p className="text-[10px] text-slate-500">Goals</p>
+                <p className="text-[10px] text-[#8b949e]">Goals</p>
               </motion.div>
               <motion.div
-                className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-2.5 border border-slate-700/30"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#21262d]  rounded-lg p-2.5 border border-[#30363d]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
                 <p className="text-xl font-bold text-blue-400 tabular-nums">
                   <AnimatedNumber value={player.seasonStats.assists} />
                 </p>
-                <p className="text-[10px] text-slate-500">Assists</p>
+                <p className="text-[10px] text-[#8b949e]">Assists</p>
               </motion.div>
               <motion.div
-                className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-2.5 border border-slate-700/30"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#21262d]  rounded-lg p-2.5 border border-[#30363d]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.55 }}
               >
                 <p className="text-xl font-bold text-amber-400 tabular-nums">
                   <AnimatedNumber value={player.seasonStats.appearances} />
                 </p>
-                <p className="text-[10px] text-slate-500">Apps</p>
+                <p className="text-[10px] text-[#8b949e]">Apps</p>
               </motion.div>
               <motion.div
-                className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-2.5 border border-slate-700/30"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#21262d]  rounded-lg p-2.5 border border-[#30363d]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
               >
-                <p className="text-lg font-bold text-slate-300 tabular-nums">
+                <p className="text-lg font-bold text-[#c9d1d9] tabular-nums">
                   <AnimatedNumber value={player.seasonStats.starts} />
                 </p>
-                <p className="text-[10px] text-slate-500">Starts</p>
+                <p className="text-[10px] text-[#8b949e]">Starts</p>
               </motion.div>
               <motion.div
-                className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-2.5 border border-slate-700/30"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#21262d]  rounded-lg p-2.5 border border-[#30363d]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.65 }}
               >
-                <p className="text-lg font-bold text-slate-300 tabular-nums">
+                <p className="text-lg font-bold text-[#c9d1d9] tabular-nums">
                   <AnimatedNumber value={player.seasonStats.cleanSheets} />
                 </p>
-                <p className="text-[10px] text-slate-500">Clean Sheets</p>
+                <p className="text-[10px] text-[#8b949e]">Clean Sheets</p>
               </motion.div>
               <motion.div
-                className="bg-slate-800/60 backdrop-blur-sm rounded-lg p-2.5 border border-slate-700/30"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#21262d]  rounded-lg p-2.5 border border-[#30363d]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
               >
                 <p className="text-lg font-bold text-red-400 tabular-nums">
@@ -958,19 +957,19 @@ export default function AnalyticsPanel() {
                     value={player.seasonStats.yellowCards + player.seasonStats.redCards}
                   />
                 </p>
-                <p className="text-[10px] text-slate-500">Cards</p>
+                <p className="text-[10px] text-[#8b949e]">Cards</p>
               </motion.div>
             </div>
 
             {/* Avg Rating */}
             {player.seasonStats.averageRating > 0 && (
               <motion.div
-                className="mt-3 bg-slate-800/60 backdrop-blur-sm rounded-lg p-3 border border-slate-700/30 flex items-center justify-between"
+                className="mt-3 bg-[#21262d]  rounded-lg p-3 border border-[#30363d] flex items-center justify-between"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.75 }}
               >
-                <span className="text-xs text-slate-400">Average Rating</span>
+                <span className="text-xs text-[#8b949e]">Average Rating</span>
                 <div className="flex items-center gap-2">
                   <span
                     className="text-lg font-bold tabular-nums"
@@ -1011,37 +1010,37 @@ export default function AnalyticsPanel() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.45 }}
       >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-800/60">
+        <Card className="bg-[#161b22]  border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
               <Award className="h-3 w-3 text-purple-400" /> Career Totals
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-slate-800/40 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-slate-200 tabular-nums">
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-[#c9d1d9] tabular-nums">
                   <AnimatedNumber value={player.careerStats.totalGoals} />
                 </p>
-                <p className="text-[10px] text-slate-500">Career Goals</p>
+                <p className="text-[10px] text-[#8b949e]">Career Goals</p>
               </div>
-              <div className="bg-slate-800/40 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-slate-200 tabular-nums">
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-[#c9d1d9] tabular-nums">
                   <AnimatedNumber value={player.careerStats.totalAssists} />
                 </p>
-                <p className="text-[10px] text-slate-500">Career Assists</p>
+                <p className="text-[10px] text-[#8b949e]">Career Assists</p>
               </div>
-              <div className="bg-slate-800/40 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-slate-200 tabular-nums">
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-[#c9d1d9] tabular-nums">
                   <AnimatedNumber value={player.careerStats.totalAppearances} />
                 </p>
-                <p className="text-[10px] text-slate-500">Career Apps</p>
+                <p className="text-[10px] text-[#8b949e]">Career Apps</p>
               </div>
-              <div className="bg-slate-800/40 rounded-lg p-2.5 text-center">
-                <p className="text-lg font-bold text-slate-200 tabular-nums">
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-[#c9d1d9] tabular-nums">
                   <AnimatedNumber value={player.careerStats.seasonsPlayed} />
                 </p>
-                <p className="text-[10px] text-slate-500">Seasons</p>
+                <p className="text-[10px] text-[#8b949e]">Seasons</p>
               </div>
             </div>
           </CardContent>

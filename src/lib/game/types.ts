@@ -536,13 +536,57 @@ export interface ContinentalBracketRound {
   fixtures: ContinentalFixture[];
 }
 
+// --- International Duty ---
+export type InternationalMatchType = 'friendly' | 'qualifier' | 'tournament_group' | 'tournament_knockout' | 'tournament_final';
+
+export interface InternationalFixture {
+  id: string;
+  homeNation: string;  // country name
+  awayNation: string;
+  matchType: InternationalMatchType;
+  homeFlag: string;  // emoji flag
+  awayFlag: string;
+  week: number;
+  season: number;
+  played: boolean;
+  homeScore?: number;
+  awayScore?: number;
+  playerCalledUp: boolean;
+  playerStarted?: boolean;
+  playerMinutes?: number;
+  playerGoals?: number;
+  playerAssists?: number;
+  playerRating?: number;
+}
+
+export interface InternationalCareer {
+  caps: number;  // total appearances
+  goals: number;
+  assists: number;
+  averageRating: number;
+  tournaments: string[];  // tournament names participated
+  lastCallUpSeason: number;
+  lastCallUpWeek: number;
+}
+
 // --- Game Screen Navigation ---
 export type GameScreen =
   | 'main_menu' | 'career_setup' | 'dashboard' | 'match_day'
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
-  | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental';
+  | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental' | 'international' | 'morale';
+
+// --- Player Mindset ---
+export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
+
+export interface MoraleFactor {
+  id: string;
+  label: string;
+  impact: number; // -100 to +100
+  category: 'match' | 'personal' | 'team' | 'contract' | 'social';
+  expiresWeek?: number;
+}
 
 // --- Season Objectives ---
 export type ObjectiveCategory = 'board' | 'personal' | 'bonus';
@@ -634,6 +678,14 @@ export interface GameState {
   continentalCompetition: ContinentalCompetition | null; // which competition qualified for
   continentalKnockoutRound: number; // current knockout round (0 = group stage)
   continentalEliminated: boolean;
+  // International Duty
+  internationalFixtures: InternationalFixture[];
+  internationalCareer: InternationalCareer;
+  internationalCalledUp: boolean;  // currently called up?
+  internationalOnBreak: boolean;  // is there an international break this week?
+  // Mindset & Morale
+  mindset: PlayerMindset;
+  moraleFactors: MoraleFactor[];
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;

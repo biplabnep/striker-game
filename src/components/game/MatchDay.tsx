@@ -55,9 +55,9 @@ function getEventColor(type: MatchEventType): string {
     case 'save': return 'text-amber-300';
     case 'penalty_won': return 'text-emerald-300';
     case 'penalty_missed': return 'text-red-300';
-    case 'corner': return 'text-slate-400';
-    case 'free_kick': return 'text-slate-400';
-    default: return 'text-slate-400';
+    case 'corner': return 'text-[#8b949e]';
+    case 'free_kick': return 'text-[#8b949e]';
+    default: return 'text-[#8b949e]';
   }
 }
 
@@ -202,7 +202,7 @@ function TimelineEvent({
       className="flex gap-3 relative"
     >
       <div className="flex flex-col items-center w-10 shrink-0">
-        <span className="text-xs font-mono text-slate-400 font-bold">{event.minute}&apos;</span>
+        <span className="text-xs font-mono text-[#8b949e] font-bold">{event.minute}&apos;</span>
         <div className="flex-1 flex flex-col items-center mt-1">
           <div className={`w-3 h-3 rounded-full ${dotColor} ring-2 ring-slate-900 shrink-0 z-10`} />
           {!isLast && <div className="w-0.5 flex-1 bg-slate-700/60 mt-0.5" />}
@@ -224,14 +224,14 @@ function TimelineEvent({
           )}
         </div>
         {(event.playerName || event.detail) && (
-          <p className="text-xs text-slate-300 mt-0.5 leading-snug">
-            {event.playerName && <span className="text-slate-200 font-medium">{event.playerName}</span>}
-            {event.playerName && event.detail && <span className="text-slate-500"> — </span>}
-            {event.detail && <span className="text-slate-400">{event.detail}</span>}
+          <p className="text-xs text-[#c9d1d9] mt-0.5 leading-snug">
+            {event.playerName && <span className="text-[#c9d1d9] font-medium">{event.playerName}</span>}
+            {event.playerName && event.detail && <span className="text-[#8b949e]"> — </span>}
+            {event.detail && <span className="text-[#8b949e]">{event.detail}</span>}
           </p>
         )}
         {teamLabel && !event.playerName && (
-          <p className="text-[10px] text-slate-500 mt-0.5">{teamLabel}</p>
+          <p className="text-[10px] text-[#8b949e] mt-0.5">{teamLabel}</p>
         )}
       </div>
     </motion.div>
@@ -277,7 +277,7 @@ function LiveEventCard({
       {/* Minute badge */}
       <div className="flex items-start gap-2.5">
         <div className="shrink-0">
-          <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-mono font-bold text-[#8b949e] bg-[#21262d] px-1.5 py-0.5 rounded">
             {event.minute}&apos;
           </span>
         </div>
@@ -297,10 +297,10 @@ function LiveEventCard({
             )}
           </div>
           {(event.playerName || event.detail) && (
-            <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
-              {event.playerName && <span className="text-slate-200 font-medium">{event.playerName}</span>}
-              {event.playerName && event.detail && <span className="text-slate-500"> — </span>}
-              {event.detail && <span className="text-slate-400">{event.detail}</span>}
+            <p className="text-[11px] text-[#c9d1d9] mt-0.5 leading-snug">
+              {event.playerName && <span className="text-[#c9d1d9] font-medium">{event.playerName}</span>}
+              {event.playerName && event.detail && <span className="text-[#8b949e]"> — </span>}
+              {event.detail && <span className="text-[#8b949e]">{event.detail}</span>}
             </p>
           )}
         </div>
@@ -340,7 +340,7 @@ function MOTMBadge() {
         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
         className="relative"
       >
-        <div className="flex items-center gap-1 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-900 px-3 py-1 rounded-full font-black text-xs tracking-wider">
+        <div className="flex items-center gap-1 bg-amber-500 text-slate-900 px-3 py-1 rounded-md font-bold text-xs tracking-wider">
           <Crown className="w-3.5 h-3.5" />
           MOTM
           <Star className="w-3 h-3 fill-current" />
@@ -557,7 +557,7 @@ export default function MatchDay() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <div className="bg-gradient-to-br from-slate-900 via-emerald-950/40 to-slate-900 rounded-xl border border-emerald-500/20 overflow-hidden">
+          <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
             {/* Top bar with LIVE badge */}
             <div className="flex items-center justify-between px-4 pt-3 pb-1">
               <div className="flex items-center gap-2">
@@ -572,11 +572,11 @@ export default function MatchDay() {
                   </motion.div>
                 )}
                 {simComplete && (
-                  <span className="text-[10px] font-bold text-slate-400 tracking-wider">FULL TIME</span>
+                  <span className="text-[10px] font-bold text-[#8b949e] tracking-wider">FULL TIME</span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-slate-500">
-                <Badge variant="outline" className="text-[9px] border-slate-700 text-slate-400 h-5">
+              <div className="flex items-center gap-1.5 text-[#8b949e]">
+                <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e] h-5">
                   {lastResult.competition === 'league' ? 'League' : lastResult.competition}
                 </Badge>
                 <span className="text-[9px]">Wk {lastResult.week}</span>
@@ -587,10 +587,10 @@ export default function MatchDay() {
             <div className="flex items-center justify-center gap-4 px-4 pb-3">
               {/* Home Team */}
               <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-slate-800/50 border border-slate-700/50">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-[#21262d] border border-[#30363d]">
                   {lastResult.homeClub.logo}
                 </div>
-                <span className="text-xs text-slate-300 font-semibold text-center leading-tight">{homeName}</span>
+                <span className="text-xs text-[#c9d1d9] font-semibold text-center leading-tight">{homeName}</span>
               </div>
 
               {/* Score */}
@@ -603,7 +603,7 @@ export default function MatchDay() {
                   transition={{ duration: 0.4, ease: 'easeOut' }}
                   className="text-4xl font-black text-white tracking-wider"
                 >
-                  {liveScore.home} <span className="text-slate-600">-</span> {liveScore.away}
+                  {liveScore.home} <span className="text-[#484f58]">-</span> {liveScore.away}
                 </motion.div>
                 {/* Minute clock */}
                 <div className="flex items-center gap-1.5">
@@ -621,40 +621,40 @@ export default function MatchDay() {
 
               {/* Away Team */}
               <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-slate-800/50 border border-slate-700/50">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-[#21262d] border border-[#30363d]">
                   {lastResult.awayClub.logo}
                 </div>
-                <span className="text-xs text-slate-300 font-semibold text-center leading-tight">{awayName}</span>
+                <span className="text-xs text-[#c9d1d9] font-semibold text-center leading-tight">{awayName}</span>
               </div>
             </div>
 
             {/* Progress Bar */}
             <div className="px-4 pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-slate-500 font-mono">0&apos;</span>
+                <span className="text-[9px] text-[#8b949e] font-mono">0&apos;</span>
                 <div className="flex-1 relative">
                   {/* Half marker */}
                   <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-600 z-10" />
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
                     <motion.div
                       className={`h-full rounded-full ${
                         half === 1
-                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                          : 'bg-gradient-to-r from-emerald-400 to-cyan-400'
+                          ? 'bg-emerald-500'
+                          : 'bg-emerald-400'
                       }`}
                       style={{ width: `${(simMinute / 90) * 100}%` }}
                       transition={{ duration: 0.15 }}
                     />
                   </div>
                 </div>
-                <span className="text-[9px] text-slate-500 font-mono">90&apos;</span>
+                <span className="text-[9px] text-[#8b949e] font-mono">90&apos;</span>
               </div>
               {/* Half indicators */}
               <div className="flex justify-between mt-1 px-0">
-                <span className={`text-[8px] font-bold ${half === 1 ? 'text-emerald-400' : 'text-slate-600'}`}>
+                <span className={`text-[8px] font-bold ${half === 1 ? 'text-emerald-400' : 'text-[#484f58]'}`}>
                   1ST HALF
                 </span>
-                <span className={`text-[8px] font-bold ${half === 2 ? 'text-cyan-400' : 'text-slate-600'}`}>
+                <span className={`text-[8px] font-bold ${half === 2 ? 'text-cyan-400' : 'text-[#484f58]'}`}>
                   2ND HALF
                 </span>
               </div>
@@ -670,7 +670,7 @@ export default function MatchDay() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.3 }}
-              className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-3 text-center"
+              className="bg-emerald-500/15 border border-emerald-500/30 rounded-lg p-3 text-center"
             >
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
@@ -702,13 +702,13 @@ export default function MatchDay() {
         </AnimatePresence>
 
         {/* Event Feed */}
-        <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
-          <div className="px-4 pt-3 pb-2 border-b border-slate-800/50">
+        <div className="bg-[#0d1117] rounded-lg border border-[#30363d] overflow-hidden">
+          <div className="px-4 pt-3 pb-2 border-b border-[#30363d]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+              <span className="text-[10px] text-[#8b949e]  font-semibold flex items-center gap-1.5">
                 <Activity className="w-3 h-3" /> Match Events
               </span>
-              <span className="text-[9px] text-slate-600 font-mono">
+              <span className="text-[9px] text-[#484f58] font-mono">
                 {visibleSimEvents.length} / {significantEvents.length}
               </span>
             </div>
@@ -723,12 +723,12 @@ export default function MatchDay() {
                 animate={{ opacity: 1 }}
                 className="text-center py-6"
               >
-                <p className="text-slate-600 text-xs">Kick off! The match has begun...</p>
+                <p className="text-[#484f58] text-xs">Kick off! The match has begun...</p>
               </motion.div>
             )}
             {visibleSimEvents.length === 0 && simMinute >= 5 && (
               <div className="text-center py-4">
-                <p className="text-slate-600 text-xs">Waiting for events...</p>
+                <p className="text-[#484f58] text-xs">Waiting for events...</p>
               </div>
             )}
             <AnimatePresence mode="popLayout">
@@ -752,19 +752,19 @@ export default function MatchDay() {
           <Button
             onClick={cycleSpeed}
             variant="outline"
-            className="flex-1 h-9 border-slate-700 text-slate-300 rounded-lg text-xs gap-1.5"
+            className="flex-1 h-9 border-[#30363d] text-[#c9d1d9] rounded-lg text-xs gap-1.5"
             disabled={simComplete}
           >
             <Gauge className="w-3.5 h-3.5" />
             <span>{simSpeed}x</span>
-            <Badge className="text-[8px] px-1 py-0 h-3.5 bg-slate-700 text-slate-300 border-0 ml-1">
+            <Badge className="text-[8px] px-1 py-0 h-3.5 bg-slate-700 text-[#c9d1d9] border-0 ml-1">
               SPEED
             </Badge>
           </Button>
           <Button
             onClick={handleSkipToEnd}
             variant="outline"
-            className="flex-1 h-9 border-slate-700 text-slate-300 rounded-lg text-xs gap-1.5"
+            className="flex-1 h-9 border-[#30363d] text-[#c9d1d9] rounded-lg text-xs gap-1.5"
             disabled={simComplete}
           >
             <SkipForward className="w-3.5 h-3.5" />
@@ -779,13 +779,13 @@ export default function MatchDay() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 "
             >
               <motion.div
                 initial={{ y: 30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-                className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 text-center max-w-xs mx-4"
+                className="bg-[#161b22] border border-[#30363d] rounded-lg p-8 text-center max-w-xs mx-4"
               >
                 <motion.div
                   animate={{ scale: [1, 1.05, 1] }}
@@ -800,7 +800,7 @@ export default function MatchDay() {
                   </span>
                   <span className="text-2xl">{lastResult.awayClub.logo}</span>
                 </div>
-                <p className="text-xs text-slate-400 mt-3">Loading match report...</p>
+                <p className="text-xs text-[#8b949e] mt-3">Loading match report...</p>
               </motion.div>
             </motion.div>
           )}
@@ -830,8 +830,8 @@ export default function MatchDay() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <Card className="bg-slate-900 border-slate-800 overflow-hidden">
-            <div className={`h-2 ${won ? 'bg-gradient-to-r from-emerald-500 to-green-400' : drew ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-rose-400'}`} />
+          <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+            <div className={`h-2 ${won ? 'bg-emerald-500' : drew ? 'bg-amber-500' : 'bg-red-500'}`} />
             <CardContent className="p-5 text-center">
               <motion.p
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -846,21 +846,21 @@ export default function MatchDay() {
               <div className="flex items-center justify-center gap-5 mb-4">
                 <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
                   <span className="text-3xl">{lastResult.homeClub.logo}</span>
-                  <span className="text-xs text-slate-300 font-medium">{homeName}</span>
+                  <span className="text-xs text-[#c9d1d9] font-medium">{homeName}</span>
                   <Badge variant="outline" className="text-[9px] border-sky-500/30 text-sky-400">HOME</Badge>
                 </div>
                 <div className="text-5xl font-black text-white tracking-wider">
-                  {lastResult.homeScore} <span className="text-slate-600">-</span> {lastResult.awayScore}
+                  {lastResult.homeScore} <span className="text-[#484f58]">-</span> {lastResult.awayScore}
                 </div>
                 <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
                   <span className="text-3xl">{lastResult.awayClub.logo}</span>
-                  <span className="text-xs text-slate-300 font-medium">{awayName}</span>
+                  <span className="text-xs text-[#c9d1d9] font-medium">{awayName}</span>
                   <Badge variant="outline" className="text-[9px] border-rose-500/30 text-rose-400">AWAY</Badge>
                 </div>
               </div>
 
               {/* Competition & Week */}
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-[#8b949e]">
                 {lastResult.competition === 'league' ? 'League' : lastResult.competition} • Week {lastResult.week} • Season {lastResult.season}
               </p>
             </CardContent>
@@ -873,9 +873,9 @@ export default function MatchDay() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
-          <Card className={`bg-slate-900 border-slate-800 overflow-hidden ${isMotm ? 'ring-1 ring-amber-500/30' : ''}`}>
+          <Card className={`bg-[#161b22] border-[#30363d] overflow-hidden ${isMotm ? 'ring-1 ring-amber-500/30' : ''}`}>
             <CardContent className="p-5 text-center">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Your Performance</p>
+              <p className="text-xs text-[#8b949e]  mb-3">Your Performance</p>
 
               {/* MOTM Badge */}
               {isMotm && (
@@ -899,21 +899,21 @@ export default function MatchDay() {
               >
                 {lastResult.playerRating.toFixed(1)}
               </motion.div>
-              <p className="text-sm text-slate-400 mt-1">{getMatchRatingLabel(lastResult.playerRating)}</p>
+              <p className="text-sm text-[#8b949e] mt-1">{getMatchRatingLabel(lastResult.playerRating)}</p>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-700/50">
+              <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#30363d]">
                 {[
                   { value: lastResult.playerGoals, label: 'Goals', icon: <Target className="w-3 h-3 text-emerald-400" /> },
                   { value: lastResult.playerAssists, label: 'Assists', icon: <Zap className="w-3 h-3 text-sky-400" /> },
-                  { value: `${lastResult.playerMinutesPlayed}'`, label: 'Minutes', icon: <Clock className="w-3 h-3 text-slate-400" /> },
+                  { value: `${lastResult.playerMinutesPlayed}'`, label: 'Minutes', icon: <Clock className="w-3 h-3 text-[#8b949e]" /> },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-slate-800/60 rounded-lg py-2 px-1">
+                  <div key={i} className="bg-[#21262d] rounded-lg py-2 px-1">
                     <div className="flex items-center justify-center gap-1 mb-0.5">
                       {stat.icon}
                       <span className="text-lg font-bold text-white">{stat.value}</span>
                     </div>
-                    <p className="text-[10px] text-slate-500">{stat.label}</p>
+                    <p className="text-[10px] text-[#8b949e]">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -928,9 +928,9 @@ export default function MatchDay() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.4 }}
           >
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-1.5">
                   <Activity className="w-3 h-3" /> Match Events
                 </CardTitle>
               </CardHeader>
@@ -960,9 +960,9 @@ export default function MatchDay() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.4 }}
           >
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-1.5">
                   <Shield className="w-3 h-3" /> Match Statistics
                 </CardTitle>
               </CardHeader>
@@ -1032,9 +1032,9 @@ export default function MatchDay() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.4 }}
         >
-          <Card className="bg-slate-900 border-slate-800">
+          <Card className="bg-[#161b22] border-[#30363d]">
             <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-1.5">
                 <TrendingUp className="w-3 h-3" /> Season Stats After Match
               </CardTitle>
             </CardHeader>
@@ -1046,9 +1046,9 @@ export default function MatchDay() {
                   { value: player.seasonStats.assists, label: 'Assists', color: 'text-sky-400' },
                   { value: player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '—', label: 'Avg Rating', color: player.seasonStats.averageRating >= 7 ? 'text-emerald-400' : player.seasonStats.averageRating >= 6 ? 'text-amber-400' : 'text-white' },
                 ].map((stat, i) => (
-                  <div key={i} className="text-center bg-slate-800/50 rounded-lg py-2">
+                  <div key={i} className="text-center bg-[#21262d] rounded-lg py-2">
                     <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
-                    <p className="text-[9px] text-slate-500">{stat.label}</p>
+                    <p className="text-[9px] text-[#8b949e]">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -1059,9 +1059,9 @@ export default function MatchDay() {
                   { value: player.seasonStats.redCards, label: 'Red', color: 'text-red-400' },
                   { value: player.seasonStats.manOfTheMatch, label: 'MOTM', color: 'text-amber-400' },
                 ].map((stat, i) => (
-                  <div key={i} className="text-center bg-slate-800/50 rounded-lg py-2">
+                  <div key={i} className="text-center bg-[#21262d] rounded-lg py-2">
                     <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
-                    <p className="text-[9px] text-slate-500">{stat.label}</p>
+                    <p className="text-[9px] text-[#8b949e]">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -1079,7 +1079,7 @@ export default function MatchDay() {
             <Button
               onClick={() => setShowPressConference(true)}
               variant="outline"
-              className="w-full h-12 border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-xl font-semibold gap-2"
+              className="w-full h-12 border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-lg font-semibold gap-2"
             >
               <span className="text-lg">🎙️</span>
               Press Conference
@@ -1093,7 +1093,7 @@ export default function MatchDay() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
         >
-          <Button onClick={() => { setShowResult(false); setScreen('dashboard'); }} className="w-full h-12 bg-emerald-700 hover:bg-emerald-600 rounded-xl font-semibold">
+          <Button onClick={() => { setShowResult(false); setScreen('dashboard'); }} className="w-full h-12 bg-emerald-700 hover:bg-emerald-600 rounded-lg font-semibold">
             Back to Dashboard
           </Button>
         </motion.div>
@@ -1128,7 +1128,7 @@ export default function MatchDay() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <Card className="bg-slate-900 border-slate-800 overflow-hidden">
+            <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
               {/* Top color bars */}
               <div className="flex h-1.5">
                 <div className="flex-1" style={{ backgroundColor: currentClub.primaryColor }} />
@@ -1155,7 +1155,7 @@ export default function MatchDay() {
                     <motion.div
                       animate={{ scale: [1, 1.1, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                      className="text-slate-400 font-black text-xl"
+                      className="text-[#8b949e] font-black text-xl"
                     >
                       VS
                     </motion.div>
@@ -1180,7 +1180,7 @@ export default function MatchDay() {
 
                 {/* Week info */}
                 <div className="text-center mt-3">
-                  <p className="text-[10px] text-slate-500">Week {currentWeek} • Season {gameState.currentSeason}</p>
+                  <p className="text-[10px] text-[#8b949e]">Week {currentWeek} • Season {gameState.currentSeason}</p>
                 </div>
               </CardContent>
             </Card>
@@ -1192,9 +1192,9 @@ export default function MatchDay() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
           >
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-1.5">
                   <Star className="w-3 h-3" /> Key Player Status
                 </CardTitle>
               </CardHeader>
@@ -1202,14 +1202,14 @@ export default function MatchDay() {
                 {/* Form Bar */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                    <span className="text-[10px] text-[#8b949e] flex items-center gap-1">
                       <Flame className="w-3 h-3" /> Form
                     </span>
                     <span className="text-xs font-bold" style={{ color: player.form >= 7 ? '#10b981' : player.form >= 5 ? '#f59e0b' : '#ef4444' }}>
                       {player.form.toFixed(1)} / 10
                     </span>
                   </div>
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${player.form * 10}%` }}
@@ -1229,14 +1229,14 @@ export default function MatchDay() {
                 {/* Morale Bar */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                    <span className="text-[10px] text-[#8b949e] flex items-center gap-1">
                       <Heart className="w-3 h-3" /> Morale
                     </span>
                     <span className="text-xs font-bold" style={{ color: player.morale >= 70 ? '#10b981' : player.morale >= 40 ? '#f59e0b' : '#ef4444' }}>
                       {player.morale}%
                     </span>
                   </div>
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${player.morale}%` }}
@@ -1254,19 +1254,19 @@ export default function MatchDay() {
                 </div>
 
                 {/* Fitness & Status */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-700/50">
-                  <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#30363d]">
+                  <div className="flex items-center gap-2 bg-[#21262d] rounded-lg px-3 py-2">
                     <Activity className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <div>
                       <p className="text-xs font-bold text-emerald-400">{player.fitness}%</p>
-                      <p className="text-[9px] text-slate-500">Fitness</p>
+                      <p className="text-[9px] text-[#8b949e]">Fitness</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2 bg-[#21262d] rounded-lg px-3 py-2">
                     <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                     <div>
                       <p className="text-xs font-bold text-amber-400 capitalize">{player.squadStatus.replace('_', ' ')}</p>
-                      <p className="text-[9px] text-slate-500">Squad Role</p>
+                      <p className="text-[9px] text-[#8b949e]">Squad Role</p>
                     </div>
                   </div>
                 </div>
@@ -1288,9 +1288,9 @@ export default function MatchDay() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.4 }}
             >
-              <Card className="bg-slate-900 border-slate-800">
+              <Card className="bg-[#161b22] border-[#30363d]">
                 <CardHeader className="pb-2 pt-3 px-4">
-                  <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-1.5">
                     <Target className="w-3 h-3" /> Win Probability
                   </CardTitle>
                 </CardHeader>
@@ -1322,7 +1322,7 @@ export default function MatchDay() {
                       <span className="text-[10px] font-bold text-white">{winProb.loss}%</span>
                     </motion.div>
                   </div>
-                  <div className="flex justify-between text-[10px] text-slate-500">
+                  <div className="flex justify-between text-[10px] text-[#8b949e]">
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Win
                     </span>
@@ -1344,33 +1344,33 @@ export default function MatchDay() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.4 }}
           >
-            <Card className="bg-slate-900 border-slate-800">
+            <Card className="bg-[#161b22] border-[#30363d]">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-1.5">
                   <Footprints className="w-3 h-3" /> Tactical Setup
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                  <div className="bg-[#21262d] rounded-lg p-3 text-center">
                     <div
                       className="text-2xl font-black mb-1"
                       style={{ color: currentClub.primaryColor }}
                     >
                       {currentClub.formation}
                     </div>
-                    <p className="text-[10px] text-slate-500">{currentClub.shortName} Formation</p>
-                    <p className="text-[9px] text-slate-600 capitalize mt-0.5">{currentClub.tacticalStyle.replace('-', ' ')}</p>
+                    <p className="text-[10px] text-[#8b949e]">{currentClub.shortName} Formation</p>
+                    <p className="text-[9px] text-[#484f58] capitalize mt-0.5">{currentClub.tacticalStyle.replace('-', ' ')}</p>
                   </div>
-                  <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                  <div className="bg-[#21262d] rounded-lg p-3 text-center">
                     <div
                       className="text-2xl font-black mb-1"
                       style={{ color: opponent.primaryColor }}
                     >
                       {opponent.formation}
                     </div>
-                    <p className="text-[10px] text-slate-500">{opponent.shortName} Formation</p>
-                    <p className="text-[9px] text-slate-600 capitalize mt-0.5">{opponent.tacticalStyle.replace('-', ' ')}</p>
+                    <p className="text-[10px] text-[#8b949e]">{opponent.shortName} Formation</p>
+                    <p className="text-[9px] text-[#484f58] capitalize mt-0.5">{opponent.tacticalStyle.replace('-', ' ')}</p>
                   </div>
                 </div>
               </CardContent>
@@ -1403,9 +1403,9 @@ export default function MatchDay() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35, duration: 0.4 }}
               >
-                <Card className="bg-slate-900 border-slate-800">
+                <Card className="bg-[#161b22] border-[#30363d]">
                   <CardHeader className="pb-2 pt-3 px-4">
-                    <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-1.5">
                       <Swords className="w-3 h-3" /> Head-to-Head
                     </CardTitle>
                   </CardHeader>
@@ -1428,8 +1428,8 @@ export default function MatchDay() {
 
                     {/* Goal summary */}
                     <div className="flex items-center justify-between text-[10px] mb-3 px-1">
-                      <span className="text-slate-500">Goals: <span className="text-emerald-400 font-bold">{h2hGoalsFor}</span> - <span className="text-red-400 font-bold">{h2hGoalsAgainst}</span></span>
-                      <span className="text-slate-500">{h2hResults.length} meeting{h2hResults.length > 1 ? 's' : ''}</span>
+                      <span className="text-[#8b949e]">Goals: <span className="text-emerald-400 font-bold">{h2hGoalsFor}</span> - <span className="text-red-400 font-bold">{h2hGoalsAgainst}</span></span>
+                      <span className="text-[#8b949e]">{h2hResults.length} meeting{h2hResults.length > 1 ? 's' : ''}</span>
                     </div>
 
                     {/* Recent H2H Results */}
@@ -1447,18 +1447,18 @@ export default function MatchDay() {
                             initial={{ opacity: 0, x: -8 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.05, duration: 0.2 }}
-                            className="flex items-center gap-2 bg-slate-800/40 rounded-md px-2.5 py-1.5"
+                            className="flex items-center gap-2 bg-[#21262d] rounded-md px-2.5 py-1.5"
                           >
                             <span className={`w-5 h-5 rounded-full ${resultColor} flex items-center justify-center text-[9px] font-black text-white shrink-0`}>
                               {result}
                             </span>
-                            <span className="text-[10px] text-slate-400 flex-1">
+                            <span className="text-[10px] text-[#8b949e] flex-1">
                               {isPlayerHome ? 'H' : 'A'} • {r.homeClub.shortName} {r.homeScore}-{r.awayScore} {r.awayClub.shortName}
                             </span>
                             {r.playerGoals > 0 && (
                               <span className="text-[9px] text-emerald-400 font-bold">⚽{r.playerGoals}</span>
                             )}
-                            <span className="text-[9px] text-slate-600">Wk{r.week}</span>
+                            <span className="text-[9px] text-[#484f58]">Wk{r.week}</span>
                           </motion.div>
                         );
                       })}
@@ -1471,9 +1471,9 @@ export default function MatchDay() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.35 }}
-                className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 text-center"
+                className="bg-[#161b22]/50 border border-[#30363d] rounded-lg p-3 text-center"
               >
-                <p className="text-[10px] text-slate-600">No previous meetings with {opponent.shortName}</p>
+                <p className="text-[10px] text-[#484f58]">No previous meetings with {opponent.shortName}</p>
               </motion.div>
             );
           })()}
@@ -1487,7 +1487,7 @@ export default function MatchDay() {
           >
             <Button
               onClick={handlePlayMatch}
-              className="w-full h-14 text-lg font-bold bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 rounded-xl shadow-lg"
+              className="w-full h-14 text-lg font-bold bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
             >
               <Play className="mr-2 h-5 w-5" />
               Play Match
@@ -1495,7 +1495,7 @@ export default function MatchDay() {
             <Button
               onClick={handleSimulate}
               variant="outline"
-              className="w-full h-10 border-slate-700 text-slate-400 rounded-xl text-sm"
+              className="w-full h-10 border-[#30363d] text-[#8b949e] rounded-lg text-sm"
             >
               <FastForward className="mr-2 h-4 w-4" />
               Quick Simulate
@@ -1503,16 +1503,16 @@ export default function MatchDay() {
           </motion.div>
         </>
       ) : (
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-8 text-center">
-            <Clock className="h-12 w-12 mx-auto text-slate-600 mb-3" />
-            <p className="text-slate-400">No match this week</p>
-            <p className="text-xs text-slate-600 mt-1">Advance the week to continue</p>
+            <Clock className="h-12 w-12 mx-auto text-[#484f58] mb-3" />
+            <p className="text-[#8b949e]">No match this week</p>
+            <p className="text-xs text-[#484f58] mt-1">Advance the week to continue</p>
           </CardContent>
         </Card>
       )}
 
-      <Button onClick={() => advanceWeek()} variant="outline" className="w-full border-slate-700 text-slate-300 rounded-xl">
+      <Button onClick={() => advanceWeek()} variant="outline" className="w-full border-[#30363d] text-[#c9d1d9] rounded-lg">
         <ArrowRight className="mr-2 h-4 w-4" />
         Advance Week (No Match)
       </Button>
@@ -1545,10 +1545,10 @@ function StatBar({
 
   return (
     <div>
-      <p className="text-[10px] text-slate-500 text-center mb-1">{title}</p>
+      <p className="text-[10px] text-[#8b949e] text-center mb-1">{title}</p>
       <div className="flex items-center gap-2">
-        <span className={`text-xs font-bold w-8 text-right ${homeValue > awayValue ? 'text-white' : 'text-slate-400'}`}>{homeLabel}</span>
-        <div className="flex-1 flex h-2 rounded-full overflow-hidden bg-slate-800">
+        <span className={`text-xs font-bold w-8 text-right ${homeValue > awayValue ? 'text-white' : 'text-[#8b949e]'}`}>{homeLabel}</span>
+        <div className="flex-1 flex h-2 rounded-full overflow-hidden bg-[#21262d]">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${homePercent}%` }}
@@ -1558,7 +1558,7 @@ function StatBar({
           />
           <div className="flex-1 bg-rose-500/70 rounded-r-full" />
         </div>
-        <span className={`text-xs font-bold w-8 ${awayValue > homeValue ? 'text-white' : 'text-slate-400'}`}>{awayLabel}</span>
+        <span className={`text-xs font-bold w-8 ${awayValue > homeValue ? 'text-white' : 'text-[#8b949e]'}`}>{awayLabel}</span>
       </div>
     </div>
   );

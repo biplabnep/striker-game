@@ -111,13 +111,13 @@ export default function SettingsPanel() {
           variant="ghost"
           size="icon"
           onClick={() => setScreen('dashboard')}
-          className="text-slate-400 hover:text-white hover:bg-slate-800"
+          className="text-[#8b949e] hover:text-white hover:bg-[#21262d]"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
           <h1 className="text-xl font-bold">Settings & Notifications</h1>
-          <p className="text-xs text-slate-500">Manage your game and view alerts</p>
+          <p className="text-xs text-[#8b949e]">Manage your game and view alerts</p>
         </div>
         {unreadCount > 0 && (
           <Badge className="bg-red-600 text-white text-xs px-2">
@@ -127,9 +127,9 @@ export default function SettingsPanel() {
       </div>
 
       {/* Current Game Info */}
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-[#161b22] border-[#30363d]">
         <CardHeader className="pb-2 pt-3 px-4">
-          <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+          <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
             <User className="h-3 w-3" />
             Current Career
           </CardTitle>
@@ -137,41 +137,41 @@ export default function SettingsPanel() {
         <CardContent className="px-4 pb-4">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-lg">
+              <div className="w-10 h-10 rounded-full bg-[#21262d] flex items-center justify-center text-lg">
                 {currentClub.logo}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{player.name}</p>
-                <p className="text-xs text-slate-400">{currentClub.name} • {player.position}</p>
+                <p className="text-xs text-[#8b949e]">{currentClub.name} • {player.position}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-slate-400">Season {currentSeason}</p>
-                <p className="text-xs text-slate-500">Week {currentWeek}/{getSeasonMatchdays(currentClub.league)}</p>
+                <p className="text-xs text-[#8b949e]">Season {currentSeason}</p>
+                <p className="text-xs text-[#8b949e]">Week {currentWeek}/{getSeasonMatchdays(currentClub.league)}</p>
               </div>
             </div>
             {leagueInfo && (
-              <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-800/50 rounded-lg p-2">
+              <div className="flex items-center gap-2 text-xs text-[#8b949e] bg-[#21262d] rounded-lg p-2">
                 <Trophy className="h-3 w-3 text-emerald-400" />
                 <span>{leagueInfo.emoji} {leagueInfo.name}</span>
               </div>
             )}
-            <div className="flex items-center gap-2 text-xs bg-slate-800/50 rounded-lg p-2">
+            <div className="flex items-center gap-2 text-xs bg-[#21262d] rounded-lg p-2">
               <Shield className={`h-3 w-3 ${diffInfo.color}`} />
               <span className={diffInfo.color}>{diffInfo.label}</span>
-              <span className="text-slate-500">•</span>
-              <span className="text-slate-400">{diffInfo.description}</span>
+              <span className="text-[#8b949e]">•</span>
+              <span className="text-[#8b949e]">{diffInfo.description}</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Save Game */}
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <Button
               onClick={handleSave}
-              className="flex-1 h-11 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-xl"
+              className="flex-1 h-11 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded-lg"
             >
               <Save className="mr-2 h-4 w-4" />
               Save Game
@@ -179,7 +179,7 @@ export default function SettingsPanel() {
             <Button
               onClick={handleBackToMenu}
               variant="outline"
-              className="h-11 border-red-800/50 text-red-400 hover:bg-red-900/20 hover:text-red-300 font-semibold rounded-xl"
+              className="h-11 border-red-800/50 text-red-400 hover:bg-red-900/20 hover:text-red-300 font-semibold rounded-lg"
             >
               <Home className="mr-2 h-4 w-4" />
               Main Menu
@@ -192,13 +192,13 @@ export default function SettingsPanel() {
       </Card>
 
       {/* Notifications */}
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-[#161b22] border-[#30363d]">
         <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
-          <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+          <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
             <Bell className="h-3 w-3" />
             Notifications
             {notifications.length > 0 && (
-              <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-400 ml-1">
+              <Badge variant="outline" className="text-[10px] border-[#30363d] text-[#8b949e] ml-1">
                 {notifications.length}
               </Badge>
             )}
@@ -217,10 +217,10 @@ export default function SettingsPanel() {
         </CardHeader>
         <CardContent className="px-4 pb-3">
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-slate-500">
+            <div className="flex flex-col items-center gap-2 py-8 text-[#8b949e]">
               <BellOff className="h-8 w-8 opacity-30" />
               <p className="text-sm">No notifications</p>
-              <p className="text-xs text-slate-600">Notifications will appear here as you progress</p>
+              <p className="text-xs text-[#484f58]">Notifications will appear here as you progress</p>
             </div>
           ) : (
             <ScrollArea className="max-h-80">
@@ -230,8 +230,8 @@ export default function SettingsPanel() {
                     key={notification.id}
                     className={`flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer ${
                       notification.read
-                        ? 'bg-slate-800/30 opacity-60'
-                        : 'bg-slate-800/80 hover:bg-slate-800'
+                        ? 'bg-[#21262d] opacity-60'
+                        : 'bg-[#21262d] hover:bg-[#21262d]'
                     }`}
                     onClick={() => markNotificationRead(notification.id)}
                   >
@@ -244,7 +244,7 @@ export default function SettingsPanel() {
                         <span className="text-xs">
                           {notificationTypeIcons[notification.type] || '📌'}
                         </span>
-                        <span className={`text-xs font-semibold ${notification.read ? 'text-slate-500' : 'text-slate-200'}`}>
+                        <span className={`text-xs font-semibold ${notification.read ? 'text-[#8b949e]' : 'text-[#c9d1d9]'}`}>
                           {notification.title}
                         </span>
                         {notification.actionRequired && !notification.read && (
@@ -253,16 +253,16 @@ export default function SettingsPanel() {
                           </Badge>
                         )}
                       </div>
-                      <p className={`text-xs mt-0.5 ${notification.read ? 'text-slate-600' : 'text-slate-400'}`}>
+                      <p className={`text-xs mt-0.5 ${notification.read ? 'text-[#484f58]' : 'text-[#8b949e]'}`}>
                         {notification.message}
                       </p>
                     </div>
 
                     {/* Timestamp & read status */}
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className="text-[10px] text-slate-600">{formatTimestamp(notification.timestamp)}</span>
+                      <span className="text-[10px] text-[#484f58]">{formatTimestamp(notification.timestamp)}</span>
                       {!notification.read && (
-                        <Check className="h-3 w-3 text-slate-500 hover:text-emerald-400" />
+                        <Check className="h-3 w-3 text-[#8b949e] hover:text-emerald-400" />
                       )}
                     </div>
                   </div>

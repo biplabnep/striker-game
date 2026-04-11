@@ -32,7 +32,7 @@ function FormDot({ result }: { result: 'W' | 'D' | 'L' }) {
 // Position change indicator
 function PositionChange({ current, previous }: { current: number; previous?: number }) {
   if (!previous || previous === current) {
-    return <span className="text-slate-600 text-[9px]">—</span>;
+    return <span className="text-[#484f58] text-[9px]">—</span>;
   }
   const diff = previous - current;
   if (diff > 0) {
@@ -158,12 +158,12 @@ export default function LeagueTable() {
             League Table
           </h2>
           {leagueInfo && (
-            <p className="text-[10px] text-slate-500 mt-0.5">
+            <p className="text-[10px] text-[#8b949e] mt-0.5">
               {leagueInfo.emoji} {leagueInfo.name} • Season {currentSeason}
             </p>
           )}
         </div>
-        <Badge variant="outline" className="border-slate-700 text-slate-400 text-[10px]">
+        <Badge variant="outline" className="border-[#30363d] text-[#8b949e] text-[10px]">
           Week {gameState.currentWeek}/{getSeasonMatchdays(gameState.currentClub.league)}
         </Badge>
       </div>
@@ -172,15 +172,15 @@ export default function LeagueTable() {
       <div className="flex items-center gap-4 text-[10px] px-1">
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="text-slate-500">Champions League</span>
+          <span className="text-[#8b949e]">Champions League</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-slate-500">Europa League</span>
+          <span className="text-[#8b949e]">Europa League</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-full bg-red-500" />
-          <span className="text-slate-500">Relegation</span>
+          <span className="text-[#8b949e]">Relegation</span>
         </div>
       </div>
 
@@ -199,7 +199,7 @@ export default function LeagueTable() {
             className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-colors ${
               sortBy === opt.key
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-700/50'
+                : 'bg-[#21262d] text-[#8b949e] border border-[#30363d] hover:bg-slate-700/50'
             }`}
           >
             {opt.icon}
@@ -209,8 +209,8 @@ export default function LeagueTable() {
       </div>
 
       {/* Table Header */}
-      <div className="bg-slate-900 rounded-t-xl border border-slate-800 border-b-0">
-        <div className="grid grid-cols-[1.5rem_2rem_1fr_3rem_3rem_3.5rem_3.5rem] gap-0.5 px-2.5 py-2 text-[9px] text-slate-500 uppercase tracking-wider font-semibold items-center">
+      <div className="bg-[#161b22] rounded-t-xl border border-[#30363d] border-b-0">
+        <div className="grid grid-cols-[1.5rem_2rem_1fr_3rem_3rem_3.5rem_3.5rem] gap-0.5 px-2.5 py-2 text-[9px] text-[#8b949e]  font-semibold items-center">
           <span className="text-center">↕</span>
           <span>#</span>
           <span>Club</span>
@@ -222,7 +222,7 @@ export default function LeagueTable() {
       </div>
 
       {/* Table Body */}
-      <div className="bg-slate-900/80 rounded-b-xl border border-slate-800 border-t-0 overflow-hidden">
+      <div className="bg-[#161b22] rounded-b-xl border border-[#30363d] border-t-0 overflow-hidden">
         {leagueTable.map((entry, idx) => {
           const pos = idx + 1;
           const club = getClubById(entry.clubId);
@@ -241,15 +241,15 @@ export default function LeagueTable() {
                 className={`grid grid-cols-[1.5rem_2rem_1fr_3rem_3rem_3.5rem_3.5rem] gap-0.5 px-2.5 py-2 items-center text-sm transition-colors cursor-pointer ${
                   isPlayer
                     ? 'bg-emerald-900/20 border-l-2 border-emerald-500'
-                    : 'border-l-2 border-transparent hover:bg-slate-800/50'
-                } ${idx < leagueTable.length - 1 ? 'border-b border-slate-800/30' : ''}`}
+                    : 'border-l-2 border-transparent hover:bg-[#21262d]'
+                } ${idx < leagueTable.length - 1 ? 'border-b border-[#30363d]' : ''}`}
               >
                 {/* Position change */}
                 <PositionChange current={pos} previous={prevPos} />
 
                 {/* Position */}
                 <div className="flex items-center">
-                  <span className={`text-xs font-bold ${isPlayer ? 'text-emerald-400' : pos <= 4 ? 'text-emerald-300' : pos <= 6 ? 'text-blue-300' : pos >= leagueTable.length - 2 ? 'text-red-300' : 'text-slate-400'}`}>
+                  <span className={`text-xs font-bold ${isPlayer ? 'text-emerald-400' : pos <= 4 ? 'text-emerald-300' : pos <= 6 ? 'text-blue-300' : pos >= leagueTable.length - 2 ? 'text-red-300' : 'text-[#8b949e]'}`}>
                     {pos}
                   </span>
                 </div>
@@ -257,7 +257,7 @@ export default function LeagueTable() {
                 {/* Club Name */}
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-sm flex-shrink-0">{club?.logo || '⚽'}</span>
-                  <span className={`truncate text-xs font-medium ${isPlayer ? 'text-emerald-300' : 'text-slate-300'}`}>
+                  <span className={`truncate text-xs font-medium ${isPlayer ? 'text-emerald-300' : 'text-[#c9d1d9]'}`}>
                     {club?.shortName || entry.clubName}
                   </span>
                   {isPlayer && (
@@ -268,10 +268,10 @@ export default function LeagueTable() {
                 </div>
 
                 {/* Played */}
-                <span className="text-center text-[11px] text-slate-500">{entry.played}</span>
+                <span className="text-center text-[11px] text-[#8b949e]">{entry.played}</span>
 
                 {/* Goal Difference */}
-                <span className={`text-center text-[11px] font-medium ${gd > 0 ? 'text-emerald-400' : gd < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                <span className={`text-center text-[11px] font-medium ${gd > 0 ? 'text-emerald-400' : gd < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
                   {gd > 0 ? '+' : ''}{gd}
                 </span>
 
@@ -285,7 +285,7 @@ export default function LeagueTable() {
                   {form.length > 0 ? form.map((r, i) => (
                     <FormDot key={i} result={r} />
                   )) : (
-                    <span className="text-[9px] text-slate-600">—</span>
+                    <span className="text-[9px] text-[#484f58]">—</span>
                   )}
                 </div>
               </div>
@@ -300,13 +300,13 @@ export default function LeagueTable() {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className={`px-3 py-3 ${isPlayer ? 'bg-emerald-950/20' : 'bg-slate-800/30'} border-b border-slate-800/30`}>
+                    <div className={`px-3 py-3 ${isPlayer ? 'bg-emerald-950/20' : 'bg-[#21262d]'} border-b border-[#30363d]`}>
                       {/* Club header */}
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-xl">{club?.logo}</span>
                         <div>
-                          <p className="text-sm font-semibold text-slate-200">{entry.clubName}</p>
-                          <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                          <p className="text-sm font-semibold text-[#c9d1d9]">{entry.clubName}</p>
+                          <p className="text-[10px] text-[#8b949e] flex items-center gap-1">
                             <span className={formInfo.color}>{formInfo.text} form</span>
                             <span>•</span>
                             <span>{getFormPoints(entry.clubId)} pts from last {form.length || 5}</span>
@@ -317,17 +317,17 @@ export default function LeagueTable() {
                       {/* Stats Grid */}
                       <div className="grid grid-cols-7 gap-1.5 text-center">
                         {[
-                          { value: entry.played, label: 'P', color: 'text-slate-300' },
+                          { value: entry.played, label: 'P', color: 'text-[#c9d1d9]' },
                           { value: entry.won, label: 'W', color: 'text-emerald-400' },
                           { value: entry.drawn, label: 'D', color: 'text-amber-400' },
                           { value: entry.lost, label: 'L', color: 'text-red-400' },
-                          { value: entry.goalsFor, label: 'GF', color: 'text-slate-200' },
-                          { value: entry.goalsAgainst, label: 'GA', color: 'text-slate-400' },
-                          { value: `${gd > 0 ? '+' : ''}${gd}`, label: 'GD', color: gd > 0 ? 'text-emerald-400' : gd < 0 ? 'text-red-400' : 'text-slate-400' },
+                          { value: entry.goalsFor, label: 'GF', color: 'text-[#c9d1d9]' },
+                          { value: entry.goalsAgainst, label: 'GA', color: 'text-[#8b949e]' },
+                          { value: `${gd > 0 ? '+' : ''}${gd}`, label: 'GD', color: gd > 0 ? 'text-emerald-400' : gd < 0 ? 'text-red-400' : 'text-[#8b949e]' },
                         ].map((stat, i) => (
-                          <div key={i} className="bg-slate-900/60 rounded-md py-1.5 px-0.5">
+                          <div key={i} className="bg-[#161b22]/60 rounded-md py-1.5 px-0.5">
                             <p className={`text-xs font-bold ${stat.color}`}>{stat.value}</p>
-                            <p className="text-[8px] text-slate-600">{stat.label}</p>
+                            <p className="text-[8px] text-[#484f58]">{stat.label}</p>
                           </div>
                         ))}
                       </div>
@@ -335,15 +335,15 @@ export default function LeagueTable() {
                       {/* Points progress bar */}
                       <div className="mt-2.5">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[9px] text-slate-500">Points Progress</span>
-                          <span className="text-[9px] text-slate-400 font-semibold">{entry.points} / {Math.round(maxPoints * 1.1)}</span>
+                          <span className="text-[9px] text-[#8b949e]">Points Progress</span>
+                          <span className="text-[9px] text-[#8b949e] font-semibold">{entry.points} / {Math.round(maxPoints * 1.1)}</span>
                         </div>
-                        <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
                               isPlayer
-                                ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
-                                : 'bg-gradient-to-r from-slate-600 to-slate-400'
+                                ? 'bg-emerald-500'
+                                : 'bg-slate-500'
                             }`}
                             style={{ width: `${Math.min(100, (entry.points / Math.max(maxPoints * 1.1, 1)) * 100)}%` }}
                           />
@@ -352,16 +352,16 @@ export default function LeagueTable() {
 
                       {/* Win rate */}
                       <div className="mt-2 flex items-center justify-between text-[10px]">
-                        <span className="text-slate-500">Win Rate</span>
-                        <span className="text-slate-300 font-semibold">
+                        <span className="text-[#8b949e]">Win Rate</span>
+                        <span className="text-[#c9d1d9] font-semibold">
                           {entry.played > 0 ? Math.round((entry.won / entry.played) * 100) : 0}%
                         </span>
                       </div>
 
                       {/* Avg goals per game */}
                       <div className="mt-1 flex items-center justify-between text-[10px]">
-                        <span className="text-slate-500">Goals / Game</span>
-                        <span className="text-slate-300 font-semibold">
+                        <span className="text-[#8b949e]">Goals / Game</span>
+                        <span className="text-[#c9d1d9] font-semibold">
                           {entry.played > 0 ? (entry.goalsFor / entry.played).toFixed(1) : '0.0'}
                         </span>
                       </div>
@@ -390,15 +390,15 @@ export default function LeagueTable() {
         const pointsFromRel = playerPos >= leagueTable.length - 2 ? playerEntry.points - (leagueTable[leagueTable.length - 3]?.points ?? 0) : 0;
 
         return (
-          <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950/20 border-slate-700 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
+          <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+            <div className="h-1 bg-emerald-500" />
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{currentClub.logo}</span>
                   <div>
                     <p className="font-bold text-sm">{currentClub.name}</p>
-                    <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <p className="text-xs text-[#8b949e] flex items-center gap-1.5">
                       <span className="text-emerald-400 font-bold">
                         {playerPos}{playerPos === 1 ? 'st' : playerPos === 2 ? 'nd' : playerPos === 3 ? 'rd' : 'th'}
                       </span>
@@ -409,47 +409,47 @@ export default function LeagueTable() {
                 </div>
                 <div className="text-right">
                   <p className="text-3xl font-black text-emerald-400">{playerEntry.points}</p>
-                  <p className="text-[10px] text-slate-500">points</p>
+                  <p className="text-[10px] text-[#8b949e]">points</p>
                 </div>
               </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-5 gap-2 text-center">
                 <div>
-                  <p className="text-sm font-bold text-slate-200">{playerEntry.played}</p>
-                  <p className="text-[10px] text-slate-500">Played</p>
+                  <p className="text-sm font-bold text-[#c9d1d9]">{playerEntry.played}</p>
+                  <p className="text-[10px] text-[#8b949e]">Played</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-emerald-400">{playerEntry.won}</p>
-                  <p className="text-[10px] text-slate-500">Won</p>
+                  <p className="text-[10px] text-[#8b949e]">Won</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-amber-400">{playerEntry.drawn}</p>
-                  <p className="text-[10px] text-slate-500">Drawn</p>
+                  <p className="text-[10px] text-[#8b949e]">Drawn</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-red-400">{playerEntry.lost}</p>
-                  <p className="text-[10px] text-slate-500">Lost</p>
+                  <p className="text-[10px] text-[#8b949e]">Lost</p>
                 </div>
                 <div>
                   <p className={`text-sm font-bold ${gd > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {gd > 0 ? '+' : ''}{gd}
                   </p>
-                  <p className="text-[10px] text-slate-500">GD</p>
+                  <p className="text-[10px] text-[#8b949e]">GD</p>
                 </div>
               </div>
 
               {/* Form and Zone Info */}
-              <div className="mt-3 pt-3 border-t border-slate-700/50 space-y-2">
+              <div className="mt-3 pt-3 border-t border-[#30363d] space-y-2">
                 {/* Current Form */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Recent Form</span>
+                  <span className="text-[10px] text-[#8b949e]  font-medium">Recent Form</span>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-0.5">
                       {playerForm.length > 0 ? playerForm.map((r, i) => (
                         <FormDot key={i} result={r} />
                       )) : (
-                        <span className="text-[10px] text-slate-600">No matches yet</span>
+                        <span className="text-[10px] text-[#484f58]">No matches yet</span>
                       )}
                     </div>
                     <span className={`text-[10px] font-bold ${formInfo.color}`}>{formInfo.text}</span>
@@ -459,7 +459,7 @@ export default function LeagueTable() {
                 {/* Zone distance */}
                 {playerPos > 4 && pointsToUCL > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium flex items-center gap-1">
+                    <span className="text-[10px] text-[#8b949e]  font-medium flex items-center gap-1">
                       <Trophy className="w-2.5 h-2.5 text-emerald-400" />
                       To UCL
                     </span>
@@ -469,7 +469,7 @@ export default function LeagueTable() {
 
                 {playerPos >= leagueTable.length - 2 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium flex items-center gap-1">
+                    <span className="text-[10px] text-[#8b949e]  font-medium flex items-center gap-1">
                       <ArrowDown className="w-2.5 h-2.5 text-red-400" />
                       From Safety
                     </span>
@@ -480,14 +480,14 @@ export default function LeagueTable() {
                 {/* Win rate and goals per game */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500">Win Rate</span>
-                    <span className="text-[10px] text-slate-300 font-semibold">
+                    <span className="text-[10px] text-[#8b949e]">Win Rate</span>
+                    <span className="text-[10px] text-[#c9d1d9] font-semibold">
                       {playerEntry.played > 0 ? Math.round((playerEntry.won / playerEntry.played) * 100) : 0}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500">Goals/Game</span>
-                    <span className="text-[10px] text-slate-300 font-semibold">
+                    <span className="text-[10px] text-[#8b949e]">Goals/Game</span>
+                    <span className="text-[10px] text-[#c9d1d9] font-semibold">
                       {playerEntry.played > 0 ? (playerEntry.goalsFor / playerEntry.played).toFixed(1) : '0.0'}
                     </span>
                   </div>
@@ -501,9 +501,9 @@ export default function LeagueTable() {
       {/* Top Scorer & Form Leaders */}
       <div className="grid grid-cols-2 gap-3">
         {/* Best Attack */}
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3">
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2 flex items-center gap-1">
+            <p className="text-[9px] text-[#8b949e]  font-semibold mb-2 flex items-center gap-1">
               <Swords className="w-3 h-3 text-emerald-400" />
               Best Attack
             </p>
@@ -514,7 +514,7 @@ export default function LeagueTable() {
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{bestClub?.logo}</span>
                   <div>
-                    <p className="text-xs font-semibold text-slate-200">{bestClub?.shortName}</p>
+                    <p className="text-xs font-semibold text-[#c9d1d9]">{bestClub?.shortName}</p>
                     <p className="text-lg font-black text-emerald-400">{best.goalsFor}</p>
                   </div>
                 </div>
@@ -524,9 +524,9 @@ export default function LeagueTable() {
         </Card>
 
         {/* Best Defence */}
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3">
-            <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2 flex items-center gap-1">
+            <p className="text-[9px] text-[#8b949e]  font-semibold mb-2 flex items-center gap-1">
               <Shield className="w-3 h-3 text-blue-400" />
               Best Defence
             </p>
@@ -537,7 +537,7 @@ export default function LeagueTable() {
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{bestClub?.logo}</span>
                   <div>
-                    <p className="text-xs font-semibold text-slate-200">{bestClub?.shortName}</p>
+                    <p className="text-xs font-semibold text-[#c9d1d9]">{bestClub?.shortName}</p>
                     <p className="text-lg font-black text-blue-400">{best.goalsAgainst}</p>
                   </div>
                 </div>

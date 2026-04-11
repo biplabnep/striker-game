@@ -113,19 +113,19 @@ export default function CupBracket() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-amber-900/30 overflow-hidden">
+        <Card className="bg-[#161b22] border-amber-900/30 overflow-hidden">
           <div className="absolute inset-0 opacity-[0.04]" style={{
             background: 'linear-gradient(135deg, #d97706, #92400e, transparent)'
           }} />
           <CardContent className="p-4 relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-amber-900/30 border border-amber-700/30 flex items-center justify-center text-2xl">
+                <div className="w-12 h-12 rounded-lg bg-amber-900/30 border border-amber-700/30 flex items-center justify-center text-2xl">
                   {cupEmoji}
                 </div>
                 <div>
                   <h2 className="font-bold text-lg text-amber-100">{cupName}</h2>
-                  <p className="text-xs text-slate-400">Domestic Cup Competition</p>
+                  <p className="text-xs text-[#8b949e]">Domestic Cup Competition</p>
                 </div>
               </div>
 
@@ -157,13 +157,13 @@ export default function CupBracket() {
             {/* Progress bar */}
             {!isCupWinner && (
               <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-wider">
+                <div className="flex items-center justify-between text-[10px] text-[#8b949e] ">
                   <span>Progress</span>
                   <span>Round {Math.min(cupRound, maxRound)} of {maxRound}</span>
                 </div>
-                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full"
+                    className="h-full bg-amber-500 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${(Math.min(cupRound - 1, maxRound) / maxRound) * 100}%` }}
                     transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -182,7 +182,7 @@ export default function CupBracket() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', bounce: 0.4 }}
         >
-          <Card className="bg-gradient-to-br from-amber-900/40 via-amber-800/20 to-slate-900 border-amber-500/40 overflow-hidden">
+          <Card className="bg-[#161b22] border-amber-500/40 overflow-hidden">
             <CardContent className="p-6 text-center">
               <motion.div
                 animate={{ rotate: [0, 10, -10, 0] }}
@@ -240,10 +240,10 @@ export default function CupBracket() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
         >
-          <Card className="bg-slate-900 border-amber-900/20 overflow-hidden">
+          <Card className="bg-[#161b22] border-amber-900/20 overflow-hidden">
             <CardHeader className="pb-2 pt-3 px-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs text-slate-500 uppercase tracking-wider">
+                <CardTitle className="text-xs text-[#8b949e] ">
                   Next Cup Match
                 </CardTitle>
                 <Badge variant="outline" className="text-[9px] border-amber-700/50 text-amber-400">
@@ -255,12 +255,12 @@ export default function CupBracket() {
               <div className="flex items-center justify-between">
                 {/* Home Team */}
                 <div className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-2xl">
+                  <div className="w-12 h-12 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center text-2xl">
                     {playerNextCupMatch.homeClubId === gameState.currentClub.id
                       ? gameState.currentClub.logo
                       : nextCupOpponent.logo}
                   </div>
-                  <span className="text-xs font-semibold text-slate-200 truncate max-w-[72px] text-center">
+                  <span className="text-xs font-semibold text-[#c9d1d9] truncate max-w-[72px] text-center">
                     {playerNextCupMatch.homeClubId === gameState.currentClub.id
                       ? gameState.currentClub.shortName
                       : nextCupOpponent.shortName}
@@ -276,17 +276,17 @@ export default function CupBracket() {
                   >
                     VS
                   </motion.div>
-                  <div className="w-px h-4 bg-gradient-to-b from-transparent via-slate-600 to-transparent mt-1" />
+                  <div className="w-px h-4 bg-[#30363d] mt-1" />
                 </div>
 
                 {/* Away Team */}
                 <div className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-2xl">
+                  <div className="w-12 h-12 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center text-2xl">
                     {playerNextCupMatch.awayClubId === gameState.currentClub.id
                       ? gameState.currentClub.logo
                       : nextCupOpponent.logo}
                   </div>
-                  <span className="text-xs font-semibold text-slate-200 truncate max-w-[72px] text-center">
+                  <span className="text-xs font-semibold text-[#c9d1d9] truncate max-w-[72px] text-center">
                     {playerNextCupMatch.awayClubId === gameState.currentClub.id
                       ? gameState.currentClub.shortName
                       : nextCupOpponent.shortName}
@@ -295,9 +295,9 @@ export default function CupBracket() {
               </div>
 
               {/* Week info */}
-              <div className="flex items-center justify-center gap-1.5 mt-3 pt-2 border-t border-slate-800/50">
+              <div className="flex items-center justify-center gap-1.5 mt-3 pt-2 border-t border-[#30363d]">
                 <Calendar className="h-3 w-3 text-amber-500/60" />
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-[#8b949e]">
                   Week {CUP_MATCH_WEEKS[cupRound - 1] ?? cupRound * 4} • {isCupWeek ? 'This week!' : 'Upcoming'}
                 </span>
               </div>
@@ -312,9 +312,9 @@ export default function CupBracket() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
               <Swords className="h-3.5 w-3.5 text-amber-500" />
               Tournament Bracket
             </CardTitle>
@@ -343,8 +343,8 @@ export default function CupBracket() {
                         isCurrentRound
                           ? 'bg-amber-500/10 border-amber-600/30'
                           : isPastRound
-                          ? 'bg-slate-800/30 border-slate-700/30'
-                          : 'bg-slate-800/10 border-slate-800/30'
+                          ? 'bg-[#21262d] border-[#30363d]'
+                          : 'bg-[#21262d]/10 border-[#30363d]'
                       }`}
                     >
                       {/* Round header */}
@@ -364,7 +364,7 @@ export default function CupBracket() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                        <div className="flex items-center gap-1 text-[10px] text-[#8b949e]">
                           <Users className="h-2.5 w-2.5" />
                           <span>{roundData.fixtures.length * 2} teams</span>
                         </div>
@@ -388,8 +388,8 @@ export default function CupBracket() {
                                 isPlayerMatch
                                   ? 'bg-amber-500/10 border border-amber-500/20'
                                   : fixture.played
-                                  ? 'bg-slate-800/40'
-                                  : 'bg-slate-800/20'
+                                  ? 'bg-[#21262d]'
+                                  : 'bg-[#21262d]'
                               }`}
                             >
                               <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -397,19 +397,19 @@ export default function CupBracket() {
                                 <span className={`truncate ${
                                   isPlayerMatch && fixture.homeClubId === gameState.currentClub.id
                                     ? 'text-amber-200 font-semibold'
-                                    : 'text-slate-300'
+                                    : 'text-[#c9d1d9]'
                                 }`}>
                                   {homeClub.shortName}
                                 </span>
                               </div>
 
-                              <span className="text-slate-600 mx-1.5 text-[9px]">vs</span>
+                              <span className="text-[#484f58] mx-1.5 text-[9px]">vs</span>
 
                               <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
                                 <span className={`truncate text-right ${
                                   isPlayerMatch && fixture.awayClubId === gameState.currentClub.id
                                     ? 'text-amber-200 font-semibold'
-                                    : 'text-slate-300'
+                                    : 'text-[#c9d1d9]'
                                 }`}>
                                   {awayClub.shortName}
                                 </span>
@@ -417,7 +417,7 @@ export default function CupBracket() {
                               </div>
 
                               {fixture.played && (
-                                <Badge className="ml-2 bg-slate-700/50 text-slate-400 text-[8px] px-1 py-0 h-4">
+                                <Badge className="ml-2 bg-slate-700/50 text-[#8b949e] text-[8px] px-1 py-0 h-4">
                                   Done
                                 </Badge>
                               )}
@@ -444,14 +444,14 @@ export default function CupBracket() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <Card className="bg-slate-900/50 border-slate-800/50">
+        <Card className="bg-[#161b22]/50 border-[#30363d]">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-3 text-center">
               <div>
                 <p className="text-lg font-bold text-amber-400">
                   {gameState.recentResults.filter(r => r.competition === 'cup').length}
                 </p>
-                <p className="text-[10px] text-slate-500">Cup Matches</p>
+                <p className="text-[10px] text-[#8b949e]">Cup Matches</p>
               </div>
               <div>
                 <p className="text-lg font-bold text-emerald-400">
@@ -459,11 +459,11 @@ export default function CupBracket() {
                     Object.values(CUP_NAMES).some(cn => cn.name === t.name)
                   ).length ?? 0}
                 </p>
-                <p className="text-[10px] text-slate-500">Cup Trophies</p>
+                <p className="text-[10px] text-[#8b949e]">Cup Trophies</p>
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-slate-800/50">
-              <p className="text-[10px] text-slate-600 text-center">
+            <div className="mt-3 pt-2 border-t border-[#30363d]">
+              <p className="text-[10px] text-[#484f58] text-center">
                 Cup matches occur every 4 weeks (Weeks {CUP_MATCH_WEEKS.slice(0, 4).join(', ')}...)
                 • Single elimination knockout format
               </p>
