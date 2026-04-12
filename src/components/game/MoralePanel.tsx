@@ -315,8 +315,8 @@ export default function MoralePanel() {
                 {/* Effects */}
                 {isSelected && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ duration: 0.15 }}
                     className="mt-2 pt-2 border-t border-[#30363d]/50"
                   >

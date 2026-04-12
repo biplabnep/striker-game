@@ -401,7 +401,7 @@ export default function Dashboard() {
                 }}
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
               />
-              <div className="w-[68px] h-[68px] rounded-full flex items-center justify-center font-black text-4xl border-2 relative z-10" style={{ borderColor: overallColor, color: overallColor }}>
+              <div className="w-[68px] h-[68px] rounded-3xl flex items-center justify-center font-black text-4xl border-2 relative z-10" style={{ borderColor: overallColor, color: overallColor }}>
                 {player.overall}
               </div>
               <span className="text-[10px] text-[#8b949e] mt-1.5 font-medium">OVR</span>
@@ -471,7 +471,7 @@ export default function Dashboard() {
 
             {/* Potential */}
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm border border-[#30363d] text-[#8b949e]">
+              <div className="w-12 h-12 rounded-3xl flex items-center justify-center font-bold text-sm border border-[#30363d] text-[#8b949e]">
                 {player.potential}
               </div>
               <span className="text-[10px] text-[#8b949e] mt-1">POT</span>

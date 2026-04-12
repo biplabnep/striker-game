@@ -683,8 +683,8 @@ export default function AnalyticsPanel() {
                     <motion.div
                       key={i}
                       className="flex-1 flex flex-col items-center gap-1"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       transition={{ delay: 0.1 + i * 0.04 }}
                     >
                       <span className="text-[8px] text-[#8b949e] tabular-nums">

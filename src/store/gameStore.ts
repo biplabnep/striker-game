@@ -893,10 +893,14 @@ export const useGameStore = create<GameStore>()(
           },
           internationalCalledUp: false,
           internationalOnBreak: false,
-  // Mindset & Morale
-  mindset: 'balanced' as PlayerMindset,
-  moraleFactors: [],
-  gameMode: 'career',
+          // Injury System
+          injuries: [],
+          currentInjury: null,
+          // Mindset & Morale
+          mindset: 'balanced' as PlayerMindset,
+          moraleFactors: [],
+          // Game Mode
+          gameMode: 'career',
           difficulty: config.difficulty,
           createdAt: new Date().toISOString(),
           lastSaved: new Date().toISOString(),

@@ -70,8 +70,8 @@ function FixtureCard({ fixture, isPlayerNation }: { fixture: InternationalFixtur
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className={`border border-[#30363d] rounded-lg p-4 bg-[#161b22] ${
         fixture.playerCalledUp ? 'ring-1 ring-emerald-500/30' : ''
       }`}
@@ -226,8 +226,8 @@ export default function InternationalPanel() {
     <div className="max-w-lg mx-auto px-4 py-6 pb-20 space-y-4">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="flex items-center gap-3"
       >
         <div className="p-2 bg-[#21262d] rounded-lg border border-[#30363d]">
@@ -241,8 +241,8 @@ export default function InternationalPanel() {
 
       {/* National Team Status Card */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.05 }}
         className="border border-[#30363d] rounded-lg bg-[#161b22] p-4"
       >
@@ -293,8 +293,8 @@ export default function InternationalPanel() {
 
       {/* Call-up Requirements / Status */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
         className="border border-[#30363d] rounded-lg bg-[#161b22] p-4"
       >
@@ -353,8 +353,8 @@ export default function InternationalPanel() {
 
       {/* International Career Stats */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.15 }}
         className="border border-[#30363d] rounded-lg bg-[#161b22] p-4"
       >
@@ -404,8 +404,8 @@ export default function InternationalPanel() {
       {/* Next International Break */}
       {nextBreakWeeks.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="border border-[#30363d] rounded-lg bg-[#161b22] p-4"
         >
@@ -424,8 +424,8 @@ export default function InternationalPanel() {
 
       {/* Fixtures Tabs */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.25 }}
       >
         <Tabs defaultValue="recent" className="w-full">

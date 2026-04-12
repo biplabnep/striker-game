@@ -308,8 +308,8 @@ function LiveEventCard({
       {/* Goal celebration pulse */}
       {isGoal && (
         <motion.div
-          initial={{ opacity: 0.6, scale: 1 }}
-          animate={{ opacity: 0, scale: 1.5 }}
+          initial={{ opacity: 0.6 }}
+          animate={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="absolute inset-0 rounded-lg border-2 border-emerald-400 pointer-events-none"
         />
@@ -324,8 +324,8 @@ function LiveEventCard({
 function MOTMBadge() {
   return (
     <motion.div
-      initial={{ scale: 0, rotate: -30 }}
-      animate={{ scale: 1, rotate: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 15, delay: 0.3 }}
       className="flex flex-col items-center gap-1"
     >
@@ -600,7 +600,7 @@ export default function MatchDay() {
                 <motion.div
                   key={`${liveScore.home}-${liveScore.away}`}
                   animate={goalFlash ? {
-                    scale: [1, 1.15, 1],
+                    opacity: [0.5, 1, 0.5],
                   } : {}}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
                   className="text-4xl font-black text-white tracking-wider"
@@ -675,7 +675,7 @@ export default function MatchDay() {
               className="bg-emerald-500/15 border border-emerald-500/30 rounded-lg p-3 text-center"
             >
               <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
+                animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 0.2, repeat: 1 }}
                 className="text-2xl"
               >
@@ -790,7 +790,7 @@ export default function MatchDay() {
                 className="bg-[#161b22] border border-[#30363d] rounded-lg p-8 text-center max-w-xs mx-4"
               >
                 <motion.div
-                  animate={{ scale: [1, 1.05, 1] }}
+                  animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
                 >
                   <p className="text-3xl font-black text-white tracking-wider">FULL TIME</p>
@@ -1203,7 +1203,7 @@ export default function MatchDay() {
                   {/* VS */}
                   <div className="flex flex-col items-center gap-1">
                     <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
+                      animate={{ opacity: [0.5, 1, 0.5] }}
                       transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
                       className="text-[#8b949e] font-black text-xl"
                     >

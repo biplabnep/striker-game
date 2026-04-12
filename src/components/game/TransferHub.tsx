@@ -102,8 +102,8 @@ function TransferWindowTimeline({ currentWeek, leagueId }: { currentWeek: number
           {windows.map((w, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: i * 0.15, duration: 0.2 }}
               className={`absolute top-0 h-full ${
                 w.color === 'emerald' ? 'bg-emerald-500/20' : 'bg-cyan-500/20'
@@ -510,9 +510,9 @@ function AgentQualityCard({ agentQuality, reputation }: { agentQuality: number; 
               ) : (
                 <motion.div
                   key="upgrade-detail"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   className="space-y-2"
                 >
                   <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2.5">

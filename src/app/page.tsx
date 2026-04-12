@@ -1,41 +1,43 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import dynamic from 'next/dynamic';
 
-// Dynamic imports with loading fallback — avoids mounting all 30 components at once
-const MainMenu = dynamic(() => import('@/components/game/MainMenu'), { ssr: false });
-const CareerSetup = dynamic(() => import('@/components/game/CareerSetup'), { ssr: false });
-const Dashboard = dynamic(() => import('@/components/game/Dashboard'), { ssr: false });
-const MatchDay = dynamic(() => import('@/components/game/MatchDay'), { ssr: false });
-const TrainingPanel = dynamic(() => import('@/components/game/TrainingPanel'), { ssr: false });
-const TransferHub = dynamic(() => import('@/components/game/TransferHub'), { ssr: false });
-const CareerHub = dynamic(() => import('@/components/game/CareerHub'), { ssr: false });
-const AnalyticsPanel = dynamic(() => import('@/components/game/AnalyticsPanel'), { ssr: false });
-const SocialFeed = dynamic(() => import('@/components/game/SocialFeed'), { ssr: false });
-const EventsPanel = dynamic(() => import('@/components/game/EventsPanel'), { ssr: false });
-const SaveLoad = dynamic(() => import('@/components/game/SaveLoad'), { ssr: false });
-const BottomNav = dynamic(() => import('@/components/game/BottomNav'), { ssr: false });
-const LeagueTable = dynamic(() => import('@/components/game/LeagueTable'), { ssr: false });
-const SettingsPanel = dynamic(() => import('@/components/game/SettingsPanel'), { ssr: false });
-const PlayerProfile = dynamic(() => import('@/components/game/PlayerProfile'), { ssr: false });
-const SeasonObjectivesPanel = dynamic(() => import('@/components/game/SeasonObjectivesPanel'), { ssr: false });
-const CupBracket = dynamic(() => import('@/components/game/CupBracket'), { ssr: false });
-const YouthAcademy = dynamic(() => import('@/components/game/YouthAcademy'), { ssr: false });
-const RelationshipsPanel = dynamic(() => import('@/components/game/RelationshipsPanel'), { ssr: false });
-const ContinentalPanel = dynamic(() => import('@/components/game/ContinentalPanel'), { ssr: false });
-const InternationalPanel = dynamic(() => import('@/components/game/InternationalPanel'), { ssr: false });
-const MoralePanel = dynamic(() => import('@/components/game/MoralePanel'), { ssr: false });
-const InjuryReport = dynamic(() => import('@/components/game/InjuryReport'), { ssr: false });
-const PWAInstallPrompt = dynamic(() => import('@/components/game/PWAInstallPrompt'), { ssr: false });
-const SkillChallenges = dynamic(() => import('@/components/game/SkillChallenges'), { ssr: false });
-const ManagerOffice = dynamic(() => import('@/components/game/ManagerOffice'), { ssr: false });
-const PlayerAgentHub = dynamic(() => import('@/components/game/PlayerAgentHub'), { ssr: false });
-const DailyRoutineHub = dynamic(() => import('@/components/game/DailyRoutineHub'), { ssr: false });
-const CareerStatistics = dynamic(() => import('@/components/game/CareerStatistics'), { ssr: false });
-const TacticalBriefing = dynamic(() => import('@/components/game/TacticalBriefing'), { ssr: false });
+// Direct imports — Turbopack dynamic imports cause 503 on chunk compilation
+// Screen routing via React key prop (unmount/remount on switch, no AnimatePresence)
+import MainMenu from '@/components/game/MainMenu';
+import CareerSetup from '@/components/game/CareerSetup';
+import Dashboard from '@/components/game/Dashboard';
+import MatchDay from '@/components/game/MatchDay';
+import TrainingPanel from '@/components/game/TrainingPanel';
+import TransferHub from '@/components/game/TransferHub';
+import CareerHub from '@/components/game/CareerHub';
+import AnalyticsPanel from '@/components/game/AnalyticsPanel';
+import SocialFeed from '@/components/game/SocialFeed';
+import EventsPanel from '@/components/game/EventsPanel';
+import SaveLoad from '@/components/game/SaveLoad';
+import BottomNav from '@/components/game/BottomNav';
+import LeagueTable from '@/components/game/LeagueTable';
+import SettingsPanel from '@/components/game/SettingsPanel';
+import PlayerProfile from '@/components/game/PlayerProfile';
+import SeasonObjectivesPanel from '@/components/game/SeasonObjectivesPanel';
+import CupBracket from '@/components/game/CupBracket';
+import YouthAcademy from '@/components/game/YouthAcademy';
+import RelationshipsPanel from '@/components/game/RelationshipsPanel';
+import ContinentalPanel from '@/components/game/ContinentalPanel';
+import InternationalPanel from '@/components/game/InternationalPanel';
+import MoralePanel from '@/components/game/MoralePanel';
+import InjuryReport from '@/components/game/InjuryReport';
+import PWAInstallPrompt from '@/components/game/PWAInstallPrompt';
+import SkillChallenges from '@/components/game/SkillChallenges';
+import ManagerOffice from '@/components/game/ManagerOffice';
+import PlayerAgentHub from '@/components/game/PlayerAgentHub';
+import DailyRoutineHub from '@/components/game/DailyRoutineHub';
+import CareerStatistics from '@/components/game/CareerStatistics';
+import TacticalBriefing from '@/components/game/TacticalBriefing';
+import PlayerOfTheMonth from '@/components/game/PlayerOfTheMonth';
+import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -68,6 +70,7 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   daily_routine_hub: DailyRoutineHub,
   career_statistics: CareerStatistics,
   tactical_briefing: TacticalBriefing,
+  player_of_the_month: PlayerOfTheMonth,
 };
 
 const gameScreens: GameScreen[] = [
@@ -76,37 +79,30 @@ const gameScreens: GameScreen[] = [
   'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy',
   'relationships', 'continental', 'international', 'morale', 'injury_report',
   'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub',
-  'career_statistics', 'tactical_briefing',
+  'career_statistics', 'tactical_briefing', 'player_of_the_month',
 ];
 
 export default function Home() {
   const screen = useGameStore(state => state.screen);
   const gameState = useGameStore(state => state.gameState);
   const isProcessing = useGameStore(state => state.isProcessing);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
-    setReady(true);
   }, []);
 
   const ScreenComponent = screenComponents[screen] || MainMenu;
   const isGameScreen = gameScreens.includes(screen);
 
-  if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0d1117]">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-[#0d1117] text-[#c9d1d9]">
       <main className="flex-1 overflow-y-auto pb-20">
-        <ScreenComponent key={screen} />
+        {/* key forces unmount/remount on screen change — no AnimatePresence needed */}
+        <ErrorBoundary>
+          <ScreenComponent key={screen} />
+        </ErrorBoundary>
       </main>
       {isGameScreen && gameState && <BottomNav />}
       <PWAInstallPrompt />

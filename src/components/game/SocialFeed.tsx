@@ -274,7 +274,7 @@ function FanPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ y: -1 }}
+      whileHover={{ opacity: 0.9 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
@@ -316,7 +316,7 @@ function MediaPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ y: -1 }}
+      whileHover={{ opacity: 0.9 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
@@ -361,7 +361,7 @@ function OfficialPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ y: -1 }}
+      whileHover={{ opacity: 0.9 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
@@ -405,7 +405,7 @@ function AgentPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ y: -1 }}
+      whileHover={{ opacity: 0.9 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
@@ -449,7 +449,7 @@ function PunditPostCard({ post }: { post: SocialPost }) {
 
   return (
     <motion.div
-      whileHover={{ y: -1 }}
+      whileHover={{ opacity: 0.9 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
@@ -620,7 +620,7 @@ function TrendingPost({ post, rank }: { post: SocialPost; rank: number }) {
   return (
     <motion.div
       className="flex items-center gap-2 p-2 rounded-lg hover:bg-[#21262d] transition-colors"
-      whileHover={{ x: 2 }}
+      whileHover={{ opacity: 0.9 }}
     >
       <div className={`w-6 h-6 rounded-full ${config.iconBg} flex items-center justify-center text-[10px] font-bold ${config.accentColor}`}>
         {rank}

@@ -313,7 +313,7 @@ export default function ManagerOffice() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg border text-sm font-semibold shadow-lg ${
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg border text-sm font-semibold shadow ${
               toast.type === 'positive'
                 ? 'bg-emerald-900/90 border-emerald-500/30 text-emerald-400'
                 : toast.type === 'negative'

@@ -593,7 +593,8 @@ export type GameScreen =
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
   | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental' | 'international' | 'morale' | 'injury_report'
   | 'skill_challenges' | 'manager_office'
-  | 'player_agent_hub' | 'daily_routine_hub' | 'career_statistics' | 'tactical_briefing';
+  | 'player_agent_hub' | 'daily_routine_hub' | 'career_statistics' | 'tactical_briefing'
+  | 'player_of_the_month';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

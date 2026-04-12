@@ -431,7 +431,7 @@ export default function PlayerProfile() {
 
               {/* Potential with growth arrow */}
               <div className="flex flex-col items-center shrink-0">
-                <div className="relative w-16 h-16 rounded-full flex items-center justify-center border-2 border-slate-600">
+                <div className="relative w-16 h-16 rounded-3xl flex items-center justify-center border-2 border-slate-600">
                   <span className="font-bold text-lg text-[#8b949e]">{player.potential}</span>
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -701,9 +701,9 @@ export default function PlayerProfile() {
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
@@ -900,7 +900,7 @@ export default function PlayerProfile() {
                     className="relative flex items-start gap-3 pb-4 last:pb-0"
                   >
                     {/* Timeline dot */}
-                    <div className={`relative z-10 shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                    <div className={`relative z-10 shrink-0 w-8 h-8 rounded-2xl flex items-center justify-center ${
                       ms.unlocked ? 'bg-[#21262d] border-2 border-emerald-500/50' : 'bg-[#21262d] border-2 border-[#30363d]'
                     }`}>
                       <span className={ms.unlocked ? 'text-emerald-400' : 'text-[#484f58]'}>

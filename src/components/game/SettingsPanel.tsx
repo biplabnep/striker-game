@@ -137,7 +137,7 @@ export default function SettingsPanel() {
         <CardContent className="px-4 pb-4">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#21262d] flex items-center justify-center text-lg">
+              <div className="w-10 h-10 rounded-2xl bg-[#21262d] flex items-center justify-center text-lg">
                 {currentClub.logo}
               </div>
               <div className="flex-1 min-w-0">

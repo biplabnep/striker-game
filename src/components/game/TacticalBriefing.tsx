@@ -1559,7 +1559,7 @@ export default function TacticalBriefing() {
     <div className={`min-h-screen ${DARK_BG} pb-20`}>
       {/* Header */}
       <motion.div
-        className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur-sm px-4 py-3"
+        className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 px-4 py-3"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
