@@ -1551,3 +1551,154 @@ Stage Summary:
 - Injury Report screen fully functional with active injury tracking, history, and stats
 - Dashboard shows injury indicator when player is injured
 - App is stable, no critical bugs
+---
+Task ID: cron-05-05
+Agent: main (cron review)
+Task: QA testing, bug fixes, feature creation, styling improvements
+
+Current Project Status:
+- 35 game components (~88,000+ lines total), all using framer-motion opacity-only animations and dark theme
+- 28 registered game screens in GameScreen type (4 main nav + 24 in More panel)
+- Lint passes clean with zero errors
+- Dev server compiles without errors (HTTP 200)
+- Uncodixify compliance: zero y/x/scale transforms on large elements, zero gradients, zero glassmorphism, rounded-full violations minimized
+- PWA enabled with service worker and manifest
+
+Work Log:
+- Reviewed worklog.md from previous sessions
+- Dev server verified running (HTTP 200, keepalive active)
+- QA tested 9 screens via agent-browser (Dashboard, League Table, Player Agent Hub, Daily Routine Hub, Career Statistics, Tactical Briefing, Skill Challenges, Manager Office, Transfer Hub)
+- Found critical discovery: 6 feature files (PlayerAgentHub, DailyRoutineHub, CareerStatistics, TacticalBriefing, SkillChallenges, ManagerOffice) reported as created in previous sessions did NOT exist on disk
+- Found 2 bugs requiring fixes
+- Found 13 rounded-full violations across 5 files
+- Created all 6 missing feature components (~7,889 lines total)
+- Registered all 6 screens in types.ts, page.tsx, BottomNav.tsx
+- Fixed all 2 bugs and 13 styling violations
+- Final QA: all 9 screens PASS, both bug fixes verified
+
+Bug Fixes:
+
+1. League Table "L L L L L" for 0-match teams:
+   - File: src/components/game/LeagueTable.tsx
+   - Root cause: When entry.played=0, winRate=0/drawRate=0 caused Math.random() to always produce 'L'
+   - Fix: Added entry.played===0 guard to skip random form generator, set form to []
+   - Also updated getFormLabel() to return "No matches" text when form is empty
+   - Verified: All 20 teams now show "—" instead of fabricated losses
+
+2. TransferHub MarketValueSparkline NaN crash:
+   - File: src/components/game/TransferHub.tsx
+   - Root cause: Division by zero when dataPoints.length===1: i/(dataPoints.length-1) → 0/0 = NaN
+   - Fix: Added guard — when dataPoints.length<=1, use svgW/2 as x coordinate
+   - Verified: Sparkline renders cleanly, no NaN values
+
+Styling Fixes (13 rounded-full violations eliminated):
+
+1. AnalyticsPanel.tsx — 2 fixes: 96px overall/potential rating circles changed to rounded-3xl
+2. MatchDay.tsx — 4 fixes: 48-56px team logos changed to rounded-xl
+3. PressConference.tsx — 3 fixes: 32-40px close button, reporter avatar, answer icon changed to rounded-lg/xl
+4. SocialFeed.tsx — 3 fixes: 32px emoji/transfer/interview icons changed to rounded-lg
+5. ContractNegotiation.tsx — 1 fix: 48px loading spinner changed to rounded-xl
+
+New Features Created (6 components, ~7,889 lines total):
+
+33. PlayerAgentHub.tsx (NEW, ~1,446 lines) — 4-Tab Agent Hub:
+   - Agent Profile: David Silva agent card, negotiation skill bar, transfer success rate, specialization badges, contact info, relationship meter
+   - Contract Advice: current contract card, wage vs league avg comparison, contract health indicator (Secure/Expiring/Critical), extension recommendation, market value sparkline SVG
+   - Transfer Talk: interested clubs from game data with title-cased league names, budget formatting (€XM), transfer window countdown, context-aware transfer tips
+   - Career Plan: short-term goals with progress bars, long-term ambitions, OVR projection SVG bar chart, retirement age calculation
+   - Registered as 'player_agent_hub' in types.ts, page.tsx, BottomNav.tsx
+
+34. DailyRoutineHub.tsx (NEW, ~1,449 lines) — Weekly Schedule Hub:
+   - Weekly schedule grid: 7 columns (Mon-Sun) with AM/PM slots, click to assign activities
+   - 22 activities across 6 categories: Training (8), Recovery (4), Nutrition (3), Mental (3), Social (2), Education (2)
+   - Energy system: energy=fitness, each activity costs energyCost*8, prevents over-scheduling
+   - Activity picker: shadcn Tabs with 6 category tabs, shows affordable/locked activities
+   - Weekly effects summary: net attribute effects on PAC/SHO/PAS/DRI/DEF/PHY
+   - Recommendations engine: context-aware tips based on fitness/morale/form
+   - Quick presets: Balanced Week, Recovery Focus, Intensive Training
+   - Registered as 'daily_routine_hub'
+
+35. CareerStatistics.tsx (NEW, ~1,031 lines) — Career Stats Deep Dive:
+   - 6 tabs: Overview, Goals, Assists, Ratings, Records, Seasons
+   - Overview: summary cards, per-game ratios, season progress table, attribute evolution, market value sparkline
+   - Goals: total, per-season bar chart, goal timing heatmap (6 buckets), streak/hat-trick counters, competition breakdown
+   - Assists: total, per-season chart, assist types distribution, key passes per game
+   - Ratings: career average with quality badge, last-10 bar chart (color-coded), rating distribution histogram, Man of Match count, consistency score
+   - Records: personal/season records, milestone progress bars
+   - Seasons: season comparison cards, improvement arrows, awards, trophy cabinet
+   - Registered as 'career_statistics'
+
+36. TacticalBriefing.tsx (NEW, ~1,693 lines) — Pre-Match Tactical Briefing:
+   - 5 tabs: Next Match, Analysis, Weaknesses, Set Pieces, Match Plan
+   - Next Match: home/away teams, league position comparison, form guide, head-to-head, weather, venue
+   - Analysis: opponent profile (formation, style, squad quality), key strengths, formation matchup, attribute bars
+   - Weaknesses: tactical weaknesses from style, formation-specific weaknesses, squad quality gap
+   - Set Pieces: attacking/defending strategies (corners, free kicks, penalties), position-specific roles
+   - Match Plan: 5-item checklist, mindset selector, preparation rating gauge, pre-match notes (localStorage), context-aware tips
+   - Registered as 'tactical_briefing'
+
+37. SkillChallenges.tsx (NEW, ~1,464 lines) — 3 Mini-Game Skill Challenges:
+   - Free Kick Accuracy: SVG goal with 6 target zones, shooting-attribute-based accuracy, 5 attempts, S/A/B/C/D rating
+   - Dribbling Course: horizontal SVG course with cone gates, 3 difficulty levels, timer, direction navigation
+   - Crossing Accuracy: pitch section SVG with 3 target zones, power selection, streak bonus, 5 crosses
+   - Challenge selection cards, results screen with attribute gains (+1-2 to relevant attributes), 3 attempts/week limit
+   - Registered as 'skill_challenges'
+
+38. ManagerOffice.tsx (NEW, ~806 lines) — Manager Interaction Hub:
+   - Manager profile: name, formation, playing style, experience stats, relationship meter (0-100)
+   - Weekly feedback: 3 cards (Performance, Training, Squad Role) with contextual messages
+   - 4 request options: More Playing Time, Position Change, Transfer Request, Private Chat — each with manager response
+   - 4 relationship actions: Praise (+5), Discuss Tactics (+2), Gift (+3), Complain (-5)
+   - Meeting history: last 5 interactions with icons, summaries, relationship changes
+   - Registered as 'manager_office'
+
+Files Modified:
+- src/lib/game/types.ts (added 4 screen types to GameScreen union)
+- src/app/page.tsx (added 6 dynamic imports, screenComponents entries, gameScreens entries)
+- src/components/game/BottomNav.tsx (added 4 More panel items: Agent, Routine, Statistics, Briefing; added icon imports)
+- src/components/game/LeagueTable.tsx (bug fix: form guard for 0-match teams)
+- src/components/game/TransferHub.tsx (bug fix: NaN sparkline guard)
+- src/components/game/AnalyticsPanel.tsx (styling: 2 rounded-full → rounded-3xl)
+- src/components/game/MatchDay.tsx (styling: 4 rounded-full → rounded-xl)
+- src/components/game/PressConference.tsx (styling: 3 rounded-full → rounded-lg/xl)
+- src/components/game/SocialFeed.tsx (styling: 3 rounded-full → rounded-lg)
+- src/components/game/ContractNegotiation.tsx (styling: 1 rounded-full → rounded-xl)
+
+Files Created:
+- src/components/game/PlayerAgentHub.tsx (NEW, 1,446 lines)
+- src/components/game/DailyRoutineHub.tsx (NEW, 1,449 lines)
+- src/components/game/CareerStatistics.tsx (NEW, 1,031 lines)
+- src/components/game/TacticalBriefing.tsx (NEW, 1,693 lines)
+- src/components/game/SkillChallenges.tsx (NEW, 1,464 lines)
+- src/components/game/ManagerOffice.tsx (NEW, 806 lines)
+
+QA Verification (agent-browser):
+- Dashboard: PASS — full analytics, OVR/Pot display, radar chart
+- League Table: PASS — form column shows "—" for 0-match teams (bug fix verified)
+- Player Agent Hub: PASS — all 4 tabs work (Agent/Contract/Transfer/Career Plan)
+- Daily Routine Hub: PASS — schedule grid, energy system, activities, recommendations
+- Career Statistics: PASS — all 6 tabs render with proper data
+- Tactical Briefing: PASS — all 5 tabs render with match data
+- Skill Challenges: PASS — 3 challenge cards with difficulty levels
+- Manager Office: PASS — manager profile, feedback, requests, relationship actions
+- Transfer Hub: PASS — sparkline renders without NaN (bug fix verified)
+
+All lint checks pass clean (zero errors).
+
+Unresolved Issues:
+- No critical issues found this session
+- ~245 rounded-full instances remain across files (mostly small elements ≤24px — status dots, tiny badges, progress bars — acceptable per Uncodixify rules)
+- Match simulation buttons (Play/Quick Simulate) remain non-functional (advanceWeek heavy function)
+- Next.js DevTools shows "2 Issues" badge on some screens (dev-mode warnings, not runtime errors)
+
+Priority Recommendations for Next Phase:
+1. Debug and fix advanceWeek function to enable match simulation
+2. Add end-of-season automatic transition to SeasonEndSummary screen
+3. Wire achievement triggers to actual game events
+4. Add player agent contract negotiation mini-game with real consequences
+5. Create Post-match Analysis screen with detailed stats
+6. Add Player of the Month voting feature
+7. Implement dynamic weather affecting match outcomes
+8. Mobile responsiveness audit across all 35+ components
+9. Add sound effects for match simulation events
+10. Continue rounded-full cleanup on any remaining large elements

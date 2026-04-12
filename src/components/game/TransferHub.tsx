@@ -364,7 +364,7 @@ function MarketValueSparkline({ player, recentResults }: { player: { marketValue
   const padY = 4;
 
   const points = dataPoints.map((v, i) => ({
-    x: padX + (i / (dataPoints.length - 1)) * (svgW - padX * 2),
+    x: dataPoints.length <= 1 ? svgW / 2 : padX + (i / (dataPoints.length - 1)) * (svgW - padX * 2),
     y: padY + (1 - (v - minVal) / range) * (svgH - padY * 2),
   }));
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -34,6 +34,12 @@ const moreItems: NavItem[] = [
   { screen: 'social', icon: <MessageSquare className="h-5 w-5" />, label: 'Social Feed' },
   { screen: 'season_objectives', icon: <Target className="h-5 w-5" />, label: 'Objectives' },
   { screen: 'events', icon: <Bell className="h-5 w-5" />, label: 'Events' },
+  { screen: 'skill_challenges', icon: <Target className="h-5 w-5" />, label: 'Challenges' },
+  { screen: 'manager_office', icon: <Briefcase className="h-5 w-5" />, label: 'Manager' },
+  { screen: 'player_agent_hub', icon: <UserRound className="h-5 w-5" />, label: 'Agent' },
+  { screen: 'daily_routine_hub', icon: <Calendar className="h-5 w-5" />, label: 'Routine' },
+  { screen: 'career_statistics', icon: <ScrollText className="h-5 w-5" />, label: 'Statistics' },
+  { screen: 'tactical_briefing', icon: <ClipboardList className="h-5 w-5" />, label: 'Briefing' },
   { screen: 'settings', icon: <Settings className="h-5 w-5" />, label: 'Settings' },
 ];
 

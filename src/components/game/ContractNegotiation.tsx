@@ -821,7 +821,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  className="w-12 h-12 rounded-full border-2 border-[#30363d] border-t-emerald-400"
+                  className="w-12 h-12 rounded-xl border-2 border-[#30363d] border-t-emerald-400"
                 />
               </div>
               <div className="text-center">

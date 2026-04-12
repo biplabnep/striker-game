@@ -618,7 +618,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:text-white hover:border-slate-600 transition-colors"
+              className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-lg bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:text-white hover:border-slate-600 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -728,7 +728,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                     >
                       {/* Reporter avatar + name */}
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-[#21262d] border border-[#30363d] flex items-center justify-center text-xl">
+                        <div className="w-10 h-10 rounded-xl bg-[#21262d] border border-[#30363d] flex items-center justify-center text-xl">
                           {reporterAvatar}
                         </div>
                         <div>
@@ -762,7 +762,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                               className={`w-full text-left p-3.5 rounded-lg border transition-all duration-200 ${config.borderColor} ${config.bgColor} group`}
                             >
                               <div className="flex items-start gap-3">
-                                <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${config.bgColor} border ${config.borderColor}`}>
+                                <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor} border ${config.borderColor}`}>
                                   {config.icon}
                                 </div>
                                 <div className="flex-1 min-w-0">

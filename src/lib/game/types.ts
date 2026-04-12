@@ -591,7 +591,9 @@ export type GameScreen =
   | 'training' | 'transfers' | 'agent_hub' | 'career_hub'
   | 'analytics' | 'season_stats' | 'social' | 'events'
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
-  | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental' | 'international' | 'morale' | 'injury_report';
+  | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental' | 'international' | 'morale' | 'injury_report'
+  | 'skill_challenges' | 'manager_office'
+  | 'player_agent_hub' | 'daily_routine_hub' | 'career_statistics' | 'tactical_briefing';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

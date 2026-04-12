@@ -589,7 +589,7 @@ export default function MatchDay() {
             <div className="flex items-center justify-center gap-4 px-4 pb-3">
               {/* Home Team */}
               <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-[#21262d] border border-[#30363d]">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-[#21262d] border border-[#30363d]">
                   {lastResult.homeClub.logo}
                 </div>
                 <span className="text-xs text-[#c9d1d9] font-semibold text-center leading-tight">{homeName}</span>
@@ -623,7 +623,7 @@ export default function MatchDay() {
 
               {/* Away Team */}
               <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-[#21262d] border border-[#30363d]">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-[#21262d] border border-[#30363d]">
                   {lastResult.awayClub.logo}
                 </div>
                 <span className="text-xs text-[#c9d1d9] font-semibold text-center leading-tight">{awayName}</span>
@@ -1190,7 +1190,7 @@ export default function MatchDay() {
                   {/* Home Team */}
                   <div className="flex flex-col items-center gap-1.5 min-w-[90px]">
                     <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
                       style={{ backgroundColor: `${currentClub.primaryColor}20`, border: `2px solid ${currentClub.primaryColor}40` }}
                     >
                       {currentClub.logo}
@@ -1217,7 +1217,7 @@ export default function MatchDay() {
                   {/* Away Team */}
                   <div className="flex flex-col items-center gap-1.5 min-w-[90px]">
                     <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
                       style={{ backgroundColor: `${opponent.primaryColor}20`, border: `2px solid ${opponent.primaryColor}40` }}
                     >
                       {opponent.logo}

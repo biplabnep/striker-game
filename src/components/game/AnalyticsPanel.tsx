@@ -331,7 +331,7 @@ export default function AnalyticsPanel() {
             <div className="flex items-center justify-around">
               <div className="text-center">
                 <motion.div
-                  className="w-24 h-24 rounded-full flex items-center justify-center font-black text-3xl border-[3px]"
+                  className="w-24 h-24 rounded-3xl flex items-center justify-center font-black text-3xl border-[3px]"
                   style={{
                     borderColor: getOverallColor(player.overall),
                     color: getOverallColor(player.overall),
@@ -356,7 +356,7 @@ export default function AnalyticsPanel() {
                 <div className="w-0.5 h-6 bg-[#30363d]" />
               </div>
               <div className="text-center">
-                <div className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-2xl border-2 border-dashed border-slate-600 text-[#8b949e]">
+                <div className="w-24 h-24 rounded-3xl flex items-center justify-center font-bold text-2xl border-2 border-dashed border-slate-600 text-[#8b949e]">
                   {player.potential}
                 </div>
                 <p className="text-xs text-[#8b949e] mt-2">Potential</p>

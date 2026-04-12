@@ -31,6 +31,12 @@ const InternationalPanel = dynamic(() => import('@/components/game/International
 const MoralePanel = dynamic(() => import('@/components/game/MoralePanel'), { ssr: false });
 const InjuryReport = dynamic(() => import('@/components/game/InjuryReport'), { ssr: false });
 const PWAInstallPrompt = dynamic(() => import('@/components/game/PWAInstallPrompt'), { ssr: false });
+const SkillChallenges = dynamic(() => import('@/components/game/SkillChallenges'), { ssr: false });
+const ManagerOffice = dynamic(() => import('@/components/game/ManagerOffice'), { ssr: false });
+const PlayerAgentHub = dynamic(() => import('@/components/game/PlayerAgentHub'), { ssr: false });
+const DailyRoutineHub = dynamic(() => import('@/components/game/DailyRoutineHub'), { ssr: false });
+const CareerStatistics = dynamic(() => import('@/components/game/CareerStatistics'), { ssr: false });
+const TacticalBriefing = dynamic(() => import('@/components/game/TacticalBriefing'), { ssr: false });
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -57,10 +63,16 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   international: InternationalPanel,
   morale: MoralePanel,
   injury_report: InjuryReport,
+  skill_challenges: SkillChallenges,
+  manager_office: ManagerOffice,
+  player_agent_hub: PlayerAgentHub,
+  daily_routine_hub: DailyRoutineHub,
+  career_statistics: CareerStatistics,
+  tactical_briefing: TacticalBriefing,
 };
 
 const menuScreens: GameScreen[] = ['main_menu', 'career_setup', 'save_load'];
-const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy', 'relationships', 'continental', 'international', 'morale', 'injury_report'];
+const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy', 'relationships', 'continental', 'international', 'morale', 'injury_report', 'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub', 'career_statistics', 'tactical_briefing'];
 
 export default function Home() {
   const screen = useGameStore(state => state.screen);

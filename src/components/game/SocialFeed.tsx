@@ -279,7 +279,7 @@ function FanPostCard({ post }: { post: SocialPost }) {
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
-          <div className={`w-8 h-8 rounded-full ${config.iconBg} flex items-center justify-center text-sm`}>
+          <div className={`w-8 h-8 rounded-lg ${config.iconBg} flex items-center justify-center text-sm`}>
             {config.emoji}
           </div>
           <div className="flex-1 min-w-0">
@@ -410,7 +410,7 @@ function AgentPostCard({ post }: { post: SocialPost }) {
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
-          <div className={`w-8 h-8 rounded-full ${config.iconBg} flex items-center justify-center`}>
+          <div className={`w-8 h-8 rounded-lg ${config.iconBg} flex items-center justify-center`}>
             <Briefcase className="h-4 w-4 text-amber-400" />
           </div>
           <div className="flex-1 min-w-0">
@@ -454,7 +454,7 @@ function PunditPostCard({ post }: { post: SocialPost }) {
     >
       <Card className={`bg-[#161b22] ${config.borderColor} border overflow-hidden`}>
         <div className={`${config.headerBg} px-3 py-2 flex items-center gap-2`}>
-          <div className={`w-8 h-8 rounded-full ${config.iconBg} flex items-center justify-center`}>
+          <div className={`w-8 h-8 rounded-lg ${config.iconBg} flex items-center justify-center`}>
             <Mic className="h-4 w-4 text-violet-400" />
           </div>
           <div className="flex-1 min-w-0">

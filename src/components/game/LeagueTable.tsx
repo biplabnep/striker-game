@@ -87,15 +87,19 @@ export default function LeagueTable() {
     // For clubs not in recent results, generate placeholder form based on league position
     for (const entry of gameState.leagueTable) {
       if (!formMap.has(entry.clubId)) {
-        const winRate = entry.won / Math.max(1, entry.played);
-        const form: ('W' | 'D' | 'L')[] = [];
-        for (let i = 0; i < 5; i++) {
-          const r = Math.random();
-          if (r < winRate) form.push('W');
-          else if (r < winRate + (entry.drawn / Math.max(1, entry.played))) form.push('D');
-          else form.push('L');
+        if (entry.played === 0) {
+          formMap.set(entry.clubId, []);
+        } else {
+          const winRate = entry.won / Math.max(1, entry.played);
+          const form: ('W' | 'D' | 'L')[] = [];
+          for (let i = 0; i < 5; i++) {
+            const r = Math.random();
+            if (r < winRate) form.push('W');
+            else if (r < winRate + (entry.drawn / Math.max(1, entry.played))) form.push('D');
+            else form.push('L');
+          }
+          formMap.set(entry.clubId, form);
         }
-        formMap.set(entry.clubId, form);
       }
     }
 
@@ -137,7 +141,9 @@ export default function LeagueTable() {
     return form.reduce((sum, r) => sum + (r === 'W' ? 3 : r === 'D' ? 1 : 0), 0);
   };
 
-  const getFormLabel = (clubId: string): { text: string; color: string } => {
+  const getFormLabel = (clubId: string, played: number): { text: string; color: string } => {
+    const form = clubForm.get(clubId) || [];
+    if (form.length === 0 || played === 0) return { text: 'No matches', color: 'text-[#484f58]' };
     const pts = getFormPoints(clubId);
     if (pts >= 12) return { text: 'Excellent', color: 'text-emerald-400' };
     if (pts >= 8) return { text: 'Good', color: 'text-emerald-300' };
@@ -230,7 +236,7 @@ export default function LeagueTable() {
           const indicator = getPositionIndicator(pos);
           const gd = entry.goalsFor - entry.goalsAgainst;
           const form = clubForm.get(entry.clubId) || [];
-          const formInfo = getFormLabel(entry.clubId);
+          const formInfo = getFormLabel(entry.clubId, entry.played);
           const prevPos = previousPositions.get(entry.clubId);
           const isExpanded = expandedClub === entry.clubId;
 
@@ -382,7 +388,7 @@ export default function LeagueTable() {
         const indicator = getPositionIndicator(playerPos);
         const playerForm = clubForm.get(currentClub.id) || [];
         const formPts = getFormPoints(currentClub.id);
-        const formInfo = getFormLabel(currentClub.id);
+        const formInfo = getFormLabel(currentClub.id, playerEntry.played);
         const gd = playerEntry.goalsFor - playerEntry.goalsAgainst;
 
         // Points needed for next zone
