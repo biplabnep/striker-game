@@ -587,7 +587,7 @@ function ConfirmButton({
   confirmLabel: string;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleClick = useCallback(() => {
     if (confirming) {

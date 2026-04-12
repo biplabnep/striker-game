@@ -107,7 +107,7 @@ interface Milestone {
 
 function generateMilestones(gameState: ReturnType<typeof useGameStore.getState>['gameState']): Milestone[] {
   if (!gameState) return [];
-  const { player, seasons, recentResults, achievements } = gameState;
+  const { player, currentClub, seasons, recentResults, achievements } = gameState;
   const milestones: Milestone[] = [];
 
   // First match
@@ -865,6 +865,7 @@ export default function PlayerProfile() {
                     maxGoals={Math.max(seasonComparison.current.goals, seasonComparison.prev.goals, 10)}
                     maxAssists={Math.max(seasonComparison.current.assists, seasonComparison.prev.assists, 5)}
                     maxRating={10}
+                    maxApps={gameState ? getSeasonMatchdays(gameState.currentClub.league) : 38}
                   />
                 </div>
               </div>
@@ -1075,18 +1076,20 @@ function ComparisonRadar({
   maxGoals,
   maxAssists,
   maxRating,
+  maxApps,
 }: {
   current: { goals: number; assists: number; averageRating: number; appearances: number; cleanSheets: number };
   prev: { goals: number; assists: number; averageRating: number; appearances: number; cleanSheets: number };
   maxGoals: number;
   maxAssists: number;
   maxRating: number;
+  maxApps: number;
 }) {
   const metrics = [
     { label: 'Goals', curr: current.goals, prevVal: prev.goals, max: Math.max(maxGoals, 1) },
     { label: 'Assists', curr: current.assists, prevVal: prev.assists, max: Math.max(maxAssists, 1) },
     { label: 'Rating', curr: current.averageRating, prevVal: prev.averageRating, max: maxRating },
-    { label: 'Apps', curr: current.appearances, prevVal: prev.appearances, max: getSeasonMatchdays(gameState.currentClub.league) },
+    { label: 'Apps', curr: current.appearances, prevVal: prev.appearances, max: maxApps },
     { label: 'ClnSht', curr: current.cleanSheets, prevVal: prev.cleanSheets, max: Math.max(current.cleanSheets + 5, prev.cleanSheets + 5, 10) },
   ];
 

@@ -758,7 +758,7 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                             <motion.button
                               key={answer.style}
                               onClick={() => handleAnswer(answer.style)}
-                              whileHover={{ scale: 1 }}
+                              whileHover={{ opacity: 0.9 }}
                               className={`w-full text-left p-3.5 rounded-lg border transition-all duration-200 ${config.borderColor} ${config.bgColor} group`}
                             >
                               <div className="flex items-start gap-3">

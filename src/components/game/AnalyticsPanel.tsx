@@ -642,12 +642,12 @@ export default function AnalyticsPanel() {
               {/* Best / Worst badges */}
               {bestRating > 0 && (
                 <div className="flex gap-3 justify-center">
-                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1">
+                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1">
                     <Star className="h-3 w-3 text-emerald-400" />
                     <span className="text-[10px] text-emerald-400">Best</span>
                     <span className="text-xs font-bold text-emerald-300">{bestRating.toFixed(1)}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-full px-3 py-1">
+                  <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1">
                     <TrendingDown className="h-3 w-3 text-red-400" />
                     <span className="text-[10px] text-red-400">Worst</span>
                     <span className="text-xs font-bold text-red-300">{worstRating.toFixed(1)}</span>

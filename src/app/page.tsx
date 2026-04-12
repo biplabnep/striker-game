@@ -37,6 +37,8 @@ import DailyRoutineHub from '@/components/game/DailyRoutineHub';
 import CareerStatistics from '@/components/game/CareerStatistics';
 import TacticalBriefing from '@/components/game/TacticalBriefing';
 import PlayerOfTheMonth from '@/components/game/PlayerOfTheMonth';
+import PostMatchAnalysis from '@/components/game/PostMatchAnalysis';
+import PlayerComparison from '@/components/game/PlayerComparison';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -71,6 +73,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   career_statistics: CareerStatistics,
   tactical_briefing: TacticalBriefing,
   player_of_the_month: PlayerOfTheMonth,
+  post_match_analysis: PostMatchAnalysis,
+  player_comparison: PlayerComparison,
 };
 
 const gameScreens: GameScreen[] = [
@@ -80,6 +84,7 @@ const gameScreens: GameScreen[] = [
   'relationships', 'continental', 'international', 'morale', 'injury_report',
   'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub',
   'career_statistics', 'tactical_briefing', 'player_of_the_month',
+  'post_match_analysis', 'player_comparison',
 ];
 
 export default function Home() {

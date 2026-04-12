@@ -236,7 +236,7 @@ function InteractionButtons({ type, engagement, onLike }: { type: PostType; enga
         onClick={handleLike}
       >
         <motion.div
-          animate={liked ? { scale: [1, 1.4, 1] } : {}}
+          animate={liked ? { opacity: [1, 0.5, 1] } : {}}
           transition={{ duration: 0.2 }}
         >
           <Heart className={`h-3.5 w-3.5 ${liked ? 'fill-rose-500 text-rose-500' : 'text-[#8b949e]'}`} />

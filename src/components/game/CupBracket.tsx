@@ -271,7 +271,7 @@ export default function CupBracket() {
                 <div className="flex flex-col items-center mx-2">
                   <motion.div
                     className="text-sm font-black text-amber-400/80"
-                    animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
+                    animate={{ opacity: [0.6, 1, 0.6] }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                   >
                     VS
@@ -455,7 +455,7 @@ export default function CupBracket() {
               </div>
               <div>
                 <p className="text-lg font-bold text-emerald-400">
-                  {gameState.careerStats?.trophies?.filter(t =>
+                  {gameState.player.careerStats?.trophies?.filter(t =>
                     Object.values(CUP_NAMES).some(cn => cn.name === t.name)
                   ).length ?? 0}
                 </p>

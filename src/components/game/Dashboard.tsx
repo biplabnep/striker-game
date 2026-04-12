@@ -388,7 +388,7 @@ export default function Dashboard() {
             <div className="flex flex-col items-center relative">
               {/* Animated glow effect behind OVR */}
               <motion.div
-                className="absolute inset-0 rounded-full"
+                className="absolute inset-0 rounded-3xl"
                 style={{
                   boxShadow: player.overall >= 70
                     ? '0 0 20px 4px rgba(34,197,94,0.35), 0 0 40px 8px rgba(34,197,94,0.15)'

@@ -523,8 +523,8 @@ export default function YouthAcademy() {
                     <YouthPlayerCard
                       key={player.id}
                       player={player}
-                      onPromote={promoteYouthPlayer}
-                      onSetFocus={setYouthTrainingFocus}
+                      onPromote={(target) => promoteYouthPlayer(player.id, target)}
+                      onSetFocus={(focus) => setYouthTrainingFocus(player.id, focus)}
                       expanded={expandedPlayer === player.id}
                       onToggle={() => setExpandedPlayer(expandedPlayer === player.id ? null : player.id)}
                     />
@@ -554,8 +554,8 @@ export default function YouthAcademy() {
                     <YouthPlayerCard
                       key={player.id}
                       player={player}
-                      onPromote={promoteYouthPlayer}
-                      onSetFocus={setYouthTrainingFocus}
+                      onPromote={(target) => promoteYouthPlayer(player.id, target)}
+                      onSetFocus={(focus) => setYouthTrainingFocus(player.id, focus)}
                       expanded={expandedPlayer === player.id}
                       onToggle={() => setExpandedPlayer(expandedPlayer === player.id ? null : player.id)}
                     />

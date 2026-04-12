@@ -511,7 +511,7 @@ export default function EventsPanel() {
                                       <motion.button
                                         onClick={() => resolveEvent(event.id, choice.id)}
                                         className="w-full text-left p-3 rounded-lg bg-[#21262d] border border-[#30363d] hover:bg-[#2d333b] hover:border-[#444c56] transition-colors group relative overflow-hidden"
-                                        whileHover={{ scale: 1 }}
+                                        whileHover={{ opacity: 0.9 }}
                                       >
                                         {/* Hover glow effect */}
                                         <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />

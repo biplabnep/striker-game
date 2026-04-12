@@ -567,7 +567,7 @@ export default function MatchDay() {
                   <motion.div
                     animate={{ opacity: [1, 0.3, 1] }}
                     transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
-                    className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-2 py-0.5 rounded-full"
+                    className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-2 py-0.5 rounded-lg"
                   >
                     <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
                     <span className="text-[10px] font-black text-red-400 tracking-wider">LIVE</span>

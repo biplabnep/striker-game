@@ -141,7 +141,7 @@ function TeamDynamicsCard({ dynamics }: { dynamics: TeamDynamics }) {
       {/* Atmosphere Badge */}
       <div className="mb-4">
         <span className="text-xs text-[#8b949e] mb-1.5 block">Dressing Room Atmosphere</span>
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-semibold ${atmosphere.color}`}>
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold ${atmosphere.color}`}>
           <span>{atmosphere.icon}</span>
           <span>{atmosphere.label}</span>
         </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -41,6 +41,8 @@ const moreItems: NavItem[] = [
   { screen: 'career_statistics', icon: <ScrollText className="h-5 w-5" />, label: 'Statistics' },
   { screen: 'tactical_briefing', icon: <ClipboardList className="h-5 w-5" />, label: 'Briefing' },
   { screen: 'player_of_the_month', icon: <Star className="h-5 w-5" />, label: 'PotM' },
+  { screen: 'post_match_analysis', icon: <FileText className="h-5 w-5" />, label: 'Analysis' },
+  { screen: 'player_comparison', icon: <GitCompareArrows className="h-5 w-5" />, label: 'Compare' },
   { screen: 'settings', icon: <Settings className="h-5 w-5" />, label: 'Settings' },
 ];
 
@@ -85,7 +87,7 @@ export default function BottomNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2"
+              className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 max-h-[65vh] overflow-y-auto"
             >
               <div className="max-w-lg mx-auto bg-[#161b22] rounded-lg border border-[#30363d] shadow overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363d]">
@@ -94,7 +96,7 @@ export default function BottomNav() {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-4 gap-1 p-3">
+                <div className="grid grid-cols-4 gap-1 p-3 pb-4">
                   {moreItems.map(item => {
                     const isActive = screen === item.screen;
                     const hasBadge = item.screen === 'events' && activeEvents.length > 0;
