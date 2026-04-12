@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { AnimatePresence, motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
-// Lazy load screen components
+// Dynamic imports with loading fallback — avoids mounting all 30 components at once
 const MainMenu = dynamic(() => import('@/components/game/MainMenu'), { ssr: false });
 const CareerSetup = dynamic(() => import('@/components/game/CareerSetup'), { ssr: false });
 const Dashboard = dynamic(() => import('@/components/game/Dashboard'), { ssr: false });
@@ -71,51 +70,46 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   tactical_briefing: TacticalBriefing,
 };
 
-const menuScreens: GameScreen[] = ['main_menu', 'career_setup', 'save_load'];
-const gameScreens: GameScreen[] = ['dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics', 'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table', 'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy', 'relationships', 'continental', 'international', 'morale', 'injury_report', 'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub', 'career_statistics', 'tactical_briefing'];
+const gameScreens: GameScreen[] = [
+  'dashboard', 'match_day', 'training', 'transfers', 'career_hub', 'analytics',
+  'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table',
+  'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy',
+  'relationships', 'continental', 'international', 'morale', 'injury_report',
+  'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub',
+  'career_statistics', 'tactical_briefing',
+];
 
 export default function Home() {
   const screen = useGameStore(state => state.screen);
   const gameState = useGameStore(state => state.gameState);
   const isProcessing = useGameStore(state => state.isProcessing);
+  const [ready, setReady] = useState(false);
 
-  // Register service worker for PWA
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // Service worker registration failed - non-critical
-      });
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+    setReady(true);
   }, []);
 
   const ScreenComponent = screenComponents[screen] || MainMenu;
   const isGameScreen = gameScreens.includes(screen);
 
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0d1117]">
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0d1117] text-[#c9d1d9]">
-      {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-20">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={screen}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="h-full"
-          >
-            <ScreenComponent />
-          </motion.div>
-        </AnimatePresence>
+        <ScreenComponent key={screen} />
       </main>
-
-      {/* Bottom Navigation for in-game screens */}
       {isGameScreen && gameState && <BottomNav />}
-
-      {/* PWA Install Prompt */}
       <PWAInstallPrompt />
-
-      {/* Processing overlay */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 flex flex-col items-center gap-3">
