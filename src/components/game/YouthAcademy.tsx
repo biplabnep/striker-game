@@ -80,9 +80,9 @@ function YouthPlayerCard({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="bg-[#161b22]  border border-[#30363d] rounded-lg overflow-hidden"
     >
       {/* Header row */}
@@ -395,8 +395,8 @@ export default function YouthAcademy() {
     <div className="max-w-lg mx-auto px-4 py-4 pb-24 space-y-4">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]"
       >
         <div className="flex items-center gap-3">
@@ -642,8 +642,8 @@ export default function YouthAcademy() {
                 return (
                   <motion.div
                     key={`${result.fixtureId}-${idx}`}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ delay: idx * 0.05 }}
                     className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex items-center gap-3"
                   >

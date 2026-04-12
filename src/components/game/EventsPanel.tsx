@@ -420,8 +420,8 @@ export default function EventsPanel() {
             </Card>
           </motion.div>
         ) : (
-          <AnimatePresence mode="popLayout">
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <AnimatePresence mode="popLayout">
               {filteredEvents.map((event, eventIndex) => {
                 const importance = getEventImportance(event);
                 const impConfig = importanceConfig[importance];
@@ -566,8 +566,8 @@ export default function EventsPanel() {
                   </motion.div>
                 );
               })}
-            </div>
-          </AnimatePresence>
+            </AnimatePresence>
+          </div>
         )}
 
         {/* Event Timeline for Resolved Events */}

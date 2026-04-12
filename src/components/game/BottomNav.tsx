@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -25,6 +25,7 @@ const moreItems: NavItem[] = [
   { screen: 'player_profile', icon: <UserCircle className="h-5 w-5" />, label: 'Profile' },
   { screen: 'training', icon: <Dumbbell className="h-5 w-5" />, label: 'Training' },
   { screen: 'transfers', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Transfers' },
+  { screen: 'transfer_negotiation', icon: <Handshake className="h-5 w-5" />, label: 'Negotiate' },
   { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },
   { screen: 'cup_bracket', icon: <Trophy className="h-5 w-5" />, label: 'Cup' },
   { screen: 'continental', icon: <Globe className="h-5 w-5" />, label: 'Europe' },
@@ -44,6 +45,7 @@ const moreItems: NavItem[] = [
   { screen: 'post_match_analysis', icon: <FileText className="h-5 w-5" />, label: 'Analysis' },
   { screen: 'player_comparison', icon: <GitCompareArrows className="h-5 w-5" />, label: 'Compare' },
   { screen: 'settings', icon: <Settings className="h-5 w-5" />, label: 'Settings' },
+  { screen: 'fan_engagement', icon: <HeartHandshake className="h-5 w-5" />, label: 'Fans' },
 ];
 
 const moreScreenSet = new Set(moreItems.map(i => i.screen));
@@ -73,20 +75,17 @@ export default function BottomNav() {
       {/* More Panel Overlay */}
       <AnimatePresence>
         {moreOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div
               className="fixed inset-0 bg-black/50 z-30"
               onClick={() => setMoreOpen(false)}
             />
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+            <div
               className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2 max-h-[65vh] overflow-y-auto"
             >
               <div className="max-w-lg mx-auto bg-[#161b22] rounded-lg border border-[#30363d] shadow overflow-hidden">
@@ -125,8 +124,8 @@ export default function BottomNav() {
                   })}
                 </div>
               </div>
-            </motion.div>
-          </>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

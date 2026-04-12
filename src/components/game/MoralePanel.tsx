@@ -216,8 +216,8 @@ export default function MoralePanel() {
     <div className="max-w-lg mx-auto px-4 py-4 pb-24 space-y-4">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
       >
         <div className="flex items-center gap-3">
@@ -266,8 +266,8 @@ export default function MoralePanel() {
 
       {/* Mindset Selection */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.05 }}
         className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
       >
@@ -341,8 +341,8 @@ export default function MoralePanel() {
       {/* Positive Factors */}
       {positiveFactors.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
           className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
         >
@@ -354,8 +354,8 @@ export default function MoralePanel() {
             {positiveFactors.map((factor, i) => (
               <motion.div
                 key={factor.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.04 }}
                 className="flex items-center justify-between p-2 rounded-md bg-emerald-500/5 border border-emerald-500/10"
               >
@@ -376,8 +376,8 @@ export default function MoralePanel() {
       {/* Negative Factors */}
       {negativeFactors.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
           className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
         >
@@ -389,8 +389,8 @@ export default function MoralePanel() {
             {negativeFactors.map((factor, i) => (
               <motion.div
                 key={factor.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.04 }}
                 className="flex items-center justify-between p-2 rounded-md bg-red-500/5 border border-red-500/10"
               >
@@ -410,8 +410,8 @@ export default function MoralePanel() {
 
       {/* Morale Tips */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
         className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
       >

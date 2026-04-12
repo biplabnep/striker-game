@@ -158,8 +158,8 @@ export default function CareerHub() {
           HERO SECTION - Player Overview
           ========================================= */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
         <Card className="relative overflow-hidden bg-[#161b22] border border-[#30363d]">
@@ -201,8 +201,8 @@ export default function CareerHub() {
 
               {/* Potential Arrow */}
               <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
                 className="flex flex-col items-center"
               >
@@ -222,8 +222,8 @@ export default function CareerHub() {
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 + i * 0.08 }}
                   className="text-center bg-[#21262d]  rounded-lg p-2 border border-[#30363d]"
                 >
@@ -242,8 +242,8 @@ export default function CareerHub() {
           CONTRACT INFORMATION CARD
           ========================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
@@ -352,8 +352,8 @@ export default function CareerHub() {
           CAREER TIMELINE
           ========================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">
@@ -380,8 +380,8 @@ export default function CareerHub() {
                     return (
                       <motion.div
                         key={i}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         transition={{ delay: 0.1 + i * 0.1 }}
                         className="relative flex items-start gap-3 pb-4 last:pb-0"
                       >
@@ -442,8 +442,8 @@ export default function CareerHub() {
           CAREER STATS DEEP DIVE
           ========================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">
@@ -607,8 +607,8 @@ export default function CareerHub() {
                   ].map((rec, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       transition={{ delay: 0.7 + i * 0.05 }}
                       className="bg-[#21262d] rounded-lg p-2 border border-[#30363d]"
                     >
@@ -624,8 +624,8 @@ export default function CareerHub() {
                 {/* Best League Position */}
                 {records.bestLeaguePos.value < 99 && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ delay: 0.9 }}
                     className="mt-1.5 bg-[#21262d] rounded-lg p-2 border border-[#30363d] flex items-center gap-2"
                   >
@@ -656,8 +656,8 @@ export default function CareerHub() {
           ENHANCED ACHIEVEMENTS
           ========================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">
@@ -772,8 +772,8 @@ export default function CareerHub() {
           CURRENT SEASON SNAPSHOT
           ========================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
         <Card className="bg-[#161b22]  border-[#30363d]">

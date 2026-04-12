@@ -526,7 +526,7 @@ function StorylineCard({ story, index }: { story: Storyline; index: number }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, delay: index * 0.1 }}
-      whileHover={{ y: 0 }}
+      whileHover={{ opacity: 0.9 }}
     >
       <div className="bg-[#21262d] border border-[#30363d] rounded-lg p-4 space-y-3">
         {/* Header */}

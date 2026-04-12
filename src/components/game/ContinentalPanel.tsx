@@ -109,8 +109,8 @@ function KnockoutFixtureCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
       className={`rounded-lg border overflow-hidden ${
         involvesPlayer
@@ -220,8 +220,8 @@ export default function ContinentalPanel() {
     return (
       <div className="max-w-lg mx-auto px-4 py-4 pb-24">
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           className="flex items-center gap-3 mb-4"
         >
           <div className="p-2 rounded-lg bg-[#21262d]">
@@ -268,8 +268,8 @@ export default function ContinentalPanel() {
     <div className="max-w-lg mx-auto px-4 py-4 pb-24">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="rounded-lg bg-[#161b22] border border-[#30363d] p-4 mb-4"
       >
         <div className="flex items-center gap-3">
@@ -339,8 +339,8 @@ export default function ContinentalPanel() {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             className="space-y-3"
           >
             {/* Competition status */}
@@ -422,8 +422,8 @@ export default function ContinentalPanel() {
         {/* Groups Tab */}
         {activeTab === 'groups' && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             className="space-y-3"
           >
             {Object.keys(groups).length > 0 ? (
@@ -447,8 +447,8 @@ export default function ContinentalPanel() {
         {/* Knockout Tab */}
         {activeTab === 'knockout' && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             className="space-y-3"
           >
             {knockoutFixtures.length > 0 ? (

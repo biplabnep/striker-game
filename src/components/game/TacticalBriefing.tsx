@@ -1544,6 +1544,7 @@ function MatchPlanTab() {
 
 export default function TacticalBriefing() {
   const gameState = useGameStore((s) => s.gameState);
+  const [activeTab, setActiveTab] = useState('next-match');
 
   if (!gameState) {
     return (
@@ -1586,7 +1587,7 @@ export default function TacticalBriefing() {
 
       {/* Tab Content */}
       <div className="max-w-lg mx-auto px-4 pt-4">
-        <Tabs defaultValue="next-match" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full bg-[#161b22] border border-[#30363d] rounded-lg p-1 h-auto flex-wrap">
             <TabsTrigger
               value="next-match"
@@ -1625,67 +1626,23 @@ export default function TacticalBriefing() {
             </TabsTrigger>
           </TabsList>
 
-          <AnimatePresence mode="wait">
-            <TabsContent value="next-match">
+          <TabsContent value={activeTab} className="mt-3">
+            <AnimatePresence mode="wait">
               <motion.div
-                key="next-match"
+                key={activeTab}
                 variants={fadeIn}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
               >
-                <NextMatchTab />
+                {activeTab === 'next-match' && <NextMatchTab />}
+                {activeTab === 'analysis' && <AnalysisTab />}
+                {activeTab === 'weaknesses' && <WeaknessesTab />}
+                {activeTab === 'set-pieces' && <SetPiecesTab />}
+                {activeTab === 'match-plan' && <MatchPlanTab />}
               </motion.div>
-            </TabsContent>
-
-            <TabsContent value="analysis">
-              <motion.div
-                key="analysis"
-                variants={fadeIn}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <AnalysisTab />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="weaknesses">
-              <motion.div
-                key="weaknesses"
-                variants={fadeIn}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <WeaknessesTab />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="set-pieces">
-              <motion.div
-                key="set-pieces"
-                variants={fadeIn}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <SetPiecesTab />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="match-plan">
-              <motion.div
-                key="match-plan"
-                variants={fadeIn}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <MatchPlanTab />
-              </motion.div>
-            </TabsContent>
-          </AnimatePresence>
+            </AnimatePresence>
+          </TabsContent>
         </Tabs>
       </div>
     </div>
