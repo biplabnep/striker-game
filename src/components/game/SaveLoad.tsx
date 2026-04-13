@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { SaveSlot } from '@/lib/game/types';
 import { getSaveSlots } from '@/services/persistenceService';
@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, Save, Trash2, Clock, Play, HardDrive,
-  Plus, Upload, Download, ChevronRight, User, Target,
+  Plus, Upload, Download, ChevronDown, User, Target,
   Building2, DollarSign, Calendar, ToggleLeft, ToggleRight,
-  FileJson, Shield, Zap, BarChart3, Info,
+  FileJson, Shield, Zap, BarChart3, Info, FolderInput,
+  FolderOutput, Database, ShieldCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // ---------------------------------------------------------------------------
 const MAX_SLOTS = 8;
 const AUTO_SAVE_KEY = 'elite_striker_autosave_settings';
+const LS_QUOTA_MB = 5;
 
 type AutoSaveFrequency = 'off' | 'every_week' | 'every_5_weeks';
 interface AutoSaveSettings {
@@ -69,9 +71,157 @@ function estimateSaveSize(slot: SaveSlot): number {
   return new Blob([JSON.stringify(slot)]).size;
 }
 
+/** Relative time string like "2m ago", "3h ago", "5d ago" */
+function getRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = Math.max(0, now - then);
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+
+  if (seconds < 60) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  if (weeks < 5) return `${weeks}w ago`;
+  return `${months}mo ago`;
+}
+
+/** Map OVR to a Tailwind border-left color class */
+function getOvrBorderClass(ovr: number): string {
+  if (ovr >= 90) return 'border-l-emerald-500';
+  if (ovr >= 85) return 'border-l-lime-500';
+  if (ovr >= 80) return 'border-l-amber-400';
+  if (ovr >= 70) return 'border-l-orange-400';
+  return 'border-l-red-400';
+}
+
+/** Map OVR to a Tailwind text color class */
+function getOvrTextClass(ovr: number): string {
+  if (ovr >= 90) return 'text-emerald-400';
+  if (ovr >= 85) return 'text-lime-400';
+  if (ovr >= 80) return 'text-amber-400';
+  if (ovr >= 70) return 'text-orange-400';
+  return 'text-red-400';
+}
+
+/** Map OVR to a Tailwind bg color class */
+function getOvrBgClass(ovr: number): string {
+  if (ovr >= 90) return 'bg-emerald-900/50';
+  if (ovr >= 85) return 'bg-lime-900/50';
+  if (ovr >= 80) return 'bg-amber-900/50';
+  if (ovr >= 70) return 'bg-orange-900/50';
+  return 'bg-red-900/50';
+}
+
+/** Estimate total localStorage usage in bytes */
+function getLocalStorageUsage(): { used: number; total: number } {
+  let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        total += (localStorage.getItem(key) || '').length;
+      }
+    }
+  } catch { /* ignore */ }
+  return { used: total * 2, total: LS_QUOTA_MB * 1024 * 1024 }; // UTF-16 = 2 bytes per char
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+/** Storage usage SVG donut chart */
+function StorageRing() {
+  const { used, total } = getLocalStorageUsage();
+  const pct = Math.min((used / total) * 100, 100);
+  const usedKB = (used / 1024).toFixed(1);
+  const totalMB = (total / (1024 * 1024)).toFixed(0);
+
+  // Determine color based on usage level
+  const ringColor = pct < 50 ? '#22C55E' : pct < 75 ? '#F59E0B' : '#EF4444';
+  const ringColorFaded = pct < 50 ? 'rgba(34,197,94,0.15)' : pct < 75 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)';
+
+  // SVG ring params
+  const radius = 28;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+  const center = 36;
+  const strokeWidth = 5;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative" style={{ width: 72, height: 72 }}>
+        <svg width="72" height="72" viewBox={`0 0 ${center * 2} ${center * 2}`}>
+          {/* Background track */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="#21262d"
+            strokeWidth={strokeWidth}
+          />
+          {/* Used portion arc */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            style={{ opacity: 0.9 }}
+          />
+        </svg>
+        {/* Center percentage label */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-xs font-bold" style={{ color: ringColor }}>{pct.toFixed(0)}%</span>
+          <span className="text-[8px] text-[#484f58]">used</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-xs text-[#c9d1d9] font-medium">
+          {usedKB} KB / {totalMB} MB
+        </span>
+        <span className="text-[10px] text-[#484f58]">
+          {pct < 50 ? 'Storage looking good' : pct < 75 ? 'Moderate usage' : 'Running low'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Slot capacity segmented bar */
+function SlotCapacityBar({ used }: { used: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        {Array.from({ length: MAX_SLOTS }).map((_, i) => (
+          <div
+            key={i}
+            className={`w-2.5 h-2.5 rounded-sm transition-colors ${
+              i < used
+                ? 'bg-emerald-500'
+                : 'bg-[#21262d]'
+            }`}
+          />
+        ))}
+      </div>
+      <span className="text-[10px] text-[#484f58] font-medium tabular-nums">
+        {used}/{MAX_SLOTS}
+      </span>
+    </div>
+  );
+}
 
 /** Stat pill used in the save details panel */
 function StatPill({ label, value, color = 'text-[#c9d1d9]' }: { label: string; value: string | number; color?: string }) {
@@ -132,6 +282,13 @@ function DeleteConfirm({
 }
 
 // ---------------------------------------------------------------------------
+// Active save pulse keyframes (opacity-only animation)
+// ---------------------------------------------------------------------------
+const activePulseStyle = {
+  animation: 'activePulse 2s ease-in-out infinite',
+};
+
+// ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 export default function SaveLoad() {
@@ -147,9 +304,16 @@ export default function SaveLoad() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [autoSave, setAutoSave] = useState<AutoSaveSettings>(loadAutoSaveSettings);
+  const [storageVersion, setStorageVersion] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const saves = useMemo(() => getSaveSlots(), [savesVersion]);
+
+  // Refresh storage ring periodically
+  useEffect(() => {
+    const iv = setInterval(() => setStorageVersion(v => v + 1), 5000);
+    return () => clearInterval(iv);
+  }, []);
 
   // ---- Flash Status ----
   const flashStatus = useCallback((msg: string) => {
@@ -231,9 +395,17 @@ export default function SaveLoad() {
   // ---------------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-[#0d1117] pb-20">
+      {/* Keyframe injection for active pulse */}
+      <style>{`
+        @keyframes activePulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
+
       <div className="max-w-lg mx-auto p-4">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-5">
           <Button variant="ghost" size="icon" onClick={() => setScreen('main_menu')} className="text-[#8b949e] hover:text-[#c9d1d9]">
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -241,36 +413,46 @@ export default function SaveLoad() {
             <h1 className="text-xl font-bold text-[#c9d1d9]">Save / Load</h1>
             <p className="text-xs text-[#484f58]">Manage your career saves</p>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-[#484f58]">
-            <HardDrive className="h-3 w-3" />
-            {saves.length}/{MAX_SLOTS}
-          </div>
         </div>
 
-        {/* Status Toast */}
+        {/* Status Toast — avoid -translate-x-1/2 (Uncodixify); use left-4 right-4 + mx-auto */}
         <AnimatePresence>
           {statusMsg && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-800 border border-emerald-600 text-emerald-200 text-sm px-4 py-2 rounded-lg shadow-lg"
+              className="fixed top-4 left-4 right-4 mx-auto z-50 max-w-sm bg-emerald-800 border border-emerald-600 text-emerald-200 text-sm px-4 py-2 rounded-lg shadow-lg text-center"
             >
               {statusMsg}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Mode Toggle */}
-        <div className="flex gap-2 mb-5">
+        {/* Storage Usage Card + Slot Capacity */}
+        <Card className="bg-[#161b22] border-[#30363d] mb-5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4 text-[#484f58]" />
+                <span className="text-xs text-[#8b949e] uppercase tracking-wider font-semibold">Storage</span>
+              </div>
+              <SlotCapacityBar used={saves.length} />
+            </div>
+            <StorageRing />
+          </CardContent>
+        </Card>
+
+        {/* Mode Toggle — Pill style */}
+        <div className="flex gap-2 mb-5 bg-[#161b22] border border-[#30363d] rounded-xl p-1">
           {(['load', 'save'] as const).map(m => (
             <button
               key={m}
               onClick={() => { setMode(m); setSelectedSave(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg text-sm font-semibold transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                 mode === m
-                  ? 'bg-emerald-600/20 border border-emerald-500 text-emerald-300'
-                  : 'bg-[#161b22] border border-[#30363d] text-[#8b949e] hover:bg-[#21262d] hover:text-[#c9d1d9]'
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30'
+                  : 'text-[#8b949e] hover:text-[#c9d1d9]'
               }`}
             >
               {m === 'load' ? <HardDrive className="h-4 w-4" /> : <Save className="h-4 w-4" />}
@@ -303,7 +485,7 @@ export default function SaveLoad() {
                         {gameState.currentClub.name} &bull; Season {gameState.currentSeason} &bull; Week {gameState.currentWeek}
                       </p>
                     </div>
-                    <Badge className="bg-emerald-800 text-emerald-300 text-xs border-0">
+                    <Badge className={`${getOvrBgClass(gameState.player.overall)} ${getOvrTextClass(gameState.player.overall)} text-xs border-0 font-bold`}>
                       OVR {gameState.player.overall}
                     </Badge>
                   </div>
@@ -356,6 +538,7 @@ export default function SaveLoad() {
                 const isActive = save.id === activeSaveId;
                 const isSelected = selectedSave?.id === save.id;
                 const gs = save.gameState;
+                const ovr = gs.player.overall;
 
                 return (
                   <motion.div
@@ -366,13 +549,14 @@ export default function SaveLoad() {
                   >
                     <Card
                       onClick={() => setSelectedSave(isSelected ? null : save)}
-                      className={`bg-[#161b22] border overflow-hidden cursor-pointer transition-colors ${
+                      className={`bg-[#161b22] border overflow-hidden cursor-pointer transition-colors border-l-4 ${getOvrBorderClass(ovr)} ${
                         isActive
                           ? 'border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
                           : isSelected
-                            ? 'border-blue-500'
+                            ? 'border-[#30363d] border-l-4 shadow-lg'
                             : 'border-[#30363d] hover:border-[#484f58]'
                       }`}
+                      style={isActive ? activePulseStyle : undefined}
                     >
                       <CardContent className="p-3">
                         {/* Top row */}
@@ -396,24 +580,32 @@ export default function SaveLoad() {
                             </p>
                             <div className="flex items-center gap-2 mt-1">
                               <Clock className="h-3 w-3 text-[#484f58]" />
+                              <span className="text-[10px] text-[#484f58]">{getRelativeTime(save.savedAt)}</span>
+                              <span className="text-[10px] text-[#30363d]">|</span>
                               <span className="text-[10px] text-[#484f58]">{formatDate(save.savedAt)}</span>
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <Badge className="bg-[#21262d] text-[#c9d1d9] text-xs border-0">
-                              OVR {gs.player.overall}
-                            </Badge>
-                            <ChevronRight className={`h-4 w-4 text-[#484f58] transition-colors ${isSelected ? 'rotate-90 text-blue-400' : ''}`} />
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Mini OVR badge — 24px, rounded-full allowed (≤24px rule) */}
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${getOvrBgClass(ovr)}`}>
+                              <span className={`text-[10px] font-bold ${getOvrTextClass(ovr)}`}>{ovr}</span>
+                            </div>
+                            {/* ChevronDown when selected instead of rotate-90 on ChevronRight (Uncodixify) */}
+                            {isSelected ? (
+                              <ChevronDown className="h-4 w-4 text-blue-400" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-[#484f58]" />
+                            )}
                           </div>
                         </div>
 
-                        {/* Mini stats row */}
+                        {/* Mini season stats row */}
                         <div className="grid grid-cols-4 gap-1.5 mt-3">
                           {[
-                            { label: 'GLS', val: gs.player.seasonStats.goals, c: 'text-emerald-400' },
-                            { label: 'AST', val: gs.player.seasonStats.assists, c: 'text-blue-400' },
-                            { label: 'APP', val: gs.player.seasonStats.appearances, c: 'text-amber-400' },
-                            { label: 'AGE', val: gs.player.age, c: 'text-[#c9d1d9]' },
+                            { label: 'Goals', val: gs.player.seasonStats.goals, c: 'text-emerald-400' },
+                            { label: 'Assists', val: gs.player.seasonStats.assists, c: 'text-blue-400' },
+                            { label: 'Apps', val: gs.player.seasonStats.appearances, c: 'text-amber-400' },
+                            { label: 'Season', val: `S${gs.currentSeason} W${gs.currentWeek}`, c: 'text-[#c9d1d9]' },
                           ].map(s => (
                             <div key={s.label} className="bg-[#21262d] rounded-md py-1 text-center">
                               <p className={`text-xs font-bold ${s.c}`}>{s.val}</p>
@@ -457,7 +649,7 @@ export default function SaveLoad() {
                                   </div>
                                   <div className="bg-[#21262d] rounded-lg p-2.5">
                                     <p className="text-[10px] text-[#484f58]">Overall</p>
-                                    <p className="text-sm text-emerald-400 font-bold">{gs.player.overall}</p>
+                                    <p className={`text-sm font-bold ${getOvrTextClass(ovr)}`}>{ovr}</p>
                                   </div>
                                 </div>
                               </div>
@@ -638,42 +830,62 @@ export default function SaveLoad() {
         </Card>
 
         {/* ================================================================ */}
-        {/* IMPORT / EXPORT (standalone)                                      */}
+        {/* IMPORT / EXPORT — Enhanced Visual Cards                          */}
         {/* ================================================================ */}
-        <Card className="bg-[#161b22] border-[#30363d] mt-3">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <FileJson className="h-4 w-4 text-[#484f58]" />
-              <span className="text-xs text-[#8b949e] uppercase tracking-wider font-semibold">Transfer Save</span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                className="flex-1 h-10 bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-[#c9d1d9] text-sm rounded-lg"
-              >
-                <Upload className="mr-1.5 h-4 w-4" /> Import JSON
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedSave) handleExport(selectedSave);
-                }}
-                variant="outline"
-                disabled={!selectedSave}
-                className="flex-1 h-10 bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-[#c9d1d9] text-sm rounded-lg disabled:opacity-40"
-              >
-                <Download className="mr-1.5 h-4 w-4" /> Export JSON
-              </Button>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              className="hidden"
-            />
-          </CardContent>
-        </Card>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {/* Import Card */}
+          <Card
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-[#161b22] border-[#30363d] cursor-pointer hover:border-[#484f58] transition-colors"
+          >
+            <CardContent className="p-4 flex flex-col items-center text-center gap-2.5">
+              <div className="w-11 h-11 rounded-xl bg-[#1c2333] border border-[#30363d] flex items-center justify-center">
+                <FolderInput className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#c9d1d9]">Import Save</p>
+                <p className="text-[10px] text-[#484f58] mt-0.5 leading-tight">
+                  Load a .json save file from your device
+                </p>
+              </div>
+              <ShieldCheck className="h-3 w-3 text-[#30363d]" />
+            </CardContent>
+          </Card>
+
+          {/* Export Card */}
+          <Card
+            onClick={() => {
+              if (selectedSave) handleExport(selectedSave);
+            }}
+            className={`bg-[#161b22] border-[#30363d] cursor-pointer transition-colors ${
+              selectedSave ? 'hover:border-[#484f58]' : 'opacity-40 cursor-not-allowed'
+            }`}
+          >
+            <CardContent className="p-4 flex flex-col items-center text-center gap-2.5">
+              <div className="w-11 h-11 rounded-xl bg-[#1c2333] border border-[#30363d] flex items-center justify-center">
+                <FolderOutput className="h-5 w-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#c9d1d9]">Export Save</p>
+                <p className="text-[10px] text-[#484f58] mt-0.5 leading-tight">
+                  {selectedSave
+                    ? `Download "${selectedSave.name}" as .json`
+                    : 'Select a save to export'}
+                </p>
+              </div>
+              <Download className="h-3 w-3 text-[#30363d]" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleImport}
+          className="hidden"
+        />
       </div>
 
       {/* Delete Confirmation Modal */}

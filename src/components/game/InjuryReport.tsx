@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { Injury, InjuryType, InjuryCategory } from '@/lib/game/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 
 // ============================================================
-// Animation variants (opacity only)
+// Animation variants (opacity only per Uncodixify directive)
 // ============================================================
 const fadeIn = {
   initial: { opacity: 0 },
@@ -104,6 +105,73 @@ const injuryDescriptions: Record<string, string> = {
 };
 
 // ============================================================
+// Body region mapping for SVG silhouette
+// ============================================================
+const bodyRegionPositions: Record<string, { x: number; y: number; label: string }> = {
+  head: { x: 50, y: 6, label: 'Head' },
+  shoulder_left: { x: 17, y: 52, label: 'L. Shoulder' },
+  shoulder_right: { x: 83, y: 52, label: 'R. Shoulder' },
+  back: { x: 50, y: 68, label: 'Back / Torso' },
+  groin: { x: 50, y: 97, label: 'Groin' },
+  hamstring_left: { x: 37, y: 122, label: 'L. Hamstring' },
+  hamstring_right: { x: 63, y: 122, label: 'R. Hamstring' },
+  knee_left: { x: 37, y: 150, label: 'L. Knee' },
+  knee_right: { x: 63, y: 150, label: 'R. Knee' },
+  ankle_left: { x: 37, y: 180, label: 'L. Ankle' },
+  ankle_right: { x: 63, y: 180, label: 'R. Ankle' },
+  foot: { x: 50, y: 194, label: 'Foot' },
+  general: { x: 50, y: 55, label: 'General' },
+};
+
+function getBodyRegion(injuryName: string): string {
+  const n = injuryName.toLowerCase();
+  if (n.includes('head') || n.includes('concussion')) return 'head';
+  if (n.includes('shoulder')) return 'shoulder_left';
+  if (n.includes('back') || n.includes('spasm') || n.includes('rib')) return 'back';
+  if (n.includes('groin')) return 'groin';
+  if (n.includes('hamstring')) return 'hamstring_left';
+  if (n.includes('thigh')) return 'hamstring_right';
+  if (n.includes('calf')) return 'ankle_left';
+  if (n.includes('knee') || n.includes('acl') || n.includes('mcl') || n.includes('cartilage')) return 'knee_left';
+  if (n.includes('ankle')) return 'ankle_left';
+  if (n.includes('metatarsal')) return 'foot';
+  if (n.includes('fracture') || n.includes('stress')) return 'knee_right';
+  if (n.includes('viral') || n.includes('flu') || n.includes('food') || n.includes('illness')) return 'general';
+  return 'general';
+}
+
+// ============================================================
+// Risk segments config
+// ============================================================
+const riskSegments = [
+  { label: 'Low', color: '#10b981' },
+  { label: 'Medium', color: '#f59e0b' },
+  { label: 'High', color: '#ef4444' },
+  { label: 'Critical', color: '#dc2626' },
+];
+
+// ============================================================
+// Medical staff data
+// ============================================================
+interface StaffMember {
+  name: string;
+  role: string;
+  icon: React.ReactNode;
+  quality: number;
+  color: string;
+}
+
+function generateMedicalStaff(facilities: number, tier: number): StaffMember[] {
+  const base = Math.min(95, Math.round(facilities * 0.65 + (6 - tier) * 7));
+  return [
+    { name: 'Dr. James Sullivan', role: 'Head Physician', icon: <Stethoscope className="h-3.5 w-3.5" />, quality: Math.min(99, base + 5), color: '#8b5cf6' },
+    { name: 'Sarah Chen', role: 'Lead Physio', icon: <Activity className="h-3.5 w-3.5" />, quality: Math.min(99, base), color: '#10b981' },
+    { name: 'Marcus Williams', role: 'Therapist', icon: <Dumbbell className="h-3.5 w-3.5" />, quality: Math.max(25, base - 8), color: '#f59e0b' },
+    { name: 'Dr. Elena Petrova', role: 'Sport Scientist', icon: <FileBarChart className="h-3.5 w-3.5" />, quality: Math.max(25, base - 3), color: '#06b6d4' },
+  ];
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function InjuryReport() {
@@ -117,10 +185,9 @@ export default function InjuryReport() {
   const careerInjuries = injuries;
   const totalMatchesMissed = careerInjuries.reduce((sum, i) => sum + i.weeksOut, 0);
 
-  // Fitness trend from training history (last 5 entries)
   const fitnessTrend = getFitnessTrend(trainingHistory, player.fitness);
-  const riskLevel = calculateRiskLevel(player, currentInjury, recentResults);
   const consecutiveMatches = getConsecutiveMatches(recentResults);
+  const riskLevel = calculateRiskLevel(player, currentInjury, recentResults, consecutiveMatches);
   const preventionTips = getPreventionTips(player, consecutiveMatches, currentInjury);
 
   return (
@@ -157,8 +224,16 @@ export default function InjuryReport() {
         )}
       </AnimatePresence>
 
+      {/* Body Silhouette Diagram */}
+      <motion.div {...fadeIn} transition={{ duration: 0.2, delay: 0.04 }}>
+        <BodySilhouetteDiagram
+          careerInjuries={careerInjuries}
+          currentInjury={currentInjury}
+        />
+      </motion.div>
+
       {/* Fitness Monitoring Panel */}
-      <motion.div {...fadeIn} transition={{ duration: 0.2, delay: 0.05 }}>
+      <motion.div {...fadeIn} transition={{ duration: 0.2, delay: 0.08 }}>
         <FitnessPanel
           fitness={player.fitness}
           fitnessTrend={fitnessTrend}
@@ -169,13 +244,13 @@ export default function InjuryReport() {
 
       {/* Injury Prevention Tips */}
       {preventionTips.length > 0 && (
-        <motion.div {...fadeIn} transition={{ duration: 0.2, delay: 0.1 }}>
+        <motion.div {...fadeIn} transition={{ duration: 0.2, delay: 0.12 }}>
           <PreventionTips tips={preventionTips} />
         </motion.div>
       )}
 
       {/* Medical Staff & Treatment */}
-      <motion.div {...fadeIn} transition={{ duration: 0.2, delay: 0.15 }}>
+      <motion.div {...fadeIn} transition={{ duration: 0.2, delay: 0.16 }}>
         <MedicalStaffPanel
           facilities={currentClub.facilities}
           tier={currentClub.tier}
@@ -237,7 +312,196 @@ export default function InjuryReport() {
 }
 
 // ============================================================
-// Active Injury Card
+// 1. Body Silhouette Diagram
+// ============================================================
+interface BodyMarker {
+  region: string;
+  x: number;
+  y: number;
+  label: string;
+  injuries: Injury[];
+  hasActive: boolean;
+  color: string;
+}
+
+function BodySilhouetteDiagram({ careerInjuries, currentInjury }: {
+  careerInjuries: Injury[];
+  currentInjury: Injury | null;
+}) {
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+
+  // Group injuries by body region
+  const regionMap: Record<string, Injury[]> = {};
+  const allInjuries = currentInjury
+    ? [currentInjury, ...careerInjuries.filter(i => i.id !== currentInjury.id)]
+    : careerInjuries;
+
+  for (const injury of allInjuries) {
+    const region = getBodyRegion(injury.name);
+    if (!regionMap[region]) regionMap[region] = [];
+    // Avoid duplicate entries
+    if (!regionMap[region].find(i => i.id === injury.id)) {
+      regionMap[region].push(injury);
+    }
+  }
+
+  const markers: BodyMarker[] = Object.entries(regionMap).map(([region, injuries]) => {
+    const pos = bodyRegionPositions[region] || bodyRegionPositions.general;
+    const activeInRegion = injuries.find(i => currentInjury && i.id === currentInjury.id);
+    const sevColor = activeInRegion
+      ? severityConfig[activeInRegion.type].color
+      : severityConfig[injuries[0].type].color;
+    return {
+      region,
+      x: pos.x,
+      y: pos.y,
+      label: pos.label,
+      injuries,
+      hasActive: !!activeInRegion,
+      color: sevColor,
+    };
+  });
+
+  const selectedMarker = markers.find(m => m.region === selectedRegion);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Activity className="h-3.5 w-3.5 text-[#8b949e]" />
+          <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Body Map</span>
+          {markers.length > 0 && (
+            <span className="text-[10px] text-[#484f58] ml-auto">{markers.length} region{markers.length !== 1 ? 's' : ''} affected</span>
+          )}
+        </div>
+
+        <div className="flex justify-center">
+          <svg
+            viewBox="0 0 100 200"
+            className="w-32 h-auto"
+            style={{ filter: 'drop-shadow(0 0 0 transparent)' }}
+          >
+            {/* Body outline — simple front-facing silhouette */}
+            {/* Head */}
+            <circle cx="50" cy="18" r="14" fill="none" stroke="#30363d" strokeWidth="1.5" />
+            {/* Neck */}
+            <line x1="50" y1="32" x2="50" y2="40" stroke="#30363d" strokeWidth="1.5" />
+            {/* Torso */}
+            <rect x="30" y="40" width="40" height="58" rx="4" fill="none" stroke="#30363d" strokeWidth="1.5" />
+            {/* Left arm */}
+            <rect x="14" y="42" width="14" height="44" rx="6" fill="none" stroke="#30363d" strokeWidth="1.5" />
+            {/* Right arm */}
+            <rect x="72" y="42" width="14" height="44" rx="6" fill="none" stroke="#30363d" strokeWidth="1.5" />
+            {/* Left leg */}
+            <rect x="32" y="98" width="16" height="92" rx="6" fill="none" stroke="#30363d" strokeWidth="1.5" />
+            {/* Right leg */}
+            <rect x="52" y="98" width="16" height="92" rx="6" fill="none" stroke="#30363d" strokeWidth="1.5" />
+
+            {/* Injury markers */}
+            {markers.map((marker) => (
+              <g key={marker.region}>
+                {/* Active injury outer ring pulse */}
+                {marker.hasActive && (
+                  <motion.circle
+                    cx={marker.x}
+                    cy={marker.y}
+                    r="9"
+                    fill="none"
+                    stroke={marker.color}
+                    strokeWidth="1.5"
+                    animate={{ opacity: [0.3, 0.7, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                )}
+                {/* Marker dot */}
+                <circle
+                  cx={marker.x}
+                  cy={marker.y}
+                  r={marker.hasActive ? 6 : 5}
+                  fill={marker.color}
+                  fillOpacity={marker.hasActive ? 1 : 0.45}
+                  stroke="#0d1117"
+                  strokeWidth="2"
+                  className="cursor-pointer"
+                  onClick={() => setSelectedRegion(selectedRegion === marker.region ? null : marker.region)}
+                >
+                  <title>{marker.injuries.map(i => `${i.name} (${i.weeksRemaining > 0 ? 'Active' : 'Healed'})`).join('\n')}</title>
+                </circle>
+                {/* Count badge if multiple injuries */}
+                {marker.injuries.length > 1 && (
+                  <circle
+                    cx={marker.x + 5}
+                    cy={marker.y - 5}
+                    r="5"
+                    fill="#1c2333"
+                    stroke="#30363d"
+                    strokeWidth="1"
+                  />
+                )}
+              </g>
+            ))}
+          </svg>
+        </div>
+
+        {/* Selected marker detail */}
+        <AnimatePresence mode="wait">
+          {selectedMarker && (
+            <motion.div
+              key={selectedMarker.region}
+              {...fadeIn}
+              className="p-2.5 rounded-lg border border-[#30363d] bg-[#1c2333] space-y-1.5"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-[#c9d1d9]">{selectedMarker.label}</span>
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                  style={{ backgroundColor: `${selectedMarker.color}15`, color: selectedMarker.color }}
+                >
+                  {selectedMarker.injuries.length} injur{selectedMarker.injuries.length !== 1 ? 'ies' : 'y'}
+                </span>
+              </div>
+              {selectedMarker.injuries.map((inj) => {
+                const sev = severityConfig[inj.type];
+                const isActive = currentInjury && inj.id === currentInjury.id;
+                return (
+                  <div key={inj.id} className="flex items-center gap-2">
+                    <div
+                      className="w-1.5 h-1.5 rounded-sm shrink-0"
+                      style={{ backgroundColor: sev.color, opacity: isActive ? 1 : 0.5 }}
+                    />
+                    <span className="text-[11px] text-[#c9d1d9] flex-1 truncate">{inj.name}</span>
+                    {isActive ? (
+                      <span className="text-[9px] text-[#ef4444]">Active</span>
+                    ) : (
+                      <span className="text-[9px] text-emerald-400">Healed</span>
+                    )}
+                  </div>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Legend */}
+        {markers.length > 0 && (
+          <div className="flex items-center gap-3 justify-center pt-1">
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
+              <span className="text-[9px] text-[#484f58]">Active</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#ef4444', opacity: 0.4 }} />
+              <span className="text-[9px] text-[#484f58]">Healed</span>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// 2. Active Injury Card with Recovery Progress Ring
 // ============================================================
 function ActiveInjuryCard({ injury, currentWeek, currentSeason }: { injury: Injury; currentWeek: number; currentSeason: number }) {
   const config = severityConfig[injury.type];
@@ -286,35 +550,33 @@ function ActiveInjuryCard({ injury, currentWeek, currentSeason }: { injury: Inju
           {description}
         </p>
 
-        {/* Recovery progress */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-[#8b949e]">Recovery Progress</span>
-            <span className="text-xs font-medium" style={{ color: progress >= 75 ? '#10b981' : progress >= 50 ? '#f59e0b' : config.color }}>
-              {Math.round(progress)}%
-            </span>
-          </div>
-          <div className="h-2 bg-[#21262d] rounded-md overflow-hidden">
-            <motion.div
-              className="h-full rounded-md"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.4 }}
-              style={{ backgroundColor: progress >= 75 ? '#10b981' : progress >= 50 ? '#f59e0b' : config.color }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-[#484f58]">{weeksHealed} of {injury.weeksOut} weeks</span>
-            <span className="text-[#8b949e]">
-              {injury.weeksRemaining <= 0 ? (
-                <span className="text-emerald-400">Ready to return</span>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {injury.weeksRemaining} week{injury.weeksRemaining !== 1 ? 's' : ''} remaining
-                </span>
+        {/* Recovery Progress Ring */}
+        <div className="flex items-center gap-4">
+          <RecoveryProgressRing progress={progress} color={
+            progress >= 75 ? '#10b981' : progress >= 50 ? '#f59e0b' : config.color
+          } />
+          <div className="flex-1 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#8b949e]">Recovery</span>
+              <span className="text-sm font-bold" style={{ color: progress >= 75 ? '#10b981' : progress >= 50 ? '#f59e0b' : config.color }}>
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="h-1.5 bg-[#21262d] rounded-md overflow-hidden">
+              <div
+                className="h-full rounded-md transition-all duration-700"
+                style={{
+                  width: `${progress}%`,
+                  backgroundColor: progress >= 75 ? '#10b981' : progress >= 50 ? '#f59e0b' : config.color,
+                }}
+              />
+            </div>
+            <div className="text-[10px] text-[#484f58]">
+              {weeksHealed} of {injury.weeksOut} weeks
+              {injury.weeksRemaining > 0 && (
+                <span className="text-[#8b949e]"> &middot; {injury.weeksRemaining} remaining</span>
               )}
-            </span>
+            </div>
           </div>
         </div>
 
@@ -324,6 +586,14 @@ function ActiveInjuryCard({ injury, currentWeek, currentSeason }: { injury: Inju
             <Calendar className="h-3.5 w-3.5 text-[#8b949e]" />
             <span className="text-[#8b949e]">Expected return:</span>
             <span className="text-[#c9d1d9] font-medium">Season {returnSeason}, Week {displayReturnWeek}</span>
+          </div>
+        )}
+
+        {/* Ready to return */}
+        {injury.weeksRemaining <= 0 && (
+          <div className="flex items-center gap-2 text-[11px]">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-emerald-300 font-medium">Ready to return to action</span>
           </div>
         )}
 
@@ -346,16 +616,68 @@ function ActiveInjuryCard({ injury, currentWeek, currentSeason }: { injury: Inju
 }
 
 // ============================================================
-// Fitness Monitoring Panel
+// 2a. Recovery Progress Ring (SVG circular progress)
+// ============================================================
+function RecoveryProgressRing({ progress, color }: { progress: number; color: string }) {
+  const size = 72;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="shrink-0 relative" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
+        {/* Background ring */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#21262d"
+          strokeWidth={strokeWidth}
+        />
+        {/* Progress ring */}
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference, opacity: 0 }}
+          animate={{ strokeDashoffset: offset, opacity: 1 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+        />
+      </svg>
+      {/* Percentage text */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <motion.span
+          className="text-sm font-bold"
+          style={{ color }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.3 }}
+        >
+          {Math.round(progress)}%
+        </motion.span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 3. Fitness Monitoring Panel (with SVG Sparkline + Risk Bar)
 // ============================================================
 function FitnessPanel({ fitness, fitnessTrend, riskLevel, isInjured }: {
   fitness: number;
   fitnessTrend: number[];
-  riskLevel: { level: string; color: string };
+  riskLevel: { level: string; color: string; index: number };
   isInjured: boolean;
 }) {
   const fitnessColor = fitness >= 75 ? '#10b981' : fitness >= 50 ? '#f59e0b' : '#ef4444';
-  const maxTrend = Math.max(...fitnessTrend, 1);
 
   return (
     <Card className="bg-[#161b22] border-[#30363d]">
@@ -372,59 +694,18 @@ function FitnessPanel({ fitness, fitnessTrend, riskLevel, isInjured }: {
             <span className="text-sm font-bold" style={{ color: fitnessColor }}>{fitness}%</span>
           </div>
           <div className="h-2.5 bg-[#21262d] rounded-md overflow-hidden">
-            <motion.div
-              className="h-full rounded-md"
-              initial={{ width: 0 }}
-              animate={{ width: `${fitness}%` }}
-              transition={{ duration: 0.5 }}
-              style={{ backgroundColor: fitnessColor }}
+            <div
+              className="h-full rounded-md transition-all duration-700"
+              style={{ width: `${fitness}%`, backgroundColor: fitnessColor }}
             />
           </div>
         </div>
 
-        {/* Fitness trend mini chart */}
-        <div>
-          <span className="text-[10px] text-[#484f58] uppercase tracking-wide">Last 5 Weeks</span>
-          <div className="flex items-end gap-1 mt-1.5 h-10">
-            {fitnessTrend.map((val, idx) => {
-              const h = Math.max((val / 100) * 40, 4);
-              const c = val >= 75 ? '#10b981' : val >= 50 ? '#f59e0b' : '#ef4444';
-              return (
-                <motion.div
-                  key={idx}
-                  className="flex-1 rounded-sm"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.15, delay: idx * 0.05 }}
-                  style={{ height: h, backgroundColor: c, minWidth: 0 }}
-                />
-              );
-            })}
-          </div>
-          <div className="flex justify-between text-[8px] text-[#484f58] mt-0.5">
-            <span>5wk</span>
-            <span>Now</span>
-          </div>
-        </div>
+        {/* Fitness trend SVG sparkline */}
+        <FitnessSparkline fitnessTrend={fitnessTrend} />
 
-        {/* Risk assessment */}
-        <div className="flex items-center justify-between p-2 rounded-md" style={{ backgroundColor: `${riskLevel.color}10` }}>
-          <div className="flex items-center gap-1.5">
-            {isInjured ? (
-              <AlertOctagon className="h-3.5 w-3.5" style={{ color: '#ef4444' }} />
-            ) : riskLevel.level === 'High' ? (
-              <AlertTriangle className="h-3.5 w-3.5" style={{ color: riskLevel.color }} />
-            ) : (
-              <Shield className="h-3.5 w-3.5" style={{ color: riskLevel.color }} />
-            )}
-            <span className="text-[11px] text-[#8b949e]">
-              {isInjured ? 'Currently Injured' : 'Injury Risk'}
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold" style={{ color: riskLevel.color }}>
-            {isInjured ? 'Inactive' : `${riskLevel.level} Risk`}
-          </span>
-        </div>
+        {/* Risk Assessment Segmented Bar */}
+        <RiskSegmentedBar riskLevel={riskLevel} isInjured={isInjured} />
 
         {/* Recommended action */}
         <div className="text-[10px] text-[#484f58]">
@@ -440,6 +721,153 @@ function FitnessPanel({ fitness, fitnessTrend, riskLevel, isInjured }: {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================================
+// 3a. Fitness Trend SVG Sparkline
+// ============================================================
+function FitnessSparkline({ fitnessTrend }: { fitnessTrend: number[] }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  const svgW = 220;
+  const svgH = 56;
+  const padX = 10;
+  const padY = 8;
+  const chartW = svgW - padX * 2;
+  const chartH = svgH - padY * 2;
+
+  const points = fitnessTrend.map((val, i) => ({
+    x: padX + (i / (fitnessTrend.length - 1)) * chartW,
+    y: padY + chartH - (val / 100) * chartH,
+    val,
+  }));
+
+  const linePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+  const fillPoints = `0,${svgH} ${linePoints} ${svgW},${svgH}`;
+
+  return (
+    <div>
+      <span className="text-[10px] text-[#484f58] uppercase tracking-wide">Last 5 Weeks</span>
+      <div className="mt-1.5">
+        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto">
+          {/* Filled area under line */}
+          <polygon
+            points={fillPoints}
+            fill="#10b981"
+            fillOpacity="0.08"
+          />
+          {/* Line */}
+          <polyline
+            points={linePoints}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          {/* Data points */}
+          {points.map((p, i) => {
+            const c = p.val >= 75 ? '#10b981' : p.val >= 50 ? '#f59e0b' : '#ef4444';
+            return (
+              <g key={i}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={hoveredIdx === i ? 5 : 3}
+                  fill={c}
+                  stroke="#161b22"
+                  strokeWidth="2"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredIdx(i)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  onClick={() => setHoveredIdx(hoveredIdx === i ? null : i)}
+                />
+                {/* Hover label */}
+                {hoveredIdx === i && (
+                  <g>
+                    <rect
+                      x={p.x - 14}
+                      y={p.y - 20}
+                      width="28"
+                      height="14"
+                      rx="3"
+                      fill="#1c2333"
+                      stroke="#30363d"
+                      strokeWidth="0.5"
+                    />
+                    <text
+                      x={p.x}
+                      y={p.y - 10}
+                      textAnchor="middle"
+                      fill={c}
+                      fontSize="8"
+                      fontWeight="bold"
+                    >
+                      {p.val}%
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div className="flex justify-between text-[8px] text-[#484f58] mt-0.5">
+        <span>5wk ago</span>
+        <span>Now</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 5. Risk Assessment Segmented Bar
+// ============================================================
+function RiskSegmentedBar({ riskLevel, isInjured }: {
+  riskLevel: { level: string; color: string; index: number };
+  isInjured: boolean;
+}) {
+  return (
+    <div>
+      <span className="text-[10px] text-[#484f58] uppercase tracking-wide">Injury Risk</span>
+      <div className="mt-1.5 flex items-center gap-2">
+        <div className="flex-1 flex rounded-md overflow-hidden h-6">
+          {riskSegments.map((seg, i) => {
+            const isActive = !isInjured && i === riskLevel.index;
+            return (
+              <motion.div
+                key={seg.label}
+                className="flex-1 flex items-center justify-center relative"
+                animate={{
+                  opacity: isActive ? [0.6, 1, 0.6] : 0.15,
+                }}
+                transition={isActive
+                  ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+                  : { duration: 0.3 }
+                }
+                style={{ backgroundColor: seg.color }}
+              >
+                <span
+                  className="text-[9px] font-semibold select-none"
+                  style={{
+                    color: isActive ? '#ffffff' : '#ffffff50',
+                  }}
+                >
+                  {seg.label}
+                </span>
+              </motion.div>
+            );
+          })}
+        </div>
+        <div
+          className="shrink-0 text-[11px] font-semibold text-right min-w-[52px]"
+          style={{ color: isInjured ? '#6b7280' : riskLevel.color }}
+        >
+          {isInjured ? 'Inactive' : riskLevel.level}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -481,7 +909,7 @@ function PreventionTips({ tips }: { tips: { icon: React.ReactNode; title: string
 }
 
 // ============================================================
-// Medical Staff & Treatment Panel
+// 6. Medical Staff & Treatment Panel (enhanced with cards)
 // ============================================================
 function MedicalStaffPanel({ facilities, tier, isInjured, fitness }: {
   facilities: number;
@@ -489,9 +917,8 @@ function MedicalStaffPanel({ facilities, tier, isInjured, fitness }: {
   isInjured: boolean;
   fitness: number;
 }) {
-  // Physio rating derived from club facilities and tier
+  const staff = generateMedicalStaff(facilities, tier);
   const physioRating = Math.min(100, Math.round(facilities * 0.6 + (6 - tier) * 8));
-  const physioStars = physioRating >= 85 ? 5 : physioRating >= 70 ? 4 : physioRating >= 50 ? 3 : physioRating >= 30 ? 2 : 1;
 
   const treatments = [
     {
@@ -532,34 +959,49 @@ function MedicalStaffPanel({ facilities, tier, isInjured, fitness }: {
         <div className="flex items-center gap-2">
           <Stethoscope className="h-3.5 w-3.5 text-[#8b949e]" />
           <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Medical Staff</span>
+          <span className="text-[10px] text-[#484f58] ml-auto">Quality: {physioRating}/100</span>
         </div>
 
-        {/* Physio rating */}
-        <div className="flex items-center justify-between p-2 rounded-md bg-[#21262d]">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-[#8b5cf615] flex items-center justify-center">
-              <Users className="h-3.5 w-3.5 text-[#8b5cf6]" />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium text-[#c9d1d9]">Physio Rating</p>
-              <p className="text-[10px] text-[#484f58]">Based on club facilities</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="flex gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <svg
-                  key={i}
-                  className="w-3 h-3"
-                  fill={i < physioStars ? '#f59e0b' : '#21262d'}
-                  viewBox="0 0 20 20"
+        {/* Staff cards grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {staff.map((member) => (
+            <motion.div
+              key={member.role}
+              className="p-2.5 rounded-lg bg-[#1c2333] border border-[#30363d] space-y-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: `${member.color}12`, color: member.color }}
                 >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-            </div>
-            <span className="text-[10px] text-[#8b949e]">{physioRating}/100</span>
-          </div>
+                  {member.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] text-[#484f58] truncate">{member.role}</p>
+                  <p className="text-[11px] font-medium text-[#c9d1d9] truncate">{member.name}</p>
+                </div>
+              </div>
+              {/* Quality bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] text-[#484f58]">Quality</span>
+                  <span className="text-[9px] font-medium" style={{ color: member.color }}>{member.quality}</span>
+                </div>
+                <div className="h-1 bg-[#0d1117] rounded-sm overflow-hidden">
+                  <div
+                    className="h-full rounded-sm transition-all duration-500"
+                    style={{
+                      width: `${member.quality}%`,
+                      backgroundColor: member.quality >= 80 ? '#10b981' : member.quality >= 60 ? '#f59e0b' : '#ef4444',
+                    }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </div>
 
         {/* Treatment options */}
@@ -568,7 +1010,7 @@ function MedicalStaffPanel({ facilities, tier, isInjured, fitness }: {
           {treatments.map((treatment) => (
             <div
               key={treatment.id}
-              className="flex items-center gap-2.5 p-2 rounded-md bg-[#21262d] border border-[#30363d] opacity-100"
+              className="flex items-center gap-2.5 p-2 rounded-md bg-[#21262d] border border-[#30363d]"
             >
               <div
                 className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
@@ -640,7 +1082,7 @@ function InjuryStatistics({ injuries, totalDaysOut }: {
 }
 
 // ============================================================
-// Injury History Timeline
+// 4. Injury History Timeline (vertical timeline with severity coloring)
 // ============================================================
 function InjuryHistoryTimeline({ seasonInjuries, careerInjuries, currentSeason }: {
   seasonInjuries: Injury[];
@@ -651,7 +1093,7 @@ function InjuryHistoryTimeline({ seasonInjuries, careerInjuries, currentSeason }
 
   return (
     <div className="space-y-3">
-      {/* Season History */}
+      {/* Season History Timeline */}
       {seasonInjuries.length > 0 && (
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3">
@@ -662,57 +1104,14 @@ function InjuryHistoryTimeline({ seasonInjuries, careerInjuries, currentSeason }
               </span>
               <span className="text-[10px] text-[#484f58] ml-auto">{seasonInjuries.length} record{seasonInjuries.length !== 1 ? 's' : ''}</span>
             </div>
-            <div className="space-y-1.5 max-h-72 overflow-y-auto">
-              {seasonInjuries.slice().reverse().map((injury, idx) => (
-                <motion.div
-                  key={injury.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.15, delay: idx * 0.03 }}
-                  className="flex items-center gap-2.5 p-2 rounded-md bg-[#21262d] border border-[#30363d]"
-                >
-                  {/* Category icon */}
-                  <div
-                    className="p-1.5 rounded-md shrink-0"
-                    style={{
-                      backgroundColor: `${categoryConfig[injury.category].color}15`,
-                      color: categoryConfig[injury.category].color,
-                    }}
-                  >
-                    {categoryConfig[injury.category].icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-[#c9d1d9]">{injury.name}</span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className="inline-block h-3.5 px-1 text-[8px] rounded leading-[14px]"
-                        style={{
-                          backgroundColor: `${severityConfig[injury.type].color}15`,
-                          color: severityConfig[injury.type].color,
-                        }}
-                      >
-                        {severityConfig[injury.type].label}
-                      </span>
-                      <span className="text-[10px] text-[#484f58]">{injury.weeksOut}wk total</span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[10px] text-[#484f58]">W{injury.weekSustained}</span>
-                    {injury.weeksRemaining <= 0 && (
-                      <div className="flex items-center gap-0.5 justify-end">
-                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
-                        <span className="text-[9px] text-emerald-400">Healed</span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+            <div className="max-h-72 overflow-y-auto">
+              <VerticalTimeline injuries={seasonInjuries.slice().reverse()} />
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Career History */}
+      {/* Career History Timeline */}
       {careerInjuries.length > seasonInjuries.length && (
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3">
@@ -721,42 +1120,92 @@ function InjuryHistoryTimeline({ seasonInjuries, careerInjuries, currentSeason }
               <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Career History</span>
               <span className="text-[10px] text-[#484f58] ml-auto">{careerInjuries.length - seasonInjuries.length} past</span>
             </div>
-            <div className="space-y-1.5 max-h-56 overflow-y-auto">
-              {careerInjuries
-                .filter(i => i.seasonSustained !== currentSeason)
-                .slice()
-                .reverse()
-                .map((injury) => (
-                  <div
-                    key={injury.id}
-                    className="flex items-center gap-2.5 p-2 rounded-md bg-[#21262d] border border-[#30363d]"
-                  >
-                    <div
-                      className="p-1.5 rounded-md shrink-0"
-                      style={{
-                        backgroundColor: `${categoryConfig[injury.category].color}10`,
-                        color: `${categoryConfig[injury.category].color}90`,
-                      }}
-                    >
-                      {categoryConfig[injury.category].icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium text-[#8b949e]">{injury.name}</span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-[#484f58]">
-                          {severityConfig[injury.type].label} &middot; {injury.weeksOut}wk
-                        </span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-[#484f58] shrink-0">
-                      S{injury.seasonSustained} W{injury.weekSustained}
-                    </span>
-                  </div>
-                ))}
+            <div className="max-h-56 overflow-y-auto">
+              <VerticalTimeline
+                injuries={careerInjuries.filter(i => i.seasonSustained !== currentSeason).slice().reverse()}
+                dimmed
+              />
             </div>
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function VerticalTimeline({ injuries, dimmed }: { injuries: Injury[]; dimmed?: boolean }) {
+  return (
+    <div className="relative pl-5">
+      {/* Continuous vertical line */}
+      <div className="absolute left-[5px] top-1 bottom-1 w-px" style={{ backgroundColor: '#21262d' }} />
+
+      {injuries.map((injury, idx) => {
+        const sevConfig = severityConfig[injury.type];
+        const isHealed = injury.weeksRemaining <= 0;
+        const opacity = dimmed ? 0.6 : 1;
+
+        return (
+          <motion.div
+            key={injury.id}
+            className="relative mb-3 last:mb-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, delay: idx * 0.03 }}
+            style={{ opacity }}
+          >
+            {/* Severity-colored line segment */}
+            <div
+              className="absolute left-[4px] top-0 w-[3px] rounded-sm"
+              style={{
+                height: '100%',
+                backgroundColor: sevConfig.color,
+                opacity: 0.25,
+              }}
+            />
+
+            {/* Timeline node */}
+            <div
+              className="absolute left-0 top-1.5 w-[11px] h-[11px] rounded-lg border-2"
+              style={{
+                borderColor: sevConfig.color,
+                backgroundColor: '#161b22',
+              }}
+            />
+
+            {/* Content card */}
+            <div className="ml-3 p-2 rounded-lg bg-[#1c2333] border border-[#30363d]">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div
+                    className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: `${sevConfig.color}15`, color: sevConfig.color }}
+                  >
+                    {categoryConfig[injury.category].icon}
+                  </div>
+                  <span className="text-[11px] font-medium text-[#c9d1d9] truncate">{injury.name}</span>
+                </div>
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0"
+                  style={{ backgroundColor: `${sevConfig.color}15`, color: sevConfig.color }}
+                >
+                  {sevConfig.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 mt-1.5">
+                <span className="text-[10px] text-[#484f58]">W{injury.weekSustained}</span>
+                <span className="text-[10px] text-[#484f58]">{injury.weeksOut}wk</span>
+                {isHealed ? (
+                  <span className="text-[10px] text-emerald-400 flex items-center gap-0.5">
+                    <CheckCircle2 className="h-2.5 w-2.5" />Healed
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-[#f59e0b]">{injury.weeksRemaining}wk left</span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
@@ -795,14 +1244,11 @@ function getMostCommonCategoryFull(injuries: Injury[]): string {
   }
   const max = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   if (!max) return '—';
-  // Shorten name if too long
   const name = max[0];
   return name.length > 14 ? name.slice(0, 12) + '...' : name;
 }
 
 function getFitnessTrend(trainingHistory: { intensity: number; completedAt: number }[], currentFitness: number): number[] {
-  // Build a synthetic 5-week trend: start from a baseline, trend toward current
-  // In a real system, historical fitness snapshots would be stored
   const recent = trainingHistory.slice(-10);
   const base = Math.max(30, currentFitness - 15);
   const trend: number[] = [];
@@ -811,7 +1257,6 @@ function getFitnessTrend(trainingHistory: { intensity: number; completedAt: numb
     if (i === 4) {
       trend.push(currentFitness);
     } else {
-      // Simulate gradual approach with small noise
       const progress = (i + 1) / 5;
       const val = base + (currentFitness - base) * progress + (Math.sin(i * 2.1) * 5);
       trend.push(Math.round(Math.min(100, Math.max(10, val))));
@@ -821,25 +1266,34 @@ function getFitnessTrend(trainingHistory: { intensity: number; completedAt: numb
   return trend;
 }
 
-function calculateRiskLevel(player: { fitness: number; age: number }, currentInjury: Injury | null, recentResults: { playerMinutesPlayed: number }[]): { level: string; color: string } {
-  if (currentInjury) return { level: 'N/A', color: '#6b7280' };
+function calculateRiskLevel(
+  player: { fitness: number; age: number },
+  currentInjury: Injury | null,
+  recentResults: { playerMinutesPlayed: number }[],
+  consecutiveMatches: number
+): { level: string; color: string; index: number } {
+  if (currentInjury) return { level: 'N/A', color: '#6b7280', index: -1 };
 
   let risk = 0;
   if (player.fitness < 30) risk += 3;
   else if (player.fitness < 50) risk += 2;
   else if (player.fitness < 70) risk += 1;
 
-  if (player.age > 33) risk += 2;
+  if (player.age > 35) risk += 3;
+  else if (player.age > 33) risk += 2;
   else if (player.age > 30) risk += 1;
 
-  // Recent heavy minutes
   const heavyGames = recentResults.slice(0, 3).filter(r => r.playerMinutesPlayed > 70).length;
-  if (heavyGames >= 3) risk += 2;
+  if (heavyGames >= 3) risk += 3;
   else if (heavyGames >= 2) risk += 1;
 
-  if (risk >= 5) return { level: 'High', color: '#ef4444' };
-  if (risk >= 3) return { level: 'Medium', color: '#f59e0b' };
-  return { level: 'Low', color: '#10b981' };
+  if (consecutiveMatches >= 5) risk += 2;
+  else if (consecutiveMatches >= 3) risk += 1;
+
+  if (risk >= 7) return { level: 'Critical', color: '#dc2626', index: 3 };
+  if (risk >= 5) return { level: 'High', color: '#ef4444', index: 2 };
+  if (risk >= 3) return { level: 'Medium', color: '#f59e0b', index: 1 };
+  return { level: 'Low', color: '#10b981', index: 0 };
 }
 
 function getConsecutiveMatches(recentResults: { playerMinutesPlayed: number }[]): number {

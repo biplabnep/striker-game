@@ -235,7 +235,8 @@ export interface MatchEvent {
 export type MatchEventType =
   | 'goal' | 'own_goal' | 'assist' | 'yellow_card' | 'red_card'
   | 'second_yellow' | 'substitution' | 'injury' | 'chance'
-  | 'save' | 'penalty_won' | 'penalty_missed' | 'corner' | 'free_kick';
+  | 'save' | 'penalty_won' | 'penalty_missed' | 'corner' | 'free_kick'
+  | 'weather';
 
 export interface MatchState {
   homeScore: number;
@@ -628,7 +629,8 @@ export type GameScreen =
   | 'career_legacy_profile'
   | 'pre_season_camp'
   | 'kit_customization'
-  | 'transfer_market';
+  | 'transfer_market'
+  | 'personal_finances';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
@@ -690,6 +692,22 @@ export interface SeasonAward {
   stats: string; // e.g., "25 goals" or "8.2 avg rating"
   icon: string;
   isPlayer: boolean;
+}
+
+// --- Weather System ---
+export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'windy' | 'snowy' | 'foggy' | 'hot' | 'stormy';
+
+export interface WeatherStatModifier {
+  stat: string;       // 'pace' | 'shooting' | 'passing' | 'physical' | 'fatigue'
+  modifier: number;   // e.g. -15 = -15%
+  label: string;      // e.g. 'Pace'
+}
+
+export interface WeatherCondition {
+  type: WeatherType;
+  name: string;
+  severity: 'none' | 'mild' | 'moderate' | 'severe';
+  modifiers: WeatherStatModifier[];
 }
 
 // --- Game State (Master State) ---
@@ -759,6 +777,9 @@ export interface GameState {
   // Injury System
   injuries: Injury[];
   currentInjury: Injury | null;
+  // Weather System
+  currentWeather: WeatherCondition | null;
+  weatherPreparation: 'standard' | 'adapt' | 'ignore';
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;

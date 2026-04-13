@@ -22,7 +22,7 @@ function getEventIcon(type: MatchEventType): string {
     goal: '⚽', own_goal: '⚽', assist: '🅰️', yellow_card: '🟨',
     red_card: '🟥', second_yellow: '🟨🟥', substitution: '🔄',
     injury: '🏥', chance: '💫', save: '🧤', penalty_won: '🎯',
-    penalty_missed: '❌', corner: '🚩', free_kick: '📐',
+    penalty_missed: '❌', corner: '🚩', free_kick: '📐', weather: '🌤️',
   };
   return map[type] || '📌';
 }
@@ -70,7 +70,7 @@ function getEventLabel(type: MatchEventType): string {
     second_yellow: '2nd Yellow → Red', substitution: 'Substitution',
     injury: 'Injury', chance: 'Chance', save: 'Save',
     penalty_won: 'Penalty Won', penalty_missed: 'Penalty Missed',
-    corner: 'Corner', free_kick: 'Free Kick',
+    corner: 'Corner', free_kick: 'Free Kick', weather: 'Weather',
   };
   return map[type] || type;
 }

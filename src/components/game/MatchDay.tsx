@@ -40,6 +40,7 @@ function getEventIcon(type: MatchEventType): string {
     case 'penalty_missed': return '❌';
     case 'corner': return '🚩';
     case 'free_kick': return '📐';
+    case 'weather': return '\u{1F324}\uFE0F';
     default: return '📌';
   }
 }
@@ -60,6 +61,7 @@ function getEventColor(type: MatchEventType): string {
     case 'penalty_missed': return 'text-red-300';
     case 'corner': return 'text-[#8b949e]';
     case 'free_kick': return 'text-[#8b949e]';
+    case 'weather': return 'text-amber-400';
     default: return 'text-[#8b949e]';
   }
 }
@@ -80,6 +82,7 @@ function getEventBg(type: MatchEventType): string {
     case 'penalty_missed': return 'bg-red-500/10 border-red-500/30';
     case 'corner': return 'bg-slate-500/10 border-slate-500/30';
     case 'free_kick': return 'bg-slate-500/10 border-slate-500/30';
+    case 'weather': return 'bg-amber-500/10 border-amber-500/30';
     default: return 'bg-slate-500/10 border-slate-500/30';
   }
 }
@@ -98,6 +101,7 @@ function getEventDotColor(type: MatchEventType): string {
     case 'save': return 'bg-amber-300';
     case 'penalty_won': return 'bg-emerald-300';
     case 'penalty_missed': return 'bg-red-300';
+    case 'weather': return 'bg-amber-400';
     default: return 'bg-slate-400';
   }
 }
@@ -118,6 +122,7 @@ function getEventLabel(type: MatchEventType): string {
     case 'penalty_missed': return 'Penalty Missed';
     case 'corner': return 'Corner';
     case 'free_kick': return 'Free Kick';
+    case 'weather': return 'Weather';
     default: return type;
   }
 }
@@ -424,7 +429,7 @@ export default function MatchDay() {
   const significantEvents = useMemo(() => {
     if (!lastResult) return [];
     return lastResult.events
-      .filter(e => ['goal', 'own_goal', 'assist', 'yellow_card', 'red_card', 'second_yellow', 'substitution', 'injury', 'chance', 'save', 'penalty_won', 'penalty_missed'].includes(e.type))
+      .filter(e => ['goal', 'own_goal', 'assist', 'yellow_card', 'red_card', 'second_yellow', 'substitution', 'injury', 'chance', 'save', 'penalty_won', 'penalty_missed', 'weather'].includes(e.type))
       .sort((a, b) => a.minute - b.minute);
   }, [lastResult]);
 
@@ -559,6 +564,7 @@ export default function MatchDay() {
   if (!gameState) return null;
 
   const { player, currentClub, currentWeek, upcomingFixtures } = gameState;
+  const currentWeather = gameState.currentWeather;
   const playerTeamLevel = gameState.playerTeamLevel ?? 'senior';
   const isAtYouthLevel = playerTeamLevel === 'u18' || playerTeamLevel === 'u21';
   const nextFixture = !isAtYouthLevel ? upcomingFixtures.find(f => !f.played && (f.homeClubId === currentClub.id || f.awayClubId === currentClub.id)) : null;
@@ -608,6 +614,11 @@ export default function MatchDay() {
                   {lastResult.competition === 'league' ? 'League' : lastResult.competition}
                 </Badge>
                 <span className="text-[9px]">Wk {lastResult.week}</span>
+                {currentWeather && currentWeather.severity !== 'none' && (
+                  <span className="text-sm" title={currentWeather.name}>
+                    {currentWeather.type === 'rainy' ? '🌧️' : currentWeather.type === 'snowy' ? '❄️' : currentWeather.type === 'stormy' ? '⛈️' : currentWeather.type === 'windy' ? '💨' : currentWeather.type === 'foggy' ? '🌫️' : currentWeather.type === 'hot' ? '🌡️' : '🌤️'}
+                  </span>
+                )}
               </div>
             </div>
 

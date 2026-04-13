@@ -14,6 +14,8 @@ import {
   Club,
   MatchResult,
   MatchEvent,
+  WeatherCondition,
+  WeatherType,
   Fixture,
   LeagueStanding,
   TrainingSession,
@@ -238,6 +240,9 @@ interface GameStoreActions {
   // Mindset
   setMindset: (mindset: PlayerMindset) => void;
 
+  // Weather
+  setWeatherPreparation: (preparation: 'standard' | 'adapt' | 'ignore') => void;
+
   // Season Training Focus
   setSeasonTrainingFocus: (area: SeasonTrainingFocusArea) => void;
 
@@ -263,6 +268,67 @@ function createNotification(
     id: generateId(),
     timestamp: new Date().toISOString(),
     read: false,
+  };
+}
+
+// ============================================================
+// Helper: Generate weather condition for a given season/week
+// ============================================================
+const WEATHER_TYPES: WeatherType[] = ['sunny', 'cloudy', 'rainy', 'windy', 'snowy', 'foggy', 'hot', 'stormy'];
+
+const WEATHER_ENGINE_MODIFIERS_MAP: Record<WeatherType, { stat: string; modifier: number; label: string }[]> = {
+  sunny:  [],
+  cloudy: [],
+  rainy:  [
+    { stat: 'pace', modifier: -10, label: 'Pace' },
+    { stat: 'shooting', modifier: -15, label: 'Shooting' },
+    { stat: 'passing', modifier: -10, label: 'Passing' },
+  ],
+  windy: [
+    { stat: 'shooting', modifier: -10, label: 'Shooting' },
+    { stat: 'passing', modifier: -15, label: 'Passing' },
+  ],
+  snowy: [
+    { stat: 'pace', modifier: -20, label: 'Pace' },
+    { stat: 'shooting', modifier: -15, label: 'Shooting' },
+    { stat: 'physical', modifier: -10, label: 'Physical' },
+  ],
+  hot: [
+    { stat: 'pace', modifier: -10, label: 'Pace' },
+    { stat: 'physical', modifier: -15, label: 'Physical' },
+    { stat: 'fatigue', modifier: 20, label: 'Fatigue' },
+  ],
+  stormy: [
+    { stat: 'pace', modifier: -15, label: 'Pace' },
+    { stat: 'shooting', modifier: -20, label: 'Shooting' },
+    { stat: 'passing', modifier: -15, label: 'Passing' },
+    { stat: 'physical', modifier: -10, label: 'Physical' },
+    { stat: 'fatigue', modifier: 20, label: 'Fatigue' },
+  ],
+  foggy: [
+    { stat: 'passing', modifier: -10, label: 'Passing' },
+    { stat: 'shooting', modifier: -5, label: 'Shooting' },
+  ],
+};
+
+const WEATHER_NAMES: Record<WeatherType, string> = {
+  sunny: 'Sunny', cloudy: 'Cloudy', rainy: 'Rainy', windy: 'Windy',
+  snowy: 'Snowy', foggy: 'Foggy', hot: 'Hot', stormy: 'Stormy',
+};
+
+const WEATHER_SEVERITIES: Record<WeatherType, WeatherCondition['severity']> = {
+  sunny: 'none', cloudy: 'none', rainy: 'mild', windy: 'mild',
+  snowy: 'moderate', foggy: 'moderate', hot: 'mild', stormy: 'severe',
+};
+
+function generateWeatherCondition(season: number, week: number): WeatherCondition {
+  const idx = (season * 13 + week * 7) % WEATHER_TYPES.length;
+  const type = WEATHER_TYPES[idx];
+  return {
+    type,
+    name: WEATHER_NAMES[type],
+    severity: WEATHER_SEVERITIES[type],
+    modifiers: WEATHER_ENGINE_MODIFIERS_MAP[type],
   };
 }
 
@@ -713,6 +779,9 @@ function migrateGameState(gs: GameState | null): GameState | null {
     // Injury System
     injuries: gs.injuries ?? [],
     currentInjury: gs.currentInjury ?? null,
+    // Weather System
+    currentWeather: gs.currentWeather ?? null,
+    weatherPreparation: gs.weatherPreparation ?? 'standard',
   };
 }
 
@@ -898,6 +967,9 @@ export const useGameStore = create<GameStore>()(
           // Injury System
           injuries: [],
           currentInjury: null,
+          // Weather System
+          currentWeather: generateWeatherCondition(1, 1),
+          weatherPreparation: 'standard' as const,
           // Mindset & Morale
           mindset: 'balanced' as PlayerMindset,
           moraleFactors: [],
@@ -1012,11 +1084,17 @@ export const useGameStore = create<GameStore>()(
         // Injury system
         let injuries = [...(state.injuries ?? [])];
         let currentInjury = state.currentInjury ?? null;
+        // Weather system
+        let currentWeather = state.currentWeather ?? null;
+        const weatherPreparation = state.weatherPreparation ?? 'standard';
 
         // 1. Increment week
         state.currentWeek += 1;
         const week = state.currentWeek;
         const season = state.currentSeason;
+
+        // 1a. Generate weather for the upcoming match
+        currentWeather = generateWeatherCondition(season, week);
 
         // 1a. Decrement current injury weeksRemaining; heal if recovered
         if (currentInjury) {
@@ -1061,7 +1139,7 @@ export const useGameStore = create<GameStore>()(
             const awayClub = isHome ? opponent : currentClub;
 
             // Simulate the player's match
-            matchResult = simulateMatch(homeClub, awayClub, player, 'league', isHome ? 'home' : 'away');
+            matchResult = simulateMatch(homeClub, awayClub, player, 'league', isHome ? 'home' : 'away', currentWeather, weatherPreparation);
             matchResult.week = week;
             matchResult.season = season;
 
@@ -1250,7 +1328,7 @@ export const useGameStore = create<GameStore>()(
                 const cupAwayClub = isCupHome ? cupOpponent : currentClub;
 
                 // Simulate cup match (midweek)
-                const cupMatchResult = simulateMatch(cupHomeClub, cupAwayClub, player, 'cup', isCupHome ? 'home' : 'away');
+                const cupMatchResult = simulateMatch(cupHomeClub, cupAwayClub, player, 'cup', isCupHome ? 'home' : 'away', currentWeather, weatherPreparation);
                 cupMatchResult.week = week;
                 cupMatchResult.season = season;
                 cupMatchResult.competition = 'cup';
@@ -1619,7 +1697,7 @@ export const useGameStore = create<GameStore>()(
                 const cAway = isCHome ? cOpponent : currentClub;
                 const compName = getContinentalName(continentalCompetition);
 
-                const cMatchResult = simulateMatch(cHome, cAway, player, 'continental', isCHome ? 'home' : 'away');
+                const cMatchResult = simulateMatch(cHome, cAway, player, 'continental', isCHome ? 'home' : 'away', currentWeather, weatherPreparation);
                 cMatchResult.week = week;
                 cMatchResult.season = season;
                 cMatchResult.competition = continentalCompetition;
@@ -1779,7 +1857,7 @@ export const useGameStore = create<GameStore>()(
                 const koAway = isKHome ? koOpponent : currentClub;
                 const compName = getContinentalName(continentalCompetition);
 
-                const koResult = simulateMatch(koHome, koAway, player, 'continental', isKHome ? 'home' : 'away');
+                const koResult = simulateMatch(koHome, koAway, player, 'continental', isKHome ? 'home' : 'away', currentWeather, weatherPreparation);
                 koResult.week = week;
                 koResult.season = season;
                 koResult.competition = continentalCompetition;
@@ -2444,7 +2522,7 @@ export const useGameStore = create<GameStore>()(
         const homeClub = isHome ? gameState.currentClub : opponent;
         const awayClub = isHome ? opponent : gameState.currentClub;
 
-        return simulateMatch(homeClub, awayClub, gameState.player, 'league', isHome ? 'home' : 'away');
+        return simulateMatch(homeClub, awayClub, gameState.player, 'league', isHome ? 'home' : 'away', gameState.currentWeather, gameState.weatherPreparation);
       },
 
       // ---- Training ----
@@ -2893,6 +2971,17 @@ export const useGameStore = create<GameStore>()(
 
         set({
           gameState: { ...gameState, mindset },
+        });
+      },
+
+      // ---- Weather Preparation ----
+
+      setWeatherPreparation: (preparation: 'standard' | 'adapt' | 'ignore') => {
+        const { gameState } = get();
+        if (!gameState) return;
+
+        set({
+          gameState: { ...gameState, weatherPreparation: preparation },
         });
       },
 

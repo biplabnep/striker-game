@@ -13,6 +13,7 @@ import {
   MatchState,
   MatchEventType,
   PlayerAttributes,
+  WeatherCondition,
 } from './types';
 
 // --- Seeded random for reproducibility ---
@@ -149,6 +150,129 @@ function clubMatchQuality(club: Club): number {
   return club.quality + (rng() - 0.5) * 10;
 }
 
+// ============================================================
+// Weather stat modifier definitions for match engine
+// ============================================================
+const WEATHER_ENGINE_MODIFIERS: Record<string, { stat: keyof PlayerAttributes | 'fatigue'; modifier: number }[]> = {
+  sunny:  [],
+  cloudy: [],
+  rainy:  [
+    { stat: 'pace', modifier: -10 },
+    { stat: 'shooting', modifier: -15 },
+    { stat: 'passing', modifier: -10 },
+  ],
+  windy: [
+    { stat: 'shooting', modifier: -10 },
+    { stat: 'passing', modifier: -15 },
+  ],
+  snowy: [
+    { stat: 'pace', modifier: -20 },
+    { stat: 'shooting', modifier: -15 },
+    { stat: 'physical', modifier: -10 },
+  ],
+  hot: [
+    { stat: 'pace', modifier: -10 },
+    { stat: 'physical', modifier: -15 },
+    { stat: 'fatigue', modifier: 20 },
+  ],
+  stormy: [
+    { stat: 'pace', modifier: -15 },
+    { stat: 'shooting', modifier: -20 },
+    { stat: 'passing', modifier: -15 },
+    { stat: 'physical', modifier: -10 },
+    { stat: 'fatigue', modifier: 20 },
+  ],
+  foggy: [
+    { stat: 'passing', modifier: -10 },
+    { stat: 'shooting', modifier: -5 },
+  ],
+};
+
+// ============================================================
+// Weather commentary templates
+// ============================================================
+const WEATHER_COMMENTARY: Record<string, string[]> = {
+  rainy: [
+    'Heavy rain is making conditions difficult for both sides!',
+    'The pitch is waterlogged and passes are sticking in the mud.',
+    'Players are struggling for grip on the slick surface.',
+  ],
+  windy: [
+    'Strong winds are playing havoc with aerial balls and long passes!',
+    'The ball is swerving unpredictably in these gusty conditions.',
+    'Both teams are struggling to adapt to the blustery wind.',
+  ],
+  snowy: [
+    'Snow blankets the pitch making every touch treacherous.',
+    'Players are finding it hard to keep their footing in the snow.',
+    'The cold conditions are draining energy from both squads.',
+  ],
+  hot: [
+    'The scorching heat is taking its toll on the players.',
+    'Tempers are fraying as exhaustion sets in under the blazing sun.',
+    'Players are taking extra hydration breaks in these extreme temperatures.',
+  ],
+  stormy: [
+    'Thunder rumbles overhead as lightning illuminates the sky!',
+    'Extreme conditions are making this a real test of character.',
+    'The storm is worsening and both teams are being pushed to their limits.',
+  ],
+  foggy: [
+    'Thick fog is reducing visibility across the entire pitch.',
+    'Players can barely see the far touchline in this dense fog.',
+    'Long passes are becoming a lottery in these murky conditions.',
+  ],
+};
+
+// ============================================================
+// Apply weather modifiers to player attributes
+// ============================================================
+function applyWeatherToPlayer(
+  player: Player,
+  weather: WeatherCondition | null,
+  preparation: 'standard' | 'adapt' | 'ignore' = 'standard'
+): { modifiedPlayer: Player; effectiveModifiers: { stat: string; modifier: number }[] } {
+  if (!weather || !WEATHER_ENGINE_MODIFIERS[weather.type]) {
+    return { modifiedPlayer: player, effectiveModifiers: [] };
+  }
+
+  const rawModifiers = WEATHER_ENGINE_MODIFIERS[weather.type];
+  const effectiveModifiers: { stat: string; modifier: number }[] = [];
+
+  // Apply mitigation based on preparation choice
+  let mitigationFactor = 1.0;
+  if (preparation === 'adapt') mitigationFactor = 0.5;   // 50% mitigation
+  else if (preparation === 'ignore') mitigationFactor = 1.3; // 30% worse
+
+  const modifiedAttrs = { ...player.attributes };
+  let modifiedFitness = player.fitness;
+
+  for (const mod of rawModifiers) {
+    const effectiveMod = Math.round(mod.modifier * mitigationFactor);
+    effectiveModifiers.push({ stat: mod.stat, modifier: effectiveMod });
+
+    if (mod.stat === 'fatigue') {
+      // Fatigue is handled separately as a fitness penalty
+      modifiedFitness = Math.max(0, modifiedFitness - effectiveMod * 0.5);
+    } else {
+      // Apply as a multiplier to the relevant attribute
+      const attr = mod.stat as keyof PlayerAttributes;
+      const currentValue = modifiedAttrs[attr] ?? 0;
+      const modified = Math.max(1, Math.round(currentValue * (1 + effectiveMod / 100)));
+      modifiedAttrs[attr] = modified;
+    }
+  }
+
+  return {
+    modifiedPlayer: {
+      ...player,
+      attributes: modifiedAttrs,
+      fitness: Math.max(0, Math.min(100, modifiedFitness)),
+    },
+    effectiveModifiers,
+  };
+}
+
 // --- Calculate player match contribution ---
 function playerContribution(player: Player): number {
   if (player.injuryWeeks > 0) return 0;
@@ -205,10 +329,29 @@ export function simulateMatchMinute(
   awayClub: Club,
   player: Player,
   minute: number,
-  state: MatchState
+  state: MatchState,
+  weather?: WeatherCondition | null
 ): MatchEvent[] {
   const events: MatchEvent[] = [];
   const tempo = determineMatchTempo(homeClub.style, awayClub.style);
+
+  // Weather affects overall match tempo
+  const weatherType = weather?.type;
+  const isSevereWeather = weatherType === 'stormy' || weatherType === 'snowy' || weatherType === 'hot';
+  const weatherTempoMod = isSevereWeather ? 0.85 : (weatherType === 'rainy' || weatherType === 'windy') ? 0.92 : 1.0;
+
+  // Weather commentary at random intervals
+  if (weather && weatherType && weatherType !== 'sunny' && weatherType !== 'cloudy' && WEATHER_COMMENTARY[weatherType]) {
+    const commentaries = WEATHER_COMMENTARY[weatherType];
+    if (rng() < 0.015 && commentaries.length > 0) {
+      events.push({
+        minute,
+        type: 'weather' as MatchEventType,
+        team: 'neutral',
+        detail: commentaries[Math.floor(rng() * commentaries.length)],
+      });
+    }
+  }
 
   // Home advantage
   const homeAdvantage = 1.1;
@@ -238,8 +381,8 @@ export function simulateMatchMinute(
     }
   }
 
-  // --- Goal probability per minute ---
-  const goalProb = tempo.goalRate * (1 + (state.homeMomentum + state.awayMomentum) * 0.03);
+  // --- Goal probability per minute (modified by weather) ---
+  const goalProb = tempo.goalRate * weatherTempoMod * (1 + (state.homeMomentum + state.awayMomentum) * 0.03);
 
   if (rng() < goalProb) {
     const isHome = rng() < homeProb;
@@ -528,11 +671,17 @@ export function simulateMatch(
   awayClub: Club,
   player: Player,
   competition: string,
-  playerTeam: 'home' | 'away' = 'home'
+  playerTeam: 'home' | 'away' = 'home',
+  weather?: WeatherCondition | null,
+  weatherPreparation: 'standard' | 'adapt' | 'ignore' = 'standard'
 ): MatchResult {
   // Determine squad selection based on which team the player is on
   const playerClub = playerTeam === 'home' ? homeClub : awayClub;
-  const selection = determineSquadSelection(player, playerClub);
+
+  // Apply weather modifiers to player
+  const { modifiedPlayer: weatherPlayer } = applyWeatherToPlayer(player, weather ?? null, weatherPreparation);
+
+  const selection = determineSquadSelection(weatherPlayer, playerClub);
 
   // Initialize match state
   const state: MatchState = {
@@ -582,7 +731,7 @@ export function simulateMatch(
       }
     }
 
-    const minuteEvents = simulateMatchMinute(homeClub, awayClub, player, minute, state);
+    const minuteEvents = simulateMatchMinute(homeClub, awayClub, weatherPlayer, minute, state, weather ?? null);
     allEvents.push(...minuteEvents);
   }
 
@@ -601,7 +750,7 @@ export function simulateMatch(
   }
 
   // Calculate player rating
-  const playerRating = calculatePlayerMatchRating(player, allEvents, playerMinutes, playerTeam);
+  const playerRating = calculatePlayerMatchRating(weatherPlayer, allEvents, playerMinutes, playerTeam);
 
   // Injury check after match
   const injuryEvent = allEvents.find(

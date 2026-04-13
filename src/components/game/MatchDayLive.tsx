@@ -1194,7 +1194,7 @@ export default function MatchDayLive() {
                 const iconMap: Record<MatchEventType, string> = {
                   goal: '⚽', own_goal: '⚽', assist: '🅰️', yellow_card: '🟨', red_card: '🟥',
                   second_yellow: '🟨🟥', substitution: '🔄', injury: '🏥', chance: '💫',
-                  save: '🧤', penalty_won: '🎯', penalty_missed: '❌', corner: '🚩', free_kick: '📐',
+                  save: '🧤', penalty_won: '🎯', penalty_missed: '❌', corner: '🚩', free_kick: '📐', weather: '🌤️',
                 };
                 const isPlayerEvt = e.playerId === gameState.player.id;
                 return (
