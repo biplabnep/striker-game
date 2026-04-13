@@ -660,7 +660,9 @@ export type GameScreen =
   | 'social_media_feed'
   | 'create_a_club'
   | 'daily_rewards'
-  | 'achievement_showcase';
+  | 'achievement_showcase'
+  | 'injury_recovery'
+  | 'in_game_mail';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

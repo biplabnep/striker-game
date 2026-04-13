@@ -93,6 +93,8 @@ import SocialMediaFeed from '@/components/game/SocialMediaFeed';
 import CreateAClub from '@/components/game/CreateAClub';
 import DailyRewards from '@/components/game/DailyRewards';
 import AchievementShowcase from '@/components/game/AchievementShowcase';
+import InGameMail from '@/components/game/InGameMail';
+import InjuryRecovery from '@/components/game/InjuryRecovery';
 import MultiplayerLeague from '@/components/game/MultiplayerLeague';
 import PlayerCareerTimeline from '@/components/game/PlayerCareerTimeline';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
@@ -185,8 +187,10 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   create_a_club: CreateAClub,
   daily_rewards: DailyRewards,
   achievement_showcase: AchievementShowcase,
+  in_game_mail: InGameMail,
   multiplayer_league: MultiplayerLeague,
   player_career_timeline: PlayerCareerTimeline,
+  injury_recovery: InjuryRecovery,
 };
 
 const gameScreens: GameScreen[] = [
@@ -245,7 +249,9 @@ const gameScreens: GameScreen[] = [
   'daily_rewards',
   'achievement_showcase',
   'multiplayer_league',
+  'in_game_mail',
   'player_career_timeline',
+  'injury_recovery',
 ];
 
 export default function Home() {

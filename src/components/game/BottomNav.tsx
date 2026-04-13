@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -130,6 +130,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'press_conference', icon: <Mic className="h-5 w-5" />, label: 'Press Conf' },
       { screen: 'media_interview', icon: <Mic className="h-5 w-5" />, label: 'Interview' },
       { screen: 'social_media_feed', icon: <MessageCircle className="h-5 w-5" />, label: 'Social Hub' },
+      { screen: 'in_game_mail', icon: <Mail className="h-5 w-5" />, label: 'Mail' },
     ],
   },
   {
@@ -138,6 +139,7 @@ const moreCategories: NavCategory[] = [
     items: [
       { screen: 'morale', icon: <Heart className="h-5 w-5" />, label: 'Morale' },
       { screen: 'injury_report', icon: <Activity className="h-5 w-5" />, label: 'Injuries' },
+      { screen: 'injury_recovery', icon: <Stethoscope className="h-5 w-5" />, label: 'Recovery' },
     ],
   },
   {
