@@ -598,7 +598,9 @@ export type GameScreen =
   | 'transfer_negotiation'
   | 'fan_engagement'
   | 'world_football_news'
-  | 'hall_of_fame';
+  | 'hall_of_fame'
+  | 'player_traits'
+  | 'match_highlights';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
