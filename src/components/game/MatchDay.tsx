@@ -838,9 +838,10 @@ export default function MatchDay() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+          <Card className="bg-[#161b22] border-[#30363d] overflow-hidden border-l-[3px] border-l-emerald-500">
             <div className={`h-2 ${won ? 'bg-emerald-500' : drew ? 'bg-amber-500' : 'bg-red-500'}`} />
             <CardContent className="p-5 text-center">
+              <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest mb-2">Result</p>
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -854,15 +855,15 @@ export default function MatchDay() {
               <div className="flex items-center justify-center gap-5 mb-4">
                 <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
                   <span className="text-3xl">{lastResult.homeClub.logo}</span>
-                  <span className="text-xs text-[#c9d1d9] font-medium">{homeName}</span>
+                  <span className="text-sm text-[#c9d1d9] font-semibold">{homeName}</span>
                   <Badge variant="outline" className="text-[9px] border-sky-500/30 text-sky-400">HOME</Badge>
                 </div>
-                <div className="text-5xl font-black text-white tracking-wider">
+                <div className="text-6xl font-black text-white tracking-wider">
                   {lastResult.homeScore} <span className="text-[#484f58]">-</span> {lastResult.awayScore}
                 </div>
                 <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
                   <span className="text-3xl">{lastResult.awayClub.logo}</span>
-                  <span className="text-xs text-[#c9d1d9] font-medium">{awayName}</span>
+                  <span className="text-sm text-[#c9d1d9] font-semibold">{awayName}</span>
                   <Badge variant="outline" className="text-[9px] border-rose-500/30 text-rose-400">AWAY</Badge>
                 </div>
               </div>
@@ -975,6 +976,8 @@ export default function MatchDay() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 space-y-3">
+                {/* Divider helper: every StatBar gets a border-b except last */}
+                <div className={"pb-3 border-b border-[#30363d]"}>
                 <StatBar
                   homeValue={matchStats.homePossession}
                   awayValue={100 - matchStats.homePossession}
@@ -984,6 +987,8 @@ export default function MatchDay() {
                   homeClubbName={homeName}
                   awayClubName={awayName}
                 />
+                </div>
+                <div className={"pb-3 border-b border-[#30363d]"}>
                 <StatBar
                   homeValue={matchStats.homeShots}
                   awayValue={matchStats.awayShots}
@@ -993,6 +998,8 @@ export default function MatchDay() {
                   homeClubbName={homeName}
                   awayClubName={awayName}
                 />
+                </div>
+                <div className={"pb-3 border-b border-[#30363d]"}>
                 <StatBar
                   homeValue={matchStats.homeShotsOnTarget}
                   awayValue={matchStats.awayShotsOnTarget}
@@ -1002,6 +1009,8 @@ export default function MatchDay() {
                   homeClubbName={homeName}
                   awayClubName={awayName}
                 />
+                </div>
+                <div className={"pb-3 border-b border-[#30363d]"}>
                 <StatBar
                   homeValue={matchStats.homeCorners}
                   awayValue={matchStats.awayCorners}
@@ -1011,6 +1020,8 @@ export default function MatchDay() {
                   homeClubbName={homeName}
                   awayClubName={awayName}
                 />
+                </div>
+                <div className={"pb-3 border-b border-[#30363d]"}>
                 <StatBar
                   homeValue={matchStats.homeFouls}
                   awayValue={matchStats.awayFouls}
@@ -1020,6 +1031,8 @@ export default function MatchDay() {
                   homeClubbName={homeName}
                   awayClubName={awayName}
                 />
+                </div>
+                <div>
                 <StatBar
                   homeValue={matchStats.homePassAcc}
                   awayValue={matchStats.awayPassAcc}
@@ -1029,6 +1042,7 @@ export default function MatchDay() {
                   homeClubbName={homeName}
                   awayClubName={awayName}
                 />
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -1216,7 +1230,7 @@ export default function MatchDay() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+            <Card className="bg-[#161b22] border-[#30363d] overflow-hidden border-l-[3px] border-l-emerald-500">
               {/* Top color bars */}
               <div className="flex h-1.5">
                 <div className="flex-1" style={{ backgroundColor: currentClub.primaryColor }} />
@@ -1233,7 +1247,7 @@ export default function MatchDay() {
                     >
                       {currentClub.logo}
                     </div>
-                    <span className="font-semibold text-sm text-white text-center leading-tight">{currentClub.shortName || currentClub.name}</span>
+                    <span className="font-bold text-[15px] text-white text-center leading-tight">{currentClub.shortName || currentClub.name}</span>
                     <Badge variant="outline" className="text-[9px] border-slate-600">{currentClub.squadQuality} OVR</Badge>
                     <Badge variant="outline" className="text-[9px] border-slate-600">{currentClub.formation}</Badge>
                   </div>
@@ -1243,7 +1257,7 @@ export default function MatchDay() {
                     <motion.div
                       animate={{ opacity: [0.5, 1, 0.5] }}
                       transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
-                      className="text-[#8b949e] font-black text-xl"
+                      className="text-emerald-400 font-black text-2xl"
                     >
                       VS
                     </motion.div>
@@ -1260,7 +1274,7 @@ export default function MatchDay() {
                     >
                       {opponent.logo}
                     </div>
-                    <span className="font-semibold text-sm text-white text-center leading-tight">{opponent.shortName || opponent.name}</span>
+                    <span className="font-bold text-[15px] text-white text-center leading-tight">{opponent.shortName || opponent.name}</span>
                     <Badge variant="outline" className="text-[9px] border-slate-600">{opponent.squadQuality} OVR</Badge>
                     <Badge variant="outline" className="text-[9px] border-slate-600">{opponent.formation}</Badge>
                   </div>
@@ -1612,17 +1626,17 @@ export default function MatchDay() {
           >
             <Button
               onClick={handlePlayMatch}
-              className="w-full h-14 text-lg font-bold bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
+              className="w-full h-14 text-lg font-bold bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-all hover:shadow-lg hover:shadow-emerald-500/20"
             >
-              <Play className="mr-2 h-5 w-5" />
+              <span className="flex items-center justify-center w-8 h-8 rounded-md bg-emerald-700 mr-2"><Play className="h-5 w-5" /></span>
               Play Match
             </Button>
             <Button
               onClick={handleSimulate}
               variant="outline"
-              className="w-full h-10 border-[#30363d] text-[#8b949e] rounded-lg text-sm"
+              className="w-full h-10 border-[#30363d] text-[#8b949e] rounded-lg text-sm hover:bg-[#21262d] hover:text-[#c9d1d9] transition-colors"
             >
-              <FastForward className="mr-2 h-4 w-4" />
+              <span className="flex items-center justify-center w-7 h-7 rounded-md bg-[#21262d] mr-2"><FastForward className="h-4 w-4" /></span>
               Quick Simulate
             </Button>
           </motion.div>

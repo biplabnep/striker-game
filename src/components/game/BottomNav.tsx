@@ -55,6 +55,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'hall_of_fame', icon: <Crown className="h-5 w-5" />, label: 'Hall of Fame' },
       { screen: 'manager_office', icon: <Briefcase className="h-5 w-5" />, label: 'Manager' },
       { screen: 'player_agent_hub', icon: <UserRound className="h-5 w-5" />, label: 'Agent' },
+      { screen: 'career_milestones', icon: <Trophy className="h-5 w-5" />, label: 'Milestones' },
     ],
   },
   {

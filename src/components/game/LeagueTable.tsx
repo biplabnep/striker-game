@@ -49,7 +49,7 @@ function FormDot({ result }: { result: 'W' | 'D' | 'L' }) {
     D: 'bg-amber-400',
     L: 'bg-red-400',
   };
-  return <div className={`w-2 h-2 rounded-full ${colors[result]}`} title={result} />;
+  return <div className={`w-2 h-2 rounded-sm ${colors[result]}`} title={result} />;
 }
 
 // ─── Position change indicator ───────────────────────────────────────────────
@@ -76,11 +76,11 @@ function PositionChange({ current, previous }: { current: number; previous?: num
 
 // ─── Zone border color helper ────────────────────────────────────────────────
 function zoneBorderClass(pos: number, totalTeams: number, isPlayer: boolean): string {
-  if (isPlayer) return 'border-l-2 border-l-emerald-500 bg-emerald-500/5';
-  if (pos <= 4) return 'border-l-2 border-l-emerald-500/30';
-  if (pos <= 6) return 'border-l-2 border-l-blue-500/30';
-  if (pos >= totalTeams - 2) return 'border-l-2 border-l-red-500/30';
-  return 'border-l-2 border-l-transparent';
+  if (isPlayer) return 'border-l-[3px] border-l-emerald-500 bg-emerald-500/5';
+  if (pos <= 4) return 'border-l-[3px] border-l-emerald-500';
+  if (pos <= 6) return 'border-l-[3px] border-l-amber-500';
+  if (pos >= totalTeams - 2) return 'border-l-[3px] border-l-red-500';
+  return 'border-l-[3px] border-l-transparent';
 }
 
 // ─── Position rank icon (crown/star) ─────────────────────────────────────────
@@ -318,12 +318,13 @@ export default function LeagueTable() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors ${
+                className={`relative flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors ${
                   activeTab === tab.key
-                    ? 'text-emerald-400 border-b-2 border-b-emerald-500 bg-emerald-500/5'
+                    ? 'text-emerald-400'
                     : 'text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d]/50'
                 }`}
               >
+                {activeTab === tab.key && <span className="absolute bottom-0 left-1/4 right-1/4 h-[2px] bg-emerald-500" />}
                 {tab.icon}
                 {tab.label}
               </button>
@@ -457,7 +458,7 @@ export default function LeagueTable() {
                   {/* Form and Zone Info */}
                   <div className="mt-3 pt-3 border-t border-[#30363d] space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-[#8b949e] font-medium">Recent Form</span>
+                      <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Recent Form</span>
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-0.5">
                           {playerForm.length > 0 ? playerForm.map((r, i) => (
@@ -518,7 +519,7 @@ export default function LeagueTable() {
         <div className="grid grid-cols-2 gap-3">
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3">
-              <p className="text-[9px] text-[#8b949e] font-semibold mb-2 flex items-center gap-1">
+              <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest mb-2 flex items-center gap-1">
                 <Swords className="w-3 h-3 text-emerald-400" />
                 Best Attack
               </p>
@@ -540,8 +541,8 @@ export default function LeagueTable() {
 
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3">
-              <p className="text-[9px] text-[#8b949e] font-semibold mb-2 flex items-center gap-1">
-                <Shield className="w-3 h-3 text-blue-400" />
+              <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest mb-2 flex items-center gap-1">
+                <Shield className="w-3 h-3 text-emerald-400" />
                 Best Defence
               </p>
               {(() => {
@@ -552,7 +553,7 @@ export default function LeagueTable() {
                     <span className="text-lg">{bestClub?.logo}</span>
                     <div>
                       <p className="text-xs font-semibold text-[#c9d1d9]">{bestClub?.shortName}</p>
-                      <p className="text-lg font-black text-blue-400">{best.goalsAgainst}</p>
+                      <p className="text-lg font-black text-emerald-400">{best.goalsAgainst}</p>
                     </div>
                   </div>
                 );
@@ -607,7 +608,7 @@ function LeagueTableTab({
 
       {/* Table Header */}
       <div className="bg-[#161b22] rounded-t-lg border border-[#30363d] border-b-0">
-        <div className="grid grid-cols-[1.5rem_1.75rem_1fr_3rem_3rem_3.5rem_3.5rem] gap-0.5 px-2.5 py-2 text-[9px] text-[#8b949e] font-semibold uppercase tracking-wide items-center">
+        <div className="grid grid-cols-[1.5rem_1.75rem_1.2fr_3rem_3rem_3.5rem_3.5rem] gap-0.5 px-2.5 py-2 text-[10px] font-semibold text-[#484f58] uppercase tracking-widest items-center">
           <span className="text-center">↕</span>
           <span>#</span>
           <span>Club</span>
@@ -639,9 +640,9 @@ function LeagueTableTab({
             >
               <div
                 onClick={() => setExpandedClub(isExpanded ? null : entry.clubId)}
-                className={`grid grid-cols-[1.5rem_1.75rem_1fr_3rem_3rem_3.5rem_3.5rem] gap-0.5 px-2.5 py-2 items-center text-sm transition-colors cursor-pointer ${zoneBorderClass(pos, totalTeams, isPlayer)} ${
-                  !isPlayer ? 'hover:bg-[#21262d]' : ''
-                } ${idx < leagueTable.length - 1 ? 'border-b border-[#30363d]' : ''}`}
+                className={`grid grid-cols-[1.5rem_1.75rem_1.2fr_3rem_3rem_3.5rem_3.5rem] gap-0.5 px-2.5 py-2 items-center text-sm transition-colors duration-150 cursor-pointer ${zoneBorderClass(pos, totalTeams, isPlayer)} ${
+                  !isPlayer ? 'hover:bg-[#21262d]' : 'bg-emerald-500/5'
+                } ${idx < leagueTable.length - 1 ? 'border-b border-[#30363d]/50' : ''}`}
               >
                 {/* Position change */}
                 <PositionChange current={pos} previous={prevPos} />
@@ -649,7 +650,7 @@ function LeagueTableTab({
                 {/* Position + rank icon */}
                 <div className="flex items-center gap-0.5">
                   <PositionRankIcon pos={pos} />
-                  <span className={`text-xs font-bold ${isPlayer ? 'text-emerald-400' : pos <= 4 ? 'text-emerald-300' : pos <= 6 ? 'text-blue-300' : pos >= totalTeams - 2 ? 'text-red-300' : 'text-[#8b949e]'}`}>
+                  <span className={`text-[11px] font-bold tabular-nums ${isPlayer ? 'text-emerald-400' : pos <= 4 ? 'text-emerald-300' : pos <= 6 ? 'text-amber-400' : pos >= totalTeams - 2 ? 'text-red-400' : 'text-[#8b949e]'}`}>
                     {pos}
                   </span>
                 </div>
@@ -684,7 +685,7 @@ function LeagueTableTab({
                 <div className="flex items-center justify-center gap-1">
                   {form.length > 0 ? (
                     <>
-                      <div className="flex items-center gap-0.5">
+                      <div className="flex items-center gap-1">
                         {form.map((r, i) => (
                           <FormDot key={i} result={r} />
                         ))}

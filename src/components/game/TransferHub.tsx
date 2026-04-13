@@ -88,11 +88,11 @@ function TransferWindowTimeline({ currentWeek, leagueId }: { currentWeek: number
   const nextWindow = windows.find(w => w.start > currentWeek);
 
   return (
-    <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
-      <CardHeader className="pb-2 pt-3 px-4">
-        <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden hover:border-[#484f58] transition-colors">
+      <CardHeader className="pb-2 pt-3 px-4 border-b border-[#21262d]">
+        <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5" />
-          Transfer Window Timeline
+          Transfer Window
         </CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-3 space-y-3">
@@ -229,7 +229,7 @@ function ClubComparisonCard({
       transition={{ duration: 0.2 }}
       className="space-y-3"
     >
-      <div className="text-[10px] text-[#8b949e]  flex items-center gap-1.5">
+      <div className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest flex items-center gap-1.5">
         <Shield className="h-3 w-3" />
         Club Comparison
       </div>
@@ -444,9 +444,9 @@ function AgentQualityCard({ agentQuality, reputation }: { agentQuality: number; 
   const TierIcon = agentTier.icon;
 
   return (
-    <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
-      <CardHeader className="pb-2 pt-3 px-4">
-        <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden hover:border-[#484f58] transition-colors">
+      <CardHeader className="pb-2 pt-3 px-4 border-b border-[#21262d]">
+        <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest flex items-center gap-2">
           <Briefcase className="h-3.5 w-3.5" />
           Your Agent
         </CardTitle>
@@ -689,15 +689,15 @@ export default function TransferHub() {
   if (!gameState || !player || !currentClub) return null;
 
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
+    <div className="p-4 max-w-lg mx-auto space-y-3 pb-20">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex items-center justify-between"
       >
-        <h2 className="text-xl font-bold">Transfer Hub</h2>
-        <Badge className={`text-[10px] ${transferWindow ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+        <h2 className="text-xl font-bold text-[#c9d1d9]">Transfer Hub</h2>
+        <Badge className={`text-[10px] font-semibold px-2.5 py-0.5 border ${transferWindow ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-[#8b949e] border-slate-500/20'}`}>
           {transferWindow ? '🟢 Window Open' : '🔴 Window Closed'}
         </Badge>
       </motion.div>
@@ -711,17 +711,20 @@ export default function TransferHub() {
         <TransferWindowTimeline currentWeek={currentWeek} leagueId={currentClub.league} />
       </motion.div>
 
+      {/* Contract Section */}
+      <div className="border-t border-[#21262d]" />
+
       {/* Current Contract Card */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
+        <Card className="bg-[#161b22] border-[#30363d] border-l-[3px] border-l-emerald-500 overflow-hidden hover:border-[#484f58] hover:border-l-emerald-500 transition-colors">
+          <CardHeader className="pb-2 pt-3 px-4 border-b border-[#21262d]">
+            <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest flex items-center gap-2">
               <FileText className="h-3.5 w-3.5" />
-              Current Contract
+              Contract
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
@@ -735,15 +738,15 @@ export default function TransferHub() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-bold text-emerald-400">
+                <p className="text-lg font-bold text-emerald-400">
                   <AnimatedNumber value={player.contract.weeklyWage} formatFn={(v) => formatCurrency(v, 'K')} />
                 </p>
-                <p className="text-[10px] text-[#8b949e]">per week</p>
+                <p className="text-[9px] text-[#484f58] font-medium">per week</p>
               </div>
             </div>
 
             {/* Contract Status Bar */}
-            <div className="space-y-1.5 mb-3">
+            <div className="space-y-1.5 mb-3 pt-3 border-t border-[#30363d]">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-[#8b949e]">Contract Duration</span>
                 <span className={`text-xs font-semibold ${contractColors.text}`}>
@@ -770,7 +773,7 @@ export default function TransferHub() {
                 <span className="text-xs text-[#8b949e] flex items-center gap-1.5">
                   <Shield className="h-3 w-3" /> Release Clause
                 </span>
-                <span className="text-xs text-amber-400 font-medium">
+                <span className="text-sm font-semibold text-amber-400">
                   <AnimatedNumber value={player.contract.releaseClause} formatFn={(v) => formatCurrency(v, 'M')} />
                 </span>
               </div>
@@ -782,7 +785,7 @@ export default function TransferHub() {
                 <span className="text-xs text-[#8b949e] flex items-center gap-1.5">
                   <Award className="h-3 w-3" /> Signing Bonus
                 </span>
-                <span className="text-xs text-white font-medium">
+                <span className="text-sm font-semibold text-[#c9d1d9]">
                   <AnimatedNumber value={player.contract.signingBonus} formatFn={(v) => formatCurrency(v, 'K')} />
                 </span>
               </div>
@@ -809,36 +812,42 @@ export default function TransferHub() {
         </Card>
       </motion.div>
 
+      {/* Market Value Section */}
+      <div className="border-t border-[#21262d]" />
+
       {/* Market Value Card */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.15 }}
       >
-        <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
+        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden hover:border-[#484f58] transition-colors">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-[#8b949e] flex items-center gap-1.5">
-                <BarChart3 className="h-4 w-4" />
+              <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest flex items-center gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5" />
                 Market Value
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-emerald-400">
+                <span className="text-xl font-bold text-emerald-400">
                   <AnimatedNumber value={player.marketValue} formatFn={(v) => formatCurrency(v, 'M')} />
                 </span>
               </div>
             </div>
             {/* Sparkline */}
             <MarketValueSparkline player={player} recentResults={gameState.recentResults} />
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-[9px] text-[#484f58]">Recent trend</span>
-              <span className="text-[9px] text-[#8b949e]">
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#21262d]">
+              <span className="text-[10px] text-[#484f58]">Recent trend</span>
+              <span className="text-[10px] text-[#8b949e] font-medium">
                 OVR {player.overall} • Age {player.age}
               </span>
             </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Agent Section */}
+      <div className="border-t border-[#21262d]" />
 
       {/* Agent Quality Card */}
       <motion.div
@@ -849,19 +858,26 @@ export default function TransferHub() {
         <AgentQualityCard agentQuality={player.agentQuality} reputation={player.reputation} />
       </motion.div>
 
-      {/* Transfer Offers */}
+      {/* Transfer Market Section */}
+      <div className="border-t border-[#21262d] pt-3">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Transfer Market</span>
+          <div className="flex-1 h-px bg-[#21262d]" />
+          <Badge className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            {transferOffers.length}
+          </Badge>
+        </div>
+      </div>
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.25 }}
       >
-        <h3 className="text-sm font-semibold text-[#8b949e] mb-2 flex items-center gap-2">
-          <ArrowRightLeft className="h-4 w-4" />
-          Transfer Offers ({transferOffers.length})
-        </h3>
         {transferOffers.length === 0 ? (
           <Card className="bg-[#161b22]/50 border-[#30363d]">
             <CardContent className="p-4 text-center text-sm text-[#484f58]">
+              <ArrowRightLeft className="h-5 w-5 mx-auto mb-2 text-[#30363d]" />
               No transfer offers available
             </CardContent>
           </Card>
@@ -877,7 +893,10 @@ export default function TransferHub() {
                   transition={{ delay: idx * 0.06 }}
                 >
                   <Card
-                    className="bg-[#161b22]  border-[#30363d] overflow-hidden relative"
+                    className={`bg-[#161b22] border-[#30363d] border-l-[3px] overflow-hidden relative transition-colors ${
+                      offer.squadRole === 'starter' ? 'border-l-emerald-500' :
+                      offer.squadRole === 'rotation' ? 'border-l-amber-500' : 'border-l-slate-500'
+                    }`}
                   >
                     {/* Club background accent */}
                     <div
@@ -894,16 +913,18 @@ export default function TransferHub() {
                           {offer.fromClub.logo}
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-sm">{offer.fromClub.name}</p>
-                          <p className="text-[10px] text-[#8b949e]">
-                            {offer.fromClub.league.replace(/_/g, ' ')} • {offer.squadRole.replace(/_/g, ' ')}
-                          </p>
+                          <p className="font-semibold text-sm text-[#c9d1d9]">{offer.fromClub.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-[#8b949e]">{offer.fromClub.league.replace(/_/g, ' ')}</span>
+                            <span className="text-[2px] text-[#30363d]">•</span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{offer.squadRole.replace(/_/g, ' ')}</span>
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-emerald-400 text-sm">
+                          <p className="text-base font-bold text-emerald-400">
                             <AnimatedNumber value={offer.fee} formatFn={(v) => formatCurrency(v, 'M')} />
                           </p>
-                          <p className="text-[9px] text-[#8b949e]">Transfer Fee</p>
+                          <p className="text-[9px] text-[#484f58] font-medium">Transfer Fee</p>
                         </div>
                       </div>
 
@@ -946,7 +967,7 @@ export default function TransferHub() {
                       />
 
                       {/* Accept/Reject Buttons */}
-                      <div className="flex gap-2 mt-3 pt-3 border-t border-[#30363d]">
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-[#21262d]">
                         <ConfirmButton
                           variant="accept"
                           onConfirm={() => acceptTransfer(offer.id)}
@@ -971,19 +992,26 @@ export default function TransferHub() {
         )}
       </motion.div>
 
-      {/* Loan Offers */}
+      {/* Club Interest Section */}
+      <div className="border-t border-[#21262d] pt-3">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Club Interest</span>
+          <div className="flex-1 h-px bg-[#21262d]" />
+          <Badge className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            {loanOffers.length}
+          </Badge>
+        </div>
+      </div>
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       >
-        <h3 className="text-sm font-semibold text-[#8b949e] mb-2 flex items-center gap-2">
-          <Plane className="h-4 w-4" />
-          Loan Offers ({loanOffers.length})
-        </h3>
         {loanOffers.length === 0 ? (
           <Card className="bg-[#161b22]/50 border-[#30363d]">
             <CardContent className="p-4 text-center text-sm text-[#484f58]">
+              <Plane className="h-5 w-5 mx-auto mb-2 text-[#30363d]" />
               No loan offers available
             </CardContent>
           </Card>
@@ -998,7 +1026,9 @@ export default function TransferHub() {
                   exit={{ opacity: 0 }}
                   transition={{ delay: idx * 0.06 }}
                 >
-                  <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden relative">
+                  <Card className={`bg-[#161b22] border-[#30363d] border-l-[3px] overflow-hidden relative transition-colors ${
+                    offer.guaranteedMinutes ? 'border-l-emerald-500' : 'border-l-amber-500'
+                  }`}>
                     {/* Club background accent */}
                     <div
                       className="absolute inset-0 opacity-[0.06]"
@@ -1013,8 +1043,8 @@ export default function TransferHub() {
                           {offer.fromClub.logo}
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-sm">{offer.fromClub.name}</p>
-                          <p className="text-[10px] text-[#8b949e]">
+                          <p className="font-semibold text-sm text-[#c9d1d9]">{offer.fromClub.name}</p>
+                          <p className="text-[10px] text-[#8b949e] mt-0.5">
                             {offer.fromClub.league.replace(/_/g, ' ')}
                           </p>
                         </div>
@@ -1024,7 +1054,7 @@ export default function TransferHub() {
                             animate={{ opacity: 1 }}
                             transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
                           >
-                            <Badge className="bg-emerald-600/80 text-white text-[9px] flex items-center gap-1 shadow shadow-emerald-500/20">
+                            <Badge className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                               <Timer className="h-2.5 w-2.5" />
                               Guaranteed Minutes
                             </Badge>
@@ -1063,7 +1093,7 @@ export default function TransferHub() {
                       </div>
 
                       {/* Accept/Reject Buttons */}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 pt-3 border-t border-[#21262d]">
                         <ConfirmButton
                           variant="accept"
                           onConfirm={() => acceptLoan(offer.id)}
