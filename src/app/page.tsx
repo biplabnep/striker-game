@@ -95,8 +95,10 @@ import DailyRewards from '@/components/game/DailyRewards';
 import AchievementShowcase from '@/components/game/AchievementShowcase';
 import InGameMail from '@/components/game/InGameMail';
 import InjuryRecovery from '@/components/game/InjuryRecovery';
+import ManagerCareer from '@/components/game/ManagerCareer';
 import MultiplayerLeague from '@/components/game/MultiplayerLeague';
 import PlayerCareerTimeline from '@/components/game/PlayerCareerTimeline';
+import TacticalSetPieces from '@/components/game/TacticalSetPieces';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -191,6 +193,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   multiplayer_league: MultiplayerLeague,
   player_career_timeline: PlayerCareerTimeline,
   injury_recovery: InjuryRecovery,
+  manager_career: ManagerCareer,
+  tactical_set_pieces: TacticalSetPieces,
 };
 
 const gameScreens: GameScreen[] = [
@@ -252,6 +256,8 @@ const gameScreens: GameScreen[] = [
   'in_game_mail',
   'player_career_timeline',
   'injury_recovery',
+  'manager_career',
+  'tactical_set_pieces',
 ];
 
 export default function Home() {

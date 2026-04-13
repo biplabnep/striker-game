@@ -18,6 +18,16 @@ import {
   Star,
   Target,
   Compass,
+  Tv,
+  Bell,
+  Sparkles,
+  Calendar,
+  BarChart3,
+  Eye,
+  Flame,
+  BookOpen,
+  Users,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -159,6 +169,118 @@ const TECH_BADGES = [
 ] as const;
 
 // -----------------------------------------------------------
+// Featured Match of the Day data
+// -----------------------------------------------------------
+const FEATURED_MATCH = {
+  homeTeam: 'FC Barcelona',
+  awayTeam: 'Real Madrid',
+  league: 'La Liga',
+  importance: 'Match of the Week',
+  stars: 5,
+  date: 'Sat, 18:00',
+  h2h: 'W2 D1 L2',
+  combinedGoals: 14,
+} as const;
+
+// -----------------------------------------------------------
+// Player Spotlight data
+// -----------------------------------------------------------
+const FEATURED_PLAYERS = [
+  {
+    name: 'Kylian Mbappé',
+    club: 'Real Madrid',
+    position: 'ST',
+    overall: 91,
+    form: ['W', 'W', 'D', 'W', 'L'] as const,
+    keyStat: '12 Goals this season',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+  },
+  {
+    name: 'Erling Haaland',
+    club: 'Man City',
+    position: 'ST',
+    overall: 90,
+    form: ['W', 'L', 'W', 'W', 'W'] as const,
+    keyStat: '89% Pass Accuracy',
+    color: 'text-sky-400',
+    bgColor: 'bg-sky-500/10',
+    borderColor: 'border-sky-500/20',
+  },
+  {
+    name: 'Jude Bellingham',
+    club: 'Real Madrid',
+    position: 'CAM',
+    overall: 88,
+    form: ['D', 'W', 'W', 'L', 'W'] as const,
+    keyStat: '7 Assists this season',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/20',
+  },
+] as const;
+
+// -----------------------------------------------------------
+// Weekly Challenges data
+// -----------------------------------------------------------
+const WEEKLY_CHALLENGES = [
+  {
+    name: 'Score 3 Goals in One Match',
+    description: 'Find the net three times in a single match to prove your striker instincts.',
+    reward: '500 XP',
+    timeRemaining: '2d 14h',
+    progress: 1,
+    maxProgress: 3,
+    difficulty: 'Medium' as const,
+  },
+  {
+    name: 'Complete 5 Training Sessions',
+    description: 'Dedicate yourself to improvement by finishing five training sessions this week.',
+    reward: '300 XP',
+    timeRemaining: '5d 8h',
+    progress: 3,
+    maxProgress: 5,
+    difficulty: 'Easy' as const,
+  },
+  {
+    name: 'Win a Match Without Conceding',
+    description: 'Keep a clean sheet while securing victory — the ultimate defensive showcase.',
+    reward: '750 XP',
+    timeRemaining: '1d 22h',
+    progress: 0,
+    maxProgress: 1,
+    difficulty: 'Hard' as const,
+  },
+] as const;
+
+const DIFFICULTY_COLORS = {
+  Easy: { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
+  Medium: { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
+  Hard: { text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+} as const;
+
+// -----------------------------------------------------------
+// Version update & community stats
+// -----------------------------------------------------------
+const VERSION_UPDATE = {
+  version: 'v3.5',
+  title: 'The Big Leap Update',
+  features: [
+    'New Injury Recovery Hub — monitor and speed up healing',
+    'In-Game Mail System — receive offers and news',
+    'Dream Transfer Radar — track your dream moves',
+    'Enhanced Match Engine — smarter AI decisions',
+  ],
+} as const;
+
+const COMMUNITY_STATS = [
+  { label: 'Active Players', value: '12,847', icon: Users },
+  { label: 'Matches Played', value: '342,591', icon: Trophy },
+  { label: 'Community Goals', value: '1,204', icon: Target },
+] as const;
+
+// -----------------------------------------------------------
 // Recent save slot info type
 // -----------------------------------------------------------
 interface RecentSaveInfo {
@@ -234,6 +356,32 @@ function ClubTicker() {
         ))}
       </div>
     </div>
+  );
+}
+
+// -----------------------------------------------------------
+// Player silhouette SVG component
+// -----------------------------------------------------------
+function PlayerSilhouette({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 60 100"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="30" cy="12" r="7" />
+      <path d="M30 19 L30 58" />
+      <path d="M30 28 L16 42" />
+      <path d="M30 28 L44 42" />
+      <path d="M30 58 L19 82" />
+      <path d="M30 58 L41 82" />
+      <path d="M19 82 L15 88" />
+      <path d="M41 82 L45 88" />
+    </svg>
   );
 }
 
@@ -572,6 +720,347 @@ export default function MainMenu() {
             </div>
           </motion.div>
         </div>
+
+        {/* ================================================================ */}
+        {/* ---- Extended Content Sections ---- */}
+        {/* ================================================================ */}
+        <div className="w-full max-w-4xl mx-auto px-5 pb-8 flex flex-col gap-8 mt-4">
+
+          {/* ======== Featured Match of the Day ======== */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: mounted ? 1 : 0 }}
+            transition={{ delay: 1.55, duration: 0.5 }}
+            className="w-full"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-[#21262d]" />
+              <span className="text-[#484f58] text-[11px] font-semibold tracking-widest uppercase">
+                Featured Match
+              </span>
+              <div className="h-px flex-1 bg-[#21262d]" />
+            </div>
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
+              {/* Match importance badge */}
+              <div className="flex items-center gap-1.5 mb-4">
+                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                <span className="text-amber-400 text-[11px] font-semibold tracking-wide uppercase">
+                  {FEATURED_MATCH.importance}
+                </span>
+                <div className="flex gap-0.5 ml-1">
+                  {Array.from({ length: FEATURED_MATCH.stars }).map((_, i) => (
+                    <Star key={i} className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
+                  ))}
+                </div>
+              </div>
+
+              {/* Team matchup */}
+              <div className="flex items-center justify-between gap-4 mb-5">
+                {/* Home team */}
+                <div className="flex-1 flex flex-col items-center gap-2">
+                  <div className="h-16 w-16 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                    <span className="text-3xl" role="img">⚽</span>
+                  </div>
+                  <span className="text-[#c9d1d9] text-sm font-bold text-center">
+                    {FEATURED_MATCH.homeTeam}
+                  </span>
+                </div>
+
+                {/* VS divider */}
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  <span className="text-[#484f58] text-[10px] font-semibold tracking-widest uppercase">
+                    {FEATURED_MATCH.league}
+                  </span>
+                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-[#0d1117] border border-[#30363d]">
+                    <span className="text-emerald-400 text-sm font-black tracking-wider">VS</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3 text-[#484f58]" />
+                    <span className="text-[#8b949e] text-[11px] font-medium">{FEATURED_MATCH.date}</span>
+                  </div>
+                </div>
+
+                {/* Away team */}
+                <div className="flex-1 flex flex-col items-center gap-2">
+                  <div className="h-16 w-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <span className="text-3xl" role="img">⚽</span>
+                  </div>
+                  <span className="text-[#c9d1d9] text-sm font-bold text-center">
+                    {FEATURED_MATCH.awayTeam}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick stats preview */}
+              <div className="flex items-center gap-4 mb-4 py-3 px-4 bg-[#0d1117] rounded-lg">
+                <div className="flex items-center gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5 text-[#8b949e]" />
+                  <span className="text-[#8b949e] text-[11px] font-medium">Last 5 H2H:</span>
+                  <span className="text-[#c9d1d9] text-[11px] font-semibold">{FEATURED_MATCH.h2h}</span>
+                </div>
+                <div className="h-3 w-px bg-[#30363d]" />
+                <div className="flex items-center gap-1.5">
+                  <Target className="h-3.5 w-3.5 text-[#8b949e]" />
+                  <span className="text-[#8b949e] text-[11px] font-medium">Combined Goals:</span>
+                  <span className="text-emerald-400 text-[11px] font-bold">{FEATURED_MATCH.combinedGoals}</span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2.5">
+                <button className="flex-1 h-10 flex items-center justify-center gap-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-500 transition-colors">
+                  <Tv className="h-3.5 w-3.5" />
+                  Watch Live
+                </button>
+                <button className="flex-1 h-10 flex items-center justify-center gap-2 rounded-lg bg-[#0d1117] border border-[#30363d] text-[#c9d1d9] text-xs font-semibold hover:border-[#484f58] transition-colors">
+                  <Bell className="h-3.5 w-3.5" />
+                  Set Reminder
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ======== Player Spotlight Carousel ======== */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: mounted ? 1 : 0 }}
+            transition={{ delay: 1.65, duration: 0.5 }}
+            className="w-full"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-[#21262d]" />
+              <span className="text-[#484f58] text-[11px] font-semibold tracking-widest uppercase">
+                Player Spotlight
+              </span>
+              <div className="h-px flex-1 bg-[#21262d]" />
+            </div>
+
+            {/* Scrollable cards */}
+            <div className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 -mx-1 px-1">
+              {FEATURED_PLAYERS.map((player, i) => (
+                <motion.div
+                  key={player.name}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: mounted ? 1 : 0 }}
+                  transition={{ delay: 1.7 + i * 0.1, duration: 0.4 }}
+                  className={`shrink-0 w-56 snap-start bg-[#161b22] border rounded-lg p-4 flex flex-col items-center gap-3 ${player.borderColor}`}
+                >
+                  {/* Player silhouette */}
+                  <div className={`flex items-center justify-center h-20 w-20 rounded-lg ${player.bgColor}`}>
+                    <PlayerSilhouette className={`h-14 w-14 ${player.color}`} />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex flex-col items-center gap-1 text-center w-full">
+                    <span className="text-[#c9d1d9] text-sm font-bold leading-tight">{player.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[#8b949e] text-[11px]">{player.club}</span>
+                      <span className="text-[#30363d]">·</span>
+                      <span className={`text-[11px] font-semibold ${player.color}`}>{player.position}</span>
+                    </div>
+                  </div>
+
+                  {/* OVR badge */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#c9d1d9] text-2xl font-black tabular-nums">{player.overall}</span>
+                    <span className="text-[#484f58] text-[10px] font-semibold">OVR</span>
+                  </div>
+
+                  {/* Form dots */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[#484f58] text-[10px] font-semibold mr-0.5">Form</span>
+                    {player.form.map((result, j) => (
+                      <span
+                        key={j}
+                        className={`h-4 w-4 rounded flex items-center justify-center text-[9px] font-bold ${
+                          result === 'W'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : result === 'D'
+                              ? 'bg-amber-500/20 text-amber-400'
+                              : 'bg-red-500/20 text-red-400'
+                        }`}
+                      >
+                        {result}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Key stat */}
+                  <div className="text-center py-2 px-3 bg-[#0d1117] rounded-lg w-full">
+                    <span className="text-[#8b949e] text-[11px]">{player.keyStat}</span>
+                  </div>
+
+                  {/* View Profile button */}
+                  <button className="w-full h-8 flex items-center justify-center gap-1.5 rounded-lg border border-[#30363d] text-[#c9d1d9] text-[11px] font-semibold hover:border-[#484f58] transition-colors">
+                    <Eye className="h-3 w-3" />
+                    View Profile
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Dot indicators + scroll hint */}
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <span className="text-[#30363d] text-[10px] select-none">←</span>
+              {FEATURED_PLAYERS.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 w-1.5 rounded-sm ${
+                    i === 0 ? 'bg-emerald-500' : 'bg-[#30363d]'
+                  }`}
+                />
+              ))}
+              <span className="text-[#30363d] text-[10px] select-none">→</span>
+            </div>
+          </motion.div>
+
+          {/* ======== Weekly Challenges Banner ======== */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: mounted ? 1 : 0 }}
+            transition={{ delay: 1.8, duration: 0.5 }}
+            className="w-full"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-[#21262d]" />
+              <span className="text-[#484f58] text-[11px] font-semibold tracking-widest uppercase flex items-center gap-1.5">
+                <Flame className="h-3 w-3" />
+                Weekly Challenges
+              </span>
+              <div className="h-px flex-1 bg-[#21262d]" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {WEEKLY_CHALLENGES.map((challenge, i) => {
+                const diff = DIFFICULTY_COLORS[challenge.difficulty];
+                const progressPct = Math.round((challenge.progress / challenge.maxProgress) * 100);
+                return (
+                  <motion.div
+                    key={challenge.name}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: mounted ? 1 : 0 }}
+                    transition={{ delay: 1.85 + i * 0.08, duration: 0.4 }}
+                    className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex flex-col gap-3"
+                  >
+                    {/* Header: difficulty badge + time */}
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded border ${diff.text} ${diff.bg} ${diff.border}`}
+                      >
+                        {challenge.difficulty}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-[#484f58]" />
+                        <span className="text-[#484f58] text-[10px] font-medium">{challenge.timeRemaining}</span>
+                      </div>
+                    </div>
+
+                    {/* Title & description */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[#c9d1d9] text-xs font-bold leading-tight">{challenge.name}</span>
+                      <span className="text-[#8b949e] text-[10px] leading-relaxed">{challenge.description}</span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#484f58] text-[10px] font-medium">Progress</span>
+                        <span className="text-[#8b949e] text-[10px] font-semibold tabular-nums">
+                          {challenge.progress}/{challenge.maxProgress}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-[#0d1117] rounded overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded transition-opacity duration-500"
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Reward */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <Zap className="h-3.5 w-3.5 text-amber-400" />
+                      <span className="text-amber-400 text-[11px] font-bold">{challenge.reward}</span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* View All link */}
+            <button className="mt-3 flex items-center justify-center gap-1.5 mx-auto text-[#8b949e] text-[11px] font-semibold hover:text-emerald-400 transition-colors">
+              View All Challenges
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </motion.div>
+
+          {/* ======== Version Update & News Ticker ======== */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: mounted ? 1 : 0 }}
+            transition={{ delay: 2.0, duration: 0.5 }}
+            className="w-full"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-[#21262d]" />
+              <span className="text-[#484f58] text-[11px] font-semibold tracking-widest uppercase">
+                What&apos;s New
+              </span>
+              <div className="h-px flex-1 bg-[#21262d]" />
+            </div>
+
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
+              {/* Version header */}
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="h-4 w-4 text-emerald-400" />
+                <span className="text-[#c9d1d9] text-sm font-bold">{VERSION_UPDATE.title}</span>
+                <span className="text-emerald-400 text-[11px] font-semibold bg-emerald-500/10 px-2 py-0.5 rounded">
+                  {VERSION_UPDATE.version}
+                </span>
+              </div>
+
+              {/* Feature bullets */}
+              <ul className="flex flex-col gap-2 mb-4">
+                {VERSION_UPDATE.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-emerald-500 text-[10px] mt-1 shrink-0">▸</span>
+                    <span className="text-[#8b949e] text-[12px] leading-relaxed">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Read Full Patch Notes button */}
+              <button className="h-9 flex items-center gap-1.5 px-4 rounded-lg border border-[#30363d] text-[#c9d1d9] text-[11px] font-semibold hover:border-emerald-500/40 hover:text-emerald-400 transition-colors mb-4">
+                Read Full Patch Notes
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+
+              {/* Community stats */}
+              <div className="border-t border-[#30363d] pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="h-3.5 w-3.5 text-[#484f58]" />
+                  <span className="text-[#484f58] text-[10px] font-semibold tracking-widest uppercase">
+                    Community
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {COMMUNITY_STATS.map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="flex flex-col items-center gap-1 py-2 px-3 bg-[#0d1117] rounded-lg"
+                    >
+                      <stat.icon className="h-3.5 w-3.5 text-[#8b949e]" />
+                      <span className="text-[#c9d1d9] text-sm font-bold tabular-nums">{stat.value}</span>
+                      <span className="text-[#484f58] text-[10px] font-medium text-center">{stat.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+        </div>
+        {/* ---- End Extended Content Sections ---- */}
       </main>
 
       {/* ---- Bottom Ticker ---- */}

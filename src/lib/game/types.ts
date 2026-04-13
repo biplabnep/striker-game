@@ -662,7 +662,9 @@ export type GameScreen =
   | 'daily_rewards'
   | 'achievement_showcase'
   | 'injury_recovery'
-  | 'in_game_mail';
+  | 'in_game_mail'
+  | 'manager_career'
+  | 'tactical_set_pieces';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
