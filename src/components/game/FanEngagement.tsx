@@ -653,17 +653,18 @@ export default function FanEngagement() {
   const player = gameState?.player;
   const week = gameState?.currentWeek ?? 1;
   const season = gameState?.currentSeason ?? 1;
+  const playerReputation = player?.reputation ?? 5;
 
   // Stable initial values computed via useMemo (only runs once per player/week change)
   const initialEndorsements = useMemo(() => {
     if (!player) return [];
-    return generateEndorsements(player.name, player.overall, player.reputation, week);
-  }, [player, week]);
+    return generateEndorsements(player.name, player.overall, playerReputation, week);
+  }, [player, playerReputation, week]);
 
   const initialPosts = useMemo(() => {
     if (!player) return [];
-    return generateSocialPosts(player.name, week, season, player.form, player.seasonStats.goals, player.reputation);
-  }, [player, week, season]);
+    return generateSocialPosts(player.name, week, season, player.form, player.seasonStats.goals, playerReputation);
+  }, [player, playerReputation, week, season]);
 
   // Use initial values if state hasn't been modified by user actions
   const currentEndorsements = endorsements.length > 0 ? endorsements : initialEndorsements;
@@ -672,18 +673,18 @@ export default function FanEngagement() {
   // Computed data
   const fanData = useMemo(() => {
     if (!player) return null;
-    return generateFanData(player.name, week, season, player.overall, player.form, player.reputation, player.seasonStats.goals);
-  }, [player, week, season]);
+    return generateFanData(player.name, week, season, player.overall, player.form, playerReputation, player.seasonStats.goals);
+  }, [player, playerReputation, week, season]);
 
   const fanComments = useMemo(() => {
     if (!player || !fanData) return [];
     return generateFanComments(player.name, week, player.form, fanData.mood);
-  }, [player, week, fanData]);
+  }, [player, playerReputation, week, season, fanData]);
 
   const socialProfiles = useMemo(() => {
     if (!player) return [];
-    return generateSocialProfiles(player.name, player.overall, player.reputation, week);
-  }, [player, week]);
+    return generateSocialProfiles(player.name, player.overall, playerReputation, week);
+  }, [player, playerReputation, week]);
 
   const brandScore = useMemo(() => {
     if (!player) return null;
