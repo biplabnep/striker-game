@@ -1258,9 +1258,10 @@ export default function YouthAcademy() {
           {recentYouthResults.length > 0 ? (
             recentYouthResults.map((result, i) => {
               const isHome = result.homeClubId === currentClub.id;
-              const opponent = isHome ? result.awayClubName : result.homeClubName;
-              const homeGoals = result.homeGoals;
-              const awayGoals = result.awayGoals;
+              const opponentClubId = isHome ? result.awayClubId : result.homeClubId;
+              const opponentName = opponentClubId ? `Club ${opponentClubId.slice(-3).toUpperCase()}` : 'Unknown';
+              const homeGoals = result.homeScore;
+              const awayGoals = result.awayScore;
               const teamGoals = isHome ? homeGoals : awayGoals;
               const oppGoals = isHome ? awayGoals : homeGoals;
               const resultLabel = teamGoals > oppGoals ? 'W' : teamGoals < oppGoals ? 'L' : 'D';
@@ -1283,7 +1284,7 @@ export default function YouthAcademy() {
                       <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${resultColor}`}>
                         {isHome ? 'H' : 'A'}
                       </span>
-                      <span className="text-xs text-[#c9d1d9] font-medium truncate">{opponent}</span>
+                      <span className="text-xs text-[#c9d1d9] font-medium truncate">{opponentName}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-xs font-bold text-[#c9d1d9] tabular-nums">{teamGoals}</span>

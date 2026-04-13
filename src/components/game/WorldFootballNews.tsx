@@ -1658,14 +1658,14 @@ export default function WorldFootballNews() {
         return newsItems;
       case 'transfer':
         return newsItems.filter(i => i.category === 'transfer');
-      case 'match':
+      case 'results':
         return newsItems.filter(i => i.category === 'match');
-      case 'rumors':
+      case 'rumours':
         return newsItems.filter(i => i.reliability === 'rumor');
       case 'international':
         return newsItems.filter(i => i.category === 'international');
-      case 'your_club':
-        return newsItems.filter(i => i.relatedToClub);
+      case 'injuries':
+        return newsItems.filter(i => i.category === 'player');
       default:
         return newsItems;
     }
@@ -1907,7 +1907,7 @@ export default function WorldFootballNews() {
           )}
 
           {/* Transfer Rumor Section - also show on transfer/rumors filter */}
-          {transferRumors.length > 0 && (activeFilter === 'transfer' || activeFilter === 'rumors') && (
+          {transferRumors.length > 0 && (activeFilter === 'transfer' || activeFilter === 'rumours') && (
             <TransferRumorSection rumors={transferRumors} />
           )}
         </div>

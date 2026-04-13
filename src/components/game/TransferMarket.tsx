@@ -65,6 +65,21 @@ interface RecentTransfer {
 }
 
 // ============================================================
+// Transfer Rumor type
+// ============================================================
+interface TransferRumor {
+  id: string;
+  playerName: string;
+  fromClub: string;
+  targetClub: string;
+  source: string;
+  reliability: 'Low' | 'Medium' | 'High';
+  isNew: boolean;
+  weekPosted: number;
+  fee: number;
+}
+
+// ============================================================
 // Position filter categories
 // ============================================================
 type PositionFilter = 'All' | 'GK' | 'DEF' | 'MID' | 'FWD';
@@ -436,6 +451,183 @@ function getInterestInfo(level: number): { label: string; color: string; width: 
 }
 
 // ============================================================
+// Position category helpers
+// ============================================================
+function getPositionCategory(pos: Position): 'GK' | 'DEF' | 'MID' | 'FWD' {
+  if (pos === 'GK') return 'GK';
+  if (['CB', 'LB', 'RB'].includes(pos)) return 'DEF';
+  if (['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(pos)) return 'MID';
+  return 'FWD';
+}
+
+function getPositionBadgeClasses(pos: Position): string {
+  const cat = getPositionCategory(pos);
+  switch (cat) {
+    case 'GK': return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+    case 'DEF': return 'bg-sky-500/20 text-sky-400 border border-sky-500/30';
+    case 'MID': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    case 'FWD': return 'bg-red-500/20 text-red-400 border border-red-500/30';
+  }
+}
+
+// ============================================================
+// Nationality code abbreviation
+// ============================================================
+function getNationalityCode(nationality: string): string {
+  const map: Record<string, string> = {
+    'England': 'ENG', 'Spain': 'ESP', 'Italy': 'ITA', 'Germany': 'DEU',
+    'France': 'FRA', 'Portugal': 'POR', 'Brazil': 'BRA', 'Argentina': 'ARG',
+    'Netherlands': 'NED', 'Belgium': 'BEL', 'Croatia': 'CRO', 'Poland': 'POL',
+    'Uruguay': 'URU', 'Colombia': 'COL', 'Serbia': 'SRB', 'Norway': 'NOR',
+    'Denmark': 'DEN', 'Sweden': 'SWE', 'Switzerland': 'SUI', 'Austria': 'AUT',
+    'Mexico': 'MEX', 'USA': 'USA', 'Japan': 'JPN', 'South Korea': 'KOR',
+    'Australia': 'AUS', 'Nigeria': 'NGA', 'Senegal': 'SEN', 'Morocco': 'MAR',
+    'Ghana': 'GHA', 'Cameroon': 'CMR', 'Algeria': 'DZA', 'Tunisia': 'TUN',
+    'Egypt': 'EGY', 'Scotland': 'SCO', 'Wales': 'WAL', 'Ireland': 'IRL',
+    'Czech Republic': 'CZE', 'Turkey': 'TUR', 'Russia': 'RUS', 'Ukraine': 'UKR',
+    'Canada': 'CAN', 'Chile': 'CHI', 'Ecuador': 'ECU', 'Peru': 'PER',
+    'Paraguay': 'PRY', 'Venezuela': 'VEN', 'Ivory Coast': 'CIV',
+  };
+  return map[nationality] ?? nationality.slice(0, 3).toUpperCase();
+}
+
+function getNationalityBgColor(nationality: string): string {
+  const n = nationality.toLowerCase();
+  if (n.includes('eng') || n.includes('sco') || n.includes('wal')) return 'bg-sky-600';
+  if (n.includes('spa') || n.includes('arg') || n.includes('col') || n.includes('mex')) return 'bg-red-500';
+  if (n.includes('ita')) return 'bg-emerald-600';
+  if (n.includes('ger') || n.includes('aus')) return 'bg-amber-500';
+  if (n.includes('fra')) return 'bg-blue-600';
+  if (n.includes('bra') || n.includes('por')) return 'bg-yellow-600';
+  if (n.includes('net') || n.includes('bel')) return 'bg-orange-500';
+  if (n.includes('cro') || n.includes('ser') || n.includes('sui')) return 'bg-red-600';
+  if (n.includes('nor') || n.includes('den') || n.includes('swe')) return 'bg-sky-500';
+  if (n.includes('tur')) return 'bg-red-500';
+  if (n.includes('japan') || n.includes('korea')) return 'bg-rose-500';
+  if (n.includes('usa') || n.includes('can')) return 'bg-blue-500';
+  if (n.includes('nigeria') || n.includes('ghana') || n.includes('senegal') || n.includes('morocco') || n.includes('cameroon') || n.includes('egypt') || n.includes('algeria') || n.includes('tunisia') || n.includes('ivory')) return 'bg-lime-600';
+  return 'bg-[#484f58]';
+}
+
+// ============================================================
+// Contract badge styling
+// ============================================================
+function getContractBadgeClasses(years: number): string {
+  if (years <= 1) return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+  if (years <= 2) return 'bg-sky-500/20 text-sky-400 border border-sky-500/30';
+  return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+}
+
+function getContractLabel(years: number): string {
+  if (years === 1) return '1Y left';
+  return `${years}Y+`;
+}
+
+// ============================================================
+// Interest dots (1-3 clubs)
+// ============================================================
+function getInterestDotCount(level: number): number {
+  if (level >= 66) return 3;
+  if (level >= 33) return 2;
+  return 1;
+}
+
+function getInterestDotColor(level: number): string {
+  if (level >= 66) return 'bg-amber-400';
+  if (level >= 33) return 'bg-sky-400';
+  return 'bg-[#484f58]';
+}
+
+// ============================================================
+// Mini vertical bar sparkline
+// ============================================================
+function MiniBarSparkline({ data, color = '#10b981' }: { data: number[]; color?: string }) {
+  if (data.length === 0) return null;
+  const w = 32;
+  const h = 16;
+  const barW = Math.max(2, (w - (data.length - 1) * 1) / data.length);
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      {data.map((v, i) => {
+        const barH = Math.max(1, ((v - min) / range) * h);
+        const x = i * (barW + 1);
+        return (
+          <rect
+            key={i}
+            x={x}
+            y={h - barH}
+            width={barW}
+            height={barH}
+            rx={0.5}
+            fill={color}
+            opacity={0.5 + (v - min) / range * 0.5}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Reliability indicator dot color
+// ============================================================
+function getReliabilityColor(rel: 'Low' | 'Medium' | 'High'): string {
+  switch (rel) {
+    case 'High': return 'bg-emerald-400';
+    case 'Medium': return 'bg-amber-400';
+    case 'Low': return 'bg-red-400';
+  }
+}
+
+// ============================================================
+// Generate market rumors
+// ============================================================
+function generateMarketRumors(season: number, week: number): TransferRumor[] {
+  const seed = season * 700 + week * 11 + 99;
+  const rng = seededRandom(seed);
+  const clubs = ENRICHED_CLUBS;
+  const names = [
+    'Kylian Mbappe', 'Erling Haaland', 'Jude Bellingham', 'Vinicius Jr', 'Rodri',
+    'Mohamed Salah', 'Kevin De Bruyne', 'Luka Modric', 'Robert Lewandowski',
+    'Pedri', 'Gavi', 'Federico Valverde', 'Achraf Hakimi',
+    'William Saliba', 'Mikel Oyarzabal', 'Ferran Torres', 'Nicolo Barella',
+    'Declan Rice', 'Bukayo Saka', 'Jamal Musiala',
+  ];
+  const sources = ['Sky Sports', 'ESPN FC', 'Fabrizio Romano', 'Marca', 'L\'Equipe', 'Bild', 'Gazzetta', 'BBC Sport'];
+  const reliabilities: ('Low' | 'Medium' | 'High')[] = ['Low', 'Medium', 'High'];
+
+  const rumors: TransferRumor[] = [];
+  for (let i = 0; i < 6; i++) {
+    const fromIdx = Math.floor(rng() * clubs.length);
+    let toIdx = Math.floor(rng() * clubs.length);
+    while (toIdx === fromIdx) toIdx = Math.floor(rng() * clubs.length);
+    const nameIdx = Math.floor(rng() * names.length);
+    const weeksAgo = Math.floor(rng() * 4);
+    const isNew = weeksAgo === 0;
+    const reliability = reliabilities[Math.floor(rng() * reliabilities.length)];
+    const fee = Math.round((8 + rng() * 80) * 10) / 10;
+
+    rumors.push({
+      id: `rumor_${season}_${week}_${i}`,
+      playerName: names[nameIdx],
+      fromClub: clubs[fromIdx].shortName,
+      targetClub: clubs[toIdx].shortName,
+      source: sources[Math.floor(rng() * sources.length)],
+      reliability,
+      isNew,
+      weekPosted: week - weeksAgo,
+      fee,
+    });
+  }
+
+  return rumors;
+}
+
+// ============================================================
 // TransferMarket Component
 // ============================================================
 export default function TransferMarket() {
@@ -456,10 +648,12 @@ export default function TransferMarket() {
   const [bidAmount, setBidAmount] = useState(0);
   const [bidSubmitted, setBidSubmitted] = useState<'none' | 'success' | 'too_low'>('none');
   const [showFilters, setShowFilters] = useState(false);
+  const [showShortlistExpanded, setShowShortlistExpanded] = useState(false);
 
   // Generate data deterministically
   const allPlayers = useMemo(() => generateMarketPlayers(currentSeason, currentWeek), [currentSeason, currentWeek]);
   const recentTransfers = useMemo(() => generateRecentTransfers(currentSeason, currentWeek), [currentSeason, currentWeek]);
+  const marketRumors = useMemo(() => generateMarketRumors(currentSeason, currentWeek), [currentSeason, currentWeek]);
 
   // Transfer window status
   const windowStatus = useMemo(() => isTransferWindow(currentWeek), [currentWeek]);
@@ -529,6 +723,18 @@ export default function TransferMarket() {
     [allPlayers, shortlist]
   );
 
+  // Shortlist total value
+  const shortlistTotalValue = useMemo(() => {
+    return shortlistedPlayers.reduce((sum, p) => sum + p.askingPrice, 0);
+  }, [shortlistedPlayers]);
+
+  // Age range of filtered players
+  const ageRange = useMemo(() => {
+    if (filteredPlayers.length === 0) return { min: 0, max: 0 };
+    const ages = filteredPlayers.map(p => p.age);
+    return { min: Math.min(...ages), max: Math.max(...ages) };
+  }, [filteredPlayers]);
+
   const toggleShortlist = useCallback((playerId: string) => {
     setShortlist(prev => {
       const next = new Set(prev);
@@ -579,49 +785,61 @@ export default function TransferMarket() {
         <p className="text-xs text-[#8b949e]">Browse players available for transfer</p>
       </div>
 
-      {/* Market Overview Bar */}
-      <div className="mx-4 mb-3 grid grid-cols-4 gap-2">
+      {/* Market Overview Stats Bar - 3-column with sparklines */}
+      <div className="mx-4 mb-3 grid grid-cols-3 gap-2">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
-          className="bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-2 text-center"
+          className="bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 flex items-center gap-2.5"
         >
-          <Users className="h-3.5 w-3.5 text-emerald-400 mx-auto mb-0.5" />
-          <p className="text-sm font-bold text-[#c9d1d9]">{allPlayers.length}</p>
-          <p className="text-[9px] text-[#8b949e]">Available</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2, delay: 0.03 }}
-          className="bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-2 text-center"
-        >
-          <DollarSign className="h-3.5 w-3.5 text-emerald-400 mx-auto mb-0.5" />
-          <p className="text-sm font-bold text-[#c9d1d9]">{budgetInM >= 100 ? `${(budgetInM / 1000).toFixed(1)}B` : `${budgetInM.toFixed(0)}M`}</p>
-          <p className="text-[9px] text-[#8b949e]">Budget</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2, delay: 0.06 }}
-          className="bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-2 text-center"
-        >
-          <div className="mx-auto mb-0.5">
-            <span className={`inline-block w-2 h-2 rounded-sm ${windowStatus ? 'bg-emerald-500' : 'bg-red-400'}`} />
+          <div className="w-7 h-7 bg-emerald-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Users className="h-3.5 w-3.5 text-emerald-400" />
           </div>
-          <p className="text-sm font-bold text-[#c9d1d9]">{windowStatus ? 'Open' : 'Closed'}</p>
-          <p className="text-[9px] text-[#8b949e]">Window</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#c9d1d9]">{allPlayers.length}</p>
+            <p className="text-[9px] text-[#8b949e]">Total Available</p>
+          </div>
+          <MiniBarSparkline
+            data={allPlayers.slice(0, 5).map(p => p.overall)}
+            color="#10b981"
+          />
         </motion.div>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.2, delay: 0.09 }}
-          className="bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-2 text-center"
+          transition={{ duration: 0.2, delay: 0.05 }}
+          className="bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 flex items-center gap-2.5"
         >
-          <TrendingUp className="h-3.5 w-3.5 text-emerald-400 mx-auto mb-0.5" />
-          <p className="text-sm font-bold text-[#c9d1d9]">{formatPrice(avgPrice)}</p>
-          <p className="text-[9px] text-[#8b949e]">Avg Price</p>
+          <div className="w-7 h-7 bg-sky-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="h-3.5 w-3.5 text-sky-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#c9d1d9]">{formatPrice(avgPrice)}</p>
+            <p className="text-[9px] text-[#8b949e]">Avg Market Value</p>
+          </div>
+          <MiniBarSparkline
+            data={allPlayers.slice(0, 5).map(p => p.askingPrice)}
+            color="#38bdf8"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.1 }}
+          className="bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 flex items-center gap-2.5"
+        >
+          <div className="w-7 h-7 bg-amber-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
+            <DollarSign className="h-3.5 w-3.5 text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#c9d1d9]">{budgetInM >= 100 ? `${(budgetInM / 1000).toFixed(1)}B` : `${budgetInM.toFixed(0)}M`}</p>
+            <p className="text-[9px] text-[#8b949e]">Your Budget</p>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${windowStatus ? 'bg-emerald-500' : 'bg-red-400'}`} />
+            <span className="text-[8px] text-[#8b949e]">{windowStatus ? 'Open' : 'Closed'}</span>
+          </div>
         </motion.div>
       </div>
 
@@ -644,6 +862,42 @@ export default function TransferMarket() {
 
         {/* Market Tab */}
         <TabsContent value="market">
+          {/* Visual Filter Bar - always visible position pills + sort indicator */}
+          <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-1">
+            {(['All', 'GK', 'DEF', 'MID', 'FWD'] as PositionFilter[]).map(pos => {
+              const isActive = positionFilter === pos;
+              const catColors: Record<string, string> = {
+                All: isActive ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-[#161b22] text-[#8b949e] border-[#30363d]',
+                GK: isActive ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-[#161b22] text-[#8b949e] border-[#30363d]',
+                DEF: isActive ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-[#161b22] text-[#8b949e] border-[#30363d]',
+                MID: isActive ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-[#161b22] text-[#8b949e] border-[#30363d]',
+                FWD: isActive ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-[#161b22] text-[#8b949e] border-[#30363d]',
+              };
+              return (
+                <button
+                  key={pos}
+                  onClick={() => setPositionFilter(pos)}
+                  className={`px-2.5 py-1 text-[10px] font-medium rounded-lg border whitespace-nowrap transition-colors ${catColors[pos]}`}
+                >
+                  {pos}
+                </button>
+              );
+            })}
+            <div className="flex-1" />
+            {/* Sort indicator + Age range */}
+            <span className="text-[9px] text-[#484f58] whitespace-nowrap">
+              Age {ageRange.min}-{ageRange.max}
+            </span>
+            <span className="text-[9px] text-[#484f58]">|</span>
+            <span className="text-[9px] text-emerald-400/70 whitespace-nowrap flex items-center gap-0.5">
+              <svg width="8" height="8" viewBox="0 0 8 8" className="flex-shrink-0">
+                <path d="M4 1L7 5H1L4 1Z" fill="currentColor" opacity="0.6" />
+                <path d="M4 7L1 3H7L4 7Z" fill="currentColor" />
+              </svg>
+              {SORT_OPTIONS.find(s => s.value === sortOption)?.label}
+            </span>
+          </div>
+
           {/* Filter Toggle */}
           <button
             onClick={() => setShowFilters(prev => !prev)}
@@ -787,35 +1041,44 @@ export default function TransferMarket() {
                     transition={{ duration: 0.15, delay: idx * 0.02 }}
                     className="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 flex flex-col gap-1.5"
                   >
-                    {/* Club + Bookmark */}
+                    {/* Club + Bookmark + Contract badge */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 min-w-0">
                         <span className="text-sm">{player.club.logo}</span>
                         <span className="text-[9px] text-[#8b949e] truncate">{player.club.shortName}</span>
                       </div>
-                      <button
-                        onClick={() => toggleShortlist(player.id)}
-                        className="text-[#8b949e] hover:text-emerald-400 transition-colors flex-shrink-0"
-                      >
-                        {isShortlisted ? <BookmarkCheck className="h-3.5 w-3.5 text-emerald-400" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
-                      </button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className={`text-[7px] px-1 py-0 rounded-md font-medium ${getContractBadgeClasses(player.contractRemaining)}`}>
+                          {getContractLabel(player.contractRemaining)}
+                        </span>
+                        <button
+                          onClick={() => toggleShortlist(player.id)}
+                          className="text-[#8b949e] hover:text-emerald-400 transition-colors flex-shrink-0"
+                        >
+                          {isShortlisted ? <BookmarkCheck className="h-3.5 w-3.5 text-emerald-400" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Name + Position */}
+                    {/* Name + Position color badge */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-semibold text-[#c9d1d9] truncate">{player.name}</span>
-                      <Badge
-                        className="text-[8px] px-1 py-0 border-[#30363d] bg-[#21262d] text-[#8b949e] flex-shrink-0"
-                      >
+                      <span className={`text-[7px] px-1.5 py-0 rounded-md font-semibold flex-shrink-0 ${getPositionBadgeClasses(player.position)}`}>
                         {player.position}
-                      </Badge>
+                      </span>
                     </div>
 
-                    {/* OVR + Age + Flag */}
+                    {/* OVR circle + Nationality flag indicator + Age */}
                     <div className="flex items-center justify-between">
-                      <span className={`text-xl font-bold ${getOvrColor(player.overall)}`}>{player.overall}</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{player.nationalityFlag}</span>
+                      <div className={`w-9 h-9 ${getOvrBg(player.overall)} rounded-lg flex items-center justify-center`}>
+                        <span className={`text-lg font-bold ${getOvrColor(player.overall)}`}>{player.overall}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <span className={`inline-block w-3 h-3 rounded-sm flex items-center justify-center ${getNationalityBgColor(player.nationality)}`}>
+                            <span className="text-[5px] font-bold text-white">{getNationalityCode(player.nationality)}</span>
+                          </span>
+                        </div>
                         <span className="text-[10px] text-[#8b949e]">{player.age}y</span>
                       </div>
                     </div>
@@ -830,16 +1093,34 @@ export default function TransferMarket() {
                       ))}
                     </div>
 
-                    {/* Price */}
-                    <p className="text-xs font-bold text-emerald-400">{formatPrice(player.askingPrice)}</p>
-
-                    {/* Interest bar */}
+                    {/* Price with market value comparison bar */}
                     <div className="space-y-0.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[8px] text-[#484f58]">Interest</span>
-                        <span className="text-[8px] text-[#8b949e]">{interest.label}</span>
+                        <span className="text-xs font-bold text-emerald-400">{formatPrice(player.askingPrice)}</span>
+                        <span className={`text-[8px] font-medium ${player.askingPrice <= avgPrice ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {player.askingPrice <= avgPrice ? 'Below MV' : 'Above MV'}
+                        </span>
                       </div>
-                      <Progress value={interest.width} className="h-1 [&>div]:bg-[#21262d] [&>[data-slot=progress-indicator]]:bg-[#484f58]" />
+                      <div className="h-1 bg-[#21262d] rounded-sm overflow-hidden flex">
+                        <div
+                          className={`h-full ${player.askingPrice <= avgPrice ? 'bg-emerald-500' : 'bg-red-400'}`}
+                          style={{ width: `${Math.min(100, (player.askingPrice / (avgPrice * 2)) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Interest level dots (1-3 clubs interested) */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={`inline-block w-1.5 h-1.5 rounded-full ${i < getInterestDotCount(player.interestLevel) ? getInterestDotColor(player.interestLevel) : 'bg-[#21262d]'}`}
+                          />
+                        ))}
+                        <span className="text-[8px] text-[#484f58] ml-0.5">{getInterestDotCount(player.interestLevel)} club{getInterestDotCount(player.interestLevel) > 1 ? 's' : ''}</span>
+                      </div>
+                      <SparklineSVG data={player.valueTrend} color={player.valueTrend[player.valueTrend.length - 1] >= player.valueTrend[0] ? '#10b981' : '#f87171'} />
                     </div>
 
                     {/* Action buttons */}
@@ -875,60 +1156,162 @@ export default function TransferMarket() {
               <p className="text-[10px] mt-1">Tap the bookmark icon on players to add them</p>
             </div>
           ) : (
-            <div className="space-y-2 pb-4">
+            <div className="space-y-3 pb-4">
+              {/* Shortlist Summary Header */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-emerald-500/15 rounded-lg flex items-center justify-center">
+                      <Star className="h-3 w-3 text-emerald-400" />
+                    </div>
+                    <span className="text-xs font-semibold text-[#c9d1d9]">{shortlistedPlayers.length} Player{shortlistedPlayers.length > 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-emerald-400">{formatPrice(shortlistTotalValue)}</p>
+                    <p className="text-[8px] text-[#484f58]">Total Value</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-[#8b949e]">
+                    {shortlistTotalValue <= budgetInM
+                      ? `Within budget — ${formatPrice(budgetInM - shortlistTotalValue)} remaining`
+                      : `Over budget by ${formatPrice(shortlistTotalValue - budgetInM)}`
+                    }
+                  </p>
+                  <div className="h-1 flex-1 mx-3 bg-[#21262d] rounded-sm overflow-hidden">
+                    <div
+                      className={`h-full ${shortlistTotalValue <= budgetInM ? 'bg-emerald-500' : 'bg-red-400'}`}
+                      style={{ width: `${Math.min(100, (shortlistTotalValue / budgetInM) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                {/* Batch Offers button */}
+                <button className="w-full mt-2.5 py-2 bg-emerald-500/15 border border-emerald-500/30 rounded-lg text-[10px] font-semibold text-emerald-400 hover:bg-emerald-500/25 transition-colors flex items-center justify-center gap-1">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
+                    <path d="M1 6h10M6 1v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  Make Offers for All
+                </button>
+              </div>
+
+              {/* Shortlist compact cards */}
+              <div className="space-y-1.5">
               {shortlistedPlayers.map(player => (
                 <motion.div
                   key={player.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex items-center gap-3"
+                  className="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 flex items-center gap-2.5"
                 >
-                  {/* OVR */}
-                  <div className={`${getOvrBg(player.overall)} rounded-lg px-2.5 py-1.5 text-center flex-shrink-0`}>
-                    <span className={`text-lg font-bold ${getOvrColor(player.overall)}`}>{player.overall}</span>
+                  {/* OVR circle */}
+                  <div className={`w-9 h-9 ${getOvrBg(player.overall)} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                    <span className={`text-sm font-bold ${getOvrColor(player.overall)}`}>{player.overall}</span>
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-[#c9d1d9] truncate">{player.name}</p>
-                      <Badge className="text-[8px] px-1 py-0 border-[#30363d] bg-[#21262d] text-[#8b949e] flex-shrink-0">{player.position}</Badge>
+                    <div className="flex items-center gap-1">
+                      <p className="text-xs font-semibold text-[#c9d1d9] truncate">{player.name}</p>
+                      <span className={`text-[7px] px-1 py-0 rounded-md font-semibold flex-shrink-0 ${getPositionBadgeClasses(player.position)}`}>
+                        {player.position}
+                      </span>
                     </div>
-                    <p className="text-[10px] text-[#8b949e]">
-                      {player.club.logo} {player.club.name} · {player.nationalityFlag} {player.age}y
-                    </p>
-                    <p className="text-xs font-bold text-emerald-400 mt-0.5">{formatPrice(player.askingPrice)}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[9px] text-[#8b949e]">{player.club.logo} {player.club.shortName}</span>
+                      <span className={`inline-block w-3 h-3 rounded-sm flex items-center justify-center ${getNationalityBgColor(player.nationality)}`}>
+                        <span className="text-[5px] font-bold text-white">{getNationalityCode(player.nationality)}</span>
+                      </span>
+                      <span className="text-[9px] text-[#484f58]">{player.age}y</span>
+                      <span className={`text-[7px] px-1 py-0 rounded-md ${getContractBadgeClasses(player.contractRemaining)}`}>
+                        {getContractLabel(player.contractRemaining)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-bold text-emerald-400 mt-0.5">{formatPrice(player.askingPrice)}</p>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                  <div className="flex flex-col gap-1 flex-shrink-0">
                     <button
                       onClick={() => setSelectedPlayer(player)}
-                      className="p-1.5 bg-[#21262d] border border-[#30363d] rounded-md text-[#8b949e] hover:text-[#c9d1d9] transition-colors"
+                      className="p-1 bg-[#21262d] border border-[#30363d] rounded-md text-[#8b949e] hover:text-[#c9d1d9] transition-colors"
                     >
-                      <Eye className="h-3.5 w-3.5" />
+                      <Eye className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => openBid(player)}
-                      className="p-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-md text-emerald-400 hover:bg-emerald-500/25 transition-colors"
+                      className="p-1 bg-emerald-500/15 border border-emerald-500/30 rounded-md text-emerald-400 hover:bg-emerald-500/25 transition-colors"
                     >
-                      <ShoppingCart className="h-3.5 w-3.5" />
+                      <ShoppingCart className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => toggleShortlist(player.id)}
-                      className="p-1.5 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 hover:bg-red-500/20 transition-colors"
+                      className="p-1 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 hover:bg-red-500/20 transition-colors"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
                 </motion.div>
               ))}
+              </div>
             </div>
           )}
         </TabsContent>
 
         {/* Recent Transfers Tab */}
         <TabsContent value="recent">
+          {/* Market Activity Feed - Transfer Rumors */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-semibold text-[#8b949e] uppercase tracking-wide">Transfer Rumors</p>
+              <span className="text-[9px] text-emerald-400/60">{marketRumors.filter(r => r.isNew).length} new</span>
+            </div>
+            <div className="space-y-1.5">
+              {marketRumors.map((rumor, idx) => (
+                <motion.div
+                  key={rumor.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.15, delay: idx * 0.03 }}
+                  className="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5"
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="text-[11px] font-semibold text-[#c9d1d9] truncate">{rumor.playerName}</p>
+                      {rumor.isNew && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-[7px] px-1.5 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md font-bold flex-shrink-0"
+                        >
+                          NEW
+                        </motion.span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-1.5">
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${getReliabilityColor(rumor.reliability)}`} />
+                      <span className="text-[8px] text-[#484f58]">{rumor.reliability}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px]">
+                    <span className="text-[#8b949e]">{rumor.fromClub}</span>
+                    <ArrowRight className="h-2.5 w-2.5 text-[#484f58]" />
+                    <span className="text-sky-400 font-medium">{rumor.targetClub}</span>
+                    <span className="text-[#30363d] mx-0.5">|</span>
+                    <span className="text-[8px] text-amber-400 font-semibold">{formatPrice(rumor.fee)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-[8px] px-1.5 py-0 bg-[#21262d] border border-[#30363d] rounded-md text-[#8b949e]">
+                      {rumor.source}
+                    </span>
+                    <span className="text-[8px] text-[#484f58]">Wk {rumor.weekPosted}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Completed Transfers */}
+          <p className="text-[10px] font-semibold text-[#8b949e] uppercase tracking-wide mb-2">Completed Transfers</p>
           <div className="space-y-2 pb-4">
             {recentTransfers.map((transfer, idx) => (
               <motion.div
@@ -1165,6 +1548,42 @@ export default function TransferMarket() {
                     <span className="text-emerald-400 font-semibold">{formatPrice(bidPlayer.askingPrice * 1.2)}</span>
                   </p>
                   <p className="text-[10px] text-[#8b949e] mt-1">Asking price: {formatPrice(bidPlayer.askingPrice)}</p>
+                </div>
+
+                {/* Transfer Fee Breakdown Bar */}
+                <div className="bg-[#0d1117] rounded-lg p-3">
+                  <p className="text-[10px] text-[#484f58] uppercase mb-2">Fee Breakdown</p>
+                  <div className="h-3 bg-[#21262d] rounded-md overflow-hidden flex">
+                    <div
+                      className="h-full bg-emerald-500"
+                      title="Base Fee"
+                      style={{ width: '70%' }}
+                    />
+                    <div
+                      className="h-full bg-sky-500"
+                      title="Agent Fee"
+                      style={{ width: '20%' }}
+                    />
+                    <div
+                      className="h-full bg-amber-500"
+                      title="Signing Bonus"
+                      style={{ width: '10%' }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-sm bg-emerald-500" />
+                      <span className="text-[8px] text-[#8b949e]">Base Fee {formatPrice(bidPlayer.askingPrice * 0.7)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-sm bg-sky-500" />
+                      <span className="text-[8px] text-[#8b949e]">Agent {formatPrice(bidPlayer.askingPrice * 0.2)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-sm bg-amber-500" />
+                      <span className="text-[8px] text-[#8b949e]">Bonus {formatPrice(bidPlayer.askingPrice * 0.1)}</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Preset buttons */}

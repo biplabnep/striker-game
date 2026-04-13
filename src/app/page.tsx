@@ -71,6 +71,8 @@ import SquadRotationPlanner from '@/components/game/SquadRotationPlanner';
 import FacilitiesUpgrades from '@/components/game/FacilitiesUpgrades';
 import MediaInterview from '@/components/game/MediaInterview';
 import LoanSystem from '@/components/game/LoanSystem';
+import JerseyNumber from '@/components/game/JerseyNumber';
+import SponsorSystem from '@/components/game/SponsorSystem';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -139,6 +141,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   facilities_upgrades: FacilitiesUpgrades,
   loan_system: LoanSystem,
   media_interview: MediaInterview,
+  jersey_number: JerseyNumber,
+  sponsor_system: SponsorSystem,
 };
 
 const gameScreens: GameScreen[] = [
@@ -174,6 +178,8 @@ const gameScreens: GameScreen[] = [
   'facilities_upgrades',
   'loan_system',
   'media_interview',
+  'jersey_number',
+  'sponsor_system',
 ];
 
 export default function Home() {

@@ -636,7 +636,9 @@ export type GameScreen =
   | 'squad_rotation'
   | 'facilities_upgrades'
   | 'media_interview'
-  | 'loan_system';
+  | 'loan_system'
+  | 'jersey_number'
+  | 'sponsor_system';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
