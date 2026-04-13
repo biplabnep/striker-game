@@ -284,6 +284,90 @@ export default function TransferNegotiation() {
     );
   }, [player, currentClub, currentWeek, currentSeason]);
 
+  // Deterministic transfer history for player (seeded from player data)
+  const transferHistory = useMemo(() => {
+    if (!player) return [];
+    const rng = seededRandom(player.overall * 31 + player.age * 17 + 7);
+    const otherClubs = ENRICHED_CLUBS.filter(c => c.id !== currentClub?.id);
+    const history: Array<{
+      season: number;
+      fromClub: { name: string; shortName: string; logo: string };
+      toClub: { name: string; shortName: string; logo: string };
+      fee: number;
+      wageAtTime: number;
+    }> = [];
+
+    const usedClubs = new Set<string>();
+    if (currentClub) usedClubs.add(currentClub.id);
+
+    for (let i = 0; i < 3; i++) {
+      const seasonNum = currentSeason - (3 - i);
+      const available = otherClubs.filter(c => !usedClubs.has(c.id));
+      if (available.length < 2) continue;
+
+      const fromIdx = Math.floor(rng() * available.length);
+      const from = available[fromIdx];
+      usedClubs.add(from.id);
+
+      const remaining = available.filter(c => !usedClubs.has(c.id));
+      if (remaining.length === 0) continue;
+      const toIdx = Math.floor(rng() * remaining.length);
+      const to = remaining[toIdx];
+      usedClubs.add(to.id);
+
+      const baseFee = calculateMarketValue(player.overall - (3 - i) * 3, player.age - (3 - i), player.potential, player.reputation - (3 - i) * 5);
+      const fee = Math.round(baseFee * (0.8 + rng() * 0.6) * 100) / 100;
+      const wageAtTime = Math.round(fee * 0.002 * (1 + rng() * 0.5) * 100) / 100;
+
+      history.push({
+        season: seasonNum,
+        fromClub: { name: from.name, shortName: from.shortName, logo: from.logo },
+        toClub: { name: to.name, shortName: to.shortName, logo: to.logo },
+        fee,
+        wageAtTime,
+      });
+    }
+
+    return history.reverse();
+  }, [player, currentClub, currentSeason]);
+
+  // Contract comparison data (current vs offered)
+  const contractComparison = useMemo(() => {
+    if (!player || !selectedOffer || !negotiation) return null;
+    const currentWageVal = player.contract?.weeklyWage ?? 0;
+    const offeredWage = negotiation.currentWage;
+    const offeredLength = negotiation.currentContractLength;
+    const offeredBonus = negotiation.currentSigningBonus;
+    const offeredRelease = negotiation.currentReleaseClause;
+    const currentRelease = player.contract?.releaseClause;
+
+    const goalBonus = Math.round(offeredWage * 0.15 * 100) / 100;
+    const appearanceBonus = Math.round(offeredWage * 0.05 * 100) / 100;
+    const imageRightsPct = player.reputation > 80 ? 15 : player.reputation > 60 ? 10 : 5;
+    const agentFee = Math.round(offeredWage * offeredLength * 52 * 0.05 * 100) / 100;
+    const loyaltyBonusVal = Math.round(offeredWage * 52 * offeredLength * 0.08 * 100) / 100;
+    const totalContractValue = Math.round((offeredWage * 52 * offeredLength + offeredBonus + loyaltyBonusVal) * 100) / 100;
+    const isWithinBudget = offeredWage * 52 <= (selectedOffer.fromClub.wageBudget * 0.15);
+
+    return {
+      currentWeeklyWage: currentWageVal,
+      offeredWeeklyWage: offeredWage,
+      currentSigningBonus: player.contract?.signingBonus ?? 0,
+      offeredSigningBonus: offeredBonus,
+      currentContractLength: player.contract?.yearsRemaining ?? 2,
+      offeredContractLength: offeredLength,
+      currentReleaseClause: currentRelease ?? 0,
+      offeredReleaseClause: offeredRelease ?? 0,
+      offeredGoalBonus: goalBonus,
+      offeredAppearanceBonus: appearanceBonus,
+      offeredImageRightsPct: imageRightsPct,
+      offeredAgentFee: agentFee,
+      offeredLoyaltyBonus: loyaltyBonusVal,
+      totalContractValue,
+      isWithinBudget,
+    };
+  }, [player, selectedOffer, negotiation]);
+
   // Start negotiation with a selected offer
   const startNegotiation = useCallback((offer: TransferOfferData) => {
     setSelectedOffer(offer);
@@ -889,6 +973,502 @@ export default function TransferNegotiation() {
     );
   };
 
+  // ============================================================
+  // NEW: Detailed Negotiation Phase Tracker (5-phase)
+  // ============================================================
+  const renderDetailedPhaseTracker = (activePhase: number, isFailed: boolean) => {
+    const phases: Array<{
+      id: string;
+      label: string;
+      description: string;
+      iconPath: string;
+    }> = [
+      { id: 'inquiry', label: 'Initial Inquiry', description: 'Club expresses interest in player', iconPath: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+      { id: 'discussion', label: 'Agent Discussion', description: 'Agent discusses terms with club', iconPath: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+      { id: 'terms', label: 'Contract Terms', description: 'Wage, bonus, and length negotiation', iconPath: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8' },
+      { id: 'medical', label: 'Medical', description: 'Player undergoes medical examination', iconPath: 'M22 12h-4l-3 9L9 3l-3 9H2' },
+      { id: 'decision', label: isFailed ? 'Deal Off' : 'Final Decision', description: isFailed ? 'Transfer negotiations collapsed' : 'Both parties finalize the deal', iconPath: isFailed ? 'M18 6L6 18M6 6l12 12' : 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3' },
+    ];
+
+    const getPhaseStatus = (idx: number): 'completed' | 'current' | 'upcoming' | 'locked' => {
+      if (isFailed && idx === 4) return 'current';
+      if (idx < activePhase) return 'completed';
+      if (idx === activePhase) return 'current';
+      if (idx === activePhase + 1) return 'upcoming';
+      return 'locked';
+    };
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3">
+          <p className="text-[10px] text-[#8b949e] uppercase tracking-wider mb-3">Negotiation Progress</p>
+          <div className="flex flex-col gap-0">
+            {phases.map((ph, i) => {
+              const status = getPhaseStatus(i);
+              const isLast = i === phases.length - 1;
+              const isActive = status === 'current';
+              const isDone = status === 'completed';
+              const isLocked = status === 'locked';
+              const isUpcoming = status === 'upcoming';
+              const lineColor = isDone ? '#34d399' : (isFailed && i >= activePhase) ? '#ef4444' : '#30363d';
+              const nodeBg = isDone ? '#34d399' : isActive ? (isFailed ? '#ef4444' : '#34d399') : isLocked ? '#21262d' : '#30363d';
+              const nodeBorder = isActive ? (isFailed ? '#ef4444' : '#34d399') : isUpcoming ? '#484f58' : isLocked ? '#21262d' : 'none';
+              const textColor = isDone ? '#34d399' : isActive ? (isFailed ? '#ef4444' : '#34d399') : isUpcoming ? '#8b949e' : '#484f58';
+
+              return (
+                <div key={ph.id} className="flex gap-3">
+                  {/* Node + Line */}
+                  <div className="flex flex-col items-center">
+                    <div
+                      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: nodeBg, border: nodeBorder !== 'none' ? `2px solid ${nodeBorder}` : '2px solid transparent' }}
+                    >
+                      {isDone ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d1117" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      ) : isLocked ? (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#484f58" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isFailed ? '#0d1117' : '#0d1117'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ph.iconPath} /></svg>
+                      )}
+                    </div>
+                    {!isLast && (
+                      <div className="w-0.5 flex-1 min-h-[16px]" style={{ backgroundColor: lineColor }} />
+                    )}
+                  </div>
+                  {/* Content */}
+                  <div className="flex-1 pb-4 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold" style={{ color: textColor }}>{ph.label}</span>
+                      {isDone && <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400 border border-emerald-700/30">Completed</span>}
+                      {isActive && !isFailed && <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400 border border-emerald-700/30">Current</span>}
+                      {isUpcoming && <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#8b949e] border border-[#30363d]">Upcoming</span>}
+                      {isLocked && <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#21262d] text-[#484f58] border border-[#21262d]">Locked</span>}
+                    </div>
+                    <p className="text-[9px] mt-0.5" style={{ color: isLocked ? '#484f58' : '#8b949e' }}>{ph.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // NEW: Contract Terms Breakdown (Detailed Comparison)
+  // ============================================================
+  const renderContractTermsComparison = () => {
+    if (!contractComparison) return null;
+    const c = contractComparison;
+
+    const terms: Array<{
+      label: string;
+      current: string;
+      offered: string;
+      diff: number;
+      isPositiveGood: boolean;
+    }> = [
+      { label: 'Weekly Wage', current: formatCurrency(c.currentWeeklyWage, 'K'), offered: formatCurrency(c.offeredWeeklyWage, 'K'), diff: c.offeredWeeklyWage - c.currentWeeklyWage, isPositiveGood: true },
+      { label: 'Signing Bonus', current: formatCurrency(c.currentSigningBonus, 'K'), offered: formatCurrency(c.offeredSigningBonus, 'K'), diff: c.offeredSigningBonus - c.currentSigningBonus, isPositiveGood: true },
+      { label: 'Contract Length', current: `${c.currentContractLength} yr`, offered: `${c.offeredContractLength} yr`, diff: c.offeredContractLength - c.currentContractLength, isPositiveGood: true },
+      { label: 'Release Clause', current: c.currentReleaseClause > 0 ? formatCurrency(c.currentReleaseClause, 'M') : 'None', offered: c.offeredReleaseClause > 0 ? formatCurrency(c.offeredReleaseClause, 'M') : 'None', diff: c.offeredReleaseClause - c.currentReleaseClause, isPositiveGood: true },
+      { label: 'Loyalty Bonus', current: 'N/A', offered: formatCurrency(c.offeredLoyaltyBonus, 'K'), diff: 1, isPositiveGood: true },
+      { label: 'Goal Bonus', current: 'N/A', offered: formatCurrency(c.offeredGoalBonus, 'K'), diff: 1, isPositiveGood: true },
+      { label: 'Appearance Bonus', current: 'N/A', offered: formatCurrency(c.offeredAppearanceBonus, 'K'), diff: 1, isPositiveGood: true },
+      { label: 'Image Rights', current: '0%', offered: `${c.offeredImageRightsPct}%`, diff: c.offeredImageRightsPct, isPositiveGood: true },
+      { label: 'Agent Fee', current: 'N/A', offered: formatCurrency(c.offeredAgentFee, 'K'), diff: -1, isPositiveGood: false },
+      { label: 'Total Value', current: formatCurrency(c.currentWeeklyWage * 52 * c.currentContractLength, 'M'), offered: formatCurrency(c.totalContractValue, 'M'), diff: c.totalContractValue - (c.currentWeeklyWage * 52 * c.currentContractLength), isPositiveGood: true },
+    ];
+
+    const positiveCount = terms.filter(t => t.diff > 0 && t.isPositiveGood).length;
+    const negativeCount = terms.filter(t => t.diff < 0 && t.isPositiveGood).length + terms.filter(t => t.diff > 0 && !t.isPositiveGood).length;
+    const isBetterDeal = positiveCount > negativeCount;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] text-[#8b949e] uppercase tracking-wider">Contract Terms Comparison</p>
+            <span className={`text-[9px] px-2 py-0.5 rounded border font-semibold ${
+              isBetterDeal ? 'bg-emerald-900/40 text-emerald-400 border-emerald-700/30' : 'bg-amber-900/40 text-amber-400 border-amber-700/30'
+            }`}>
+              {isBetterDeal ? 'Better Deal' : 'Evaluate Carefully'}
+            </span>
+          </div>
+
+          {/* Column headers */}
+          <div className="grid grid-cols-12 gap-1 text-[8px] text-[#484f58] uppercase tracking-wider mb-1.5 px-1">
+            <div className="col-span-4">Term</div>
+            <div className="col-span-3 text-center">Current</div>
+            <div className="col-span-3 text-center">Offered</div>
+            <div className="col-span-2 text-right">Diff</div>
+          </div>
+
+          <div className="space-y-0.5">
+            {terms.map((term) => {
+              const isUp = term.diff > 0 && term.isPositiveGood;
+              const isDown = (term.diff < 0 && term.isPositiveGood) || (term.diff > 0 && !term.isPositiveGood);
+              const isNeutral = !isUp && !isDown;
+              const diffColor = isUp ? '#34d399' : isDown ? '#ef4444' : '#8b949e';
+
+              return (
+                <div key={term.label} className="grid grid-cols-12 gap-1 items-center py-1 px-1 rounded text-[10px]" style={{ backgroundColor: 'transparent' }}>
+                  <div className="col-span-4 text-[#8b949e] truncate text-[9px]">{term.label}</div>
+                  <div className="col-span-3 text-center text-[#c9d1d9] text-[9px]">{term.current}</div>
+                  <div className="col-span-3 text-center text-white text-[9px] font-medium">{term.offered}</div>
+                  <div className="col-span-2 text-right text-[9px] font-semibold" style={{ color: diffColor }}>
+                    {isNeutral ? '—' : isUp ? '▲' : '▼'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Salary cap indicator */}
+          <div className="mt-2.5 pt-2 border-t border-[#21262d]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.isWithinBudget ? '#34d399' : '#f59e0b'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                <span className="text-[9px] text-[#8b949e]">Salary Cap</span>
+              </div>
+              <span className={`text-[9px] font-medium ${c.isWithinBudget ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {c.isWithinBudget ? 'Within Budget' : 'Near Limit'}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // NEW: Detailed Agent Panel with tips and priorities
+  // ============================================================
+  const renderDetailedAgentPanel = () => {
+    if (!player || !selectedOffer) return null;
+    const agentQ = player.agentQuality ?? 50;
+
+    const wageRatio = (player.contract?.weeklyWage ?? 0) > 0
+      ? (selectedOffer.weeklyWage / (player.contract?.weeklyWage ?? 1))
+      : 1;
+    const roleOk = selectedOffer.squadRole === 'starter' || selectedOffer.squadRole === 'rotation';
+    const repUp = selectedOffer.fromClub.reputation > (currentClub?.reputation ?? 50);
+
+    let recommendation: 'Accept' | 'Negotiate' | 'Reject';
+    let reasoning: string;
+
+    if (wageRatio >= 1.2 && roleOk) {
+      recommendation = 'Accept';
+      reasoning = 'Strong financial package with a clear path to first-team football. This deal aligns well with your market value.';
+    } else if (wageRatio >= 1.0 || (repUp && roleOk)) {
+      recommendation = 'Negotiate';
+      reasoning = 'The foundation is reasonable but there is room to improve on wages and bonuses. A focused counter-offer could yield better terms.';
+    } else {
+      recommendation = 'Reject';
+      reasoning = 'The terms do not reflect your current standing. Unless the sporting project is exceptional, I recommend declining.';
+    }
+
+    const priorities: Array<{ label: string; weight: number; active: boolean }> = [
+      { label: 'Wage', weight: 35, active: recommendation === 'Negotiate' },
+      { label: 'Trophies', weight: repUp ? 25 : 15, active: repUp },
+      { label: 'Playing Time', weight: 20, active: roleOk },
+      { label: 'Location', weight: 10, active: false },
+      { label: 'Contract Length', weight: 10, active: false },
+    ];
+
+    const tips: string[] = [];
+    if (wageRatio < 1.1) tips.push('Push for at least a 10% wage increase over your current contract.');
+    if (!roleOk) tips.push('Negotiate a guaranteed starting spot or look for clubs where you can feature regularly.');
+    if (selectedOffer.contractLength < 3) tips.push('Aim for a minimum 3-year deal to secure long-term stability.');
+    if (repUp) tips.push('A move to a higher-reputation club boosts your market value for future transfers.');
+    if (selectedOffer.signingBonus < selectedOffer.weeklyWage * 4) tips.push('Request a signing bonus of at least 4 weeks wages as a commitment signal.');
+    if (tips.length < 3) tips.push('Consider the squad depth at your position before committing to the move.');
+
+    const agentFeePct = 5 + (100 - agentQ) * 0.1;
+    const agentFeeVal = negotiation
+      ? Math.round(negotiation.currentWage * negotiation.currentContractLength * 52 * (agentFeePct / 100) * 100) / 100
+      : 0;
+
+    const recColor = recommendation === 'Accept' ? '#34d399' : recommendation === 'Negotiate' ? '#f59e0b' : '#ef4444';
+    const recBg = recommendation === 'Accept' ? 'rgba(52,211,153,0.1)' : recommendation === 'Negotiate' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)';
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          {/* Agent header with SVG avatar */}
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: recBg, border: `2px solid ${recColor}` }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={recColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[#c9d1d9]">Agent Advisory</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[9px] text-[#8b949e]">Experience:</span>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <svg key={i} width="8" height="8" viewBox="0 0 24 24" fill={i < Math.ceil(agentQ / 20) ? recColor : '#21262d'} stroke={i < Math.ceil(agentQ / 20) ? recColor : '#30363d'} strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                  ))}
+                </div>
+                <span className="text-[8px] text-[#484f58]">({agentQ}/100)</span>
+              </div>
+            </div>
+            {/* Recommendation badge */}
+            <div
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold shrink-0"
+              style={{ backgroundColor: recBg, color: recColor, border: `1px solid ${recColor}40` }}
+            >
+              {recommendation}
+            </div>
+          </div>
+
+          {/* Reasoning */}
+          <p className="text-[10px] text-[#c9d1d9] leading-relaxed">{reasoning}</p>
+
+          {/* Negotiation priorities */}
+          <div>
+            <p className="text-[9px] text-[#8b949e] uppercase tracking-wider mb-1.5">Negotiation Priorities</p>
+            <div className="flex gap-1">
+              {priorities.map((p) => (
+                <div key={p.label} className="flex-1 text-center">
+                  <div className="h-8 bg-[#21262d] rounded flex items-end justify-center overflow-hidden pb-0.5">
+                    <div
+                      className="w-full rounded-t"
+                      style={{ height: `${p.weight * 0.8}px`, backgroundColor: p.active ? recColor : '#30363d' }}
+                    />
+                  </div>
+                  <p className={`text-[7px] mt-1 truncate ${p.active ? '' : 'text-[#484f58]'}`} style={{ color: p.active ? recColor : undefined }}>{p.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Agent tips */}
+          <div>
+            <p className="text-[9px] text-[#8b949e] uppercase tracking-wider mb-1.5">Agent Tips</p>
+            <div className="space-y-1">
+              {tips.slice(0, 3).map((tip, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill={recColor} stroke="none" className="shrink-0 mt-0.5"><circle cx="12" cy="12" r="4" /></svg>
+                  <span className="text-[9px] text-[#c9d1d9] leading-relaxed">{tip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Agent fee */}
+          <div className="flex items-center justify-between pt-2 border-t border-[#21262d]">
+            <span className="text-[9px] text-[#8b949e]">Estimated Agent Fee</span>
+            <span className="text-[10px] font-semibold text-[#c9d1d9]">
+              {formatCurrency(agentFeeVal, 'K')} <span className="text-[8px] text-[#484f58]">({agentFeePct.toFixed(1)}%)</span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // NEW: Transfer History Comparison
+  // ============================================================
+  const renderTransferHistory = () => {
+    if (transferHistory.length === 0 || !player || !selectedOffer) return null;
+
+    const allFees = [...transferHistory.map(t => t.fee), selectedOffer.transferFee];
+    const maxFee = Math.max(...allFees);
+    const minFee = Math.min(...allFees);
+    const feeRange = maxFee - minFee || 1;
+
+    const careerEarnings = transferHistory.reduce((sum, t) => sum + t.wageAtTime * 52, 0);
+    const maxEarning = Math.max(careerEarnings, 1);
+
+    const currentMV = player.marketValue;
+    const offeredMV = Math.round(selectedOffer.transferFee * 0.7 * 100) / 100;
+    const mvMax = Math.max(currentMV, offeredMV, 1);
+
+    const svgW = 280;
+    const svgH = 70;
+    const padX = 8;
+    const padTop = 12;
+    const padBot = 12;
+    const chartW = svgW - padX * 2;
+    const chartH = svgH - padTop - padBot;
+
+    const feePoints = allFees.map((fee, i) => ({
+      x: padX + (allFees.length === 1 ? chartW / 2 : (i / (allFees.length - 1)) * chartW),
+      y: padTop + chartH - ((fee - minFee) / feeRange) * chartH * 0.85 - chartH * 0.075,
+      value: fee,
+      label: i < transferHistory.length ? `S${transferHistory[i].season}` : 'Now',
+    }));
+
+    const linePath = feePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <p className="text-[10px] text-[#8b949e] uppercase tracking-wider flex items-center gap-1.5">
+            <History className="h-3 w-3" />
+            Transfer History
+          </p>
+
+          {/* Past transfers list */}
+          <div className="space-y-1.5">
+            {transferHistory.map((tr, i) => (
+              <div key={i} className="flex items-center gap-2 bg-[#21262d] rounded-lg p-2">
+                <span className="text-sm shrink-0">{tr.fromClub.logo}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b949e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+                <span className="text-sm shrink-0">{tr.toClub.logo}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] text-[#c9d1d9] truncate">{tr.fromClub.shortName} → {tr.toClub.shortName}</p>
+                  <p className="text-[8px] text-[#484f58]">Season {tr.season}</p>
+                </div>
+                <span className="text-[9px] font-semibold text-emerald-400 shrink-0">{formatCurrency(tr.fee, 'M')}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Fee trend SVG chart */}
+          <div>
+            <p className="text-[9px] text-[#484f58] mb-1">Transfer Fee Trend</p>
+            <div className="bg-[#21262d] rounded-lg p-2">
+              <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ height: `${svgH}px` }}>
+                <line x1={padX} y1={padTop + chartH * 0.5} x2={svgW - padX} y2={padTop + chartH * 0.5} stroke="#30363d" strokeWidth="0.5" />
+                <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                {feePoints.map((p, i) => (
+                  <g key={i}>
+                    <circle cx={p.x} cy={p.y} r="3" fill="#0d1117" stroke={i === feePoints.length - 1 ? '#34d399' : '#3b82f6'} strokeWidth="1.5" />
+                    <text x={p.x} y={p.y - 6} textAnchor="middle" fill="#8b949e" fontSize="6" fontWeight="600">{formatCurrency(p.value, 'M')}</text>
+                    <text x={p.x} y={svgH - 2} textAnchor="middle" fill="#484f58" fontSize="5">{p.label}</text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+          </div>
+
+          {/* Career earnings bar */}
+          <div>
+            <p className="text-[9px] text-[#484f58] mb-1">Career Earnings Progression</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-3 bg-[#21262d] rounded overflow-hidden">
+                <div className="h-full rounded" style={{ width: `${Math.min(100, (careerEarnings / maxEarning) * 100)}%`, backgroundColor: '#34d399' }} />
+              </div>
+              <span className="text-[9px] font-semibold text-emerald-400 shrink-0">{formatCurrency(careerEarnings, 'M')}</span>
+            </div>
+          </div>
+
+          {/* Market value comparison */}
+          <div>
+            <p className="text-[9px] text-[#484f58] mb-1.5">Market Value Comparison</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
+                <p className="text-[8px] text-[#8b949e]">Current Club</p>
+                <p className="text-[11px] font-bold text-[#c9d1d9]">{formatCurrency(currentMV, 'M')}</p>
+                <div className="h-1.5 bg-[#161b22] rounded mt-1 overflow-hidden">
+                  <div className="h-full rounded" style={{ width: `${(currentMV / mvMax) * 100}%`, backgroundColor: '#8b949e' }} />
+                </div>
+              </div>
+              <div className="bg-[#21262d] rounded-lg p-2 text-center">
+                <p className="text-[8px] text-[#8b949e]">At New Club</p>
+                <p className="text-[11px] font-bold text-emerald-400">{formatCurrency(offeredMV, 'M')}</p>
+                <div className="h-1.5 bg-[#161b22] rounded mt-1 overflow-hidden">
+                  <div className="h-full rounded" style={{ width: `${(offeredMV / mvMax) * 100}%`, backgroundColor: '#34d399' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // NEW: Detailed Club Comparison Visual
+  // ============================================================
+  const renderDetailedClubComparison = () => {
+    if (!selectedOffer || !currentClub) return null;
+    const target = selectedOffer.fromClub;
+
+    type MetricData = {
+      label: string;
+      currentVal: number;
+      offeredVal: number;
+      maxVal: number;
+      format: (v: number) => string;
+    };
+
+    const metrics: MetricData[] = [
+      { label: 'League Level', currentVal: 6 - currentClub.tier, offeredVal: 6 - target.tier, maxVal: 5, format: (v: number) => `${'★'.repeat(Math.round(v))}${'☆'.repeat(5 - Math.round(v))}` },
+      { label: 'Squad OVR', currentVal: currentClub.squadQuality, offeredVal: target.squadQuality, maxVal: 100, format: (v: number) => `${v}` },
+      { label: 'Stadium Capacity', currentVal: Math.round(currentClub.finances * 600 + 10000), offeredVal: Math.round(target.finances * 600 + 10000), maxVal: 80000, format: (v: number) => `${(v / 1000).toFixed(0)}K` },
+      { label: 'European Comp.', currentVal: currentClub.tier <= 2 ? 1 : 0, offeredVal: target.tier <= 2 ? 1 : 0, maxVal: 1, format: (v: number) => v === 1 ? 'Yes' : 'No' },
+      { label: 'Manager Rating', currentVal: currentClub.quality, offeredVal: target.quality, maxVal: 100, format: (v: number) => `${v}/100` },
+      { label: 'Trophy Cabinet', currentVal: Math.round(currentClub.reputation * 0.8), offeredVal: Math.round(target.reputation * 0.8), maxVal: 80, format: (v: number) => `${v}` },
+      { label: 'Finances', currentVal: currentClub.finances, offeredVal: target.finances, maxVal: 100, format: (v: number) => `${v}/100` },
+    ];
+
+    const getBadge = (current: number, offered: number): { label: string; color: string; bg: string } => {
+      const diff = offered - current;
+      const threshold = Math.max(Math.abs(current) * 0.05, 2);
+      if (diff > threshold) return { label: 'Upgrade', color: '#34d399', bg: 'rgba(52,211,153,0.1)' };
+      if (diff < -threshold) return { label: 'Downgrade', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' };
+      return { label: 'Lateral', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' };
+    };
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-[#8b949e] uppercase tracking-wider">Club Comparison</p>
+            <div className="flex items-center gap-3 text-[8px]">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: '#8b949e' }} />{currentClub.shortName}</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: '#3b82f6' }} />{target.shortName}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {metrics.map((m) => {
+              const badge = getBadge(m.currentVal, m.offeredVal);
+              const barMax = Math.max(m.maxVal, 1);
+              const curPct = (m.currentVal / barMax) * 100;
+              const offPct = (m.offeredVal / barMax) * 100;
+
+              return (
+                <div key={m.label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] text-[#8b949e]">{m.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[8px] text-[#c9d1d9]">{m.format(m.currentVal)}</span>
+                      <span className="text-[8px] text-[#484f58]">→</span>
+                      <span className="text-[8px] text-white font-medium">{m.format(m.offeredVal)}</span>
+                      <span
+                        className="text-[7px] px-1.5 py-0.5 rounded font-semibold"
+                        style={{ color: badge.color, backgroundColor: badge.bg }}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Dual bar comparison */}
+                  <div className="flex gap-0.5">
+                    <div className="flex-1 h-2 bg-[#21262d] rounded overflow-hidden">
+                      <div className="h-full rounded" style={{ width: `${Math.min(100, curPct)}%`, backgroundColor: '#8b949e' }} />
+                    </div>
+                    <div className="flex-1 h-2 bg-[#21262d] rounded overflow-hidden">
+                      <div className="h-full rounded" style={{ width: `${Math.min(100, offPct)}%`, backgroundColor: '#3b82f6' }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (!gameState || !player || !currentClub) return null;
 
   // ============================================================
@@ -1098,16 +1678,9 @@ export default function TransferNegotiation() {
           </Badge>
         </motion.div>
 
-        {/* Phase Indicator */}
+        {/* Detailed Phase Tracker */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.02 }}>
-          <Card className="bg-[#161b22] border-[#30363d]">
-            <CardContent className="p-2">
-              {renderPhaseIndicator(
-                negotiation.round === 1 ? 1 : 2,
-                false
-              )}
-            </CardContent>
-          </Card>
+          {renderDetailedPhaseTracker(negotiation.round === 1 ? 1 : 2, false)}
         </motion.div>
 
         {/* Club Info Card */}
@@ -1174,14 +1747,34 @@ export default function TransferNegotiation() {
           </Card>
         </motion.div>
 
-        {/* Club Comparison */}
+        {/* Club Comparison - Original */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.06 }}>
           {renderClubComparison()}
         </motion.div>
 
-        {/* Agent Advice Panel */}
+        {/* Detailed Club Comparison Visual */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.065 }}>
+          {renderDetailedClubComparison()}
+        </motion.div>
+
+        {/* Agent Advice Panel - Original */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}>
           {renderAgentAdvice()}
+        </motion.div>
+
+        {/* Detailed Agent Panel with tips and priorities */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.085 }}>
+          {renderDetailedAgentPanel()}
+        </motion.div>
+
+        {/* Contract Terms Comparison */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.09 }}>
+          {renderContractTermsComparison()}
+        </motion.div>
+
+        {/* Transfer History Comparison */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.095 }}>
+          {renderTransferHistory()}
         </motion.div>
 
         {/* Club Message */}
@@ -1397,13 +1990,19 @@ export default function TransferNegotiation() {
 
     return (
       <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
-        {/* Result Phase Indicator */}
+        {/* Detailed Result Phase Tracker */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <Card className="bg-[#161b22] border-[#30363d]">
-            <CardContent className="p-2">
-              {renderPhaseIndicator(isSuccess ? 4 : 4, !isSuccess)}
-            </CardContent>
-          </Card>
+          {renderDetailedPhaseTracker(isSuccess ? 4 : 4, !isSuccess)}
+        </motion.div>
+
+        {/* Contract Terms Comparison in Result */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+          {renderContractTermsComparison()}
+        </motion.div>
+
+        {/* Detailed Club Comparison in Result */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.07 }}>
+          {renderDetailedClubComparison()}
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

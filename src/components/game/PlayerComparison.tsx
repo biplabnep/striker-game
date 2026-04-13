@@ -10,6 +10,7 @@ import {
   ArrowLeft, TrendingUp, Footprints, Crosshair, Target,
   Zap, Shield, Dumbbell, Users, BarChart3, ClipboardList,
   ChevronRight, Crown, AlertTriangle, Clock, Check, Star, Swords, Percent, Trophy, User,
+  Activity, Calendar, DollarSign,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -474,13 +475,14 @@ function generateNPCTeammates(clubName: string, clubQuality: number, count: numb
 // -----------------------------------------------------------
 // Tab definitions
 // -----------------------------------------------------------
-type TabId = 'potential' | 'teammate' | 'league' | 'development';
+type TabId = 'potential' | 'teammate' | 'league' | 'development' | 'advanced';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'potential',   label: 'vs Potential', icon: <TrendingUp className="h-4 w-4" /> },
   { id: 'teammate',    label: 'vs Teammate',  icon: <Users className="h-4 w-4" /> },
   { id: 'league',      label: 'League Avg',   icon: <BarChart3 className="h-4 w-4" /> },
   { id: 'development', label: 'Train Plan',   icon: <ClipboardList className="h-4 w-4" /> },
+  { id: 'advanced',    label: 'Advanced',    icon: <Activity className="h-4 w-4" /> },
 ];
 
 // -----------------------------------------------------------
@@ -693,6 +695,151 @@ export default function PlayerComparison() {
     const overallWinner = playerWinsCount > teammateWinsCount ? 'player' : teammateWinsCount > playerWinsCount ? 'teammate' : 'tie';
     const topDiff = [...diffs].sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 3);
     return { diffs, playerWinsCount, teammateWinsCount, overallWinner, topDiff };
+  }, [gameState, chosenTeammate]);
+
+  // ── Season-by-Season Comparison Data ──
+  const seasonComparisonData = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const seasons: string[] = ['20/21', '21/22', '22/23', '23/24', '24/25'];
+    const seed = seedHash(`${gameState.player.name}-${chosenTeammate.name}-seasons`);
+    const playerRatings: number[] = [];
+    const teammateRatings: number[] = [];
+    for (let i = 0; i < seasons.length; i++) {
+      const baseRating = gameState.player.overall - (seasons.length - 1 - i) * 3;
+      const variance = ((seed + i * 17) % 10) - 5;
+      playerRatings.push(Math.max(40, Math.min(95, baseRating + variance)));
+      const tBase = chosenTeammate.overall - (seasons.length - 1 - i) * 2;
+      const tVar = ((seed + i * 23) % 12) - 6;
+      teammateRatings.push(Math.max(40, Math.min(95, tBase + tVar)));
+    }
+    return { seasons, playerRatings, teammateRatings };
+  }, [gameState, chosenTeammate]);
+
+  // ── Advanced Metrics Data ──
+  const advancedMetrics = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const seed = seedHash(`${gameState.player.name}-${chosenTeammate.name}-adv`);
+    const defs: { key: string; label: string; unit: string; isPercent: boolean }[] = [
+      { key: 'xG90', label: 'xG per 90', unit: '', isPercent: false },
+      { key: 'xA90', label: 'xA per 90', unit: '', isPercent: false },
+      { key: 'shotConv', label: 'Shot Conversion', unit: '%', isPercent: true },
+      { key: 'keyPasses', label: 'Key Passes/90', unit: '', isPercent: false },
+      { key: 'dribbleSuc', label: 'Dribble Success', unit: '%', isPercent: true },
+      { key: 'aerialWin', label: 'Aerial Win %', unit: '%', isPercent: true },
+      { key: 'progPasses', label: 'Prog. Passes/90', unit: '', isPercent: false },
+      { key: 'pressures', label: 'Pressures/90', unit: '', isPercent: false },
+      { key: 'tackleSuc', label: 'Tackle Success', unit: '%', isPercent: true },
+      { key: 'passes90', label: 'Passes per 90', unit: '', isPercent: false },
+    ];
+    type MetricWinner = 'player' | 'teammate' | 'tie';
+    type MetricEntry = {
+      key: string; label: string; unit: string;
+      playerValue: number; teammateValue: number; winner: MetricWinner;
+    };
+    const result: MetricEntry[] = defs.map((d, i) => {
+      const pBase = d.isPercent
+        ? 30 + (gameState.player.overall / 100) * 50
+        : 0.1 + (gameState.player.overall / 100) * 0.8;
+      const pVal = pBase + ((seed + i * 7) % 20) / (d.isPercent ? 1 : 10);
+      const tBase = d.isPercent
+        ? 30 + (chosenTeammate.overall / 100) * 50
+        : 0.1 + (chosenTeammate.overall / 100) * 0.8;
+      const tVal = tBase + ((seed + i * 11) % 20) / (d.isPercent ? 1 : 10);
+      const pFinal = d.isPercent ? Math.round(Math.min(95, pVal)) : parseFloat(Math.min(9.99, pVal).toFixed(2));
+      const tFinal = d.isPercent ? Math.round(Math.min(95, tVal)) : parseFloat(Math.min(9.99, tVal).toFixed(2));
+      const winner: MetricWinner = pFinal > tFinal ? 'player' : tFinal > pFinal ? 'teammate' : 'tie';
+      return { key: d.key, label: d.label, unit: d.unit, playerValue: pFinal, teammateValue: tFinal, winner };
+    });
+    return result;
+  }, [gameState, chosenTeammate]);
+
+  // ── Head-to-Head Match History ──
+  const matchHistory = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const seed = seedHash(`${gameState.player.name}-${chosenTeammate.name}-h2h`);
+    const competitions: string[] = ['Premier League', 'Champions League', 'FA Cup', 'League Cup', 'Friendly'];
+    type MatchResult = 'win' | 'loss' | 'draw';
+    type PlayerMatchStats = { goals: number; assists: number; rating: number };
+    type MatchEntry = {
+      date: string; competition: string; score: string; result: MatchResult;
+      playerStats: PlayerMatchStats; teammateStats: PlayerMatchStats;
+    };
+    const matches: MatchEntry[] = [];
+    for (let i = 0; i < 5; i++) {
+      const month = 1 + ((seed + i * 3) % 12);
+      const day = 1 + ((seed + i * 5) % 28);
+      const year = 2021 + Math.floor(i * 0.8 + (seed % 3));
+      const competition = competitions[(seed + i * 7) % competitions.length];
+      const pGoals = (seed + i * 11) % 4;
+      const tGoals = (seed + i * 13) % 4;
+      const result: MatchResult = pGoals > tGoals ? 'win' : pGoals < tGoals ? 'loss' : 'draw';
+      const pRating = parseFloat((6.0 + ((seed + i * 17) % 30) / 10).toFixed(1));
+      const tRating = parseFloat((6.0 + ((seed + i * 19) % 30) / 10).toFixed(1));
+      matches.push({
+        date: `${day < 10 ? '0' : ''}${day}/${month < 10 ? '0' : ''}${month}/${year}`,
+        competition,
+        score: `${pGoals} - ${tGoals}`,
+        result,
+        playerStats: { goals: pGoals, assists: (seed + i * 23) % 3, rating: pRating },
+        teammateStats: { goals: tGoals, assists: (seed + i * 29) % 3, rating: tRating },
+      });
+    }
+    const aggregate = {
+      wins: matches.filter(m => m.result === 'win').length,
+      draws: matches.filter(m => m.result === 'draw').length,
+      losses: matches.filter(m => m.result === 'loss').length,
+      goalsFor: matches.reduce((s, m) => s + m.playerStats.goals, 0),
+      goalsAgainst: matches.reduce((s, m) => s + m.teammateStats.goals, 0),
+    };
+    return { matches, aggregate };
+  }, [gameState, chosenTeammate]);
+
+  // ── Playing Style Analysis Data ──
+  const playingStyleData = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const seed = seedHash(`${gameState.player.name}-${chosenTeammate.name}-style`);
+    const dimensions = ['Speed', 'Technical', 'Physical', 'Creative', 'Defensive', 'Aerial'] as const;
+    const playerStyle: number[] = dimensions.map((_, i) => {
+      const base = gameState.player.attributes[ATTR_KEYS[i]] || 60;
+      const v = ((seed + i * 7) % 15) - 7;
+      return Math.max(30, Math.min(98, base + v));
+    });
+    const teammateStyle: number[] = dimensions.map((_, i) => {
+      const base = chosenTeammate.attributes[ATTR_KEYS[i]] || 60;
+      const v = ((seed + i * 11) % 15) - 7;
+      return Math.max(30, Math.min(98, base + v));
+    });
+    const compatibility = Math.round(
+      dimensions.reduce((sum, _, i) => sum + Math.min(playerStyle[i], teammateStyle[i]), 0)
+      / (dimensions.length * 98) * 100
+    );
+    const similarityPct = Math.round(
+      dimensions.reduce((sum, _, i) => sum + (100 - Math.abs(playerStyle[i] - teammateStyle[i])), 0)
+      / dimensions.length
+    );
+    return { dimensions: [...dimensions], playerStyle, teammateStyle, compatibility, similarityPct };
+  }, [gameState, chosenTeammate]);
+
+  // ── Transfer Value Comparison Data ──
+  const transferValueData = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const seed = seedHash(`${gameState.player.name}-${chosenTeammate.name}-xfer`);
+    const pBase = (gameState.player.overall - 40) * 1.2 + (30 - gameState.player.age) * 0.8;
+    const tBase = (chosenTeammate.overall - 40) * 1.2 + (30 - chosenTeammate.age) * 0.8;
+    const playerValue = Math.max(1, Math.round((pBase + ((seed % 20) - 10)) * 10) / 10);
+    const teammateValue = Math.max(1, Math.round((tBase + (((seed + 7) % 20) - 10)) * 10) / 10);
+    const playerWage = Math.round(playerValue * 4.5 + ((seed + 13) % 20));
+    const teammateWage = Math.round(teammateValue * 4.5 + (((seed + 17) % 20)));
+    const playerContract = 1 + ((seed + 3) % 5);
+    const teammateContract = 1 + ((seed + 11) % 5);
+    type ValueTrend = 'increasing' | 'stable' | 'decreasing';
+    const playerTrend: ValueTrend = gameState.player.age < 26 ? 'increasing' : gameState.player.age < 30 ? 'stable' : 'decreasing';
+    const teammateTrend: ValueTrend = chosenTeammate.age < 26 ? 'increasing' : chosenTeammate.age < 30 ? 'stable' : 'decreasing';
+    const betterInvestment = playerValue / Math.max(1, playerWage) >= teammateValue / Math.max(1, teammateWage) ? 'player' : 'teammate';
+    return {
+      playerValue, teammateValue, playerWage, teammateWage,
+      playerContract, teammateContract, playerTrend, teammateTrend, betterInvestment,
+    };
   }, [gameState, chosenTeammate]);
 
   if (!gameState) return null;
@@ -1760,6 +1907,389 @@ export default function PlayerComparison() {
                 </CardContent>
               </Card>
             </div>
+          )}
+
+          {/* ─── Tab 5: Advanced Comparison ─── */}
+          {activeTab === 'advanced' && chosenTeammate && (
+            <div className="space-y-3">
+              {/* ── Season-by-Season Comparison ── */}
+              {seasonComparisonData && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5" /> Season-by-Season Ratings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <div className="flex justify-center">
+                      <svg viewBox="0 0 320 160" width="320" height="160" className="max-w-full">
+                        {/* Y-axis */}
+                        <line x1="40" y1="10" x2="40" y2="130" stroke="#30363d" strokeWidth={1} />
+                        {/* X-axis */}
+                        <line x1="40" y1="130" x2="300" y2="130" stroke="#30363d" strokeWidth={1} />
+                        {/* Gridlines */}
+                        {[40, 60, 80, 100].map((val) => {
+                          const y = 130 - ((val - 40) / 60) * 120;
+                          return (
+                            <g key={`grid-${val}`}>
+                              <line x1="40" y1={y} x2="300" y2={y} stroke="#21262d" strokeWidth={0.5} />
+                              <text x="35" y={y + 3} fill="#484f58" fontSize={7} textAnchor="end" fontFamily="monospace">{val}</text>
+                            </g>
+                          );
+                        })}
+                        {/* Season labels */}
+                        {seasonComparisonData.seasons.map((season, i) => {
+                          const x = 40 + (i / (seasonComparisonData.seasons.length - 1)) * 260;
+                          return <text key={season} x={x} y="148" fill="#8b949e" fontSize={8} textAnchor="middle" fontFamily="monospace">{season}</text>;
+                        })}
+                        {/* Player line */}
+                        <polyline
+                          points={seasonComparisonData.playerRatings.map((rating, i) => {
+                            const x = 40 + (i / (seasonComparisonData.seasons.length - 1)) * 260;
+                            const y = 130 - ((rating - 40) / 60) * 120;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                          fill="none" stroke="#34d399" strokeWidth={2}
+                        />
+                        {/* Player data points */}
+                        {seasonComparisonData.playerRatings.map((rating, i) => {
+                          const x = 40 + (i / (seasonComparisonData.seasons.length - 1)) * 260;
+                          const y = 130 - ((rating - 40) / 60) * 120;
+                          return (
+                            <g key={`pp-${i}`}>
+                              <circle cx={x} cy={y} r={3} fill="#34d399" />
+                              <text x={x} y={y - 6} fill="#34d399" fontSize={7} textAnchor="middle" fontWeight={700} fontFamily="monospace">{rating}</text>
+                            </g>
+                          );
+                        })}
+                        {/* Teammate line */}
+                        <polyline
+                          points={seasonComparisonData.teammateRatings.map((rating, i) => {
+                            const x = 40 + (i / (seasonComparisonData.seasons.length - 1)) * 260;
+                            const y = 130 - ((rating - 40) / 60) * 120;
+                            return `${x},${y}`;
+                          }).join(' ')}
+                          fill="none" stroke="#38bdf8" strokeWidth={2} strokeDasharray="4,2"
+                        />
+                        {/* Teammate data points */}
+                        {seasonComparisonData.teammateRatings.map((rating, i) => {
+                          const x = 40 + (i / (seasonComparisonData.seasons.length - 1)) * 260;
+                          const y = 130 - ((rating - 40) / 60) * 120;
+                          return (
+                            <g key={`tp-${i}`}>
+                              <circle cx={x} cy={y} r={2.5} fill="#38bdf8" />
+                              <text x={x} y={y + 12} fill="#38bdf8" fontSize={7} textAnchor="middle" fontWeight={600} fontFamily="monospace">{rating}</text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                    {/* Legend */}
+                    <div className="flex items-center justify-center gap-4 mt-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-0.5 rounded-sm" style={{ backgroundColor: '#34d399' }} />
+                        <span className="text-[10px] text-[#8b949e]">{player.name.split(' ')[0]}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-0.5 rounded-sm" style={{ backgroundColor: '#38bdf8', borderStyle: 'dashed' }} />
+                        <span className="text-[10px] text-[#8b949e]">{chosenTeammate.name.split(' ')[0]}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ── Advanced Metrics Comparison ── */}
+              {advancedMetrics && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5" /> Advanced Metrics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 space-y-2">
+                    {/* Column headers */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-[#34d399]">{player.name.split(' ')[0]}</span>
+                      <span className="text-[10px] text-[#484f58]">METRIC</span>
+                      <span className="text-[10px] font-bold text-[#38bdf8]">{chosenTeammate.name.split(' ')[0]}</span>
+                    </div>
+                    {advancedMetrics.map((m, i) => {
+                      const maxVal = Math.max(m.playerValue, m.teammateValue, 0.01);
+                      const pPct = (m.playerValue / maxVal) * 100;
+                      const tPct = (m.teammateValue / maxVal) * 100;
+                      return (
+                        <div key={m.key} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[11px] font-mono font-bold w-12 text-right ${m.winner === 'player' ? 'text-[#34d399]' : 'text-[#8b949e]'}`}>
+                              {m.unit === '%' ? `${m.playerValue}%` : m.playerValue}
+                            </span>
+                            <span className="text-[10px] text-[#8b949e]">{m.label}</span>
+                            <span className={`text-[11px] font-mono font-bold w-12 ${m.winner === 'teammate' ? 'text-[#38bdf8]' : 'text-[#8b949e]'}`}>
+                              {m.unit === '%' ? `${m.teammateValue}%` : m.teammateValue}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="flex-1 bg-[#21262d] rounded-sm h-1.5 overflow-hidden flex justify-end">
+                              <div className="h-full rounded-sm" style={{ width: `${pPct}%`, backgroundColor: m.winner === 'player' ? '#34d399' : '#30363d' }} />
+                            </div>
+                            <div className="w-px h-2.5 bg-[#30363d] shrink-0" />
+                            <div className="flex-1 bg-[#21262d] rounded-sm h-1.5 overflow-hidden">
+                              <div className="h-full rounded-sm" style={{ width: `${tPct}%`, backgroundColor: m.winner === 'teammate' ? '#38bdf8' : '#30363d' }} />
+                            </div>
+                          </div>
+                          {/* Who Wins badge */}
+                          <div className="flex justify-end">
+                            {m.winner !== 'tie' && (
+                              <Badge className="text-[8px] font-bold border-0 px-1.5 py-0" style={{
+                                backgroundColor: m.winner === 'player' ? 'rgba(52,211,153,0.15)' : 'rgba(56,189,248,0.15)',
+                                color: m.winner === 'player' ? '#34d399' : '#38bdf8',
+                              }}>
+                                {m.winner === 'player' ? `${player.name.split(' ')[0]} wins` : `${chosenTeammate.name.split(' ')[0]} wins`}
+                              </Badge>
+                            )}
+                            {m.winner === 'tie' && (
+                              <span className="text-[9px] text-[#484f58]">Even</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ── Head-to-Head Match History ── */}
+              {matchHistory && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <Swords className="h-3.5 w-3.5" /> Match History
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 space-y-2">
+                    {matchHistory.matches.map((match, mi) => {
+                      const resultColor = match.result === 'win' ? '#34d399' : match.result === 'loss' ? '#ef4444' : '#f59e0b';
+                      const resultLabel = match.result === 'win' ? 'W' : match.result === 'loss' ? 'L' : 'D';
+                      return (
+                        <motion.div
+                          key={mi}
+                          className="bg-[#21262d] rounded-lg p-2.5 space-y-1.5"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: mi * 0.06, duration: 0.15 }}
+                        >
+                          {/* Header row */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge className="text-[8px] font-bold border-0 px-1.5 py-0" style={{ backgroundColor: `${resultColor}22`, color: resultColor }}>
+                                {resultLabel}
+                              </Badge>
+                              <span className="text-[10px] text-[#8b949e]">{match.date}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] text-[#484f58]">{match.competition}</span>
+                              <span className="text-xs font-bold text-[#c9d1d9] font-mono">{match.score}</span>
+                            </div>
+                          </div>
+                          {/* Player stats row */}
+                          <div className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#8b949e]">{player.name.split(' ')[0]}</span>
+                              <span className="font-mono text-[#c9d1d9]">{match.playerStats.goals}G {match.playerStats.assists}A</span>
+                              <Badge className="text-[8px] font-bold border-0 px-1 py-0" style={{
+                                backgroundColor: match.playerStats.rating >= 7.0 ? 'rgba(52,211,153,0.15)' : 'rgba(139,148,158,0.15)',
+                                color: match.playerStats.rating >= 7.0 ? '#34d399' : '#8b949e',
+                              }}>{match.playerStats.rating}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[#c9d1d9]">{match.teammateStats.goals}G {match.teammateStats.assists}A</span>
+                              <span className="text-[#8b949e]">{chosenTeammate.name.split(' ')[0]}</span>
+                              <Badge className="text-[8px] font-bold border-0 px-1 py-0" style={{
+                                backgroundColor: match.teammateStats.rating >= 7.0 ? 'rgba(56,189,248,0.15)' : 'rgba(139,148,158,0.15)',
+                                color: match.teammateStats.rating >= 7.0 ? '#38bdf8' : '#8b949e',
+                              }}>{match.teammateStats.rating}</Badge>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                    {/* Aggregate H2H stats */}
+                    <div className="pt-2 border-t border-[#30363d]">
+                      <div className="flex items-center justify-around bg-[#0d1117] rounded-lg p-2.5">
+                        <div className="text-center">
+                          <div className="text-sm font-black text-[#34d399]">{matchHistory.aggregate.wins}</div>
+                          <div className="text-[9px] text-[#8b949e]">Wins</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-sm font-black text-[#f59e0b]">{matchHistory.aggregate.draws}</div>
+                          <div className="text-[9px] text-[#8b949e]">Draws</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-sm font-black text-[#ef4444]">{matchHistory.aggregate.losses}</div>
+                          <div className="text-[9px] text-[#8b949e]">Losses</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-sm font-black text-[#c9d1d9]">{matchHistory.aggregate.goalsFor}-{matchHistory.aggregate.goalsAgainst}</div>
+                          <div className="text-[9px] text-[#8b949e]">Goals</div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ── Playing Style Analysis ── */}
+              {playingStyleData && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <Zap className="h-3.5 w-3.5" /> Playing Style Comparison
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 space-y-3">
+                    {/* Style compatibility */}
+                    <div className={`rounded-lg p-2.5 text-center ${
+                      playingStyleData.compatibility >= 70 ? 'bg-[#34d399]/10 border border-[#34d399]/30' : 'bg-[#21262d]'
+                    }`}>
+                      <div className="text-[10px] text-[#8b949e] mb-1">Style Compatibility</div>
+                      <div className={`text-xl font-black ${playingStyleData.compatibility >= 70 ? 'text-[#34d399]' : 'text-[#f59e0b]'}`}>
+                        {playingStyleData.compatibility}%
+                      </div>
+                      <div className="text-[9px] text-[#8b949e]">
+                        {playingStyleData.compatibility >= 80 ? 'Great synergy' : playingStyleData.compatibility >= 60 ? 'Good fit' : 'Different styles'}
+                      </div>
+                    </div>
+                    {/* Side-by-side style bars */}
+                    {playingStyleData.dimensions.map((dim, i) => {
+                      const pVal = playingStyleData.playerStyle[i];
+                      const tVal = playingStyleData.teammateStyle[i];
+                      const diff = pVal - tVal;
+                      return (
+                        <div key={dim} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-[#8b949e]">{dim}</span>
+                            <div className="flex items-center gap-2 text-[10px] font-mono">
+                              <span className={diff >= 0 ? 'text-[#34d399]' : 'text-[#38bdf8]'}>{pVal}</span>
+                              <span className="text-[#484f58]">vs</span>
+                              <span className={diff < 0 ? 'text-[#38bdf8]' : 'text-[#34d399]'}>{tVal}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 h-1.5">
+                            <div className="flex-1 bg-[#21262d] rounded-sm overflow-hidden flex justify-end">
+                              <div className="h-full rounded-sm" style={{ width: `${pVal}%`, backgroundColor: diff >= 0 ? '#34d399' : '#34d39980' }} />
+                            </div>
+                            <div className="flex-1 bg-[#21262d] rounded-sm overflow-hidden">
+                              <div className="h-full rounded-sm" style={{ width: `${tVal}%`, backgroundColor: diff < 0 ? '#38bdf8' : '#38bdf880' }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* Similarity badge */}
+                    <div className="flex items-center justify-center">
+                      <Badge className="text-[10px] font-bold border-0 px-3 py-1" style={{
+                        backgroundColor: playingStyleData.similarityPct >= 80 ? 'rgba(52,211,153,0.15)' : 'rgba(245,158,11,0.15)',
+                        color: playingStyleData.similarityPct >= 80 ? '#34d399' : '#f59e0b',
+                      }}>
+                        <Percent className="h-3 w-3 mr-1" />
+                        {playingStyleData.similarityPct}% Similar Playing Style
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ── Transfer Value Comparison ── */}
+              {transferValueData && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5" /> Transfer Value Comparison
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 space-y-3">
+                    {/* Market value comparison */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-[#34d399]">€{transferValueData.playerValue}M</span>
+                        <span className="text-[10px] text-[#8b949e]">Market Value</span>
+                        <span className="text-[10px] font-bold text-[#38bdf8]">€{transferValueData.teammateValue}M</span>
+                      </div>
+                      <div className="flex gap-1 h-2">
+                        <div className="flex-1 bg-[#21262d] rounded-sm overflow-hidden flex justify-end">
+                          <div className="h-full rounded-sm bg-[#34d399]" style={{ width: `${(transferValueData.playerValue / Math.max(transferValueData.playerValue, transferValueData.teammateValue)) * 100}%` }} />
+                        </div>
+                        <div className="flex-1 bg-[#21262d] rounded-sm overflow-hidden">
+                          <div className="h-full rounded-sm bg-[#38bdf8]" style={{ width: `${(transferValueData.teammateValue / Math.max(transferValueData.playerValue, transferValueData.teammateValue)) * 100}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Wage comparison */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-[#34d399]">€{transferValueData.playerWage}K/w</span>
+                        <span className="text-[10px] text-[#8b949e]">Weekly Wage</span>
+                        <span className="text-[10px] font-bold text-[#38bdf8]">€{transferValueData.teammateWage}K/w</span>
+                      </div>
+                      <div className="flex gap-1 h-2">
+                        <div className="flex-1 bg-[#21262d] rounded-sm overflow-hidden flex justify-end">
+                          <div className="h-full rounded-sm bg-[#34d399]/60" style={{ width: `${(transferValueData.playerWage / Math.max(transferValueData.playerWage, transferValueData.teammateWage)) * 100}%` }} />
+                        </div>
+                        <div className="flex-1 bg-[#21262d] rounded-sm overflow-hidden">
+                          <div className="h-full rounded-sm bg-[#38bdf8]/60" style={{ width: `${(transferValueData.teammateWage / Math.max(transferValueData.playerWage, transferValueData.teammateWage)) * 100}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Contract & trend row */}
+                    <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-2.5">
+                      <div className="text-center">
+                        <div className="text-[9px] text-[#8b949e]">Contract</div>
+                        <div className="text-xs font-bold text-[#c9d1d9]">{transferValueData.playerContract}y</div>
+                        <div className={`text-[8px] font-bold ${transferValueData.playerTrend === 'increasing' ? 'text-[#34d399]' : transferValueData.playerTrend === 'stable' ? 'text-[#f59e0b]' : 'text-[#ef4444]'}`}>
+                          {transferValueData.playerTrend === 'increasing' ? '\u2191 Rising' : transferValueData.playerTrend === 'stable' ? '\u2192 Stable' : '\u2193 Falling'}
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-[#484f58]">vs</div>
+                      <div className="text-center">
+                        <div className="text-[9px] text-[#8b949e]">Contract</div>
+                        <div className="text-xs font-bold text-[#c9d1d9]">{transferValueData.teammateContract}y</div>
+                        <div className={`text-[8px] font-bold ${transferValueData.teammateTrend === 'increasing' ? 'text-[#34d399]' : transferValueData.teammateTrend === 'stable' ? 'text-[#f59e0b]' : 'text-[#ef4444]'}`}>
+                          {transferValueData.teammateTrend === 'increasing' ? '\u2191 Rising' : transferValueData.teammateTrend === 'stable' ? '\u2192 Stable' : '\u2193 Falling'}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Better Investment badge */}
+                    <div className={`rounded-lg p-3 text-center ${
+                      transferValueData.betterInvestment === 'player'
+                        ? 'bg-[#34d399]/10 border border-[#34d399]/30'
+                        : 'bg-[#38bdf8]/10 border border-[#38bdf8]/30'
+                    }`}>
+                      <Trophy className="h-4 w-4 mx-auto mb-1" style={{ color: transferValueData.betterInvestment === 'player' ? '#34d399' : '#38bdf8' }} />
+                      <div className="text-[11px] font-bold" style={{ color: transferValueData.betterInvestment === 'player' ? '#34d399' : '#38bdf8' }}>
+                        Better Investment: {transferValueData.betterInvestment === 'player' ? player.name.split(' ')[0] : chosenTeammate.name.split(' ')[0]}
+                      </div>
+                      <div className="text-[9px] text-[#8b949e] mt-0.5">
+                        Higher value-to-wage ratio
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Empty state for Advanced tab when no teammate selected */}
+          {activeTab === 'advanced' && !chosenTeammate && (
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardContent className="p-8 text-center">
+                <Users className="h-8 w-8 mx-auto text-[#484f58] mb-3" />
+                <div className="text-sm font-bold text-[#c9d1d9] mb-1">Select a Teammate First</div>
+                <div className="text-[11px] text-[#8b949e]">
+                  Go to the &quot;vs Teammate&quot; tab and select a player to see advanced comparisons, match history, and transfer analysis.
+                </div>
+              </CardContent>
+            </Card>
           )}
         </motion.div>
       </AnimatePresence>
