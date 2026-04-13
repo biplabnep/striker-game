@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getClubById, CUP_NAMES, CUP_MATCH_WEEKS } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,23 +8,31 @@ import { Badge } from '@/components/ui/badge';
 import {
   Trophy, XCircle, Crown, Swords, ChevronRight, Calendar, Users,
   CheckCircle2, Target, BarChart3, TrendingUp, MapPin, MinusCircle,
-  Eye, Flame, Star, Zap, Home, Plane
+  Eye, Flame, Star, Zap, Home, Plane, Clock, Award, Flag, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Fixture, MatchResult } from '@/lib/game/types';
+import type { Fixture, MatchResult, MatchEvent } from '@/lib/game/types';
 
 // ─── Round name helper ─────────────────────────────────────────────────
-function getRoundName(round: number, totalRounds: number): string {
+function getRoundName(round: number, totalRounds: number, teamsInRound?: number): string {
   if (round === totalRounds) return 'Final';
   if (round === totalRounds - 1) return 'Semi-Final';
   if (round === totalRounds - 2) return 'Quarter-Final';
+  // Show Round of N based on team count
+  const t = teamsInRound ?? Math.pow(2, totalRounds - round + 1);
+  if (t >= 64) return `Round of ${t}`;
+  if (t === 32) return 'Round of 32';
+  if (t === 16) return 'Round of 16';
   return `Round ${round}`;
 }
 
-function getRoundAbbrev(round: number, totalRounds: number): string {
+function getRoundAbbrev(round: number, totalRounds: number, teamsInRound?: number): string {
   if (round === totalRounds) return 'F';
   if (round === totalRounds - 1) return 'SF';
   if (round === totalRounds - 2) return 'QF';
+  const t = teamsInRound ?? Math.pow(2, totalRounds - round + 1);
+  if (t === 32) return 'R32';
+  if (t === 16) return 'R16';
   return `R${round}`;
 }
 
@@ -97,8 +105,68 @@ function MiniTrophyIcon() {
   );
 }
 
+// ─── Deterministic goalscorer generator ────────────────────────────────
+const GOALSCORERS: Record<string, string[]> = {
+  default: ['Martinez', 'Silva', 'Fernandes', 'Müller', 'Lukaku', 'Son', 'Rashford', 'Saka', 'Rodriguez', 'Dybala'],
+};
+
+function getDeterministicGoalscorers(fixtureId: string, goals: number, team: string): { name: string; minute: number }[] {
+  const scorers: { name: string; minute: number }[] = [];
+  const names = GOALSCORERS.default;
+  for (let i = 0; i < goals; i++) {
+    const seed = fixtureId.split('').reduce((a, c) => a + c.charCodeAt(0), 0) + i * 17 + (team === 'away' ? 7 : 0);
+    const nameIdx = (seed * 31 + i * 13) % names.length;
+    const minute = ((seed * 7 + i * 23) % 85) + 5;
+    scorers.push({ name: names[nameIdx], minute });
+  }
+  return scorers.sort((a, b) => a.minute - b.minute);
+}
+
+function getDeterministicStats(fixtureId: string, side: string): { possession: number; shots: number; shotsOnTarget: number; passes: number; passAccuracy: number } {
+  const seed = fixtureId.split('').reduce((a, c) => a + c.charCodeAt(0), 0) + (side === 'away' ? 42 : 0);
+  const basePossession = 35 + ((seed * 7) % 30);
+  const opponentBase = 35 + (((seed + 42) * 7) % 30);
+  const totalBase = basePossession + opponentBase;
+  const possession = Math.round((basePossession / totalBase) * 100);
+  const shots = 5 + ((seed * 11) % 15);
+  const shotsOnTarget = 2 + ((seed * 13) % (shots - 1));
+  const passes = 250 + ((seed * 17) % 350);
+  const passAccuracy = 65 + ((seed * 19) % 25);
+  return { possession, shots, shotsOnTarget, passes, passAccuracy };
+}
+
+function getResultBadgeColor(result: string): string {
+  switch (result) {
+    case 'Winner': return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    case 'Runner-Up': return 'bg-slate-400/20 text-slate-300 border-slate-400/30';
+    case 'Semi-Finalist': return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+    case 'Quarter-Finalist': return 'bg-sky-500/15 text-sky-300 border-sky-500/30';
+    default: return 'bg-[#21262d] text-[#8b949e] border-[#30363d]';
+  }
+}
+
+// ─── Stat Bar component for match detail ─────────────────────────────
+function StatBar({ label, home, away, unit }: { label: string; home: number; away: number; unit: string }) {
+  const total = home + away || 1;
+  const homePct = Math.round((home / total) * 100);
+  const awayPct = 100 - homePct;
+
+  return (
+    <div className="flex items-center gap-1.5 text-[9px]">
+      <span className="w-7 text-right text-[#c9d1d9] tabular-nums font-medium">{home}{unit}</span>
+      <div className="flex-1 flex h-1 rounded-sm overflow-hidden bg-[#0d1117]">
+        <div className="h-full bg-emerald-500/50 rounded-l-sm" style={{ width: `${homePct}%`, minWidth: 2 }} />
+        <div className="h-full bg-sky-500/50 rounded-r-sm" style={{ width: `${awayPct}%`, minWidth: 2 }} />
+      </div>
+      <span className="w-7 text-[#c9d1d9] tabular-nums font-medium">{away}{unit}</span>
+      <span className="w-[52px] text-[#484f58] text-right text-[8px]">{label}</span>
+    </div>
+  );
+}
+
 export default function CupBracket() {
   const gameState = useGameStore(state => state.gameState);
+  const [selectedMatchDetail, setSelectedMatchDetail] = useState<string | null>(null);
 
   // ─── Core cup info (existing, enhanced) ─────────────────────────────
   const cupInfo = useMemo(() => {
@@ -530,7 +598,7 @@ export default function CupBracket() {
 
     const playerClubId = gameState.currentClub.id;
 
-    // Render a single match box
+    // Render a single match box with enhanced styling
     const renderMatchBox = (match: BracketMatch, x: number, y: number, roundIdx: number) => {
       const boxHasPlayer = match.isPlayerMatch;
       const isPlayed = match.played;
@@ -538,17 +606,24 @@ export default function CupBracket() {
       const isWinnerAway = match.winnerId === match.awayClub.id;
       const isLastRound = roundIdx === numRounds - 1;
 
-      // Box colors
+      // Box colors — enhanced
       const boxFill = boxHasPlayer
         ? '#0d2818'
         : isPlayed
         ? '#161b22'
         : '#0d1117';
-      const boxStroke = boxHasPlayer
+      const boxStroke = isPlayed && match.winnerId
+        ? '#10b981'
+        : boxHasPlayer
         ? '#10b981'
         : isPlayed
         ? '#30363d'
         : '#21262d';
+      const strokeWidth = isPlayed && match.winnerId ? 1.5 : boxHasPlayer ? 1.5 : 1;
+
+      // Winner background highlight
+      const homeWinnerBg = isPlayed && isWinnerHome ? '#0d2818' : 'transparent';
+      const awayWinnerBg = isPlayed && isWinnerAway ? '#0d2818' : 'transparent';
 
       return (
         <g key={`match-${match.fixture.id}-${roundIdx}`}>
@@ -561,8 +636,17 @@ export default function CupBracket() {
             rx={4}
             fill={boxFill}
             stroke={boxStroke}
-            strokeWidth={boxHasPlayer ? 1.5 : 1}
+            strokeWidth={strokeWidth}
           />
+
+          {/* Winner row highlight — home */}
+          {isPlayed && isWinnerHome && (
+            <rect x={x + 1} y={y + 1} width={matchBoxW - 2} height={matchBoxH / 2 - 1} rx={3} fill="#10b981" opacity={0.08} />
+          )}
+          {/* Winner row highlight — away */}
+          {isPlayed && isWinnerAway && (
+            <rect x={x + 1} y={y + matchBoxH / 2} width={matchBoxW - 2} height={matchBoxH / 2 - 1} rx={3} fill="#10b981" opacity={0.08} />
+          )}
 
           {/* Home team row */}
           <text
@@ -714,23 +798,38 @@ export default function CupBracket() {
       return lines;
     };
 
-    // Render round labels
+    // Render round labels with enhanced naming
     const renderRoundLabels = () => {
-      return bRounds.map((rd, r) => (
-        <g key={`label-${r}`}>
-          <text
-            x={colX(r) + matchBoxW / 2}
-            y={16}
-            fill="#8b949e"
-            fontSize={9}
-            fontWeight={600}
-            textAnchor="middle"
-            fontFamily="system-ui"
-          >
-            {rd.name}
-          </text>
-        </g>
-      ));
+      return bRounds.map((rd, r) => {
+        const teamsInRound = (rd.matches?.length || 1) * 2;
+        const label = getRoundName(rd.roundNum, numRounds, teamsInRound);
+        return (
+          <g key={`label-${r}`}>
+            {/* Round label background pill */}
+            <rect
+              x={colX(r) + matchBoxW / 2 - label.length * 3.5 - 4}
+              y={4}
+              width={label.length * 7 + 8}
+              height={16}
+              rx={4}
+              fill="#161b22"
+              stroke="#30363d"
+              strokeWidth={0.5}
+            />
+            <text
+              x={colX(r) + matchBoxW / 2}
+              y={16}
+              fill={r === numRounds - 1 ? '#fbbf24' : r >= numRounds - 3 ? '#c9d1d9' : '#8b949e'}
+              fontSize={8}
+              fontWeight={r === numRounds - 1 ? 700 : 600}
+              textAnchor="middle"
+              fontFamily="system-ui"
+            >
+              {label}
+            </text>
+          </g>
+        );
+      });
     };
 
     return (
@@ -920,6 +1019,69 @@ export default function CupBracket() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* ─── Cup Statistics Bar ─────────────────────────────────────── */}
+      {cupStatistics && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardContent className="p-3">
+              <div className="grid grid-cols-4 gap-2">
+                {/* Round Reached */}
+                <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    {isCupWinner ? (
+                      <Trophy className="h-4 w-4 text-amber-400" />
+                    ) : (
+                      <Flag className="h-4 w-4 text-sky-400" />
+                    )}
+                  </div>
+                  <p className="text-sm font-bold text-[#c9d1d9] leading-tight">
+                    {isCupWinner ? 'Winner!' : cupStatistics.bestRun !== 'None yet' ? cupStatistics.bestRun : '—'}
+                  </p>
+                  <p className="text-[8px] text-[#484f58] mt-0.5">Round Reached</p>
+                </div>
+
+                {/* Goals Scored */}
+                <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <Target className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <p className="text-sm font-bold text-emerald-400 tabular-nums leading-tight">
+                    {cupStatistics.cupGoals}
+                  </p>
+                  <p className="text-[8px] text-[#484f58] mt-0.5">Cup Goals</p>
+                </div>
+
+                {/* Matches Played */}
+                <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <Calendar className="h-4 w-4 text-amber-400" />
+                  </div>
+                  <p className="text-sm font-bold text-amber-400 tabular-nums leading-tight">
+                    {cupStatistics.cupAppearances}
+                  </p>
+                  <p className="text-[8px] text-[#484f58] mt-0.5">Matches</p>
+                </div>
+
+                {/* Best Performance */}
+                <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                  <div className="flex items-center justify-center mb-1">
+                    <Award className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <p className="text-sm font-bold text-purple-400 tabular-nums leading-tight">
+                    {historicalPerformance?.cupTrophies.length ?? 0}
+                  </p>
+                  <p className="text-[8px] text-[#484f58] mt-0.5">Cup Trophies</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* ─── Cup Winner Celebration ─────────────────────────────────── */}
       {isCupWinner && (
@@ -1179,6 +1341,357 @@ export default function CupBracket() {
                   {playerNextCupMatch.homeClubId === gameState.currentClub.id ? 'Home' : 'Away'} • Week {CUP_MATCH_WEEKS[cupRound - 1] ?? cupRound * 4} • {isCupWeek ? 'This week!' : 'Upcoming'}
                 </span>
               </div>
+
+              {/* Form comparison */}
+              <div className="mt-2.5 bg-[#21262d] rounded-md p-2.5">
+                <p className="text-[9px] text-[#484f58] font-semibold uppercase tracking-wider mb-2 text-center">Form Comparison</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[9px] text-[#8b949e]">{gameState.currentClub.shortName}</span>
+                    <div className="flex items-center gap-0.5">
+                      {teamFormLookup.get(gameState.currentClub.id)?.slice(0, 5).map((f, fi) => (
+                        <div key={fi} className={`h-2 w-2 rounded-sm ${getFormDotColor(f)}`} />
+                      )) ?? <span className="text-[8px] text-[#484f58]">—</span>}
+                    </div>
+                  </div>
+                  <span className="text-[8px] text-[#484f58] font-semibold">VS</span>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[9px] text-[#8b949e]">{nextCupOpponent.shortName}</span>
+                    <div className="flex items-center gap-0.5">
+                      {teamFormLookup.get(nextCupOpponent.id)?.slice(0, 5).map((f, fi) => (
+                        <div key={fi} className={`h-2 w-2 rounded-sm ${getFormDotColor(f)}`} />
+                      )) ?? <span className="text-[8px] text-[#484f58]">—</span>}
+                    </div>
+                  </div>
+                </div>
+                {/* Quality comparison bar */}
+                <div className="mt-2 flex items-center gap-1 text-[8px]">
+                  <span className="text-[#8b949e]">{gameState.currentClub.quality}</span>
+                  <div className="flex-1 flex h-1 rounded-sm overflow-hidden bg-[#0d1117]">
+                    <div className="h-full bg-emerald-500/60 rounded-l-sm" style={{ width: `${(gameState.currentClub.quality / (gameState.currentClub.quality + nextCupOpponent.quality)) * 100}%` }} />
+                    <div className="h-full bg-sky-500/60 rounded-r-sm" style={{ width: `${(nextCupOpponent.quality / (gameState.currentClub.quality + nextCupOpponent.quality)) * 100}%` }} />
+                  </div>
+                  <span className="text-[#8b949e]">{nextCupOpponent.quality}</span>
+                </div>
+                <p className="text-[7px] text-[#484f58] text-center mt-1">Quality Rating</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ─── Match Detail Cards (expanded from timeline) ─────────────── */}
+      <AnimatePresence>
+        {selectedMatchDetail && (() => {
+          const detailMatch = cupRunTimeline.find(
+            m => `${m.round}-${m.opponent}` === selectedMatchDetail
+          );
+          const detailResult = detailMatch
+            ? gameState.recentResults.find(
+                r => r.competition === 'cup' &&
+                     r.week === CUP_MATCH_WEEKS[detailMatch.round - 1]
+              )
+            : null;
+          if (!detailMatch || !detailResult) return null;
+
+          const homeScorers = getDeterministicGoalscorers(
+            detailResult.homeClub.id + detailResult.awayClub.id,
+            detailResult.homeScore,
+            'home'
+          );
+          const awayScorers = getDeterministicGoalscorers(
+            detailResult.homeClub.id + detailResult.awayClub.id,
+            detailResult.awayScore,
+            'away'
+          );
+          const homeStats = getDeterministicStats(
+            detailResult.homeClub.id + detailResult.awayClub.id,
+            'home'
+          );
+          const awayStats = getDeterministicStats(
+            detailResult.homeClub.id + detailResult.awayClub.id,
+            'away'
+          );
+          // Normalize possession
+          const homePoss = homeStats.possession;
+          const awayPoss = 100 - homePoss;
+          const fixtureId = detailResult.homeClub.id + detailResult.awayClub.id;
+
+          return (
+            <motion.div
+              key="match-detail"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <Card className="bg-[#161b22] border-amber-900/30 overflow-hidden">
+                <CardHeader className="pb-2 pt-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                      <Activity className="h-3 w-3 text-amber-500" />
+                      Match Detail
+                    </CardTitle>
+                    <button
+                      onClick={() => setSelectedMatchDetail(null)}
+                      className="text-[#484f58] hover:text-[#c9d1d9] text-xs flex items-center gap-1"
+                    >
+                      <XCircle className="h-3 w-3" />
+                      Close
+                    </button>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 space-y-3">
+                  {/* Match header */}
+                  <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-3">
+                    <div className="flex flex-col items-center gap-1 flex-1">
+                      <span className="text-xl">{detailResult.homeClub.logo}</span>
+                      <span className="text-xs font-semibold text-[#c9d1d9] text-center max-w-[80px] truncate">
+                        {detailResult.homeClub.shortName}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center mx-3">
+                      <span className={`text-lg font-black tabular-nums ${
+                        detailMatch.playerScore > detailMatch.opponentScore ? 'text-emerald-400' :
+                        detailMatch.playerScore < detailMatch.opponentScore ? 'text-red-400' :
+                        'text-amber-400'
+                      }`}>
+                        {detailResult.homeScore} — {detailResult.awayScore}
+                      </span>
+                      <span className="text-[8px] text-[#484f58] mt-0.5">
+                        {detailMatch.roundName}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 flex-1">
+                      <span className="text-xl">{detailResult.awayClub.logo}</span>
+                      <span className="text-xs font-semibold text-[#c9d1d9] text-center max-w-[80px] truncate">
+                        {detailResult.awayClub.shortName}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Date, venue, competition info */}
+                  <div className="flex items-center justify-between text-[9px] text-[#484f58] border-b border-[#30363d] pb-2">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-2.5 w-2.5" />
+                      Season {detailResult.season}, Week {detailResult.week}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-2.5 w-2.5" />
+                      {detailMatch.isHome ? 'Home' : 'Away'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Trophy className="h-2.5 w-2.5" />
+                      {cupName}
+                    </span>
+                  </div>
+
+                  {/* Goalscorers */}
+                  {(homeScorers.length > 0 || awayScorers.length > 0) && (
+                    <div className="space-y-1.5">
+                      <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider">
+                        Goalscorers
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                          {homeScorers.map((s, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-[10px]">
+                              <span className="text-emerald-400 font-bold tabular-nums w-6 text-right">{s.minute}'</span>
+                              <span className="text-[#c9d1d9]">{s.name}</span>
+                            </div>
+                          ))}
+                          {homeScorers.length === 0 && (
+                            <span className="text-[9px] text-[#484f58] italic">No goals</span>
+                          )}
+                        </div>
+                        <div className="space-y-0.5">
+                          {awayScorers.map((s, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-[10px]">
+                              <span className="text-sky-400 font-bold tabular-nums w-6 text-right">{s.minute}'</span>
+                              <span className="text-[#c9d1d9]">{s.name}</span>
+                            </div>
+                          ))}
+                          {awayScorers.length === 0 && (
+                            <span className="text-[9px] text-[#484f58] italic">No goals</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stats comparison */}
+                  <div className="space-y-1.5">
+                    <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider">
+                      Match Stats
+                    </p>
+                    {/* Possession */}
+                    <div className="space-y-1">
+                      <StatBar label="Possession" home={homePoss} away={awayPoss} unit="%" />
+                      <StatBar label="Shots" home={homeStats.shots} away={awayStats.shots} unit="" />
+                      <StatBar label="On Target" home={homeStats.shotsOnTarget} away={awayStats.shotsOnTarget} unit="" />
+                      <StatBar label="Passes" home={homeStats.passes} away={awayStats.passes} unit="" />
+                      <StatBar label="Pass Acc." home={homeStats.passAccuracy} away={awayStats.passAccuracy} unit="%" />
+                    </div>
+                  </div>
+
+                  {/* Player contribution */}
+                  {(detailMatch.playerGoals > 0 || detailMatch.playerAssists > 0 || detailMatch.playerRating > 0) && (
+                    <div className="flex items-center justify-center gap-3 pt-2 border-t border-[#30363d]">
+                      {detailMatch.playerGoals > 0 && (
+                        <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-sm font-medium">
+                          ⚽ {detailMatch.playerGoals} goal{detailMatch.playerGoals > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {detailMatch.playerAssists > 0 && (
+                        <span className="text-[10px] bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded-sm font-medium">
+                          🎯 {detailMatch.playerAssists} assist{detailMatch.playerAssists > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      <span className={`text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-sm ${
+                        detailMatch.playerRating >= 8.0 ? 'bg-amber-500/15 text-amber-300' :
+                        detailMatch.playerRating >= 7.0 ? 'bg-emerald-500/15 text-emerald-300' :
+                        'bg-[#21262d] text-[#8b949e]'
+                      }`}>
+                        Rating {detailMatch.playerRating.toFixed(1)}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* ─── Cup History Section ────────────────────────────────────── */}
+      {historicalPerformance && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                  <Clock className="h-3 w-3 text-amber-500" />
+                  Cup History
+                </CardTitle>
+                <span className="text-[9px] text-[#484f58]">
+                  {historicalPerformance.cupTrophies.length} trophy{historicalPerformance.cupTrophies.length !== 1 ? 'ies' : 'y'}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              {historicalPerformance.cupTrophies.length > 0 ? (
+                <div className="space-y-2">
+                  {historicalPerformance.cupTrophies.map((trophy, i) => {
+                    // Simulate progression rounds for each trophy season
+                    const maxRounds = maxRound;
+                    const trophyRound = maxRounds; // won = reached final round
+                    const progressionRounds = Math.min(trophyRound, maxRounds);
+
+                    return (
+                      <motion.div
+                        key={`${trophy.season}-${trophy.name}-${i}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 + i * 0.05 }}
+                        className="flex items-center justify-between bg-[#21262d] rounded-lg p-2.5 border border-amber-500/15"
+                      >
+                        {/* Season + Cup Name */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-7 h-7 rounded-md bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                            <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold text-amber-200 truncate">
+                              S{trophy.season} — {trophy.name}
+                            </p>
+                            <p className="text-[9px] text-[#484f58]">Season {trophy.season}</p>
+                          </div>
+                        </div>
+
+                        {/* Progression dots */}
+                        <div className="flex items-center gap-0.5 mx-2">
+                          {Array.from({ length: Math.min(maxRounds, 5) }, (_, ri) => (
+                            <div
+                              key={ri}
+                              className={`h-1.5 w-1.5 rounded-sm ${
+                                ri < progressionRounds ? 'bg-amber-400' : 'bg-[#30363d]'
+                              }`}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Result badge */}
+                        <Badge className={`text-[8px] px-1.5 py-0 h-4 border font-semibold ${getResultBadgeColor('Winner')}`}>
+                          Winner
+                        </Badge>
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Current season row */}
+                  {!isCupWinner && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 + historicalPerformance.cupTrophies.length * 0.05 }}
+                      className="flex items-center justify-between bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="w-7 h-7 rounded-md bg-sky-500/15 flex items-center justify-center flex-shrink-0">
+                          <Flame className="h-3.5 w-3.5 text-sky-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-sky-200 truncate">
+                            Current — {cupName}
+                          </p>
+                          <p className="text-[9px] text-[#484f58]">
+                            {cupEliminated ? 'Eliminated' : 'In Progress'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Progression dots for current season */}
+                      <div className="flex items-center gap-0.5 mx-2">
+                        {Array.from({ length: Math.min(maxRound, 5) }, (_, ri) => {
+                          const roundNum = ri + 1;
+                          const isDone = roundNum < cupRound;
+                          const isCurrent = roundNum === cupRound && !cupEliminated;
+                          return (
+                            <div
+                              key={ri}
+                              className={`h-1.5 w-1.5 rounded-sm ${
+                                isDone ? 'bg-emerald-400' :
+                                isCurrent ? 'bg-amber-400' :
+                                'bg-[#30363d]'
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* Result badge for current */}
+                      <Badge className={`text-[8px] px-1.5 py-0 h-4 border font-semibold ${
+                        cupEliminated
+                          ? getResultBadgeColor('Quarter-Finalist')
+                          : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      }`}>
+                        {cupEliminated ? cupStatistics?.bestRun ?? 'TBD' : 'Active'}
+                      </Badge>
+                    </motion.div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <TrophyIcon size={28} color="#30363d" />
+                  <p className="text-[10px] text-[#484f58] mt-2">
+                    No cup trophies yet. Make history this season!
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -1233,14 +1746,20 @@ export default function CupBracket() {
                         </div>
 
                         {/* Enhanced match card */}
-                        <div className={`flex-1 rounded-lg border p-2.5 min-w-0 ${
-                          isWinner
-                            ? 'bg-emerald-500/[0.06] border-emerald-500/20'
-                            : match.result === 'D'
-                            ? 'bg-amber-500/[0.06] border-amber-500/20'
-                            : 'bg-red-500/[0.06] border-red-500/20'
-                        }`}>
-                          {/* Round + Result + Key Moment badge */}
+                        <div
+                          onClick={() => setSelectedMatchDetail(
+                            selectedMatchDetail === `${match.round}-${match.opponent}`
+                              ? null
+                              : `${match.round}-${match.opponent}`
+                          )}
+                          className={`flex-1 rounded-lg border p-2.5 min-w-0 cursor-pointer hover:brightness-110 transition-[filter] ${
+                            isWinner
+                              ? 'bg-emerald-500/[0.06] border-emerald-500/20'
+                              : match.result === 'D'
+                              ? 'bg-amber-500/[0.06] border-amber-500/20'
+                              : 'bg-red-500/[0.06] border-red-500/20'
+                          } ${selectedMatchDetail === `${match.round}-${match.opponent}` ? 'ring-1 ring-amber-400/40' : ''}`}
+                        >
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] text-[#8b949e] font-medium">
@@ -1339,6 +1858,9 @@ export default function CupBracket() {
                           <div className="flex items-center gap-1 mt-1">
                             <Calendar className="h-2 w-2 text-[#484f58]" />
                             <span className="text-[8px] text-[#484f58]">{match.matchDate}</span>
+                            <span className="text-[7px] text-amber-500/40 ml-auto flex items-center gap-0.5">
+                              tap detail <ChevronRight className="h-2 w-2" />
+                            </span>
                           </div>
 
                           {/* Progression indicator */}

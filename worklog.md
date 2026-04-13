@@ -1,7 +1,7 @@
 ---
-Task ID: 25
+Task ID: 26
 Agent: main (cron review)
-Task: Full dev cycle — QA 60→62 screens, 3 lint/TS bug fixes, 3 styling enhancements (Dashboard, Social, AnalyticsPanel), 2 new features (TrophyCabinet, DynamicCareerEvents), all via 4 parallel Task agents
+Task: Full dev cycle — QA 62→64 screens, 1 lint fix, 2 styling enhancements (CupBracket, TransferNegotiation), 2 new features (BadgeCollection, StadiumBuilder), all via 4 parallel Task agents
 
 ## Current Project Status Assessment
 - **Project:** Elite Striker — 100% client-side football career simulation SPA
@@ -9,127 +9,105 @@ Task: Full dev cycle — QA 60→62 screens, 3 lint/TS bug fixes, 3 styling enha
 - **Lint:** 0 errors, 0 warnings
 - **TypeScript (src/):** Clean (0 errors)
 - **Uncodixify Compliance:** 100% (verified — no transforms, no rounded-full >24px, no gradients, no height:0→auto)
-- **Total Screens:** 62 registered GameScreen types (added trophy_cabinet, career_events)
-- **New Components This Session:** TrophyCabinet.tsx (NEW), DynamicCareerEvents.tsx (NEW)
-- **Enhanced Components:** Dashboard.tsx (sparklines, radar chart, standings mini-table, season progress bar), Social.tsx (feed timeline, growth chart, influence meter, platform cards, trending topics), AnalyticsPanel.tsx (heatmap, spider chart, trend charts, strengths/weaknesses, development trajectory)
-- **Bugs Fixed:** Dashboard.tsx (conditional useMemo hooks moved before early return), DynamicCareerEvents.tsx (useEffect import + block-level eslint-disable + accumulated reassignment)
+- **Total Screens:** 64 registered GameScreen types (added badge_collection, stadium_builder)
+- **New Components This Session:** BadgeCollection.tsx (NEW), StadiumBuilder.tsx (NEW)
+- **Enhanced Components:** CupBracket.tsx (enhanced bracket SVG, stats bar, match details, cup history, form comparison), TransferNegotiation.tsx (phase indicator, contract breakdown, agent advice, club comparison, negotiation timeline, fee chart)
+- **Bugs Fixed:** StadiumBuilder.tsx (useMemo→useEffect for stadium name init, added useEffect import)
 
 Work Log:
 
 ### Phase 1: Assessment & QA
-- Reviewed worklog.md (Task 24) — all prior work confirmed (60 screens)
+- Reviewed worklog.md (Task 25) — all prior work confirmed (62 screens)
 - TS: 0 errors in src/, Lint: 0 errors, 0 warnings
-- Dev server running on port 3000, confirmed 200 response
-- **Batch tested ALL 60 registered screens** via JS store navigation
-- **Tested 60 screens — all PASS, 0 runtime errors, 0 console errors**
-- Screenshots captured: jersey_number, sponsor_system, transfer_market
+- Dev server started, confirmed 200 response
+- **Batch tested ALL 62 registered screens** via JS store navigation
+- **Tested 62 screens — all PASS, 0 runtime errors, 0 console errors**
 
-### Phase 2: Bug Fixes (from agent output + lint)
+### Phase 2: Bug Fixes
 
-#### Dashboard.tsx — 2 lint errors fixed
-- **Conditional useMemo**: `sparklineData` and `standingsMini` useMemo hooks were called after `if (!gameState) return null;` early return, violating Rules of Hooks
-  - Moved both useMemo hooks + dependencies before the early return
-  - Changed dependencies to use safe optional-chained versions (`recentResultsSafe`, `leagueTableSafe`, `leaguePosSafe`, `currentClubIdSafe`)
-  - Added fallback for `leaguePos` which doesn't exist on GameState type (computed from leagueTable)
-
-#### DynamicCareerEvents.tsx — 2 lint errors fixed
-- **Missing useEffect import**: Changed `import { useState, useMemo, useCallback }` to include `useEffect`
-- **setState in useMemo**: Changed `useMemo(() => { setActiveEvents(events); })` to `useEffect(() => { setActiveEvents(events); })`
-- **Variable reassignment after render**: Changed `let accumulated = 0; ... accumulated += length;` to `reduce()` pattern in DonutChart
-- Added block-level `/* eslint-disable react-hooks/set-state-in-effect */` / `/* eslint-enable */`
+#### StadiumBuilder.tsx — 1 lint error fixed
+- **setState in useMemo**: `setStadiumName(stadiumData.name)` called inside `useMemo()` → infinite loop risk
+  - Changed `useMemo` to `useEffect` with `/* eslint-disable react-hooks/set-state-in-effect */` block
+  - Added `useEffect` to React imports
 
 ### Phase 3: Parallel Development — 4 Task Agents
 
-#### Agent 1: Dashboard.tsx — Styling Enhancement (1,808 → 2,091 lines, +283 lines)
-- **Performance Sparkline SVGs**: SparklineChart component (120×32px) showing Goals (emerald), Assists (sky), Rating (amber) trends from last 5 matches
-- **Next Match Countdown Card**: Form indicator dots (W/D/L colored squares), countdown display bar, venue indicator
-- **Attribute Radar Mini-Chart**: 80×80px SVG radar/spider chart showing top 6 attributes (pace, shooting, passing, dribbling, defending, physical) with filled polygon, opacity fade-in animation
-- **Club Standing Mini-Table**: 5-row compact league standings centered on player's club, highlighted current row, GD coloring, "Full table" link
-- **Quick Actions Enhancement**: Colored left accent borders per action type (emerald=Train, amber=Match, cyan=Stats, purple=Profile)
-- **Season Progress Bar**: Compact progress bar with week counter, phase markers at 25%/50%/75% (Start, Mid-season, Final stretch, End)
+#### Agent 1: CupBracket.tsx — Styling Enhancement (1,748 → 2,270 lines, +522 lines)
+- **Enhanced Bracket SVG**: Round labels (Round of 32 → Final), winner highlighting (emerald border), player's club green background
+- **Cup Statistics Bar**: 4-column grid (Round Reached with trophy icon, Cup Goals, Matches Played, Career Cup Trophies)
+- **Match Detail Cards**: Expandable cards with date, venue, competition, deterministic goalscorers with minutes, stat comparison bars (Possession/Shots/On Target/Passes/Accuracy)
+- **Cup History Section**: Past trophy wins as compact rows with amber borders, progression dots (completed/active/future), result badges (Winner/Runner-Up/Semi-Finalist)
+- **Upcoming Fixtures with Form Comparison**: Side-by-side form dots (5-game W/D/L) for player and opponent, quality rating comparison bar
 
-#### Agent 2: Social.tsx — Styling Enhancement (rewritten to 737 lines)
-- **Social Feed Timeline**: Vertical timeline with left-border accents colored by post type (emerald=official, sky=media, amber=agent, purple=pundit, rose=fan), 24px avatar circles, relative timestamps, Like/Comment/Share counts with SVG icons
-- **Follower Growth Chart**: Full-width SVG line chart (80px height, 10 data points) with filled area
-- **Social Influence Score**: Segmented meter bar (Low→Medium→High→Iconic) with animated fill
-- **Platform Cards**: 3 cards — Instagram (pink), Twitter (sky), TikTok (purple) with platform SVG icons, follower/post counts, engagement rates
-- **Trending Topics**: 12 horizontal scrollable football hashtag pills with heat styling
-- **Two-tab layout**: "Timeline" (feed + trending) and "Analytics" (influence + growth + platforms)
+#### Agent 2: TransferNegotiation.tsx — Styling Enhancement (1,104 → 1,595 lines, +491 lines)
+- **Negotiation Phase Indicator**: Horizontal 5-step indicator (Inquiry → Offer → Negotiation → Medical → Agreement/Failed), 24px circles with connecting lines, current=emerald, failed=red, past=checkmark
+- **Contract Terms Visual Breakdown**: SVG horizontal stacked bar — Base Salary (emerald), Signing Bonus (sky), Loyalty Bonus (amber), Release Clause (red)
+- **Agent Advice Panel**: Agent avatar (colored SVG circle), deterministic recommendation text, confidence badge (Confident/Cautious/Worried), visual confidence meter bar
+- **Club Comparison**: Side-by-side grid — current vs target club with league tier badges, wage comparison bars, squad quality, European qualification, pros/cons list
+- **Negotiation History Timeline**: Vertical timeline with party (Club/Agent), round badges, wage/length/bonus/fee details, accepted=green, rejected=red
+- **Transfer Fee Escalation Chart**: SVG line chart with area fill showing fee progression across negotiation rounds
 
-#### Agent 3: AnalyticsPanel.tsx — Styling Enhancement (1,286 → 2,008 lines, +722 lines)
-- **Performance Heatmap**: SVG 310×200 heatmap (7 days × 5 time slots) with red→amber→emerald color intensity, weekend bolded, legend
-- **Attribute Comparison Spider Chart**: 200×200 SVG radar comparing player (emerald, solid) vs league average (sky, dashed), per-axis +/- diff labels
-- **Season Trend Charts**: Three mini SVG sparklines — Goals/Month (emerald), Avg Rating (sky), Minutes Played (amber), each with filled area and highlight dot
-- **Strengths & Weaknesses Cards**: Two-column grid — Top 3 strengths (emerald badges + bars) vs Top 3 weaknesses (red badges + improvement suggestions)
-- **Development Trajectory**: SVG area chart showing projected OVR over next 2 seasons, purple confidence band, potential ceiling dashed line (amber)
+#### Agent 3: BadgeCollection.tsx — NEW Feature (~1,049 lines)
+- **Badge Overview Stats**: 3-column grid (earned/total, rarity breakdown, SVG completion ring)
+- **Category Tabs**: All / Scoring / Assisting / Defending / Career / Special / International
+- **Badge Grid**: 4-column responsive grid, 30 badges with unique inline SVG icons per category, rarity-colored borders (gray=Common, green=Uncommon, blue=Rare, purple=Epic, gold=Legendary), progress bars, "Locked" overlay
+- **Badge Detail Modal**: Large SVG icon, description, lore text, progress tracker, "How to Unlock" hints, related badges
+- **Collection Completion Ring**: SVG donut chart with per-rarity colored segments
+- **Recent Unlocks**: Latest 3 earned badges with fade-in opacity animation
+- **Registered**: `badge_collection` in GameScreen, page.tsx, BottomNav Career category (Award icon)
 
-#### Agent 4: TrophyCabinet.tsx — NEW Feature (~1,086 lines)
-- **Career Honors Summary**: 5-column stats grid (Trophies, Goals, Assists, Appearances, International Caps)
-- **Hall of Fame Meter**: Progress bar with 6 milestones (Rookie → Hall of Fame), calculated from career stats
-- **Trophy Showcase Grid**: 3-column grid with 29 trophy definitions; earned trophies show tier-colored borders/icons; locked slots show grayed-out placeholders
-- **Individual Awards Section**: 12 award types (Player of Year, Young Player, Golden Boot, etc.) with medal/ribbon SVG icons
-- **Trophy Timeline**: Vertical timeline with season markers, tier-colored cards, year/club info
-- **Legend Comparison**: Horizontal bar charts comparing player vs Ronaldo, Messi, Zidane across trophies/goals/assists/caps
-- **Registered**: `trophy_cabinet` in GameScreen, page.tsx, BottomNav Career category
-
-#### Agent 5 (replaces failed Agent 2 retry): DynamicCareerEvents.tsx — NEW Feature (~1,161 lines)
-- **Active Event Feed**: 3-5 deterministic events with category icons (inline SVGs colored by type), titles, descriptions, category badges, days remaining, "Action Required" indicators
-- **Event Decision Modal**: Narrative text, 2-3 response options with consequence previews (+5 Rep, -2 Morale), confirm button
-- **Event History**: Scrollable resolved event list with outcome badges (Positive/Negative/Mixed), choice made, stat changes, timestamp
-- **Event Probability Engine**: SVG donut chart with category breakdown (Personal 30%, Professional 25%, Social 20%, Medical 15%, Financial 10%)
-- **Event Impact Summary**: Cumulative reputation, morale, financial impacts, net career impact score
-- **13 Event Templates**: Family Celebration, Relationship Milestone, Contract Extension, Transfer Interest, Award Nomination, Viral Social Media, Fan Recognition, Media Controversy, Minor Injury Scare, Fitness Assessment, Sponsorship Deal, Financial Advisor, Charity Opportunity
-- **Registered**: `career_events` in GameScreen, page.tsx, BottomNav Career category
+#### Agent 4: StadiumBuilder.tsx — NEW Feature (~1,219 lines)
+- **Stadium Overview Card**: Editable stadium name, capacity, average attendance with fill %, star rating (1-5), revenue per match, projected season revenue
+- **Stadium SVG Visualization**: Top-down view with green pitch, full markings (center circle, penalty areas, goal areas, corner arcs, penalty spots/arcs), 4 tiered stands (home=green, away=red, VIP=gold), floodlight indicators, capacity labels
+- **Facility Upgrades**: 6 facilities (Seating Capacity, VIP Boxes, Pitch Quality, Floodlights, Scoreboard, Training Ground), each with level 1-5, star rating, expandable detail panel, upgrade cost, budget check, toast feedback
+- **Attendance Trend Chart**: SVG line chart (10 home matches) with area fill, capacity reference line
+- **Stadium Comparison**: Horizontal bars vs Wembley, Camp Nou, Allianz Arena (capacity/rating/revenue)
+- **Match Day Atmosphere**: SVG face icons (Happy/Neutral/Frustrated/Angry), noise level meter (4-segment), home advantage rating (1-5), atmosphere score
+- **Registered**: `stadium_builder` in GameScreen, page.tsx, BottomNav Club category (Building2 icon)
 
 ### Phase 4: Post-Development QA
-- **62 screens registered** (2 new: trophy_cabinet, career_events)
-- **60 existing screens verified** — all PASS
-- **2 new screens verified** — trophy_cabinet ✅, career_events ✅
-- **3 enhanced screens verified** — dashboard ✅, social ✅, analytics ✅
-- Screenshots captured: trophy_cabinet, career_events, dashboard, analytics, social
-- TypeScript: 0 errors in src/ (4 pre-existing in examples/skills)
+- **64 screens registered** (2 new: badge_collection, stadium_builder)
+- **62 existing screens verified** — all PASS
+- **2 new screens verified** — badge_collection ✅, stadium_builder ✅
+- **2 enhanced screens verified** — cup_bracket ✅, transfer_negotiation ✅
+- Screenshots captured: badge_collection, stadium_builder, cup_bracket, transfer_negotiation
+- TypeScript: 0 errors in src/
 - Lint: 0 errors, 0 warnings
 
 Stage Summary:
-- **2 new features** (TrophyCabinet — showcase grid/awards/timeline/Hall of Fame meter/legend comparison; DynamicCareerEvents — event feed/decision modal/probability engine/impact summary/13 event templates)
-- **3 styling enhancements** (Dashboard — sparklines/radar chart/standings table/season progress; Social — feed timeline/growth chart/influence meter/platform cards; AnalyticsPanel — heatmap/spider chart/trend charts/strengths-weaknesses/trajectory)
-- **3 bug fixes** (Dashboard conditional hooks, DynamicCareerEvents missing import + setState-in-useMemo + reassignment)
-- **4 parallel Task agents** (1 failed, retried separately — all succeeded)
-- **2 new screens registered** (trophy_cabinet, career_events) — 62 total unique GameScreen types
-- **All screens QA-tested** — all PASS, 0 runtime errors, 0 console errors
+- **2 new features** (BadgeCollection — 30 badges/6 categories/detail modal/completion ring; StadiumBuilder — stadium SVG/facility upgrades/attendance trend/atmosphere/comparison)
+- **2 styling enhancements** (CupBracket — enhanced bracket SVG/stats bar/match details/cup history/form comparison; TransferNegotiation — phase indicator/contract breakdown/agent advice/club comparison/negotiation timeline/fee chart)
+- **1 bug fix** (StadiumBuilder useMemo→useEffect)
+- **4 parallel Task agents** (all succeeded on first attempt)
+- **2 new screens registered** (badge_collection, stadium_builder) — 64 total unique GameScreen types
+- **All 64 screens QA-tested** — all PASS, 0 runtime errors, 0 console errors
 - **100% Uncodixify compliant**
 - **TS: clean (0 errors in src/), Lint: clean (0 errors, 0 warnings)**
 
 ## Current Goals / Completed Modifications / Verification Results
-- Dashboard enhanced with 6 new visual sections: performance sparkline SVGs for goals/assists/rating, attribute radar mini-chart (80px SVG polygon), club standing mini-table (5 rows centered on player), next match countdown with form dots, quick actions with colored accent borders, and season progress bar with phase markers
-- Social completely restyled with two-tab layout (Timeline/Analytics), vertical feed timeline with type-colored left borders, follower growth SVG chart, segmented social influence meter, platform cards (Instagram/Twitter/TikTok) with engagement rates, and trending football hashtag pills
-- AnalyticsPanel significantly expanded with performance heatmap (7×5 SVG), attribute comparison spider chart vs league average, three season trend sparklines, strengths/weaknesses analysis cards with improvement suggestions, and development trajectory projection chart with confidence interval
-- TrophyCabinet provides comprehensive trophy visualization with 29 trophy definitions in showcase grid, 12 individual award types, Hall of Fame progress meter with 6 milestones, career trophy timeline, and legend comparison bar charts (vs Ronaldo/Messi/Zidane)
-- DynamicCareerEvents delivers an immersive event system with 13 event templates across 5 categories, interactive decision modal with consequence previews, event history tracking, probability engine with SVG donut chart, and cumulative impact statistics
-- Dashboard conditional useMemo hooks fixed by moving before early return with safe optional-chained dependencies
-- DynamicCareerEvents lint errors fixed (useEffect import, useMemo→useEffect, reduce pattern replacing let reassignment)
+- CupBracket enhanced with round labels and winner highlighting in bracket SVG, cup statistics 4-column bar, expandable match detail cards with goalscorers and stat comparison bars, cup history section with progression dots and result badges, and upcoming fixture form comparison
+- TransferNegotiation enhanced with 5-phase negotiation step indicator, SVG stacked contract terms breakdown bar, agent advice panel with confidence meter, side-by-side club comparison with tier badges and pros/cons, vertical negotiation history timeline, and transfer fee escalation line chart
+- BadgeCollection provides comprehensive achievement tracking with 30 badges across 6 categories, 4-column grid with unique SVG icons and rarity-colored borders, badge detail modal with lore and unlock hints, SVG completion donut chart, and recent unlocks section
+- StadiumBuilder delivers stadium visualization with top-down pitch SVG and tiered stands, editable stadium name, 6 facility upgrades with level system, attendance trend chart, comparison vs famous stadiums, and match day atmosphere indicators
+- StadiumBuilder lint error fixed (useMemo→useEffect for stadium name initialization)
 - All new/modified screens passed QA with 0 runtime errors and 0 console errors
 
 ## Unresolved Issues or Risks
-- Playing category is overloaded (20 items) — consider splitting into "Training & Fitness" vs "Match Day"
-- Career category growing (22 items now with Trophies+Events) — critically needs sub-categorization
-- Media & Info category growing — may need reorganization
-- Social.tsx was completely rewritten (737 lines) — may have lost some original functionality
-- Facilities upgrades are visual only — not affecting game mechanics
-- Squad rotation suggestions not connected to match engine
-- Personal Finances data still generated deterministically
+- Playing category is overloaded (20 items) — needs splitting
+- Career category growing (24 items now with Badges+Stadium) — critically needs sub-categorization
+- BottomNav now has a "Club" category added by StadiumBuilder agent — may need alignment with existing structure
+- Social.tsx was completely rewritten in previous cycle (737 lines) — may have lost original functionality
+- Most visual systems still not connected to game mechanics (sponsors→finances, events→state, trophies→results, jersey→career)
 - Retirement system sets flag but doesn't terminate career
-- Loan system is visual only — loaned players don't appear in match simulation
-- Media interview effects not persisted to game state
-- Sponsor system deals not connected to Personal Finances
-- Jersey number selection not persisted to game state
-- DynamicCareerEvents effects (reputation/morale/financial) not persisted to game state
-- TrophyCabinet trophies are deterministically generated — not connected to actual match/engine results
+- Loan system visual only — not in match simulation
+- Media interview effects not persisted
+- Badge progress is deterministic from gameState but badges themselves aren't persisted across sessions
+- Stadium upgrades are visual only — not affecting actual game mechanics
 
 ## Priority Recommendations for Next Phase
-1. **New features** — Stadium Builder/Customizer, Badge Collection system, Career Statistics Deep Dive (per-season breakdowns), Contract Negotiation depth (release clauses, loyalty bonuses)
-2. **Gameplay depth** — Wire ALL visual systems into game mechanics: events→state persistence, trophies→match results, sponsors→finances, jersey→career, media→reputation, loans→squad, facilities→training, retirement→career end
-3. **Styling** — MatchSimulation (pre-match buildup), PreSeasonTrainingCamp (camp drill mini-games), TransferNegotiation (dialogue tree), CupBracket (enhanced bracket visualization)
-4. **UX fixes** — CRITICAL: Category reorganization (Playing 20→12+8, Career 22→12+10), screen favorites/pinning, More panel scroll optimization
-5. **Content** — More event templates (25+), trophy definitions per league, sponsor brands per region, stadium names, jersey traditions per club
-6. **Performance** — Lazy loading for rarely-used screens, code splitting for large components (AnalyticsPanel 2,008 lines, DynamicCareerEvents 1,161 lines, PreSeasonTrainingCamp 2,105 lines)
+1. **New features** — Career Statistics Deep Dive (per-season breakdowns), Contract Negotiation depth, Coach Career Mode, Fantasy Draft mode
+2. **Gameplay depth** — CRITICAL: Wire systems into game mechanics: events→state persistence, badges→achievement unlocks, stadium→match atmosphere, sponsors→finances, jersey→career, media→reputation
+3. **Styling** — MatchDay (3D-like pre-match buildup), PreSeasonTrainingCamp (drill mini-games), DailyRoutineHub (time management), SeasonObjectives (tracker visuals)
+4. **UX fixes** — CRITICAL: Category reorganization (Playing 20→12+8, Career 24→split), BottomNav review (Club category alignment), screen favorites/pinning, More panel scroll optimization
+5. **Content** — More badge definitions (50+), stadium names per club/league, facility upgrade effects, event templates (25+)
+6. **Performance** — Lazy loading for rarely-used screens, code splitting for large components (CupBracket 2,270 lines, TransferNegotiation 1,595 lines, StadiumBuilder 1,219 lines)

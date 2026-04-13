@@ -640,7 +640,9 @@ export type GameScreen =
   | 'jersey_number'
   | 'sponsor_system'
   | 'trophy_cabinet'
-  | 'career_events';
+  | 'career_events'
+  | 'badge_collection'
+  | 'stadium_builder';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

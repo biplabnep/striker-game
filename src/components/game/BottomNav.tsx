@@ -77,6 +77,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'sponsor_system', icon: <Gem className="h-5 w-5" />, label: 'Sponsors' },
       { screen: 'trophy_cabinet', icon: <Trophy className="h-5 w-5" />, label: 'Trophies' },
       { screen: 'career_events', icon: <CalendarClock className="h-5 w-5" />, label: 'Events' },
+      { screen: 'badge_collection', icon: <Award className="h-5 w-5" />, label: 'Badges' },
     ],
   },
   {
@@ -89,6 +90,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'season_objectives', icon: <Target className="h-5 w-5" />, label: 'Objectives' },
       { screen: 'fan_engagement', icon: <HeartHandshake className="h-5 w-5" />, label: 'Fans' },
       { screen: 'rival_system', icon: <Crosshair className="h-5 w-5" />, label: 'Rivals' },
+      { screen: 'stadium_builder', icon: <Building2 className="h-5 w-5" />, label: 'Stadium' },
     ],
   },
   {

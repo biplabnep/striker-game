@@ -75,6 +75,8 @@ import JerseyNumber from '@/components/game/JerseyNumber';
 import SponsorSystem from '@/components/game/SponsorSystem';
 import TrophyCabinet from '@/components/game/TrophyCabinet';
 import DynamicCareerEvents from '@/components/game/DynamicCareerEvents';
+import BadgeCollection from '@/components/game/BadgeCollection';
+import StadiumBuilder from '@/components/game/StadiumBuilder';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -147,6 +149,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   sponsor_system: SponsorSystem,
   trophy_cabinet: TrophyCabinet,
   career_events: DynamicCareerEvents,
+  badge_collection: BadgeCollection,
+  stadium_builder: StadiumBuilder,
 };
 
 const gameScreens: GameScreen[] = [
@@ -186,6 +190,8 @@ const gameScreens: GameScreen[] = [
   'sponsor_system',
   'trophy_cabinet',
   'career_events',
+  'badge_collection',
+  'stadium_builder',
 ];
 
 export default function Home() {
