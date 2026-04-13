@@ -79,6 +79,8 @@ import BadgeCollection from '@/components/game/BadgeCollection';
 import StadiumBuilder from '@/components/game/StadiumBuilder';
 import CareerStatsDeepDive from '@/components/game/CareerStatsDeepDive';
 import CoachCareerMode from '@/components/game/CoachCareerMode';
+import FantasyDraft from '@/components/game/FantasyDraft';
+import InternationalTournament from '@/components/game/InternationalTournament';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -155,6 +157,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   stadium_builder: StadiumBuilder,
   career_stats_deep_dive: CareerStatsDeepDive,
   coach_career: CoachCareerMode,
+  fantasy_draft: FantasyDraft,
+  international_tournament: InternationalTournament,
 };
 
 const gameScreens: GameScreen[] = [
@@ -198,6 +202,8 @@ const gameScreens: GameScreen[] = [
   'stadium_builder',
   'career_stats_deep_dive',
   'coach_career',
+  'fantasy_draft',
+  'international_tournament',
 ];
 
 export default function Home() {

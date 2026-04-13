@@ -44,6 +44,10 @@ import {
   Moon,
   User,
   Crown,
+  Camera,
+  Play,
+  ChevronDown,
+  BookOpen,
 } from 'lucide-react';
 
 // ============================================================
@@ -1249,6 +1253,578 @@ function IntensitySelector({
 }
 
 // ============================================================
+// Camp Timeline SVG
+// ============================================================
+function CampTimelineSVG({
+  currentWeek,
+  schedule,
+}: {
+  currentWeek: number;
+  schedule: SlotAssignment[][];
+}) {
+  const width = 400;
+  const nodeSpacing = 95;
+  const startX = 30;
+  const nodeY = 28;
+  const nodeR = 14;
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Camp Progression</span>
+          </div>
+          <div className="overflow-x-auto">
+            <svg viewBox={`0 0 ${width} 120`} className="w-full min-w-[320px]">
+              {/* Connecting lines */}
+              {Array.from({ length: 3 }, (_, i) => (
+                <line key={i}
+                  x1={startX + i * nodeSpacing + nodeR} y1={nodeY}
+                  x2={startX + (i + 1) * nodeSpacing - nodeR} y2={nodeY}
+                  stroke={i + 1 < currentWeek ? '#10b981' : '#30363d'} strokeWidth={2}
+                />
+              ))}
+              {/* Week nodes */}
+              {Array.from({ length: CAMP_WEEKS }, (_, i) => {
+                const weekNum = i + 1;
+                const x = startX + i * nodeSpacing;
+                const isCompleted = weekNum < currentWeek;
+                const isCurrent = weekNum === currentWeek;
+                const fillColor = isCompleted ? '#10b981' : isCurrent ? '#f59e0b' : '#30363d';
+                const textColor = isCompleted || isCurrent ? '#ffffff' : '#8b949e';
+                const weekSlots = schedule[i] ?? [];
+                const completedCount = weekSlots.filter(s => s.completed).length;
+
+                return (
+                  <g key={i}>
+                    {/* Pulse ring for current week */}
+                    {isCurrent && (
+                      <circle cx={x} cy={nodeY} r={nodeR + 5} fill="none" stroke="#f59e0b" strokeWidth={1}>
+                        <animate attributeName="opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite" />
+                      </circle>
+                    )}
+                    {/* Node circle */}
+                    <circle cx={x} cy={nodeY} r={nodeR} fill={fillColor} />
+                    {isCompleted ? (
+                      <path
+                        d={`M${x - 4} ${nodeY}l3 3 5-6`}
+                        fill="none" stroke="#ffffff" strokeWidth={2.5}
+                        strokeLinecap="round" strokeLinejoin="round"
+                      />
+                    ) : (
+                      <text x={x} y={nodeY + 4} textAnchor="middle" fill={textColor} fontSize="11" fontWeight="700">
+                        {weekNum}
+                      </text>
+                    )}
+                    {/* Week label */}
+                    <text x={x} y={nodeY + nodeR + 13} textAnchor="middle" fill="#8b949e" fontSize="7" fontWeight="600">
+                      W{weekNum}
+                    </text>
+                    {/* Mini training type icons (3 slots) */}
+                    {weekSlots.map((slot, si) => {
+                      const tt = slot.trainingId ? CAMP_TRAINING_TYPES.find(t => t.id === slot.trainingId) : null;
+                      const ix = x - 12 + si * 12;
+                      const iy = nodeY + nodeR + 24;
+                      return tt ? (
+                        <circle key={si} cx={ix} cy={iy} r={4}
+                          fill={slot.completed ? `${tt.color}40` : `${tt.color}20`}
+                          stroke={slot.completed ? tt.color : `${tt.color}50`}
+                          strokeWidth={0.8}
+                        />
+                      ) : (
+                        <circle key={si} cx={ix} cy={iy} r={4} fill="#21262d" stroke="#30363d" strokeWidth={0.5} />
+                      );
+                    })}
+                    {/* Mini readiness bar */}
+                    <rect x={x - 16} y={nodeY + nodeR + 34} width={32} height={3} rx="1.5" fill="#21262d" />
+                    <rect
+                      x={x - 16} y={nodeY + nodeR + 34}
+                      width={Math.max(1, 32 * (completedCount / SLOTS_PER_WEEK))}
+                      height={3} rx="1.5"
+                      fill={completedCount === SLOTS_PER_WEEK ? '#10b981' : completedCount > 0 ? '#f59e0b' : '#30363d'}
+                    />
+                    <text x={x} y={nodeY + nodeR + 46} textAnchor="middle" fill="#484f58" fontSize="6">
+                      {completedCount}/{SLOTS_PER_WEEK}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Training Drill Mini-Game Cards
+// ============================================================
+function TrainingDrillMiniGames({ attrs }: { attrs: PlayerAttributes }) {
+  const shooting = attrs.shooting ?? 50;
+  const pace = attrs.pace ?? 50;
+  const passing = attrs.passing ?? 50;
+
+  const shots = useMemo(() => {
+    const pts: { x: number; y: number; ring: number }[] = [];
+    const seed = shooting * 7 + 3;
+    for (let i = 0; i < 5; i++) {
+      const spread = Math.max(5, 50 - shooting * 0.45);
+      const angle = ((seed * (i + 1) * 137.508) % 360) * (Math.PI / 180);
+      const dist = spread * (((seed * (i + 1) * 31) % 100) / 100);
+      const x = 50 + Math.cos(angle) * dist;
+      const y = 50 + Math.sin(angle) * dist;
+      const ring = dist < 10 ? 0 : dist < 20 ? 1 : dist < 30 ? 2 : dist < 40 ? 3 : 4;
+      pts.push({ x: Math.max(8, Math.min(92, x)), y: Math.max(8, Math.min(92, y)), ring });
+    }
+    return pts;
+  }, [shooting]);
+
+  const sprintResult = useMemo(() => {
+    const playerTime = Math.round((Math.max(10.5, 14 - pace * 0.035)) * 100) / 100;
+    const oppTimes = [
+      Math.round((11.8 + ((shooting * 3) % 5) * 0.1) * 100) / 100,
+      Math.round((12.2 + ((passing * 7) % 4) * 0.1) * 100) / 100,
+      Math.round((11.5 + ((shooting + passing) % 6) * 0.1) * 100) / 100,
+    ];
+    return { playerTime, oppTimes };
+  }, [pace, shooting, passing]);
+
+  const passZones = useMemo(() => {
+    const zones: { x: number; y: number; ok: boolean }[] = [];
+    const seed = passing * 11 + 7;
+    const positions = [
+      { x: 25, y: 25 }, { x: 60, y: 20 }, { x: 40, y: 50 },
+      { x: 75, y: 40 }, { x: 20, y: 65 }, { x: 55, y: 70 }, { x: 85, y: 60 },
+    ];
+    for (let i = 0; i < positions.length; i++) {
+      zones.push({ ...positions[i], ok: ((seed * (i + 1) * 17) % 100) < passing });
+    }
+    return zones;
+  }, [passing]);
+
+  const [expandedQ, setExpandedQ] = useState<number | null>(null);
+
+  const quizItems = [
+    { q: 'What formation uses 3 centre-backs?', opts: ['3-5-2', '4-4-2', '4-3-3', '5-3-2'], ans: 0 },
+    { q: 'Which role dictates play from deep?', opts: ['Striker', 'CAM', 'CDM', 'CB'], ans: 2 },
+    { q: 'Best counter to a high press?', opts: ['Tiki-taka', 'Long ball', 'Park bus', 'Wing play'], ans: 1 },
+  ];
+
+  const shotScore = shots.reduce((s, p) => s + (10 - p.ring * 2), 0);
+  const shotGrade = shotScore >= 35 ? 'Excellent' : shotScore >= 20 ? 'Pass' : 'Fail';
+  const shotColor = shotGrade === 'Excellent' ? '#10b981' : shotGrade === 'Pass' ? '#f59e0b' : '#ef4444';
+
+  const sprintGrade = sprintResult.playerTime < 11.5 ? 'Excellent' : sprintResult.playerTime < 12.5 ? 'Pass' : 'Fail';
+  const sprintColor = sprintGrade === 'Excellent' ? '#10b981' : sprintGrade === 'Pass' ? '#f59e0b' : '#ef4444';
+  const sprintXp = Math.max(10, Math.round(50 - sprintResult.playerTime * 3));
+
+  const passOk = passZones.filter(p => p.ok).length;
+  const passGrade = passOk >= 6 ? 'Excellent' : passOk >= 4 ? 'Pass' : 'Fail';
+  const passColor = passGrade === 'Excellent' ? '#10b981' : passGrade === 'Pass' ? '#f59e0b' : '#ef4444';
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.22 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Play className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Training Drills</span>
+          </div>
+
+          {/* Shooting Accuracy */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-[#c9d1d9]">Shooting Accuracy</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: `${shotColor}20`, color: shotColor }}>{shotGrade} · +{shotScore} XP</span>
+            </div>
+            <svg viewBox="0 0 100 100" className="w-20 h-20 mx-auto">
+              {[40, 30, 20, 10, 4].map((r, i) => (
+                <circle key={i} cx={50} cy={50} r={r} fill="none" stroke="#30363d" strokeWidth={0.8} />
+              ))}
+              <circle cx={50} cy={50} r={2} fill="#ef4444" />
+              {shots.map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r={2.5}
+                  fill={p.ring <= 1 ? '#10b981' : p.ring <= 3 ? '#f59e0b' : '#ef4444'}
+                />
+              ))}
+            </svg>
+          </div>
+
+          {/* Sprint Challenge */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-[#c9d1d9]">Sprint Challenge</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: `${sprintColor}20`, color: sprintColor }}>{sprintGrade} · +{sprintXp} XP</span>
+            </div>
+            <svg viewBox="0 0 300 70" className="w-full">
+              {[0, 1, 2, 3].map((lane) => (
+                <g key={lane}>
+                  <rect x={40} y={5 + lane * 15} width={240} height={12} rx="3"
+                    fill={lane === 0 ? '#10b98110' : '#21262d'} stroke="#30363d" strokeWidth={0.5}
+                  />
+                  {[0, 60, 120, 180, 240].map((mx) => (
+                    <line key={mx} x1={40 + mx} y1={5 + lane * 15} x2={40 + mx} y2={17 + lane * 15} stroke="#30363d" strokeWidth={0.3} />
+                  ))}
+                </g>
+              ))}
+              <circle cx={40 + 240 * Math.min(1, (12.5 - sprintResult.playerTime) / 2)} cy={11} r={4} fill="#10b981" />
+              {sprintResult.oppTimes.map((t, i) => (
+                <circle key={i} cx={40 + 240 * Math.min(1, (12.5 - t) / 2)} cy={20 + i * 15} r={3} fill="#8b949e" />
+              ))}
+              <text x={35} y={14} textAnchor="end" fill="#10b981" fontSize="6" fontWeight="600">YOU</text>
+              {sprintResult.oppTimes.map((t, i) => (
+                <text key={i} x={35} y={23 + i * 15} textAnchor="end" fill="#484f58" fontSize="5">{t}s</text>
+              ))}
+              <text x={288} y={14} textAnchor="end" fill="#10b981" fontSize="5" fontWeight="700">{sprintResult.playerTime}s</text>
+            </svg>
+          </div>
+
+          {/* Passing Accuracy */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-[#c9d1d9]">Passing Accuracy</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: `${passColor}20`, color: passColor }}>{passGrade} · {passOk}/7</span>
+            </div>
+            <svg viewBox="0 0 100 80" className="w-full h-16">
+              {passZones.map((z, i) => (
+                <g key={i}>
+                  <polygon
+                    points={`${z.x},${z.y - 8} ${z.x + 7},${z.y - 4} ${z.x + 7},${z.y + 4} ${z.x},${z.y + 8} ${z.x - 7},${z.y + 4} ${z.x - 7},${z.y - 4}`}
+                    fill={z.ok ? '#10b98120' : '#ef444420'}
+                    stroke={z.ok ? '#10b981' : '#ef4444'} strokeWidth={0.6}
+                  />
+                  <circle cx={z.x} cy={z.y} r={2} fill={z.ok ? '#10b981' : '#ef4444'} />
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {/* Tactical Quiz */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-3.5 w-3.5 text-purple-400" />
+              <span className="text-[11px] font-semibold text-[#c9d1d9]">Tactical Quiz</span>
+            </div>
+            {quizItems.map((item, qi) => (
+              <div key={qi} className="border border-[#21262d] rounded-md overflow-hidden">
+                <button
+                  onClick={() => setExpandedQ(expandedQ === qi ? null : qi)}
+                  className="w-full flex items-center justify-between px-2.5 py-2 text-left"
+                >
+                  <span className="text-[10px] text-[#c9d1d9] font-medium">{item.q}</span>
+                  <ChevronDown className={`h-3 w-3 text-[#484f58] transition-opacity ${expandedQ === qi ? 'opacity-100' : 'opacity-40'}`} />
+                </button>
+                {expandedQ === qi && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }} className="px-2.5 pb-2 space-y-1">
+                    {item.opts.map((opt, oi) => (
+                      <div key={oi} className={`text-[9px] px-2 py-1 rounded-sm ${oi === item.ans ? 'bg-emerald-500/15 text-emerald-300 font-semibold' : 'text-[#8b949e]'}`}>
+                        {oi === item.ans ? '\u2713 ' : '\u25CB '}{opt}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Camp Photo Gallery
+// ============================================================
+function CampPhotoGallery() {
+  const photos = [
+    { label: 'Morning Jog', week: 1, bg: '#1e3a5f', accent: '#3b82f6', key: 'run' },
+    { label: 'Gym Session', week: 1, bg: '#5f1e1e', accent: '#ef4444', key: 'gym' },
+    { label: 'Tactical Classroom', week: 2, bg: '#3b1f5e', accent: '#8b5cf6', key: 'board' },
+    { label: 'Team Bonding', week: 2, bg: '#1e4f5f', accent: '#06b6d4', key: 'team' },
+    { label: 'Match Simulation', week: 3, bg: '#1e5f2e', accent: '#10b981', key: 'pitch' },
+    { label: 'Rest & Recovery', week: 3, bg: '#5f1e4f', accent: '#ec4899', key: 'rest' },
+  ];
+
+  const renderIcon = (key: string, accent: string) => {
+    switch (key) {
+      case 'run':
+        return (
+          <g>
+            <circle cx="20" cy="18" r="4" fill={accent} />
+            <path d="M20 24 L17 40 M20 28 L27 34 M20 28 L13 34 M17 40 L13 50 M17 40 L22 50" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" />
+          </g>
+        );
+      case 'gym':
+        return (
+          <g>
+            <rect x="14" y="18" width="4" height="24" rx="2" fill={accent} />
+            <rect x="22" y="14" width="4" height="28" rx="2" fill={accent} />
+            <rect x="12" y="40" width="16" height="3" rx="1.5" fill={accent} opacity="0.6" />
+          </g>
+        );
+      case 'board':
+        return (
+          <g>
+            <rect x="8" y="12" width="24" height="18" rx="2" fill="none" stroke={accent} strokeWidth="1.5" />
+            <line x1="20" y1="12" x2="20" y2="30" stroke={accent} strokeWidth="0.8" />
+            <circle cx="14" cy="21" r="3" fill={accent} opacity="0.5" />
+            <circle cx="26" cy="21" r="3" fill={accent} opacity="0.5" />
+          </g>
+        );
+      case 'team':
+        return (
+          <g>
+            <circle cx="12" cy="22" r="4" fill={accent} opacity="0.7" />
+            <circle cx="28" cy="22" r="4" fill={accent} opacity="0.7" />
+            <circle cx="20" cy="18" r="4" fill={accent} />
+            <line x1="14" y1="28" x2="26" y2="28" stroke={accent} strokeWidth="1.5" />
+          </g>
+        );
+      case 'pitch':
+        return (
+          <g>
+            <rect x="6" y="16" width="28" height="16" rx="2" fill="none" stroke={accent} strokeWidth="1.5" />
+            <line x1="20" y1="16" x2="20" y2="32" stroke={accent} strokeWidth="0.8" />
+            <circle cx="20" cy="24" r="4" fill="none" stroke={accent} strokeWidth="0.8" />
+          </g>
+        );
+      case 'rest':
+        return (
+          <g>
+            <rect x="8" y="30" width="24" height="10" rx="3" fill={accent} opacity="0.4" />
+            <rect x="10" y="22" width="20" height="10" rx="2" fill={accent} opacity="0.7" />
+            <line x1="20" y1="22" x2="20" y2="18" stroke={accent} strokeWidth="2" strokeLinecap="round" />
+          </g>
+        );
+      default: return null;
+    }
+  };
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.24 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Camera className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Camp Gallery</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {photos.map((p) => (
+              <div key={p.label} className="relative rounded-lg overflow-hidden border border-[#30363d]" style={{ backgroundColor: p.bg }}>
+                <svg viewBox="0 0 40 55" className="w-full">
+                  <rect width="40" height="55" fill={p.bg} />
+                  {renderIcon(p.key, p.accent)}
+                </svg>
+                <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1" style={{ backgroundColor: `${p.bg}dd` }}>
+                  <span className="text-[7px] font-semibold text-[#c9d1d9] block leading-tight">{p.label}</span>
+                  <span className="text-[6px] text-[#8b949e]">Week {p.week}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Camp Comparison Chart
+// ============================================================
+function CampComparisonChart({ playerAttrs, totalGains, playerOvr, ovrChange }: {
+  playerAttrs: PlayerAttributes;
+  totalGains: Partial<Record<keyof PlayerAttributes, number>>;
+  playerOvr: number;
+  ovrChange: number;
+}) {
+  const chartW = 340;
+  const chartH = 200;
+  const barH = 8;
+  const groupH = 28;
+  const leftPad = 36;
+  const rightPad = 30;
+  const barMaxW = chartW - leftPad - rightPad;
+  const topPad = 14;
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.26 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Before vs After Camp</span>
+          </div>
+          <div className="overflow-x-auto">
+            <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full min-w-[300px]">
+              {/* Legend */}
+              <rect x={leftPad} y={2} width={8} height={5} rx="1" fill="#30363d" />
+              <text x={leftPad + 12} y={7} fill="#8b949e" fontSize="6">Before</text>
+              <rect x={leftPad + 45} y={2} width={8} height={5} rx="1" fill="#10b981" />
+              <text x={leftPad + 57} y={7} fill="#8b949e" fontSize="6">Projected</text>
+
+              {/* Attribute bars */}
+              {CORE_ATTRS.map((attr, i) => {
+                const before = playerAttrs[attr] ?? 50;
+                const gain = totalGains[attr] ?? 0;
+                const after = Math.min(99, Math.round((before + gain) * 10) / 10);
+                const y = topPad + i * groupH;
+                return (
+                  <g key={attr}>
+                    <text x={leftPad - 4} y={y + barH / 2 + 3} textAnchor="end" fill="#8b949e" fontSize="7" fontWeight="600">
+                      {ATTR_LABELS[attr]}
+                    </text>
+                    <rect x={leftPad} y={y} width={(before / 99) * barMaxW} height={barH} rx="2" fill="#30363d" />
+                    <rect x={leftPad} y={y + barH + 2} width={(after / 99) * barMaxW} height={barH} rx="2"
+                      fill={gain > 0 ? '#10b981' : '#30363d'} opacity={gain > 0 ? 0.7 : 1}
+                    />
+                    <text x={leftPad + (before / 99) * barMaxW + 4} y={y + barH / 2 + 3} fill="#484f58" fontSize="6">
+                      {before}
+                    </text>
+                    {gain > 0 && (
+                      <text x={leftPad + (after / 99) * barMaxW + 4} y={y + barH + barH / 2 + 5} fill="#10b981" fontSize="6" fontWeight="700">
+                        +{gain}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* OVR comparison */}
+              <line x1={leftPad} y1={topPad + 6 * groupH - 2} x2={chartW - rightPad} y2={topPad + 6 * groupH - 2} stroke="#21262d" strokeWidth={0.5} />
+              <text x={leftPad - 4} y={topPad + 6 * groupH + 10} textAnchor="end" fill="#f59e0b" fontSize="7" fontWeight="700">
+                OVR
+              </text>
+              <rect x={leftPad} y={topPad + 6 * groupH + 4} width={(playerOvr / 99) * barMaxW} height={barH} rx="2" fill="#30363d" />
+              <rect
+                x={leftPad} y={topPad + 6 * groupH + barH + 6}
+                width={((playerOvr + ovrChange) / 99) * barMaxW} height={barH} rx="2"
+                fill={ovrChange > 0 ? '#10b981' : '#30363d'} opacity={ovrChange > 0 ? 0.8 : 1}
+              />
+              <text x={leftPad + (playerOvr / 99) * barMaxW + 4} y={topPad + 6 * groupH + 12} fill="#484f58" fontSize="6">
+                {playerOvr}
+              </text>
+              {ovrChange > 0 && (
+                <text x={leftPad + ((playerOvr + ovrChange) / 99) * barMaxW + 4} y={topPad + 6 * groupH + barH + 14} fill="#10b981" fontSize="6" fontWeight="700">
+                  +{ovrChange}
+                </text>
+              )}
+            </svg>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Coach's Final Report
+// ============================================================
+function CoachFinalReport({ completionPct, ovrChange, totalGains, playerAttrs, campFitness }: {
+  completionPct: number;
+  ovrChange: number;
+  totalGains: Partial<Record<keyof PlayerAttributes, number>>;
+  playerAttrs: PlayerAttributes;
+  campFitness: number;
+}) {
+  const grade = useMemo(() => {
+    if (completionPct >= 90 && ovrChange >= 3) return 'A';
+    if (completionPct >= 70 && ovrChange >= 2) return 'B';
+    if (completionPct >= 50 && ovrChange >= 1) return 'C';
+    if (completionPct >= 30) return 'D';
+    return 'F';
+  }, [completionPct, ovrChange]);
+
+  const gradeColor = grade === 'A' ? '#10b981' : grade === 'B' ? '#10b981' : grade === 'C' ? '#f59e0b' : grade === 'D' ? '#f97316' : '#ef4444';
+
+  const readiness = useMemo(() => {
+    return Math.min(100, Math.round(completionPct * 0.4 + campFitness * 0.3 + (ovrChange > 0 ? 30 : 10)));
+  }, [completionPct, campFitness, ovrChange]);
+
+  const recommendations = useMemo(() => {
+    const entries = CORE_ATTRS.map(a => ({ attr: a, val: playerAttrs[a] ?? 50, gain: totalGains[a] ?? 0 }));
+    entries.sort((a, b) => a.val - b.val);
+    const recs: string[] = [];
+    if (entries[0]) recs.push(`Prioritize ${ATTR_FULL[entries[0].attr]} training \u2014 currently at ${entries[0].val} and needs most work.`);
+    if (entries[1] && entries[1].val < 55) recs.push(`${ATTR_FULL[entries[1].attr]} is below 55 \u2014 add targeted drills before the season opener.`);
+    const totalGain = Object.values(totalGains).reduce((s, v) => s + (v ?? 0), 0);
+    if (totalGain < 5) recs.push('Overall gains are modest \u2014 consider increasing training intensity next camp.');
+    else recs.push('Solid gains this camp. Maintain consistency through the season with weekly sessions.');
+    return recs.slice(0, 3);
+  }, [playerAttrs, totalGains]);
+
+  const quotes = [
+    '"Champions are made in the off-season."',
+    '"The harder you train, the luckier you play."',
+    '"Success is where preparation meets opportunity."',
+    '"Every champion was once a contender that refused to give up."',
+  ];
+  const quoteIdx = Math.abs(Math.round(ovrChange * 7 + completionPct * 3)) % quotes.length;
+
+  const circumference = 2 * Math.PI * 30;
+  const offset = circumference - (readiness / 100) * circumference;
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.28 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Coach's Report</span>
+          </div>
+
+          {/* Coach avatar + Grade + Readiness */}
+          <div className="flex items-center gap-3">
+            <svg viewBox="0 0 60 60" className="w-14 h-14 shrink-0">
+              <circle cx="30" cy="30" r="28" fill="#21262d" stroke="#30363d" strokeWidth="1" />
+              <circle cx="30" cy="24" r="8" fill="#30363d" />
+              <rect x="22" y="34" width="16" height="12" rx="3" fill="#30363d" />
+              <circle cx="30" cy="22" r="6" fill="#8b949e" />
+              <rect x="38" y="26" width="8" height="3" rx="1.5" fill="#8b949e" />
+              <circle cx="46" cy="27.5" r="2.5" fill="#8b949e" />
+              <line x1="46" y1="25" x2="46" y2="22" stroke="#8b949e" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold" style={{ color: gradeColor }}>{grade}</span>
+                <span className="text-[10px] text-[#8b949e]">Camp Grade</span>
+              </div>
+              <p className="text-[11px] text-[#c9d1d9] mt-0.5">{completionPct}% completion \u00B7 OVR {ovrChange > 0 ? '+' : ''}{ovrChange}</p>
+            </div>
+            <svg viewBox="0 0 70 70" className="w-14 h-14 shrink-0">
+              <circle cx="35" cy="35" r="30" fill="none" stroke="#21262d" strokeWidth="4" />
+              <circle cx="35" cy="35" r="30" fill="none" stroke="#10b981" strokeWidth="4"
+                strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+              />
+              <text x="35" y="33" textAnchor="middle" fill="#10b981" fontSize="11" fontWeight="700">{readiness}%</text>
+              <text x="35" y="43" textAnchor="middle" fill="#484f58" fontSize="5">READY</text>
+            </svg>
+          </div>
+
+          {/* Recommendations */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-[#8b949e] uppercase tracking-wide font-medium">Recommendations</span>
+            {recommendations.map((rec, i) => (
+              <div key={i} className="flex items-start gap-1.5">
+                <span className="text-[9px] text-emerald-400 mt-0.5 shrink-0">\u25CF</span>
+                <span className="text-[10px] text-[#c9d1d9] leading-relaxed">{rec}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Motivational quote */}
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-md p-2.5">
+            <span className="text-[10px] text-[#8b949e] italic leading-relaxed">{quotes[quoteIdx]}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -1647,6 +2223,32 @@ export default function PreSeasonTrainingCamp() {
       >
         <IntensitySelector current={campState.intensity} onChange={handleIntensityChange} />
       </motion.section>
+
+      {/* ---- Camp Timeline ---- */}
+      <CampTimelineSVG currentWeek={campState.currentWeek} schedule={schedule} />
+
+      {/* ---- Training Drill Mini-Games ---- */}
+      <TrainingDrillMiniGames attrs={player.attributes} />
+
+      {/* ---- Camp Photo Gallery ---- */}
+      <CampPhotoGallery />
+
+      {/* ---- Camp Comparison Chart ---- */}
+      <CampComparisonChart
+        playerAttrs={player.attributes}
+        totalGains={campState.totalGains}
+        playerOvr={player.overall}
+        ovrChange={campState.ovrChange}
+      />
+
+      {/* ---- Coach's Final Report ---- */}
+      <CoachFinalReport
+        completionPct={trainingLoadPct}
+        ovrChange={campState.ovrChange}
+        totalGains={campState.totalGains}
+        playerAttrs={player.attributes}
+        campFitness={campFitness}
+      />
 
       {/* ---- Tab Navigation ---- */}
       <div className="flex bg-[#161b22] border border-[#30363d] rounded-lg p-1 gap-1">

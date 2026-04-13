@@ -1,0 +1,1728 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useGameStore } from '@/store/gameStore';
+import { getPlayerNationInfo } from '@/lib/game/internationalEngine';
+import { motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Trophy,
+  Globe,
+  Star,
+  Target,
+  Users,
+  Calendar,
+  MapPin,
+  Shield,
+  Swords,
+  TrendingUp,
+  Award,
+  ChevronRight,
+  Flame,
+  Clock,
+  Zap,
+  Medal,
+  BarChart3,
+  Eye,
+  Flag,
+  Wind,
+  Cloud,
+  Sun,
+} from 'lucide-react';
+
+// ============================================================
+// Constants
+// ============================================================
+const DARK_BG = 'bg-[#0d1117]';
+const CARD_BG = 'bg-[#161b22]';
+const BORDER_COLOR = 'border-[#30363d]';
+const TEXT_PRIMARY = 'text-[#c9d1d9]';
+const TEXT_SECONDARY = 'text-[#8b949e]';
+
+// ============================================================
+// Deterministic Helpers
+// ============================================================
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash;
+}
+
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+function getFifaRanking(nationName: string): number {
+  return Math.abs(hashCode(nationName)) % 200 + 1;
+}
+
+function getTeamStyle(nationName: string): string {
+  const styles = ['Attacking', 'Balanced', 'Defensive', 'Counter-Attack', 'Possession'];
+  const idx = Math.abs(hashCode(nationName + '_style')) % styles.length;
+  return styles[idx];
+}
+
+function getTeamQuality(nationName: string): number {
+  return Math.abs(hashCode(nationName + '_quality')) % 40 + 60;
+}
+
+// ============================================================
+// Tournament Data Generators
+// ============================================================
+interface TournamentTeam {
+  name: string;
+  flag: string;
+  quality: number;
+  ranking: number;
+  style: string;
+}
+
+interface GroupMatch {
+  home: string;
+  away: string;
+  homeScore: number;
+  awayScore: number;
+  played: boolean;
+}
+
+interface GroupStanding {
+  team: string;
+  flag: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+  isPlayerTeam: boolean;
+}
+
+interface KnockoutMatch {
+  id: string;
+  round: string;
+  home: string | null;
+  away: string | null;
+  homeFlag: string;
+  awayFlag: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  played: boolean;
+  homeIsPlayer: boolean;
+  awayIsPlayer: boolean;
+}
+
+interface SquadPlayer {
+  name: string;
+  position: string;
+  club: string;
+  ovr: number;
+  role: 'starter' | 'substitute';
+  isPlayer: boolean;
+}
+
+interface TournamentHistoryEntry {
+  tournament: string;
+  year: number;
+  result: string;
+  resultIcon: string;
+  goals: number;
+  matches: number;
+}
+
+// National teams data
+const EURO_TEAMS: TournamentTeam[] = [
+  { name: 'France', flag: '🇫🇷', quality: 92, ranking: 2, style: 'Attacking' },
+  { name: 'Germany', flag: '🇩🇪', quality: 88, ranking: 4, style: 'Balanced' },
+  { name: 'Spain', flag: '🇪🇸', quality: 91, ranking: 3, style: 'Possession' },
+  { name: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', quality: 87, ranking: 5, style: 'Attacking' },
+  { name: 'Portugal', flag: '🇵🇹', quality: 89, ranking: 6, style: 'Balanced' },
+  { name: 'Italy', flag: '🇮🇹', quality: 86, ranking: 7, style: 'Defensive' },
+  { name: 'Netherlands', flag: '🇳🇱', quality: 85, ranking: 8, style: 'Attacking' },
+  { name: 'Belgium', flag: '🇧🇪', quality: 84, ranking: 9, style: 'Possession' },
+  { name: 'Croatia', flag: '🇭🇷', quality: 82, ranking: 10, style: 'Balanced' },
+  { name: 'Switzerland', flag: '🇨🇭', quality: 78, ranking: 14, style: 'Defensive' },
+  { name: 'Denmark', flag: '🇩🇰', quality: 77, ranking: 15, style: 'Attacking' },
+  { name: 'Austria', flag: '🇦🇹', quality: 75, ranking: 22, style: 'Balanced' },
+  { name: 'Turkey', flag: '🇹🇷', quality: 74, ranking: 28, style: 'Attacking' },
+  { name: 'Poland', flag: '🇵🇱', quality: 73, ranking: 26, style: 'Defensive' },
+  { name: 'Sweden', flag: '🇸🇪', quality: 72, ranking: 23, style: 'Balanced' },
+  { name: 'Serbia', flag: '🇷🇸', quality: 71, ranking: 29, style: 'Attacking' },
+  { name: 'Ukraine', flag: '🇺🇦', quality: 70, ranking: 24, style: 'Counter-Attack' },
+  { name: 'Czech Republic', flag: '🇨🇿', quality: 69, ranking: 31, style: 'Balanced' },
+  { name: 'Scotland', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', quality: 68, ranking: 35, style: 'Defensive' },
+  { name: 'Hungary', flag: '🇭🇺', quality: 67, ranking: 32, style: 'Counter-Attack' },
+  { name: 'Romania', flag: '🇷🇴', quality: 65, ranking: 40, style: 'Defensive' },
+  { name: 'Slovakia', flag: '🇸🇰', quality: 64, ranking: 42, style: 'Balanced' },
+  { name: 'Slovenia', flag: '🇸🇮', quality: 63, ranking: 52, style: 'Balanced' },
+  { name: 'Albania', flag: '🇦🇱', quality: 62, ranking: 56, style: 'Defensive' },
+];
+
+const WORLD_CUP_TEAMS: TournamentTeam[] = [
+  ...EURO_TEAMS.slice(0, 16),
+  { name: 'Brazil', flag: '🇧🇷', quality: 93, ranking: 1, style: 'Attacking' },
+  { name: 'Argentina', flag: '🇦🇷', quality: 94, ranking: 1, style: 'Balanced' },
+  { name: 'Uruguay', flag: '🇺🇾', quality: 79, ranking: 11, style: 'Counter-Attack' },
+  { name: 'Colombia', flag: '🇨🇴', quality: 78, ranking: 12, style: 'Attacking' },
+  { name: 'Mexico', flag: '🇲🇽', quality: 76, ranking: 13, style: 'Balanced' },
+  { name: 'USA', flag: '🇺🇸', quality: 75, ranking: 16, style: 'Attacking' },
+  { name: 'Japan', flag: '🇯🇵', quality: 74, ranking: 18, style: 'Balanced' },
+  { name: 'South Korea', flag: '🇰🇷', quality: 72, ranking: 20, style: 'Counter-Attack' },
+  { name: 'Australia', flag: '🇦🇺', quality: 68, ranking: 27, style: 'Balanced' },
+  { name: 'Morocco', flag: '🇲🇦', quality: 77, ranking: 11, style: 'Defensive' },
+  { name: 'Senegal', flag: '🇸🇳', quality: 70, ranking: 17, style: 'Attacking' },
+  { name: 'Nigeria', flag: '🇳🇬', quality: 69, ranking: 30, style: 'Attacking' },
+  { name: 'Ghana', flag: '🇬🇭', quality: 66, ranking: 50, style: 'Attacking' },
+  { name: 'Cameroon', flag: '🇨🇲', quality: 65, ranking: 45, style: 'Balanced' },
+  { name: 'Ecuador', flag: '🇪🇨', quality: 67, ranking: 38, style: 'Balanced' },
+  { name: 'Saudi Arabia', flag: '🇸🇦', quality: 64, ranking: 53, style: 'Defensive' },
+];
+
+// Generate deterministic group matches
+function generateGroupMatches(teams: TournamentTeam[], seed: number): GroupMatch[] {
+  const matches: GroupMatch[] = [];
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      const matchSeed = seed + hashCode(teams[i].name + teams[j].name);
+      const homeGoals = Math.floor(seededRandom(matchSeed) * 4);
+      const awayGoals = Math.floor(seededRandom(matchSeed + 1) * 4);
+      matches.push({
+        home: teams[i].name,
+        away: teams[j].name,
+        homeScore: homeGoals,
+        awayScore: awayGoals,
+        played: true,
+      });
+    }
+  }
+  return matches;
+}
+
+// Generate group standings from matches
+function calculateGroupStandings(teams: TournamentTeam[], matches: GroupMatch[], playerNation: string): GroupStanding[] {
+  const standings: GroupStanding[] = teams.map(t => ({
+    team: t.name,
+    flag: t.flag,
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    points: 0,
+    isPlayerTeam: t.name === playerNation,
+  }));
+
+  for (const m of matches) {
+    if (!m.played) continue;
+    const homeEntry = standings.find(s => s.team === m.home);
+    const awayEntry = standings.find(s => s.team === m.away);
+    if (!homeEntry || !awayEntry) continue;
+
+    homeEntry.played++;
+    awayEntry.played++;
+    homeEntry.goalsFor += m.homeScore;
+    homeEntry.goalsAgainst += m.awayScore;
+    awayEntry.goalsFor += m.awayScore;
+    awayEntry.goalsAgainst += m.homeScore;
+
+    if (m.homeScore > m.awayScore) {
+      homeEntry.won++;
+      homeEntry.points += 3;
+      awayEntry.lost++;
+    } else if (m.homeScore === m.awayScore) {
+      homeEntry.drawn++;
+      awayEntry.drawn++;
+      homeEntry.points += 1;
+      awayEntry.points += 1;
+    } else {
+      awayEntry.won++;
+      awayEntry.points += 3;
+      homeEntry.lost++;
+    }
+  }
+
+  return standings.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.goalsFor - a.goalsAgainst;
+    const gdB = b.goalsFor - b.goalsAgainst;
+    if (gdB !== gdA) return gdB - gdA;
+    return b.goalsFor - a.goalsFor;
+  });
+}
+
+// Generate knockout bracket
+function generateKnockoutBracket(
+  qualifiedTeams: { name: string; flag: string; quality: number }[],
+  playerNation: string,
+  seed: number
+): KnockoutMatch[] {
+  const matches: KnockoutMatch[] = [];
+  let currentTeams = [...qualifiedTeams];
+
+  const rounds: { name: string; teamCount: number }[] = [];
+  if (currentTeams.length === 16) {
+    rounds.push({ name: 'Round of 16', teamCount: 16 });
+    rounds.push({ name: 'Quarter-Finals', teamCount: 8 });
+    rounds.push({ name: 'Semi-Finals', teamCount: 4 });
+    rounds.push({ name: 'Final', teamCount: 2 });
+  } else if (currentTeams.length === 8) {
+    rounds.push({ name: 'Quarter-Finals', teamCount: 8 });
+    rounds.push({ name: 'Semi-Finals', teamCount: 4 });
+    rounds.push({ name: 'Final', teamCount: 2 });
+  } else {
+    rounds.push({ name: 'Semi-Finals', teamCount: 4 });
+    rounds.push({ name: 'Final', teamCount: 2 });
+  }
+
+  let matchIdx = 0;
+  for (const round of rounds) {
+    const roundTeamCount = round.teamCount;
+    const roundMatchCount = roundTeamCount / 2;
+
+    for (let i = 0; i < roundMatchCount; i++) {
+      const homeIdx = i * 2;
+      const awayIdx = i * 2 + 1;
+      const home = currentTeams[homeIdx] ?? null;
+      const away = currentTeams[awayIdx] ?? null;
+
+      let homeScore: number | null = null;
+      let awayScore: number | null = null;
+      let played = false;
+
+      if (home && away) {
+        const matchSeed = seed + matchIdx * 7 + hashCode(home.name + away.name);
+        const qualityDiff = home.quality - away.quality;
+        const homeExpected = 1.3 + qualityDiff / 30;
+        const awayExpected = 1.0 - qualityDiff / 30;
+        homeScore = Math.floor(seededRandom(matchSeed) * Math.max(homeExpected, 0.5) * 2);
+        awayScore = Math.floor(seededRandom(matchSeed + 1) * Math.max(awayExpected, 0.5) * 2);
+        played = true;
+      }
+
+      matches.push({
+        id: `ko-${round.name}-${i}`,
+        round: round.name,
+        home: home?.name ?? null,
+        away: away?.name ?? null,
+        homeFlag: home?.flag ?? '',
+        awayFlag: away?.flag ?? '',
+        homeScore,
+        awayScore,
+        played,
+        homeIsPlayer: home?.name === playerNation,
+        awayIsPlayer: away?.name === playerNation,
+      });
+
+      matchIdx++;
+    }
+
+    // Determine winners for next round
+    const winners: { name: string; flag: string; quality: number }[] = [];
+    for (let i = 0; i < roundMatchCount; i++) {
+      const match = matches[matches.length - roundMatchCount + i];
+      if (match.played && match.homeScore !== null && match.awayScore !== null && match.home && match.away) {
+        const homeTeam = qualifiedTeams.find(t => t.name === match.home) ?? { name: match.home, flag: match.homeFlag, quality: 75 };
+        const awayTeam = qualifiedTeams.find(t => t.name === match.away) ?? { name: match.away, flag: match.awayFlag, quality: 75 };
+        if (match.homeScore > match.awayScore) {
+          winners.push(homeTeam);
+        } else if (match.awayScore > match.homeScore) {
+          winners.push(awayTeam);
+        } else {
+          // Penalties (deterministic)
+          const penSeed = seed + hashCode(match.home + match.away + 'pen');
+          winners.push(seededRandom(penSeed) > 0.5 ? homeTeam : awayTeam);
+        }
+      }
+    }
+    currentTeams = winners;
+  }
+
+  return matches;
+}
+
+// Generate national squad
+function generateSquad(playerNation: string, playerFlag: string, playerName: string, playerPos: string, seed: number): SquadPlayer[] {
+  const positions = ['GK', 'GK', 'GK', 'CB', 'CB', 'CB', 'CB', 'LB', 'LB', 'RB', 'RB',
+    'CDM', 'CDM', 'CM', 'CM', 'CM', 'CAM', 'LM', 'RM',
+    'LW', 'RW', 'ST', 'ST', 'CF'];
+
+  const firstNames = ['Marco', 'Lucas', 'Rafael', 'Antonio', 'Matteo', 'Julian', 'Felix', 'Leon', 'Oscar', 'Viktor',
+    'Erik', 'Thomas', 'Carlos', 'David', 'Paulo', 'Henrik', 'Stefan', 'Nicolas', 'Adrien', 'Yusuf',
+    'Alejandro', 'Emil', 'Patrick', 'Roberto', 'James', 'Ryan', 'Daniel', 'Luis', 'Fabian', 'Ivan'];
+
+  const lastNames = ['Silva', 'Müller', 'Garcia', 'Fernandez', 'Rossi', 'Johansson', 'Dubois', 'Kowalski',
+    'Torres', 'Peterson', 'Laurent', 'Schmidt', 'Berger', 'Hoffman', 'Andersen', 'Nielsen',
+    'Costa', 'Moreno', 'Santos', 'Novak', 'Larsen', 'Berg', 'Eriksen', 'Holm'];
+
+  const clubs = ['Arsenal', 'Chelsea', 'Real Madrid', 'Bayern Munich', 'Barcelona', 'PSG', 'Inter Milan',
+    'Juventus', 'Liverpool', 'Man City', 'Dortmund', 'Atletico', 'Tottenham', 'Napoli', 'Roma',
+    'Ajax', 'Benfica', 'Porto', 'Villarreal', 'Sevilla'];
+
+  const squad: SquadPlayer[] = [];
+
+  // Insert player in correct position slot
+  let playerInserted = false;
+  for (let i = 0; i < 23; i++) {
+    const pos = positions[i] || 'CM';
+    const role = i < 11 ? 'starter' as const : 'substitute' as const;
+
+    if (!playerInserted && pos === playerPos && role === 'starter') {
+      squad.push({
+        name: playerName,
+        position: pos,
+        club: 'Current Club',
+        ovr: 78 + Math.floor(seededRandom(seed + i * 3) * 15),
+        role: 'starter',
+        isPlayer: true,
+      });
+      playerInserted = true;
+      continue;
+    }
+
+    if (!playerInserted && i === 11) {
+      squad.push({
+        name: playerName,
+        position: playerPos,
+        club: 'Current Club',
+        ovr: 78 + Math.floor(seededRandom(seed + 99) * 15),
+        role: 'substitute',
+        isPlayer: true,
+      });
+      playerInserted = true;
+      continue;
+    }
+
+    const fn = firstNames[Math.floor(seededRandom(seed + i * 5) * firstNames.length)];
+    const ln = lastNames[Math.floor(seededRandom(seed + i * 7 + 1) * lastNames.length)];
+    squad.push({
+      name: `${fn} ${ln}`,
+      position: pos,
+      club: clubs[Math.floor(seededRandom(seed + i * 11 + 3) * clubs.length)],
+      ovr: 70 + Math.floor(seededRandom(seed + i * 13 + 5) * 20),
+      role,
+      isPlayer: false,
+    });
+  }
+
+  if (!playerInserted) {
+    squad[22] = {
+      name: playerName,
+      position: playerPos,
+      club: 'Current Club',
+      ovr: 80,
+      role: 'substitute',
+      isPlayer: true,
+    };
+  }
+
+  return squad;
+}
+
+// Generate tournament history
+function generateTournamentHistory(caps: number, goals: number, nationName: string): TournamentHistoryEntry[] {
+  if (caps < 3) return [];
+  const history: TournamentHistoryEntry[] = [];
+
+  const euroYears = [2020, 2024, 2028, 2032];
+  const wcYears = [2022, 2026, 2030, 2034];
+  const allTournaments: { name: string; year: number }[] = [];
+
+  for (const y of euroYears) allTournaments.push({ name: 'European Championship', year: y });
+  for (const y of wcYears) allTournaments.push({ name: 'World Cup', year: y });
+  allTournaments.sort((a, b) => a.year - b.year);
+
+  const results = ['Group Stage', 'Quarter-Final', 'Semi-Final', 'Runner-Up', 'Winner'];
+  const icons = ['📋', '⚡', '🏅', '🥈', '🏆'];
+
+  const numEntries = Math.min(Math.floor(caps / 5) + (goals > 3 ? 1 : 0), allTournaments.length);
+  const startIdx = Math.max(0, allTournaments.length - numEntries);
+
+  for (let i = startIdx; i < allTournaments.length; i++) {
+    const t = allTournaments[i];
+    const seed = hashCode(nationName + t.year);
+    const resultIdx = Math.min(
+      Math.floor(seededRandom(seed) * 2 + (caps / 30)),
+      results.length - 1
+    );
+    history.push({
+      tournament: t.name,
+      year: t.year,
+      result: results[resultIdx],
+      resultIcon: icons[resultIdx],
+      goals: Math.floor(seededRandom(seed + 1) * (goals + 2)),
+      matches: 3 + Math.floor(seededRandom(seed + 2) * 5),
+    });
+  }
+
+  return history;
+}
+
+// Generate qualification data
+function generateQualificationData(caps: number, nationName: string, season: number) {
+  const groupTeams = [
+    { name: nationName, flag: '🏴', points: 0, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0 },
+  ];
+  const opponents = ['Wales', 'Georgia', 'Armenia', 'Latvia'];
+  const oppFlags = ['🏴󠁧󠁢󠁷󠁬󠁳󠁿', '🇬🇪', '🇦🇲', '🇱🇻'];
+
+  for (let i = 0; i < opponents.length; i++) {
+    groupTeams.push({ name: opponents[i], flag: oppFlags[i], points: 0, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0 });
+  }
+
+  // Simulate 6 matchdays
+  for (let md = 0; md < 6; md++) {
+    for (let i = 0; i < groupTeams.length; i++) {
+      for (let j = i + 1; j < groupTeams.length; j++) {
+        const seed = hashCode(nationName + md + i + j + season);
+        const homeGoals = Math.floor(seededRandom(seed) * 4);
+        const awayGoals = Math.floor(seededRandom(seed + 1) * 3);
+
+        groupTeams[i].played++;
+        groupTeams[j].played++;
+        groupTeams[i].gf += homeGoals;
+        groupTeams[i].ga += awayGoals;
+        groupTeams[j].gf += awayGoals;
+        groupTeams[j].ga += homeGoals;
+
+        if (homeGoals > awayGoals) {
+          groupTeams[i].won++;
+          groupTeams[i].points += 3;
+          groupTeams[j].lost++;
+        } else if (homeGoals === awayGoals) {
+          groupTeams[i].drawn++;
+          groupTeams[j].drawn++;
+          groupTeams[i].points += 1;
+          groupTeams[j].points += 1;
+        } else {
+          groupTeams[j].won++;
+          groupTeams[j].points += 3;
+          groupTeams[i].lost++;
+        }
+      }
+    }
+  }
+
+  groupTeams.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.gf - a.ga;
+    const gdB = b.gf - b.ga;
+    return gdB - gdA;
+  });
+
+  const playerTeam = groupTeams[0];
+  const totalPossible = 6 * 3;
+  const qualProb = Math.min(95, Math.max(20, Math.round((playerTeam.points / totalPossible) * 100 + caps * 0.5)));
+  const isQualified = playerTeam.points >= 18 || caps >= 20;
+
+  return { groupTeams, isQualified, qualProb, remainingFixtures: 0 };
+}
+
+// ============================================================
+// Rating Color Helper
+// ============================================================
+function getRatingColor(rating: number): string {
+  if (rating >= 8.0) return 'text-emerald-400';
+  if (rating >= 7.0) return 'text-green-400';
+  if (rating >= 6.0) return 'text-amber-400';
+  return 'text-red-400';
+}
+
+// ============================================================
+// SVG Trophy Icon
+// ============================================================
+function TrophyIcon({ color = '#fbbf24', size = 48 }: { color?: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      <path d="M14 8h20v4c0 6-4 10-10 12-6-2-10-6-10-12V8z" fill={color} fillOpacity={0.15} stroke={color} strokeWidth={1.5} />
+      <path d="M24 24v6" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M18 30h12v3H18z" fill={color} fillOpacity={0.3} stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
+      <path d="M14 8h-4c0 4 2 6 4 6" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M34 8h4c0 4-2 6-4 6" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M20 33h8" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M19 36h10" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <circle cx="24" cy="16" r="2" fill={color} fillOpacity={0.5} />
+      <path d="M21 13l3 3 3-3" stroke={color} strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG Performance Line Chart
+// ============================================================
+function PerformanceLineChart({ ratings, width = 280, height = 80 }: { ratings: number[]; width?: number; height?: number }) {
+  if (ratings.length < 2) {
+    return (
+      <div className="flex items-center justify-center text-[10px] text-[#484f58] h-20">
+        Not enough match data
+      </div>
+    );
+  }
+
+  const padding = { top: 10, bottom: 20, left: 24, right: 10 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+
+  const minRating = 4;
+  const maxRating = 10;
+  const range = maxRating - minRating;
+
+  const points = ratings.map((r, i) => ({
+    x: padding.left + (i / Math.max(ratings.length - 1, 1)) * chartW,
+    y: padding.top + chartH - ((r - minRating) / range) * chartH,
+  }));
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = `${linePath} L${points[points.length - 1].x},${padding.top + chartH} L${points[0].x},${padding.top + chartH} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ maxHeight: height }}>
+      {/* Grid lines */}
+      {[5, 6, 7, 8, 9].map(val => {
+        const y = padding.top + chartH - ((val - minRating) / range) * chartH;
+        return (
+          <g key={val}>
+            <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#21262d" strokeWidth={0.5} />
+            <text x={padding.left - 4} y={y + 3} textAnchor="end" fill="#484f58" fontSize={7}>{val}</text>
+          </g>
+        );
+      })}
+
+      {/* Area fill */}
+      <path d={areaPath} fill="url(#perfGrad)" />
+
+      {/* Line */}
+      <path d={linePath} fill="none" stroke="#34d399" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* Dots */}
+      {points.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="#0d1117" stroke="#34d399" strokeWidth={1.5} />
+      ))}
+
+      <defs>
+        <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#34d399" stopOpacity={0.2} />
+          <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG Mini Pitch Diagram
+// ============================================================
+function MiniPitchDiagram({ formation = '4-3-3' }: { formation?: string }) {
+  const positions: Record<string, { x: number; y: number; label: string }[]> = {
+    '4-3-3': [
+      { x: 50, y: 90, label: 'GK' },
+      { x: 20, y: 72, label: 'LB' }, { x: 40, y: 74, label: 'CB' }, { x: 60, y: 74, label: 'CB' }, { x: 80, y: 72, label: 'RB' },
+      { x: 30, y: 52, label: 'CM' }, { x: 50, y: 48, label: 'CDM' }, { x: 70, y: 52, label: 'CM' },
+      { x: 22, y: 28, label: 'LW' }, { x: 50, y: 22, label: 'ST' }, { x: 78, y: 28, label: 'RW' },
+    ],
+    '4-4-2': [
+      { x: 50, y: 90, label: 'GK' },
+      { x: 20, y: 72, label: 'LB' }, { x: 40, y: 74, label: 'CB' }, { x: 60, y: 74, label: 'CB' }, { x: 80, y: 72, label: 'RB' },
+      { x: 18, y: 50, label: 'LM' }, { x: 40, y: 52, label: 'CM' }, { x: 60, y: 52, label: 'CM' }, { x: 82, y: 50, label: 'RM' },
+      { x: 38, y: 24, label: 'ST' }, { x: 62, y: 24, label: 'ST' },
+    ],
+  };
+
+  const pos = positions[formation] || positions['4-3-3'];
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-full" style={{ maxHeight: 180 }}>
+      {/* Pitch background */}
+      <rect x="0" y="0" width="100" height="100" rx="2" fill="#1a472a" />
+      <rect x="1" y="1" width="98" height="98" rx="1" fill="none" stroke="#2d6a4f" strokeWidth="0.5" />
+
+      {/* Center line */}
+      <line x1="1" y1="50" x2="99" y2="50" stroke="#2d6a4f" strokeWidth="0.5" />
+      <circle cx="50" cy="50" r="8" fill="none" stroke="#2d6a4f" strokeWidth="0.5" />
+
+      {/* Penalty areas */}
+      <rect x="25" y="82" width="50" height="17" fill="none" stroke="#2d6a4f" strokeWidth="0.5" />
+      <rect x="35" y="90" width="30" height="9" fill="none" stroke="#2d6a4f" strokeWidth="0.5" />
+      <rect x="25" y="1" width="50" height="17" fill="none" stroke="#2d6a4f" strokeWidth="0.5" />
+      <rect x="35" y="1" width="30" height="9" fill="none" stroke="#2d6a4f" strokeWidth="0.5" />
+
+      {/* Player dots */}
+      {pos.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="3" fill="#34d399" fillOpacity={0.8} stroke="#0d1117" strokeWidth="0.5" />
+          <text x={p.x} y={p.y + 1} textAnchor="middle" fill="#0d1117" fontSize="3" fontWeight="bold">{p.label}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG Bracket Visualization
+// ============================================================
+function TournamentBracketSVG({ matches, playerNation }: { matches: KnockoutMatch[]; playerNation: string }) {
+  const rounds = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
+  const activeRounds = rounds.filter(r => matches.some(m => m.round === r));
+  const roundWidth = 90;
+  const matchSpacing = 56;
+  const totalWidth = activeRounds.length * roundWidth + (activeRounds.length - 1) * 10;
+  const totalHeight = 16 * matchSpacing;
+
+  const roundMatches: Record<string, KnockoutMatch[]> = {};
+  for (const m of matches) {
+    if (!roundMatches[m.round]) roundMatches[m.round] = [];
+    roundMatches[m.round].push(m);
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <svg viewBox={`0 0 ${totalWidth + 40} ${totalHeight}`} className="w-full" style={{ maxHeight: 500, minWidth: 500 }}>
+        <defs>
+          <linearGradient id="bracketLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#30363d" />
+            <stop offset="100%" stopColor="#30363d" />
+          </linearGradient>
+        </defs>
+
+        {activeRounds.map((roundName, roundIdx) => {
+          const roundMatchData = roundMatches[roundName] ?? [];
+          const offsetX = 20 + roundIdx * (roundWidth + 10);
+          const numMatches = roundMatchData.length;
+          const verticalSpacing = totalHeight / (numMatches + 1);
+
+          return (
+            <g key={roundName}>
+              {/* Round label */}
+              <text x={offsetX + roundWidth / 2} y={14} textAnchor="middle" fill="#8b949e" fontSize={8} fontWeight="600">
+                {roundName}
+              </text>
+
+              {roundMatchData.map((match, matchIdx) => {
+                const y = verticalSpacing * (matchIdx + 1);
+                const isPlayerMatch = match.homeIsPlayer || match.awayIsPlayer;
+                const borderCol = isPlayerMatch ? '#34d399' : '#30363d';
+                const bgCol = isPlayerMatch ? 'rgba(16,185,129,0.08)' : '#161b22';
+
+                const nextRoundName = activeRounds[roundIdx + 1];
+                const nextRoundMatches = nextRoundName ? (roundMatches[nextRoundName] ?? []) : [];
+                const nextMatchIdx = Math.floor(matchIdx / 2);
+                const nextMatch = nextRoundMatches[nextMatchIdx];
+
+                // Draw connection lines to next round
+                let lineEl = null;
+                if (nextMatch && roundIdx < activeRounds.length - 1) {
+                  const nextY = (totalHeight / (nextRoundMatches.length + 1)) * (nextMatchIdx + 1);
+                  const nextX = 20 + (roundIdx + 1) * (roundWidth + 10);
+                  const lineStartX = offsetX + roundWidth;
+
+                  // Determine if this match feeds the home or away slot of the next match
+                  const isTopFeed = matchIdx % 2 === 0;
+
+                  // Winner indicator
+                  const homeWon = match.played && match.homeScore !== null && match.awayScore !== null
+                    ? match.homeScore > match.awayScore : null;
+                  const awayWon = match.played && match.homeScore !== null && match.awayScore !== null
+                    ? match.awayScore > match.homeScore : null;
+                  const winner = homeWon ? match.home : awayWon ? match.away : null;
+
+                  lineEl = (
+                    <g key={`line-${match.id}`}>
+                      <line
+                        x1={lineStartX}
+                        y1={y}
+                        x2={lineStartX + 5}
+                        y2={y}
+                        stroke="#30363d"
+                        strokeWidth={0.8}
+                      />
+                      <line
+                        x1={lineStartX + 5}
+                        y1={isTopFeed ? y : y}
+                        x2={lineStartX + 5}
+                        y2={nextY}
+                        stroke="#30363d"
+                        strokeWidth={0.8}
+                      />
+                      <line
+                        x1={lineStartX + 5}
+                        y1={nextY}
+                        x2={nextX}
+                        y2={nextY}
+                        stroke="#30363d"
+                        strokeWidth={0.8}
+                      />
+                    </g>
+                  );
+                }
+
+                return (
+                  <g key={match.id}>
+                    {lineEl}
+                    {/* Match box */}
+                    <rect
+                      x={offsetX}
+                      y={y - 20}
+                      width={roundWidth}
+                      height={40}
+                      rx={4}
+                      fill={bgCol}
+                      stroke={borderCol}
+                      strokeWidth={isPlayerMatch ? 1.5 : 0.8}
+                    />
+                    {/* Home team */}
+                    <text
+                      x={offsetX + 6}
+                      y={y - 5}
+                      fill={match.homeIsPlayer ? '#34d399' : '#c9d1d9'}
+                      fontSize={6.5}
+                      fontWeight={match.homeIsPlayer ? '700' : '400'}
+                    >
+                      {match.home || 'TBD'}
+                    </text>
+                    {match.homeScore !== null && (
+                      <text x={offsetX + roundWidth - 12} y={y - 5} textAnchor="end" fill="#c9d1d9" fontSize={7} fontWeight="700">
+                        {match.homeScore}
+                      </text>
+                    )}
+                    {/* Away team */}
+                    <text
+                      x={offsetX + 6}
+                      y={y + 10}
+                      fill={match.awayIsPlayer ? '#34d399' : '#c9d1d9'}
+                      fontSize={6.5}
+                      fontWeight={match.awayIsPlayer ? '700' : '400'}
+                    >
+                      {match.away || 'TBD'}
+                    </text>
+                    {match.awayScore !== null && (
+                      <text x={offsetX + roundWidth - 12} y={y + 10} textAnchor="end" fill="#c9d1d9" fontSize={7} fontWeight="700">
+                        {match.awayScore}
+                      </text>
+                    )}
+                    {/* Score separator */}
+                    {match.played && match.homeScore !== null && match.awayScore !== null && (
+                      <text x={offsetX + roundWidth - 7} y={y + 4} textAnchor="middle" fill="#484f58" fontSize={5}>-</text>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Qualification Probability Meter
+// ============================================================
+function QualificationMeter({ probability }: { probability: number }) {
+  const barWidth = 240;
+  const barHeight = 14;
+  const fillWidth = Math.max((probability / 100) * barWidth, 4);
+  const color = probability >= 75 ? '#34d399' : probability >= 50 ? '#fbbf24' : '#f87171';
+
+  return (
+    <svg viewBox={`0 0 ${barWidth + 60} ${barHeight + 30}`} className="w-full" style={{ maxHeight: 50 }}>
+      <text x={0} y={8} fill="#8b949e" fontSize={7}>Qualification Probability</text>
+      <rect x={0} y={14} width={barWidth} height={barHeight} rx={3} fill="#21262d" stroke="#30363d" strokeWidth={0.5} />
+      <rect x={0} y={14} width={fillWidth} height={barHeight} rx={3} fill={color} fillOpacity={0.7} />
+      <text x={barWidth + 8} y={25} fill={color} fontSize={9} fontWeight="700">{probability}%</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG Timeline for Tournament History
+// ============================================================
+function TournamentTimeline({ history }: { history: TournamentHistoryEntry[] }) {
+  if (history.length === 0) return null;
+  const width = 300;
+  const height = history.length * 52 + 20;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ maxHeight: 350 }}>
+      {/* Vertical timeline line */}
+      <line x1="30" y1="15" x2="30" y2={height - 10} stroke="#30363d" strokeWidth={1} />
+
+      {history.map((entry, i) => {
+        const y = 20 + i * 52;
+
+        return (
+          <g key={i}>
+            {/* Timeline dot */}
+            <circle cx="30" cy={y + 10} r="5" fill="#21262d" stroke="#30363d" strokeWidth={1} />
+            <text x="30" y={y + 13} textAnchor="middle" fill="#c9d1d9" fontSize={6}>{entry.resultIcon}</text>
+
+            {/* Content */}
+            <text x="44" y={y + 6} fill="#c9d1d9" fontSize={8} fontWeight="600">{entry.tournament}</text>
+            <text x="44" y={y + 16} fill="#8b949e" fontSize={7}>{entry.year} — {entry.result}</text>
+            <text x="44" y={y + 26} fill="#484f58" fontSize={6.5}>{entry.matches} matches, {entry.goals} goals</text>
+
+            {/* Connector */}
+            <line x1="35" y1={y + 10} x2="42" y2={y + 10} stroke="#30363d" strokeWidth={0.5} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Sub-section components
+// ============================================================
+
+// 1. Tournament Selection (~80 lines)
+function TournamentSelection({ playerNation, currentSeason }: { playerNation: string; currentSeason: number }) {
+  const baseYear = 2024;
+  const euroYear = baseYear + (Math.floor((currentSeason - 1) / 4)) * 4;
+  const wcYear = 2026 + (Math.floor((currentSeason - 1) / 4)) * 4;
+
+  const tournaments = [
+    {
+      name: 'European Championship',
+      shortName: 'EURO',
+      year: euroYear,
+      hostNations: 'Germany',
+      teamCount: 24,
+      qualified: true,
+      color: '#34d399',
+    },
+    {
+      name: 'World Cup',
+      shortName: 'WC',
+      year: wcYear,
+      hostNations: 'USA, Canada, Mexico',
+      teamCount: 32,
+      qualified: currentSeason >= 3,
+      color: '#fbbf24',
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      {tournaments.map(t => (
+        <motion.div
+          key={t.name}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="border border-[#30363d] rounded-lg bg-[#161b22] p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <TrophyIcon color={t.color} size={40} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#c9d1d9]">{t.shortName} {t.year}</h3>
+                <Badge className={`${t.qualified ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'} border-0 text-[10px]`}>
+                  {t.qualified ? 'Qualified' : 'Not Qualified'}
+                </Badge>
+              </div>
+              <p className="text-xs text-[#8b949e] mt-0.5">{t.name}</p>
+              <div className="flex items-center gap-3 mt-1.5">
+                <span className="text-[10px] text-[#484f58] flex items-center gap-1">
+                  <MapPin className="h-3 w-3" /> {t.hostNations}
+                </span>
+                <span className="text-[10px] text-[#484f58] flex items-center gap-1">
+                  <Users className="h-3 w-3" /> {t.teamCount} teams
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-[#484f58] flex-shrink-0" />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// 3. Group Stage Table (~100 lines)
+function GroupStageTable({
+  teamNames,
+  groupLetter,
+  playerNation,
+  seed,
+}: {
+  teamNames: TournamentTeam[];
+  groupLetter: string;
+  playerNation: string;
+  seed: number;
+}) {
+  const matches = generateGroupMatches(teamNames, seed);
+  const standings = calculateGroupStandings(teamNames, matches, playerNation);
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-3 overflow-x-auto">
+      <h4 className="text-xs font-semibold text-[#c9d1d9] mb-2 flex items-center gap-2">
+        <span className="text-emerald-400 font-bold">Group {groupLetter}</span>
+      </h4>
+      <table className="w-full text-[10px]">
+        <thead>
+          <tr className="text-[#484f58]">
+            <th className="text-left py-1 px-1">#</th>
+            <th className="text-left py-1 px-1">Team</th>
+            <th className="text-center py-1 px-0.5">P</th>
+            <th className="text-center py-1 px-0.5">W</th>
+            <th className="text-center py-1 px-0.5">D</th>
+            <th className="text-center py-1 px-0.5">L</th>
+            <th className="text-center py-1 px-0.5">GF</th>
+            <th className="text-center py-1 px-0.5">GA</th>
+            <th className="text-center py-1 px-0.5">GD</th>
+            <th className="text-center py-1 px-0.5">Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.map((s, idx) => {
+            const gd = s.goalsFor - s.goalsAgainst;
+            const isQualified = idx < 2;
+            return (
+              <tr
+                key={s.team}
+                className={`border-t border-[#21262d] ${s.isPlayerTeam ? 'bg-emerald-500/5' : ''}`}
+              >
+                <td className="py-1.5 px-1 text-[#484f58]">
+                  {isQualified && <span className="text-emerald-400">&#9650;</span>}
+                  {!isQualified && <span className="text-[#30363d]">&#9650;</span>}
+                </td>
+                <td className={`py-1.5 px-1 font-medium ${s.isPlayerTeam ? 'text-emerald-400' : TEXT_PRIMARY}`}>
+                  <span className="mr-1">{s.flag}</span>
+                  {s.team.length > 12 ? s.team.slice(0, 12) + '...' : s.team}
+                </td>
+                <td className="text-center py-1.5 px-0.5 text-[#8b949e]">{s.played}</td>
+                <td className="text-center py-1.5 px-0.5 text-emerald-400">{s.won}</td>
+                <td className="text-center py-1.5 px-0.5 text-amber-400">{s.drawn}</td>
+                <td className="text-center py-1.5 px-0.5 text-red-400">{s.lost}</td>
+                <td className="text-center py-1.5 px-0.5 text-[#8b949e]">{s.goalsFor}</td>
+                <td className="text-center py-1.5 px-0.5 text-[#8b949e]">{s.goalsAgainst}</td>
+                <td className="text-center py-1.5 px-0.5">{gd > 0 ? <span className="text-emerald-400">+{gd}</span> : gd === 0 ? <span className="text-[#8b949e]">0</span> : <span className="text-red-400">{gd}</span>}</td>
+                <td className="text-center py-1.5 px-0.5 font-bold text-[#c9d1d9]">{s.points}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="mt-2 flex items-center gap-2 text-[9px] text-[#484f58]">
+        <span className="flex items-center gap-1"><span className="text-emerald-400">&#9650;</span> Qualify for knockout stage</span>
+      </div>
+    </div>
+  );
+}
+
+// 4. Player Tournament Stats (~100 lines)
+function PlayerTournamentStats({ caps, goals, assists }: { caps: number; goals: number; assists: number }) {
+  const avgRating = caps > 0 ? +(5.5 + (caps * 0.03) + (goals * 0.1)).toFixed(1) : 0;
+  const minutes = caps * 75;
+  const motm = Math.floor(goals * 0.4 + assists * 0.2);
+
+  // Generate deterministic ratings per appearance
+  const ratings = useMemo(() => {
+    if (caps === 0) return [];
+    const r: number[] = [];
+    for (let i = 0; i < Math.min(caps, 10); i++) {
+      const base = 5.5 + (caps * 0.03) + (goals * 0.1);
+      r.push(+(base + (seededRandom(i * 7 + 42) - 0.5) * 2.5).toFixed(1));
+    }
+    return r;
+  }, [caps, goals]);
+
+  const stats = [
+    { label: 'Appearances', value: caps, icon: <Users className="h-4 w-4" />, color: '#c9d1d9' },
+    { label: 'Goals', value: goals, icon: <Target className="h-4 w-4" />, color: '#34d399' },
+    { label: 'Assists', value: assists, icon: <TrendingUp className="h-4 w-4" />, color: '#22d3ee' },
+    { label: 'Minutes', value: minutes, icon: <Clock className="h-4 w-4" />, color: '#fbbf24' },
+  ];
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-[#8b949e]" />
+        Tournament Statistics
+      </h3>
+
+      <div className="grid grid-cols-2 gap-2">
+        {stats.map(s => (
+          <div key={s.label} className="bg-[#21262d] rounded-lg p-3 border border-[#21262d]">
+            <div className="flex items-center gap-2 mb-1">
+              <span style={{ color: s.color }}>{s.icon}</span>
+              <span className="text-[10px] text-[#8b949e]">{s.label}</span>
+            </div>
+            <span className="text-lg font-bold" style={{ color: s.color }}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-[#21262d] rounded-lg p-3 border border-[#21262d]">
+          <div className="flex items-center gap-2 mb-1">
+            <Star className="h-4 w-4 text-amber-400" />
+            <span className="text-[10px] text-[#8b949e]">Average Rating</span>
+          </div>
+          <span className={`text-lg font-bold ${avgRating > 0 ? getRatingColor(avgRating) : 'text-[#484f58]'}`}>
+            {avgRating > 0 ? avgRating.toFixed(1) : '—'}
+          </span>
+        </div>
+        <div className="bg-[#21262d] rounded-lg p-3 border border-[#21262d]">
+          <div className="flex items-center gap-2 mb-1">
+            <Flame className="h-4 w-4 text-orange-400" />
+            <span className="text-[10px] text-[#8b949e]">Man of the Match</span>
+          </div>
+          <span className="text-lg font-bold text-orange-400">{motm}</span>
+        </div>
+      </div>
+
+      <div className="pt-2 border-t border-[#30363d]">
+        <span className="text-[10px] text-[#484f58] block mb-1">Match Ratings</span>
+        <PerformanceLineChart ratings={ratings} />
+      </div>
+    </div>
+  );
+}
+
+// 5. Squad Announcement (~80 lines)
+function SquadAnnouncement({ squad }: { squad: SquadPlayer[] }) {
+  const starters = squad.filter(p => p.role === 'starter');
+  const substitutes = squad.filter(p => p.role === 'substitute');
+
+  const renderPlayerRow = (p: SquadPlayer) => (
+    <div
+      key={p.name}
+      className={`flex items-center gap-2 px-3 py-2 ${p.isPlayer ? 'bg-emerald-500/10 border border-emerald-500/20 rounded-lg' : ''}`}
+    >
+      {p.isPlayer && <Star className="h-3 w-3 text-amber-400 flex-shrink-0" />}
+      {!p.isPlayer && <div className="w-3 flex-shrink-0" />}
+      <Badge className={`${p.role === 'starter' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-[#21262d] text-[#8b949e]'} border-0 text-[9px] px-1.5 h-4 flex-shrink-0`}>
+        {p.position}
+      </Badge>
+      <span className={`text-xs font-medium flex-1 truncate ${p.isPlayer ? 'text-emerald-400' : TEXT_PRIMARY}`}>
+        {p.name}
+      </span>
+      <span className="text-[10px] text-[#484f58] truncate max-w-[70px]">{p.club}</span>
+      <span className={`text-xs font-bold flex-shrink-0 ${p.ovr >= 85 ? 'text-emerald-400' : p.ovr >= 78 ? 'text-amber-400' : TEXT_SECONDARY}`}>
+        {p.ovr}
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+        <Users className="h-4 w-4 text-[#8b949e]" />
+        Squad Announcement
+        <Badge className="ml-auto bg-[#21262d] text-[#8b949e] border-0 text-[10px]">23 Players</Badge>
+      </h3>
+
+      <div>
+        <div className="flex items-center gap-2 mb-1 px-3">
+          <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wide">Starters (11)</span>
+        </div>
+        <div className="space-y-0.5">
+          {starters.map(renderPlayerRow)}
+        </div>
+      </div>
+
+      <div className="border-t border-[#30363d] pt-3">
+        <div className="flex items-center gap-2 mb-1 px-3">
+          <span className="text-[10px] font-semibold text-[#8b949e] uppercase tracking-wide">Substitutes (12)</span>
+        </div>
+        <div className="space-y-0.5 max-h-52 overflow-y-auto">
+          {substitutes.map(renderPlayerRow)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 6. Tournament History (~100 lines)
+function TournamentHistory({ history }: { history: TournamentHistoryEntry[] }) {
+  if (history.length === 0) {
+    return (
+      <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 text-center">
+        <Trophy className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+        <p className="text-sm text-[#484f58]">No tournament history yet</p>
+        <p className="text-[10px] text-[#30363d] mt-1">Qualify for international tournaments to see your history</p>
+      </div>
+    );
+  }
+
+  const bestResult = history.reduce((best, h) => {
+    const order = ['Group Stage', 'Quarter-Final', 'Semi-Final', 'Runner-Up', 'Winner'];
+    return order.indexOf(h.result) > order.indexOf(best.result) ? h : best;
+  }, history[0]);
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+          <Medal className="h-4 w-4 text-amber-400" />
+          Tournament History
+        </h3>
+        <Badge className={`${bestResult.result === 'Winner' ? 'bg-yellow-500/15 text-yellow-400' : 'bg-[#21262d] text-[#8b949e]'} border-0 text-[10px]`}>
+          Best: {bestResult.result}
+        </Badge>
+      </div>
+
+      <TournamentTimeline history={history} />
+
+      {/* Grid summary */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-[#21262d] rounded-lg p-2.5">
+          <span className="text-[10px] text-[#484f58] block">Tournaments</span>
+          <span className="text-sm font-bold text-[#c9d1d9]">{history.length}</span>
+        </div>
+        <div className="bg-[#21262d] rounded-lg p-2.5">
+          <span className="text-[10px] text-[#484f58] block">Total Goals</span>
+          <span className="text-sm font-bold text-emerald-400">{history.reduce((sum, h) => sum + h.goals, 0)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 7. Match Center (~120 lines)
+function MatchCenter({ playerNation, playerFlag, seed }: { playerNation: string; playerFlag: string; seed: number }) {
+  const opponentSeed = hashCode(playerNation + 'opponent');
+  const opponentIdx = Math.abs(opponentSeed) % WORLD_CUP_TEAMS.length;
+  const opponent = WORLD_CUP_TEAMS[opponentIdx];
+  const filtered = WORLD_CUP_TEAMS.filter(t => t.name !== playerNation && t.name !== opponent.name);
+  const opponent2 = filtered[Math.abs(hashCode(playerNation + 'opp2')) % filtered.length];
+
+  const homeScore = Math.floor(seededRandom(seed + 100) * 3);
+  const awayScore = Math.floor(seededRandom(seed + 101) * 3);
+  const isHome = seededRandom(seed + 102) > 0.5;
+
+  const home = isHome ? { name: playerNation, flag: playerFlag } : { name: opponent.name, flag: opponent.flag };
+  const away = isHome ? { name: opponent.name, flag: opponent.flag } : { name: playerNation, flag: playerFlag };
+
+  const venues = ['Olympiastadion, Berlin', 'Stade de France, Paris', 'Wembley, London', 'Santiago Bernabeu, Madrid', 'Lusail Stadium, Doha'];
+  const venue = venues[Math.abs(hashCode(playerNation + 'venue')) % venues.length];
+
+  const weathers = [
+    { name: 'Clear Skies', icon: <Sun className="h-3 w-3" />, color: 'text-amber-400' },
+    { name: 'Light Cloud', icon: <Cloud className="h-3 w-3" />, color: 'text-[#8b949e]' },
+    { name: 'Windy', icon: <Wind className="h-3 w-3" />, color: 'text-cyan-400' },
+  ];
+  const weather = weathers[Math.abs(hashCode(playerNation + seed + 'weather')) % weathers.length];
+
+  const stages = ['Group Stage - Matchday 2', 'Quarter-Final', 'Semi-Final'];
+  const stage = stages[Math.min(Math.floor(seededRandom(seed + 200) * stages.length), stages.length - 1)];
+
+  const formations = ['4-3-3', '4-4-2'];
+  const formation = formations[Math.abs(hashCode(playerNation + 'form')) % formations.length];
+
+  const tacticalNotes = [
+    'High pressing from the first whistle expected to disrupt build-up play',
+    'Counter-attacking approach with quick transitions through midfield',
+    'Possession-based game plan focused on controlling the tempo',
+    'Defensive solidity with compact midfield, looking to exploit set pieces',
+  ];
+  const tacticalNote = tacticalNotes[Math.abs(hashCode(playerNation + seed + 'tact')) % tacticalNotes.length];
+
+  const lineup = generateSquad(playerNation, playerFlag, 'You', 'ST', seed);
+  const startingXi = lineup.filter(p => p.role === 'starter').slice(0, 11);
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+        <Swords className="h-4 w-4 text-[#8b949e]" />
+        Match Center
+      </h3>
+
+      {/* Score header */}
+      <div className="bg-[#21262d] rounded-lg p-4 text-center">
+        <Badge className="bg-emerald-500/15 text-emerald-400 border-0 text-[10px] mb-3">{stage}</Badge>
+        <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{home.flag}</span>
+            <span className={`text-sm font-semibold ${home.name === playerNation ? 'text-emerald-400' : TEXT_PRIMARY}`}>
+              {home.name}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-2xl font-bold text-[#c9d1d9]">{homeScore}</span>
+            <span className="text-xs text-[#484f58]">-</span>
+            <span className="text-2xl font-bold text-[#c9d1d9]">{awayScore}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-semibold ${away.name === playerNation ? 'text-emerald-400' : TEXT_PRIMARY}`}>
+              {away.name}
+            </span>
+            <span className="text-xl">{away.flag}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Match info */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-[#21262d] rounded-lg p-2">
+          <MapPin className="h-3 w-3 text-[#484f58] mx-auto mb-1" />
+          <span className="text-[9px] text-[#484f58] block">{venue}</span>
+        </div>
+        <div className="bg-[#21262d] rounded-lg p-2">
+          <div className={`${weather.color} flex justify-center mb-1`}>{weather.icon}</div>
+          <span className="text-[9px] text-[#484f58] block">{weather.name}</span>
+        </div>
+        <div className="bg-[#21262d] rounded-lg p-2">
+          <Shield className="h-3 w-3 text-[#484f58] mx-auto mb-1" />
+          <span className="text-[9px] text-[#484f58] block">{formation}</span>
+        </div>
+      </div>
+
+      {/* Pitch diagram */}
+      <MiniPitchDiagram formation={formation} />
+
+      {/* Starting XI */}
+      <div className="pt-2 border-t border-[#30363d]">
+        <span className="text-[10px] text-[#484f58] block mb-1.5">Starting XI</span>
+        <div className="grid grid-cols-2 gap-1">
+          {startingXi.map(p => (
+            <div key={p.name} className={`text-[10px] px-2 py-1 rounded ${p.isPlayer ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[#21262d] text-[#8b949e]'}`}>
+              <span className="font-medium">{p.position}</span> {p.name}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tactical note */}
+      <div className="bg-[#21262d] rounded-lg p-3 border-l-2 border-emerald-500/30">
+        <div className="flex items-center gap-1 mb-1">
+          <Zap className="h-3 w-3 text-amber-400" />
+          <span className="text-[10px] font-semibold text-[#c9d1d9]">Tactical Note</span>
+        </div>
+        <p className="text-[10px] text-[#8b949e] leading-relaxed">{tacticalNote}</p>
+      </div>
+    </div>
+  );
+}
+
+// 8. National Team Profile (~80 lines)
+function NationalTeamProfile({ nationName, nationFlag, caps, goals }: { nationName: string; nationFlag: string; caps: number; goals: number }) {
+  const ranking = getFifaRanking(nationName);
+  const style = getTeamStyle(nationName);
+  const quality = getTeamQuality(nationName);
+
+  const keyPlayers = useMemo(() => {
+    const names = ['Marcus Fernandez', 'Lukas Weber', 'Antonio Rossi', 'Julian Dubois', 'Erik Johansson'];
+    return names.slice(0, 4).map((name, i) => ({
+      name,
+      position: ['ST', 'CM', 'CB', 'GK', 'LW'][i],
+      rating: 78 + Math.floor(seededRandom(hashCode(nationName + name)) * 15),
+    }));
+  }, [nationName]);
+
+  const historicalResults = ['Winner (2004)', 'Semi-Final (2016)', 'Quarter-Final (2020)'];
+  const historicalIdx = Math.abs(hashCode(nationName + 'hist')) % historicalResults.length;
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="text-4xl">{nationFlag}</span>
+        <div>
+          <h3 className="text-base font-bold text-[#c9d1d9]">{nationName}</h3>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge className="bg-amber-500/15 text-amber-400 border-0 text-[10px] flex items-center gap-1">
+              <Medal className="h-3 w-3" /> #{ranking}
+            </Badge>
+            <Badge className="bg-[#21262d] text-[#8b949e] border-0 text-[10px]">{style}</Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Team quality bar */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] text-[#484f58]">Team Quality</span>
+          <span className="text-[10px] font-bold text-[#c9d1d9]">{quality}/100</span>
+        </div>
+        <div className="h-1.5 bg-[#21262d] rounded-sm overflow-hidden">
+          <div className="h-full rounded-sm" style={{ width: `${quality}%`, backgroundColor: quality >= 85 ? '#34d399' : quality >= 70 ? '#fbbf24' : '#f87171' }} />
+        </div>
+      </div>
+
+      {/* Key players */}
+      <div>
+        <span className="text-[10px] text-[#484f58] block mb-1.5">Key Players</span>
+        <div className="space-y-1">
+          {keyPlayers.map(p => (
+            <div key={p.name} className="flex items-center justify-between bg-[#21262d] rounded px-3 py-1.5">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-[#30363d] text-[#8b949e] border-0 text-[9px] px-1.5 h-4">{p.position}</Badge>
+                <span className="text-xs text-[#c9d1d9]">{p.name}</span>
+              </div>
+              <span className={`text-xs font-bold ${p.rating >= 88 ? 'text-emerald-400' : p.rating >= 82 ? 'text-amber-400' : TEXT_SECONDARY}`}>{p.rating}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Historical record */}
+      <div className="bg-[#21262d] rounded-lg p-2.5">
+        <span className="text-[10px] text-[#484f58] block">Best Tournament Result</span>
+        <span className="text-xs font-semibold text-amber-400 mt-0.5 block">{historicalResults[historicalIdx]}</span>
+      </div>
+    </div>
+  );
+}
+
+// 9. Road to Qualification (~80 lines)
+function RoadToQualification({ caps, nationName, season }: { caps: number; nationName: string; season: number }) {
+  const data = generateQualificationData(caps, nationName, season);
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+        <Flag className="h-4 w-4 text-emerald-400" />
+        Road to Qualification
+        <Badge className={`ml-auto ${data.isQualified ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'} border-0 text-[10px]`}>
+          {data.isQualified ? 'Qualified' : 'In Progress'}
+        </Badge>
+      </h3>
+
+      <QualificationMeter probability={data.qualProb} />
+
+      {/* Qualifying Group Table */}
+      <div>
+        <span className="text-[10px] text-[#484f58] block mb-1.5">Qualifying Group Standings</span>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="text-[#484f58]">
+                <th className="text-left py-1 px-1">#</th>
+                <th className="text-left py-1 px-1">Team</th>
+                <th className="text-center py-1 px-0.5">P</th>
+                <th className="text-center py-1 px-0.5">W</th>
+                <th className="text-center py-1 px-0.5">D</th>
+                <th className="text-center py-1 px-0.5">L</th>
+                <th className="text-center py-1 px-0.5">GD</th>
+                <th className="text-center py-1 px-0.5">Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.groupTeams.map((t, idx) => {
+                const gd = t.gf - t.ga;
+                const isPlayer = idx === 0;
+                return (
+                  <tr key={t.name} className={`border-t border-[#21262d] ${isPlayer ? 'bg-emerald-500/5' : ''}`}>
+                    <td className="py-1 px-1 text-[#484f58]">
+                      {idx < 2 ? <span className="text-emerald-400">&#9650;</span> : <span className="text-[#30363d]">&#9650;</span>}
+                    </td>
+                    <td className={`py-1 px-1 ${isPlayer ? 'text-emerald-400 font-semibold' : TEXT_PRIMARY}`}>{t.flag} {t.name}</td>
+                    <td className="text-center py-1 px-0.5 text-[#8b949e]">{t.played}</td>
+                    <td className="text-center py-1 px-0.5 text-emerald-400">{t.won}</td>
+                    <td className="text-center py-1 px-0.5 text-amber-400">{t.drawn}</td>
+                    <td className="text-center py-1 px-0.5 text-red-400">{t.lost}</td>
+                    <td className="text-center py-1 px-0.5">{gd > 0 ? <span className="text-emerald-400">+{gd}</span> : <span className="text-red-400">{gd}</span>}</td>
+                    <td className="text-center py-1 px-0.5 font-bold text-[#c9d1d9]">{t.points}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Points needed */}
+      <div className="bg-[#21262d] rounded-lg p-2.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-[#484f58] block">Points Earned</span>
+            <span className="text-sm font-bold text-emerald-400">{data.groupTeams[0]?.points ?? 0}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-[#484f58] block">Max Possible</span>
+            <span className="text-sm font-bold text-[#8b949e]">{data.groupTeams[0]?.played * 3 ?? 0}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-[#484f58] block">Matches Left</span>
+            <span className="text-sm font-bold text-[#8b949e]">{data.remainingFixtures}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Main Component
+// ============================================================
+export default function InternationalTournament() {
+  const gameState = useGameStore(state => state.gameState);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const nationInfo = useMemo(() => {
+    if (!gameState) return { name: '', flag: '🏳️' };
+    return getPlayerNationInfo(gameState.player.nationality);
+  }, [gameState]);
+
+  // Generate all tournament data deterministically
+  const tournamentData = useMemo(() => {
+    if (!gameState) return null;
+
+    const seed = hashCode(nationInfo.name + gameState.currentSeason);
+    const ic = gameState.internationalCareer ?? { caps: 0, goals: 0, assists: 0, averageRating: 0, tournaments: [] };
+
+    // Ensure player's nation is in the tournament
+    const euroTeams = [...EURO_TEAMS];
+    const playerInEuro = euroTeams.some(t => t.name === nationInfo.name);
+    if (!playerInEuro) {
+      euroTeams[0] = {
+        name: nationInfo.name,
+        flag: nationInfo.flag,
+        quality: gameState.player.overall + 10,
+        ranking: getFifaRanking(nationInfo.name),
+        style: getTeamStyle(nationInfo.name),
+      };
+    }
+
+    // Create 6 groups of 4 for Euro
+    const euroGroups: { letter: string; teams: TournamentTeam[] }[] = [];
+    for (let g = 0; g < 6; g++) {
+      euroGroups.push({
+        letter: String.fromCharCode(65 + g),
+        teams: euroTeams.slice(g * 4, g * 4 + 4),
+      });
+    }
+
+    // Create 8 groups of 4 for World Cup
+    const wcTeams = [...WORLD_CUP_TEAMS];
+    const playerInWC = wcTeams.some(t => t.name === nationInfo.name);
+    if (!playerInWC) {
+      wcTeams[0] = {
+        name: nationInfo.name,
+        flag: nationInfo.flag,
+        quality: gameState.player.overall + 10,
+        ranking: getFifaRanking(nationInfo.name),
+        style: getTeamStyle(nationInfo.name),
+      };
+    }
+
+    const wcGroups: { letter: string; teams: TournamentTeam[] }[] = [];
+    for (let g = 0; g < 8; g++) {
+      wcGroups.push({
+        letter: String.fromCharCode(65 + g),
+        teams: wcTeams.slice(g * 4, g * 4 + 4),
+      });
+    }
+
+    // Qualified teams for knockout (top 2 from each group)
+    const euroQualified = euroGroups.flatMap(g => {
+      const standings = calculateGroupStandings(
+        g.teams,
+        generateGroupMatches(g.teams, seed + hashCode(g.letter)),
+        nationInfo.name
+      );
+      return standings.slice(0, 2).map(s => ({
+        name: s.team,
+        flag: s.flag,
+        quality: g.teams.find(t => t.name === s.team)?.quality ?? 75,
+      }));
+    });
+
+    const wcQualified = wcGroups.flatMap(g => {
+      const standings = calculateGroupStandings(
+        g.teams,
+        generateGroupMatches(g.teams, seed + hashCode(g.letter + 'wc')),
+        nationInfo.name
+      );
+      return standings.slice(0, 2).map(s => ({
+        name: s.team,
+        flag: s.flag,
+        quality: g.teams.find(t => t.name === s.team)?.quality ?? 75,
+      }));
+    });
+
+    const euroBracket = generateKnockoutBracket(euroQualified, nationInfo.name, seed + 500);
+    const wcBracket = generateKnockoutBracket(wcQualified, nationInfo.name, seed + 600);
+
+    const squad = generateSquad(nationInfo.name, nationInfo.flag, gameState.player.name, gameState.player.position, seed + 300);
+    const history = generateTournamentHistory(ic.caps, ic.goals, nationInfo.name);
+
+    return {
+      euroGroups,
+      wcGroups,
+      euroBracket,
+      wcBracket,
+      squad,
+      history,
+      seed,
+      caps: ic.caps,
+      goals: ic.goals,
+      assists: ic.assists,
+    };
+  }, [gameState, nationInfo]);
+
+  if (!gameState || !tournamentData) return null;
+
+  const { player } = gameState;
+
+  // Find the player's group for highlighting
+  const playerEuroGroup = tournamentData.euroGroups.find(g =>
+    g.teams.some(t => t.name === nationInfo.name)
+  );
+  const playerWCGroup = tournamentData.wcGroups.find(g =>
+    g.teams.some(t => t.name === nationInfo.name)
+  );
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6 pb-20">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex items-center gap-3 mb-4"
+      >
+        <div className="p-2 bg-[#21262d] rounded-lg border border-[#30363d]">
+          <Globe className="h-5 w-5 text-emerald-400" />
+        </div>
+        <div>
+          <h1 className="text-lg font-bold text-[#c9d1d9]">International Tournament</h1>
+          <p className="text-xs text-[#8b949e]">European Championship & World Cup</p>
+        </div>
+      </motion.div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+          <TabsTrigger value="overview" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="bracket" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
+            Bracket
+          </TabsTrigger>
+          <TabsTrigger value="squad" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
+            Squad
+          </TabsTrigger>
+          <TabsTrigger value="match" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
+            Match
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          {/* Tournament Selection */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <TournamentSelection playerNation={nationInfo.name} currentSeason={gameState.currentSeason} />
+          </motion.div>
+
+          {/* National Team Profile */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+            <NationalTeamProfile
+              nationName={nationInfo.name}
+              nationFlag={nationInfo.flag}
+              caps={tournamentData.caps}
+              goals={tournamentData.goals}
+            />
+          </motion.div>
+
+          {/* Euro Group (player's group) */}
+          {playerEuroGroup && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+              <div className="mb-2 flex items-center gap-2">
+                <TrophyIcon color="#34d399" size={20} />
+                <span className="text-xs font-semibold text-[#c9d1d9]">European Championship — Group Stage</span>
+              </div>
+              <GroupStageTable
+                teamNames={playerEuroGroup.teams}
+                groupLetter={playerEuroGroup.letter}
+                playerNation={nationInfo.name}
+                seed={tournamentData.seed + hashCode(playerEuroGroup.letter)}
+              />
+            </motion.div>
+          )}
+
+          {/* World Cup Group (player's group) */}
+          {playerWCGroup && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}>
+              <div className="mb-2 flex items-center gap-2">
+                <TrophyIcon color="#fbbf24" size={20} />
+                <span className="text-xs font-semibold text-[#c9d1d9]">World Cup — Group Stage</span>
+              </div>
+              <GroupStageTable
+                teamNames={playerWCGroup.teams}
+                groupLetter={playerWCGroup.letter}
+                playerNation={nationInfo.name}
+                seed={tournamentData.seed + hashCode(playerWCGroup.letter + 'wc')}
+              />
+            </motion.div>
+          )}
+
+          {/* Player Tournament Stats */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+            <PlayerTournamentStats caps={tournamentData.caps} goals={tournamentData.goals} assists={tournamentData.assists} />
+          </motion.div>
+
+          {/* Tournament History */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}>
+            <TournamentHistory history={tournamentData.history} />
+          </motion.div>
+
+          {/* Road to Qualification */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+            <RoadToQualification caps={tournamentData.caps} nationName={nationInfo.name} season={gameState.currentSeason} />
+          </motion.div>
+        </TabsContent>
+
+        {/* Bracket Tab */}
+        <TabsContent value="bracket" className="mt-4 space-y-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4">
+              <h3 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-2">
+                <TrophyIcon color="#34d399" size={18} />
+                European Championship — Knockout Stage
+              </h3>
+              <TournamentBracketSVG matches={tournamentData.euroBracket} playerNation={nationInfo.name} />
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+            <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4">
+              <h3 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-2">
+                <TrophyIcon color="#fbbf24" size={18} />
+                World Cup — Knockout Stage
+              </h3>
+              <TournamentBracketSVG matches={tournamentData.wcBracket} playerNation={nationInfo.name} />
+            </div>
+          </motion.div>
+        </TabsContent>
+
+        {/* Squad Tab */}
+        <TabsContent value="squad" className="mt-4 space-y-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <SquadAnnouncement squad={tournamentData.squad} />
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+            <NationalTeamProfile
+              nationName={nationInfo.name}
+              nationFlag={nationInfo.flag}
+              caps={tournamentData.caps}
+              goals={tournamentData.goals}
+            />
+          </motion.div>
+        </TabsContent>
+
+        {/* Match Tab */}
+        <TabsContent value="match" className="mt-4 space-y-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <MatchCenter
+              playerNation={nationInfo.name}
+              playerFlag={nationInfo.flag}
+              seed={tournamentData.seed}
+            />
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+            <PlayerTournamentStats caps={tournamentData.caps} goals={tournamentData.goals} assists={tournamentData.assists} />
+          </motion.div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

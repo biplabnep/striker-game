@@ -80,6 +80,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'badge_collection', icon: <Award className="h-5 w-5" />, label: 'Badges' },
       { screen: 'career_stats_deep_dive', icon: <BarChart3 className="h-5 w-5" />, label: 'Deep Dive' },
       { screen: 'coach_career', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach' },
+      { screen: 'fantasy_draft', icon: <UsersRound className="h-5 w-5" />, label: 'Draft' },
     ],
   },
   {
@@ -102,6 +103,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'cup_bracket', icon: <Trophy className="h-5 w-5" />, label: 'Cup' },
       { screen: 'continental', icon: <Globe className="h-5 w-5" />, label: 'Europe' },
       { screen: 'international', icon: <Flag className="h-5 w-5" />, label: 'National' },
+      { screen: 'international_tournament', icon: <Globe className="h-5 w-5" />, label: 'Tournament' },
     ],
   },
   {
