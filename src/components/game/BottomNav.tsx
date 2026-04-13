@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -46,6 +46,8 @@ const moreItems: NavItem[] = [
   { screen: 'player_comparison', icon: <GitCompareArrows className="h-5 w-5" />, label: 'Compare' },
   { screen: 'settings', icon: <Settings className="h-5 w-5" />, label: 'Settings' },
   { screen: 'fan_engagement', icon: <HeartHandshake className="h-5 w-5" />, label: 'Fans' },
+  { screen: 'world_football_news', icon: <Newspaper className="h-5 w-5" />, label: 'News' },
+  { screen: 'hall_of_fame', icon: <Crown className="h-5 w-5" />, label: 'Hall of Fame' },
 ];
 
 const moreScreenSet = new Set(moreItems.map(i => i.screen));

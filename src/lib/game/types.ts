@@ -596,7 +596,9 @@ export type GameScreen =
   | 'player_agent_hub' | 'daily_routine_hub' | 'career_statistics' | 'tactical_briefing'
   | 'player_of_the_month' | 'post_match_analysis' | 'player_comparison'
   | 'transfer_negotiation'
-  | 'fan_engagement';
+  | 'fan_engagement'
+  | 'world_football_news'
+  | 'hall_of_fame';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

@@ -41,6 +41,8 @@ import PostMatchAnalysis from '@/components/game/PostMatchAnalysis';
 import PlayerComparison from '@/components/game/PlayerComparison';
 import TransferNegotiation from '@/components/game/TransferNegotiation';
 import FanEngagement from '@/components/game/FanEngagement';
+import WorldFootballNews from '@/components/game/WorldFootballNews';
+import HallOfFame from '@/components/game/HallOfFame';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -79,6 +81,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   player_comparison: PlayerComparison,
   transfer_negotiation: TransferNegotiation,
   fan_engagement: FanEngagement,
+  world_football_news: WorldFootballNews,
+  hall_of_fame: HallOfFame,
 };
 
 const gameScreens: GameScreen[] = [
@@ -89,7 +93,7 @@ const gameScreens: GameScreen[] = [
   'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub',
   'career_statistics', 'tactical_briefing', 'player_of_the_month',
   'post_match_analysis', 'player_comparison', 'transfer_negotiation',
-  'fan_engagement',
+  'fan_engagement', 'world_football_news', 'hall_of_fame',
 ];
 
 export default function Home() {
