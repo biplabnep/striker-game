@@ -369,7 +369,7 @@ export default function PlayerProfile() {
       >
         <Card className="bg-[#161b22] border-[#30363d] overflow-hidden relative">
           {/* Background accent */}
-          <div className="absolute inset-0 opacity-[0.04]" style={{ background: `linear-gradient(135deg, ${currentClub.primaryColor}, transparent)` }} />
+          <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundColor: currentClub.primaryColor }} />
 
           <CardContent className="p-5 relative">
             <div className="flex items-start gap-4">
@@ -685,7 +685,7 @@ export default function PlayerProfile() {
                           <motion.div
                             className="h-full rounded-full"
                             style={{
-                              background: `linear-gradient(90deg, ${cat.color}60, ${cat.color})`,
+                              backgroundColor: cat.color,
                             }}
                             initial={{ width: 0 }}
                             animate={{ width: `${val}%` }}
@@ -1002,9 +1002,9 @@ export default function PlayerProfile() {
                         <motion.div
                           className="h-full rounded-full"
                           style={{
-                            background: isLast
-                              ? 'linear-gradient(90deg, #059669, #34d399)'
-                              : 'linear-gradient(90deg, #334155, #475569)',
+                            backgroundColor: isLast
+                              ? '#059669'
+                              : '#334155',
                           }}
                           initial={{ width: 0 }}
                           animate={{ width: `${barWidth}%` }}

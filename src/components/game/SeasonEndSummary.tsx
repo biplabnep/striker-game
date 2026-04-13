@@ -367,7 +367,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           <div
             className="absolute inset-0 opacity-20"
             style={{
-              background: `radial-gradient(ellipse at center, ${zone.color}40 0%, transparent 70%)`,
+              backgroundColor: `${zone.color}10`,
             }}
           />
 
@@ -380,7 +380,7 @@ export default function SeasonEndSummary({ onClose, seasonData }: SeasonEndSumma
           >
             <motion.div
               animate={{
-                y: [0, -6, 0],
+                opacity: [1, 0.6, 1],
               }}
               transition={{
                 duration: 2.5,

@@ -879,11 +879,11 @@ export default function TransferHub() {
                   <Card
                     className="bg-[#161b22]  border-[#30363d] overflow-hidden relative"
                   >
-                    {/* Club gradient background overlay */}
+                    {/* Club background accent */}
                     <div
-                      className="absolute inset-0 opacity-[0.04]"
+                      className="absolute inset-0 opacity-[0.06]"
                       style={{
-                        background: `linear-gradient(135deg, ${offer.fromClub.primaryColor} 0%, transparent 60%)`,
+                        backgroundColor: offer.fromClub.primaryColor,
                       }}
                     />
 
@@ -999,11 +999,11 @@ export default function TransferHub() {
                   transition={{ delay: idx * 0.06 }}
                 >
                   <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden relative">
-                    {/* Club gradient background overlay */}
+                    {/* Club background accent */}
                     <div
-                      className="absolute inset-0 opacity-[0.04]"
+                      className="absolute inset-0 opacity-[0.06]"
                       style={{
-                        background: `linear-gradient(135deg, ${offer.fromClub.primaryColor} 0%, transparent 60%)`,
+                        backgroundColor: offer.fromClub.primaryColor,
                       }}
                     />
 

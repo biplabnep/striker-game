@@ -186,16 +186,16 @@ export default function Dashboard() {
 
   // Recent ratings for form trend graph (last 10, reversed to chronological)
   const formTrendData = useMemo(() => {
-    if (!gameState) return [];
+    if (!gameState?.recentResults) return [];
     return gameState.recentResults
       .slice(0, 10)
       .map(r => r.playerRating)
       .reverse();
-  }, [gameState]);
+  }, [gameState?.recentResults]);
 
   // Streak calculations
   const streakInfo = useMemo(() => {
-    if (!gameState || gameState.recentResults.length === 0) return null;
+    if (!gameState?.recentResults || gameState.recentResults.length === 0) return null;
 
     const results = gameState.recentResults;
     const clubId = gameState.currentClub.id;
@@ -322,7 +322,7 @@ export default function Dashboard() {
 
   if (!gameState) return null;
 
-  const { player, currentClub, currentWeek, currentSeason, recentResults, upcomingFixtures, activeEvents, leagueTable, trainingAvailable, seasons, currentInjury } = gameState;
+  const { player, currentClub, currentWeek, currentSeason, recentResults = [], upcomingFixtures = [], activeEvents = [], leagueTable = [], trainingAvailable = 0, seasons = [], currentInjury } = gameState;
   const playerTeamLevel = gameState.playerTeamLevel;
   const seasonTrainingFocus = gameState.seasonTrainingFocus;
   const nationInfo = NATIONALITIES.find(n => n.name === player.nationality);

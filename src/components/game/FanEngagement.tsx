@@ -357,12 +357,12 @@ function generateEndorsements(playerName: string, overall: number, reputation: n
 // Brand Score Calculator
 // ============================================================
 function calculateBrandScore(player: { overall: number; form: number; potential: number; reputation: number; age: number; careerStats: { totalGoals: number; totalAppearances: number } }): BrandScoreData {
-  const { overall, form, potential, reputation, age, careerStats } = player;
+  const { overall: playerOverall, form, potential, reputation, age, careerStats } = player;
 
-  const performanceScore = Math.min(100, (overall / 99) * 40 + (form / 10) * 30 + (careerStats.totalGoals / 50) * 30);
+  const performanceScore = Math.min(100, (playerOverall / 99) * 40 + (form / 10) * 30 + (careerStats.totalGoals / 50) * 30);
   const imageScore = Math.min(100, reputation * 0.7 + (form > 7 ? 20 : form > 5 ? 10 : 0) + (age < 25 ? 15 : 5));
   const consistencyScore = Math.min(100, form * 10 + (careerStats.totalAppearances > 30 ? 20 : careerStats.totalAppearances * 0.7));
-  const potentialScore = Math.min(100, ((potential - overall + 10) / 20) * 50 + (age < 23 ? 30 : age < 27 ? 20 : 10));
+  const potentialScore = Math.min(100, ((potential - playerOverall + 10) / 20) * 50 + (age < 23 ? 30 : age < 27 ? 20 : 10));
   const ageScore = age <= 22 ? 95 : age <= 25 ? 85 : age <= 28 ? 70 : age <= 31 ? 50 : 30;
 
   const overall = Math.round(performanceScore * 0.3 + imageScore * 0.25 + consistencyScore * 0.2 + potentialScore * 0.15 + ageScore * 0.1);
@@ -649,19 +649,25 @@ export default function FanEngagement() {
   const [activeTab, setActiveTab] = useState('fans');
   const [endorsements, setEndorsements] = useState<SponsorOffer[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
-  const [initialised, setInitialised] = useState(false);
 
   const player = gameState?.player;
   const week = gameState?.currentWeek ?? 1;
   const season = gameState?.currentSeason ?? 1;
 
-  // Initialize endorsements and posts once
-  useMemo(() => {
-    if (!player || initialised) return;
-    setEndorsements(generateEndorsements(player.name, player.overall, player.reputation, week));
-    setPosts(generateSocialPosts(player.name, week, season, player.form, player.seasonStats.goals));
-    setInitialised(true);
-  }, [player, week, initialised]);
+  // Stable initial values computed via useMemo (only runs once per player/week change)
+  const initialEndorsements = useMemo(() => {
+    if (!player) return [];
+    return generateEndorsements(player.name, player.overall, player.reputation, week);
+  }, [player, week]);
+
+  const initialPosts = useMemo(() => {
+    if (!player) return [];
+    return generateSocialPosts(player.name, week, season, player.form, player.seasonStats.goals);
+  }, [player, week, season]);
+
+  // Use initial values if state hasn't been modified by user actions
+  const currentEndorsements = endorsements.length > 0 ? endorsements : initialEndorsements;
+  const currentPosts = posts.length > 0 ? posts : initialPosts;
 
   // Computed data
   const fanData = useMemo(() => {
@@ -684,15 +690,15 @@ export default function FanEngagement() {
     return calculateBrandScore(player);
   }, [player]);
 
-  const activeEndorsements = useMemo(() => endorsements.filter(e => e.accepted), [endorsements]);
+  const activeEndorsements = useMemo(() => currentEndorsements.filter(e => e.accepted), [currentEndorsements]);
   const totalWeeklyEndorsementIncome = useMemo(() => activeEndorsements.reduce((sum, e) => sum + e.weeklyAmount, 0), [activeEndorsements]);
   const totalMonthlyEndorsementIncome = Math.round(totalWeeklyEndorsementIncome * 4.3);
 
   const handleAcceptEndorsement = (id: string) => {
-    setEndorsements(prev => prev.map(e => e.id === id ? { ...e, accepted: true } : e));
+    setEndorsements(currentEndorsements.map(e => e.id === id ? { ...e, accepted: true } : e));
   };
   const handleRejectEndorsement = (id: string) => {
-    setEndorsements(prev => prev.map(e => e.id === id ? { ...e, rejected: true } : e));
+    setEndorsements(currentEndorsements.map(e => e.id === id ? { ...e, rejected: true } : e));
   };
   const handleNewPost = () => {
     if (!player) return;
@@ -708,7 +714,7 @@ export default function FanEngagement() {
       shares: Math.floor(Math.random() * 30) + 5,
       engagementRate: Math.floor(Math.random() * 40) + 20,
     };
-    setPosts(prev => [newPost, ...prev].slice(0, 10));
+    setPosts([newPost, ...currentPosts].slice(0, 10));
   };
 
   if (!gameState || !player || !fanData || !brandScore) return null;
@@ -856,7 +862,7 @@ export default function FanEngagement() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-3 pb-3 max-h-96 overflow-y-auto space-y-2">
-                  {posts.map((p, i) => <SocialPostCard key={p.id} post={p} index={i} />)}
+                  {currentPosts.map((p, i) => <SocialPostCard key={p.id} post={p} index={i} />)}
                 </CardContent>
               </Card>
             </motion.div>
@@ -891,7 +897,7 @@ export default function FanEngagement() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-3 pb-3 space-y-2 max-h-96 overflow-y-auto">
-                  {endorsements.map(e => (
+                  {currentEndorsements.map(e => (
                     <SponsorshipCard
                       key={e.id}
                       offer={e}

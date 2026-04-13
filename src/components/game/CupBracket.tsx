@@ -114,8 +114,8 @@ export default function CupBracket() {
         transition={{ duration: 0.2 }}
       >
         <Card className="bg-[#161b22] border-amber-900/30 overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.04]" style={{
-            background: 'linear-gradient(135deg, #d97706, #92400e, transparent)'
+          <div className="absolute inset-0 opacity-[0.06]" style={{
+            backgroundColor: '#d97706'
           }} />
           <CardContent className="p-4 relative">
             <div className="flex items-center justify-between">

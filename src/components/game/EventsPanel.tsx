@@ -446,7 +446,7 @@ export default function EventsPanel() {
                         <div
                           className="w-1 shrink-0"
                           style={{
-                            background: `linear-gradient(to bottom, ${color}, ${color}60)`,
+                            backgroundColor: color,
                           }}
                         />
                         <div className="flex-1 min-w-0">

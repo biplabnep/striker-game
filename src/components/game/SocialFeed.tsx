@@ -182,7 +182,7 @@ function EngagementBar({ value }: { value: number }) {
   );
 }
 
-/** Sentiment gauge — horizontal bar with gradient */
+/** Sentiment gauge — horizontal bar */
 function SentimentGauge({ value }: { value: number }) {
   // Normalize -100..100 to 0..100
   const normalized = ((value + 100) / 200) * 100;

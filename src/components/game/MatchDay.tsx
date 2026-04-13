@@ -11,12 +11,14 @@ import {
   Play, ArrowRight, Clock, Trophy, Star, Crown,
   Target, Shield, Zap, Heart, TrendingUp, Activity,
   ChevronRight, Swords, Flame, Footprints, FastForward,
-  SkipForward, Gauge, Radio
+  SkipForward, Gauge, Radio, BarChart3
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MatchEvent, MatchEventType, MatchResult } from '@/lib/game/types';
 import PressConference from '@/components/game/PressConference';
+import WeatherSystem from '@/components/game/WeatherSystem';
+import MatchStatsPopup from '@/components/game/MatchStatsPopup';
 
 // -----------------------------------------------------------
 // Event icon & color mapping
@@ -373,6 +375,7 @@ export default function MatchDay() {
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<MatchResult | null>(gameState?.recentResults[0] || null);
   const [showPressConference, setShowPressConference] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   // Simulation states
   const [showSimulation, setShowSimulation] = useState(false);
@@ -1071,12 +1074,28 @@ export default function MatchDay() {
           </Card>
         </motion.div>
 
+        {/* Match Stats Button */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <Button
+            onClick={() => setShowStats(true)}
+            variant="outline"
+            className="w-full h-12 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg font-semibold gap-2"
+          >
+            <BarChart3 className="w-5 h-5" />
+            Match Stats
+          </Button>
+        </motion.div>
+
         {/* Press Conference Button */}
         {lastResult.playerMinutesPlayed > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.65 }}
           >
             <Button
               onClick={() => setShowPressConference(true)}
@@ -1093,7 +1112,7 @@ export default function MatchDay() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 0.75 }}
         >
           <Button onClick={() => { setShowResult(false); setScreen('dashboard'); }} className="w-full h-12 bg-emerald-700 hover:bg-emerald-600 rounded-lg font-semibold">
             Back to Dashboard
@@ -1106,6 +1125,18 @@ export default function MatchDay() {
           onClose={() => setShowPressConference(false)}
           matchResult={lastResult}
         />
+
+        {/* Match Stats Popup */}
+        <AnimatePresence>
+          {showStats && (
+            <MatchStatsPopup
+              matchResult={lastResult}
+              opponentClub={lastResult.homeClub.id === currentClub.id ? lastResult.awayClub : lastResult.homeClub}
+              isHome={lastResult.homeClub.id === currentClub.id}
+              onClose={() => setShowStats(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -1267,10 +1298,10 @@ export default function MatchDay() {
                       className="h-full rounded-full"
                       style={{
                         background: player.form >= 7
-                          ? 'linear-gradient(90deg, #10b981, #34d399)'
+                          ? '#10b981'
                           : player.form >= 5
-                          ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
-                          : 'linear-gradient(90deg, #ef4444, #f87171)',
+                          ? '#f59e0b'
+                          : '#ef4444',
                       }}
                     />
                   </div>
@@ -1294,10 +1325,10 @@ export default function MatchDay() {
                       className="h-full rounded-full"
                       style={{
                         background: player.morale >= 70
-                          ? 'linear-gradient(90deg, #10b981, #34d399)'
+                          ? '#10b981'
                           : player.morale >= 40
-                          ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
-                          : 'linear-gradient(90deg, #ef4444, #f87171)',
+                          ? '#f59e0b'
+                          : '#ef4444',
                       }}
                     />
                   </div>
@@ -1527,6 +1558,9 @@ export default function MatchDay() {
               </motion.div>
             );
           })()}
+
+          {/* Weather Conditions */}
+          <WeatherSystem season={gameState.currentSeason} week={currentWeek} />
 
           {/* Action Buttons */}
           <motion.div
