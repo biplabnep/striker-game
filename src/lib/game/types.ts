@@ -664,7 +664,9 @@ export type GameScreen =
   | 'injury_recovery'
   | 'in_game_mail'
   | 'manager_career'
-  | 'tactical_set_pieces';
+  | 'tactical_set_pieces'
+  | 'referee_system'
+  | 'match_weather_effects';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

@@ -10,7 +10,8 @@ import {
   Users, Plus, RotateCcw, Star, Zap, Shield, Swords,
   TrendingUp, Undo2, Save, Shuffle, ArrowRightLeft,
   Search, Trophy, Flame, ChevronDown, ChevronUp,
-  Activity, BarChart3, Heart, Target
+  Activity, BarChart3, Heart, Target, Brain,
+  Eye, Gauge, Crosshair, Award
 } from 'lucide-react';
 
 // ============================================================
@@ -1234,6 +1235,571 @@ function TradeActions({
 }
 
 // ============================================================
+// Draft Pick Value Chart (SVG Bar Chart)
+// ============================================================
+function DraftPickValueChart({ picks, availablePlayers }: {
+  picks: DraftPick[];
+  availablePlayers: DraftPlayer[];
+}) {
+  const currentPick = picks.length + 1;
+  const sortedAvailable = [...availablePlayers].sort((a, b) => b.overall - a.overall);
+  const bestAvailable = sortedAvailable[0];
+  const biggestSteal = sortedAvailable.find(p => p.overall >= 80 && p.cost <= 80) || sortedAvailable[0];
+
+  const pickValues = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const pos = i + 1;
+      const baseValue = 95 - (pos - 1) * 6;
+      const noise = Math.round(seededRandom(pos * 17 + 42) * 8 - 4);
+      return Math.max(40, baseValue + noise);
+    });
+  }, []);
+
+  const historicalRates = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const pos = i + 1;
+      const base = pos <= 3 ? 92 : pos <= 6 ? 78 : pos <= 9 ? 62 : 45;
+      return Math.min(98, base + Math.round(seededRandom(pos * 31 + 11) * 10 - 5));
+    });
+  }, []);
+
+  const tierColor = (pos: number) => {
+    if (pos <= 3) return '#22C55E';
+    if (pos <= 6) return '#3B82F6';
+    if (pos <= 9) return '#FBBF24';
+    return '#EF4444';
+  };
+
+  const barW = 220;
+  const barH = 18;
+  const gap = 4;
+  const labelW = 30;
+  const valueW = 28;
+  const svgW = labelW + barW + valueW + 60;
+  const svgH = 12 * (barH + gap) + 30;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-4`}>
+        <div className="flex items-center gap-2 mb-3">
+          <BarChart3 className="h-4 w-4 text-emerald-400" />
+          <h3 className={`text-xs font-semibold ${TEXT_PRIMARY}`}>Draft Pick Value Chart</h3>
+        </div>
+        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full">
+          <text x={labelW + barW / 2} y={10} textAnchor="middle" fill="#8b949e" fontSize="7" fontWeight="600">EXPECTED VALUE BY PICK POSITION</text>
+          {pickValues.map((val, i) => {
+            const pos = i + 1;
+            const y = i * (barH + gap) + 20;
+            const w = (val / 100) * barW;
+            const isCurrent = pos === currentPick;
+            return (
+              <g key={pos}>
+                <text x={labelW - 4} y={y + barH - 4} textAnchor="end" fill={isCurrent ? '#22C55E' : '#8b949e'} fontSize="8" fontWeight={isCurrent ? '700' : '400'}>#{pos}</text>
+                <rect x={labelW} y={y} width={barW} height={barH} rx="3" fill="#21262d" />
+                <rect x={labelW} y={y} width={w} height={barH} rx="3" fill={tierColor(pos)} opacity={isCurrent ? 1 : 0.65} />
+                {isCurrent && (
+                  <polygon points={`${labelW + w + 4},${y + barH / 2} ${labelW + w + 10},${y + 3} ${labelW + w + 10},${y + barH - 3}`} fill="#22C55E" />
+                )}
+                <text x={labelW + barW + 4} y={y + barH - 4} fill="#c9d1d9" fontSize="7" fontWeight="600">{val}</text>
+                <text x={labelW + barW + valueW + 6} y={y + barH - 4} fill="#484f58" fontSize="6">{historicalRates[i]}% hit</text>
+              </g>
+            );
+          })}
+        </svg>
+        <div className="flex gap-4 mt-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#22C55E' }} />
+            <span className="text-[10px] text-[#8b949e]">Top 3</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3B82F6' }} />
+            <span className="text-[10px] text-[#8b949e]">4-6</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#FBBF24' }} />
+            <span className="text-[10px] text-[#8b949e]">7-9</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#EF4444' }} />
+            <span className="text-[10px] text-[#8b949e]">10-12</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        {bestAvailable && (
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg px-3 py-2 flex-1`}>
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 text-yellow-400" />
+              <span className="text-[10px] text-yellow-400 font-semibold">Best Available</span>
+            </div>
+            <span className={`block text-xs ${TEXT_PRIMARY} mt-0.5`}>{bestAvailable.name}</span>
+            <span className={`text-[10px] ${TEXT_SECONDARY}`}>{bestAvailable.overall} OVR &middot; {bestAvailable.position}</span>
+          </div>
+        )}
+        {biggestSteal && (
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg px-3 py-2 flex-1`}>
+            <div className="flex items-center gap-1">
+              <Flame className="h-3 w-3 text-emerald-400" />
+              <span className="text-[10px] text-emerald-400 font-semibold">Biggest Steal</span>
+            </div>
+            <span className={`block text-xs ${TEXT_PRIMARY} mt-0.5`}>{biggestSteal.name}</span>
+            <span className={`text-[10px] ${TEXT_SECONDARY}`}>{biggestSteal.overall} OVR &middot; €{biggestSteal.cost}M</span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Draft War Room
+// ============================================================
+function DraftWarRoom({ draftedSlots, availablePlayers }: {
+  draftedSlots: Record<string, DraftPlayer>;
+  availablePlayers: DraftPlayer[];
+}) {
+  const [selectedStrategy, setSelectedStrategy] = useState<string>('bpa');
+
+  const draftedPlayers = Object.values(draftedSlots);
+  const filledPositions = new Set(draftedPlayers.map(p => p.position));
+
+  const positionNeeds = useMemo(() => {
+    const needs: { pos: string; category: PositionFilter; priority: string; filled: boolean }[] = [
+      { pos: 'GK', category: 'GK', priority: 'Critical', filled: false },
+      { pos: 'CB', category: 'DEF', priority: 'Critical', filled: false },
+      { pos: 'CB', category: 'DEF', priority: 'Important', filled: false },
+      { pos: 'LB', category: 'DEF', priority: 'Important', filled: false },
+      { pos: 'RB', category: 'DEF', priority: 'Important', filled: false },
+      { pos: 'CDM', category: 'MID', priority: 'Critical', filled: false },
+      { pos: 'CM', category: 'MID', priority: 'Important', filled: false },
+      { pos: 'CAM', category: 'MID', priority: 'Nice-to-Have', filled: false },
+      { pos: 'LW', category: 'FWD', priority: 'Important', filled: false },
+      { pos: 'ST', category: 'FWD', priority: 'Critical', filled: false },
+      { pos: 'RW', category: 'FWD', priority: 'Important', filled: false },
+    ];
+    return needs.map(n => ({ ...n, filled: filledPositions.has(n.pos as Position) })).filter((x, i, arr) =>
+      arr.findIndex(z => z.pos === x.pos) === i
+    );
+  }, [filledPositions]);
+
+  const topByPosition = useMemo(() => {
+    const groups: Record<string, DraftPlayer> = {};
+    for (const p of availablePlayers) {
+      const cat = POSITION_CATEGORY[p.position];
+      if (!groups[cat] || p.overall > groups[cat].overall) {
+        groups[cat] = p;
+      }
+    }
+    return groups;
+  }, [availablePlayers]);
+
+  const strategies = [
+    { id: 'bpa', name: 'Best Player Available', desc: 'Always pick the highest-rated player regardless of position.', risk: 'Low', success: 78, icon: <Trophy className="h-4 w-4 text-yellow-400" /> },
+    { id: 'need', name: 'Fill Position Need', desc: 'Target positions with critical needs first.', risk: 'Medium', success: 72, icon: <Target className="h-4 w-4 text-emerald-400" /> },
+    { id: 'value', name: 'Trade Down for Value', desc: 'Prioritize cost-efficiency over raw rating.', risk: 'High', success: 65, icon: <TrendingUp className="h-4 w-4 text-blue-400" /> },
+  ];
+
+  const priorityColor = (p: string) => {
+    if (p === 'Critical') return 'text-red-400 bg-red-400/10 border-red-400/30';
+    if (p === 'Important') return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
+    return 'text-[#8b949e] bg-[#21262d] border-[#30363d]';
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-4`}>
+        <div className="flex items-center gap-2 mb-3">
+          <Brain className="h-4 w-4 text-emerald-400" />
+          <h3 className={`text-xs font-semibold ${TEXT_PRIMARY}`}>Draft Strategy</h3>
+        </div>
+        <div className="space-y-2">
+          {strategies.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setSelectedStrategy(s.id)}
+              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                selectedStrategy === s.id
+                  ? 'border-emerald-500/50 bg-emerald-500/10'
+                  : `${BORDER_COLOR} ${CARD_BG} hover:border-[#484f58]`
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {s.icon}
+                <span className={`text-xs font-semibold ${selectedStrategy === s.id ? 'text-emerald-400' : TEXT_PRIMARY}`}>{s.name}</span>
+              </div>
+              <p className={`text-[10px] ${TEXT_SECONDARY} mt-1`}>{s.desc}</p>
+              <div className="flex gap-3 mt-2">
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${
+                  s.risk === 'Low' ? 'text-emerald-400 bg-emerald-400/10' : s.risk === 'Medium' ? 'text-yellow-400 bg-yellow-400/10' : 'text-red-400 bg-red-400/10'
+                }`}>Risk: {s.risk}</span>
+                <span className={`text-[10px] ${TEXT_SECONDARY}`}>Success: {s.success}%</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-4`}>
+        <h3 className={`text-xs font-semibold ${TEXT_PRIMARY} mb-3`}>Position Priority Board</h3>
+        <div className="space-y-1.5">
+          {positionNeeds.map((pn, i) => {
+            const topPlayer = topByPosition[pn.category];
+            return (
+              <div key={`${pn.pos}-${i}`} className={`flex items-center gap-2 px-2.5 py-2 rounded-md border ${pn.filled ? 'opacity-40 border-[#21262d]' : 'border-[#30363d]'}`}>
+                <span className="text-[10px] font-bold w-6" style={{ color: POSITION_COLORS[pn.pos] }}>{pn.pos}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-sm border ${priorityColor(pn.priority)}`}>{pn.priority}</span>
+                {pn.filled ? (
+                  <span className="text-[10px] text-emerald-400">Filled</span>
+                ) : topPlayer ? (
+                  <span className={`text-[10px] ${TEXT_SECONDARY}`}>Best: {topPlayer.name.split(' ').pop()} ({topPlayer.overall})</span>
+                ) : (
+                  <span className={`text-[10px] ${TEXT_SECONDARY}`}>No available</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Opponent Draft Board
+// ============================================================
+function OpponentDraftBoard({ picks, availablePlayers }: {
+  picks: DraftPick[];
+  availablePlayers: DraftPlayer[];
+}) {
+  const opponentTeams = useMemo(() => {
+    const teams = [
+      { name: 'FC Barcelona', short: 'BAR', grade: 'A', color: '#A50044' },
+      { name: 'Bayern Munich', short: 'BAY', grade: 'B+', color: '#DC052D' },
+      { name: 'PSG', short: 'PSG', grade: 'B', color: '#004170' },
+      { name: 'Inter Milan', short: 'INT', grade: 'C+', color: '#009BDB' },
+    ];
+    return teams.map((team, ti) => {
+      const teamPicks: DraftPlayer[] = [];
+      for (let pi = 0; pi < 3; pi++) {
+        const idx = (ti * 3 + pi * 7 + picks.length * 3) % Math.max(1, availablePlayers.length);
+        const player = availablePlayers[idx];
+        if (player) teamPicks.push(player);
+      }
+      const needs = ['CB', 'ST', 'CM'].slice(ti % 3).concat(['GK']).slice(0, 2);
+      const predicted = availablePlayers.find(p => needs.includes(p.position));
+      return { ...team, picks: teamPicks, needs, predicted };
+    });
+  }, [picks.length, availablePlayers]);
+
+  const gradeColor = (g: string) => {
+    if (g.startsWith('A')) return 'text-emerald-400';
+    if (g.startsWith('B')) return 'text-blue-400';
+    if (g.startsWith('C')) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-4`}>
+        <div className="flex items-center gap-2 mb-3">
+          <Eye className="h-4 w-4 text-emerald-400" />
+          <h3 className={`text-xs font-semibold ${TEXT_PRIMARY}`}>Opponent Draft Board</h3>
+        </div>
+        <div className="space-y-3">
+          {opponentTeams.map(team => (
+            <div key={team.short} className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-3`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-sm flex items-center justify-center" style={{ backgroundColor: `${team.color}30`, border: `1px solid ${team.color}50` }}>
+                    <span className="text-[8px] font-bold" style={{ color: team.color }}>{team.short}</span>
+                  </div>
+                  <span className={`text-xs font-semibold ${TEXT_PRIMARY}`}>{team.name}</span>
+                </div>
+                <span className={`text-sm font-bold ${gradeColor(team.grade)}`}>{team.grade}</span>
+              </div>
+              <div className="flex gap-1.5 mb-2">
+                {team.picks.map((p, i) => (
+                  <div key={i} className={`${CARD_BG} border border-[#21262d] rounded-md px-2 py-1 flex-1`}>
+                    <span className="text-[10px] font-medium px-1 py-0.5 rounded-sm block text-center" style={{ backgroundColor: `${POSITION_COLORS[p.position]}20`, color: POSITION_COLORS[p.position] }}>{p.position}</span>
+                    <span className={`block text-[10px] ${TEXT_PRIMARY} text-center mt-0.5 truncate`}>{p.name.split(' ').pop()}</span>
+                    <span className={`block text-[9px] ${TEXT_SECONDARY} text-center`}>{p.overall}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex gap-1">
+                  {team.needs.map(n => (
+                    <span key={n} className="text-[9px] px-1.5 py-0.5 rounded-sm bg-red-400/10 text-red-400 border border-red-400/30">Need: {n}</span>
+                  ))}
+                </div>
+                {team.predicted && (
+                  <span className={`text-[9px] ${TEXT_SECONDARY}`}>
+                    Predicted: <span className={TEXT_PRIMARY}>{team.predicted.name.split(' ').pop()}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Draft Combine Results
+// ============================================================
+function DraftCombineResults({ availablePlayers }: {
+  availablePlayers: DraftPlayer[];
+}) {
+  const drills = useMemo(() => {
+    const sorted = [...availablePlayers].sort((a, b) => b.overall - a.overall).slice(0, 20);
+    const leagueAvgs: Record<string, number> = {
+      '40-Yard Dash': 72, 'Agility Test': 70, 'Bench Press': 68, 'Vertical Jump': 71,
+      'Sprint Speed': 73, 'Ball Control': 74, 'Passing Acc.': 72, 'Shooting Acc.': 69,
+    };
+    const attrMap: Record<string, (p: DraftPlayer) => number> = {
+      '40-Yard Dash': p => p.pace,
+      'Agility Test': p => p.pace - 3,
+      'Bench Press': p => p.physical,
+      'Vertical Jump': p => p.physical - 2,
+      'Sprint Speed': p => p.pace + 2,
+      'Ball Control': p => p.passing,
+      'Passing Acc.': p => p.passing + 1,
+      'Shooting Acc.': p => p.shooting,
+    };
+    return Object.keys(drillNames).map(drill => {
+      const results = sorted.map(p => ({
+        player: p,
+        result: Math.max(40, Math.min(99, Math.round(attrMap[drill](p) + seededRandom(p.overall * 3 + drill.length) * 10 - 5))),
+      })).sort((a, b) => b.result - a.result);
+      const topPerformer = results[0];
+      const avg = Math.round(results.reduce((s, r) => s + r.result, 0) / results.length);
+      return { name: drill, leagueAvg: leagueAvgs[drill], results: results.slice(0, 6), topPerformer, avg };
+    });
+  }, [availablePlayers]);
+
+  const overallScore = Math.round(drills.reduce((s, d) => s + d.avg, 0) / drills.length);
+  const overallGrade = overallScore >= 85 ? 'A' : overallScore >= 75 ? 'B' : overallScore >= 65 ? 'C' : overallScore >= 55 ? 'D' : 'F';
+
+  const barMaxW = 100;
+  const barH = 10;
+  const rowH = 24;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-4`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Gauge className="h-4 w-4 text-emerald-400" />
+            <h3 className={`text-xs font-semibold ${TEXT_PRIMARY}`}>Draft Combine Results</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-lg font-bold ${getOvrColor(overallScore)}`}>{overallScore}</span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+              overallGrade === 'A' ? 'text-emerald-400 bg-emerald-400/10 border border-emerald-400/30' :
+              overallGrade === 'B' ? 'text-blue-400 bg-blue-400/10 border border-blue-400/30' :
+              overallGrade === 'C' ? 'text-yellow-400 bg-yellow-400/10 border border-yellow-400/30' :
+              'text-red-400 bg-red-400/10 border border-red-400/30'
+            }`}>Grade: {overallGrade}</span>
+          </div>
+        </div>
+        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+          {drills.map(drill => (
+            <div key={drill.name} className={`${CARD_BG} border border-[#21262d] rounded-md p-2.5`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`text-[10px] font-semibold ${TEXT_PRIMARY}`}>{drill.name}</span>
+                <div className="flex items-center gap-2">
+                  {drill.topPerformer && (
+                    <span className="text-[9px] text-yellow-400">
+                      <Crosshair className="inline h-2.5 w-2.5" /> {drill.topPerformer.player.name.split(' ').pop()} ({drill.topPerformer.result})
+                    </span>
+                  )}
+                </div>
+              </div>
+              <svg viewBox={`0 0 ${barMaxW + 80} ${drill.results.length * rowH + 6}`} className="w-full">
+                {drill.results.map((r, i) => {
+                  const y = i * rowH + 4;
+                  const w = (r.result / 100) * barMaxW;
+                  const isTop = i === 0;
+                  return (
+                    <g key={r.player.id}>
+                      <text x={0} y={y + 7} fill={isTop ? '#FBBF24' : '#8b949e'} fontSize="6" fontWeight={isTop ? '700' : '400'}>{r.player.name.split(' ').pop()}</text>
+                      <rect x={48} y={y} width={barMaxW} height={barH} rx="2" fill="#21262d" />
+                      <rect x={48} y={y} width={w} height={barH} rx="2" fill={isTop ? '#FBBF24' : '#3B82F6'} opacity={isTop ? 1 : 0.6} />
+                      <text x={barMaxW + 52} y={y + 8} fill={isTop ? '#FBBF24' : '#c9d1d9'} fontSize="6" fontWeight="600">{r.result}</text>
+                    </g>
+                  );
+                })}
+                <line x1={48 + (drill.leagueAvg / 100) * barMaxW} y1={0} x2={48 + (drill.leagueAvg / 100) * barMaxW} y2={drill.results.length * rowH + 6} stroke="#484f58" strokeWidth="0.5" strokeDasharray="2,2" />
+              </svg>
+              <div className="flex justify-between mt-1">
+                <span className="text-[8px] text-[#484f58]">League avg: {drill.leagueAvg}</span>
+                <span className="text-[8px] text-[#484f58]">Top {drill.results.length} invitees</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+const drillNames: Record<string, true> = {
+  '40-Yard Dash': true, 'Agility Test': true, 'Bench Press': true, 'Vertical Jump': true,
+  'Sprint Speed': true, 'Ball Control': true, 'Passing Acc.': true, 'Shooting Acc.': true,
+};
+
+// ============================================================
+// Post-Draft Analysis
+// ============================================================
+function PostDraftAnalysis({ draftedSlots, picks, budget }: {
+  draftedSlots: Record<string, DraftPlayer>;
+  picks: DraftPick[];
+  budget: number;
+}) {
+  const draftedPlayers = Object.values(draftedSlots);
+  if (draftedPlayers.length < 5) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-6 flex flex-col items-center justify-center text-center`}>
+        <Award className="h-8 w-8 text-[#30363d] mb-2" />
+        <span className={`text-sm ${TEXT_SECONDARY}`}>Draft at least 5 players for analysis</span>
+      </motion.div>
+    );
+  }
+
+  const teamOvr = Math.round(draftedPlayers.reduce((s, p) => s + p.overall, 0) / draftedPlayers.length);
+  const budgetUsed = picks.reduce((s, p) => s + p.player.cost, 0);
+  const valueScore = Math.round((teamOvr / Math.max(1, budgetUsed)) * 100);
+
+  const draftGrade = teamOvr >= 88 && valueScore >= 1.5 ? 'A' :
+    teamOvr >= 83 ? 'B+' :
+    teamOvr >= 78 ? 'B' :
+    teamOvr >= 73 ? 'C+' :
+    teamOvr >= 68 ? 'C' :
+    teamOvr >= 63 ? 'D' : 'F';
+
+  const gradeExplanation = {
+    A: 'Elite draft class. Multiple franchise-changing picks.',
+    'B+': 'Strong draft with high-impact starters.',
+    B: 'Solid draft, good value across rounds.',
+    'C+': 'Average draft with some bright spots.',
+    C: 'Below average. Missing impact players.',
+    D: 'Weak draft class. Significant reaches.',
+    F: 'Disastrous draft. Major value missed.',
+  };
+
+  const sortedByValue = [...picks].sort((a, b) => (b.player.overall / b.player.cost) - (a.player.overall / a.player.cost));
+  const steals = sortedByValue.slice(0, 2);
+  const reaches = sortedByValue.slice(-2).reverse();
+
+  const filledCategories = new Set(draftedPlayers.map(p => POSITION_CATEGORY[p.position]));
+  const allCategories: PositionFilter[] = ['GK', 'DEF', 'MID', 'FWD'];
+
+  const defCount = draftedPlayers.filter(p => ['CB', 'LB', 'RB'].includes(p.position)).length;
+  const midCount = draftedPlayers.filter(p => ['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(p.position)).length;
+  const fwdCount = draftedPlayers.filter(p => ['LW', 'RW', 'ST', 'CF'].includes(p.position)).length;
+  const avgAge = Math.round(draftedPlayers.reduce((s, p) => s + p.age, 0) / draftedPlayers.length);
+
+  const radarData = [
+    { label: 'ATK', value: Math.min(95, Math.round((fwdCount / 3) * 85 + (draftedPlayers.filter(p => p.shooting > 80).length / 3) * 15)) },
+    { label: 'MID', value: Math.min(95, Math.round((midCount / 3) * 85 + (draftedPlayers.filter(p => p.passing > 80).length / 3) * 15)) },
+    { label: 'DEF', value: Math.min(95, Math.round((defCount / 3) * 85 + (draftedPlayers.filter(p => p.defending > 80).length / 3) * 15)) },
+    { label: 'DEP', value: Math.min(95, Math.round((draftedPlayers.length / 11) * 90 + 5)) },
+    { label: 'YTH', value: Math.min(95, Math.round((1 - (avgAge - 19) / 14) * 80 + 15)) },
+    { label: 'POT', value: Math.min(95, teamOvr + Math.round(seededRandom(teamOvr * 7) * 10 - 3)) },
+  ];
+
+  const radarCx = 100;
+  const radarCy = 100;
+  const radarR = 70;
+  const sides = radarData.length;
+  const angleStep = (2 * Math.PI) / sides;
+
+  const radarPoints = radarData.map((d, i) => {
+    const angle = i * angleStep - Math.PI / 2;
+    const r = (d.value / 100) * radarR;
+    return `${radarCx + r * Math.cos(angle)},${radarCy + r * Math.sin(angle)}`;
+  }).join(' ');
+
+  const gridPoints = (r: number) => {
+    return Array.from({ length: sides }, (_, i) => {
+      const angle = i * angleStep - Math.PI / 2;
+      return `${radarCx + r * Math.cos(angle)},${radarCy + r * Math.sin(angle)}`;
+    }).join(' ');
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+      <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-4`}>
+        <div className="flex items-center gap-2 mb-3">
+          <Award className="h-4 w-4 text-emerald-400" />
+          <h3 className={`text-xs font-semibold ${TEXT_PRIMARY}`}>Post-Draft Analysis</h3>
+        </div>
+        <div className="flex items-center gap-4 mb-4">
+          <div className={`text-4xl font-black ${
+            draftGrade.startsWith('A') ? 'text-emerald-400' : draftGrade.startsWith('B') ? 'text-blue-400' : draftGrade.startsWith('C') ? 'text-yellow-400' : 'text-red-400'
+          }`}>{draftGrade}</div>
+          <div>
+            <span className={`text-xs ${TEXT_PRIMARY} font-semibold`}>Draft Grade</span>
+            <p className={`text-[10px] ${TEXT_SECONDARY} mt-0.5`}>{gradeExplanation[draftGrade]}</p>
+          </div>
+        </div>
+        <div className="flex gap-2 mb-3">
+          <div className={`${CARD_BG} border border-[#21262d] rounded-md px-3 py-2 flex-1`}>
+            <span className="text-[10px] text-emerald-400 font-semibold">Draft Steals</span>
+            {steals.map((s, i) => (
+              <div key={i} className={`text-[10px] ${TEXT_PRIMARY} mt-0.5`}>{s.player.name} ({s.player.overall} OVR)</div>
+            ))}
+          </div>
+          <div className={`${CARD_BG} border border-[#21262d] rounded-md px-3 py-2 flex-1`}>
+            <span className="text-[10px] text-red-400 font-semibold">Draft Reaches</span>
+            {reaches.map((r, i) => (
+              <div key={i} className={`text-[10px] ${TEXT_PRIMARY} mt-0.5`}>{r.player.name} ({r.player.overall} OVR)</div>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {allCategories.map(cat => (
+            <span key={cat} className={`text-[10px] px-2 py-0.5 rounded-md border ${
+              filledCategories.has(cat)
+                ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30'
+                : 'text-red-400 bg-red-400/10 border-red-400/30'
+            }`}>
+              {cat}: {filledCategories.has(cat) ? 'Filled' : 'Needed'}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-4`}>
+        <h3 className={`text-xs font-semibold ${TEXT_PRIMARY} mb-3`}>Team Strengths Radar</h3>
+        <svg viewBox="0 0 200 200" className="w-full" style={{ maxWidth: 240 }}>
+          {[0.33, 0.66, 1].map((scale, si) => (
+            <polygon key={si} points={gridPoints(radarR * scale)} fill="none" stroke="#21262d" strokeWidth="0.5" />
+          ))}
+          {radarData.map((d, i) => {
+            const angle = i * angleStep - Math.PI / 2;
+            return (
+              <g key={d.label}>
+                <line x1={radarCx} y1={radarCy} x2={radarCx + radarR * Math.cos(angle)} y2={radarCy + radarR * Math.sin(angle)} stroke="#21262d" strokeWidth="0.5" />
+                <text x={radarCx + (radarR + 12) * Math.cos(angle)} y={radarCy + (radarR + 12) * Math.sin(angle)} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize="7" fontWeight="600">{d.label}</text>
+              </g>
+            );
+          })}
+          <polygon points={radarPoints} fill="#22C55E" fillOpacity="0.15" stroke="#22C55E" strokeWidth="1.5" />
+          {radarData.map((d, i) => {
+            const angle = i * angleStep - Math.PI / 2;
+            const r = (d.value / 100) * radarR;
+            return <circle key={i} cx={radarCx + r * Math.cos(angle)} cy={radarCy + r * Math.sin(angle)} r="2.5" fill="#22C55E" />;
+          })}
+        </svg>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function FantasyDraft() {
@@ -1420,6 +1986,11 @@ export default function FantasyDraft() {
           <TabsTrigger value="rating" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">Rating</TabsTrigger>
           <TabsTrigger value="compare" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">Compare</TabsTrigger>
           <TabsTrigger value="manage" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">Manage</TabsTrigger>
+          <TabsTrigger value="values" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">Values</TabsTrigger>
+          <TabsTrigger value="warroom" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">War Room</TabsTrigger>
+          <TabsTrigger value="opponents" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">Rivals</TabsTrigger>
+          <TabsTrigger value="combine" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">Combine</TabsTrigger>
+          <TabsTrigger value="analysis" className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 text-[#8b949e]">Analysis</TabsTrigger>
         </TabsList>
 
         <TabsContent value="setup">
@@ -1497,6 +2068,26 @@ export default function FantasyDraft() {
             onSwapPlayer={onSwapPlayer}
             onSave={onSave}
           />
+        </TabsContent>
+
+        <TabsContent value="values">
+          <DraftPickValueChart picks={picks} availablePlayers={filteredPool.filter(p => !draftedIds.has(p.id))} />
+        </TabsContent>
+
+        <TabsContent value="warroom">
+          <DraftWarRoom draftedSlots={draftedSlots} availablePlayers={filteredPool.filter(p => !draftedIds.has(p.id))} />
+        </TabsContent>
+
+        <TabsContent value="opponents">
+          <OpponentDraftBoard picks={picks} availablePlayers={filteredPool.filter(p => !draftedIds.has(p.id))} />
+        </TabsContent>
+
+        <TabsContent value="combine">
+          <DraftCombineResults availablePlayers={filteredPool} />
+        </TabsContent>
+
+        <TabsContent value="analysis">
+          <PostDraftAnalysis draftedSlots={draftedSlots} picks={picks} budget={budget} />
         </TabsContent>
       </Tabs>
     </div>

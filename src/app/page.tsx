@@ -99,6 +99,8 @@ import ManagerCareer from '@/components/game/ManagerCareer';
 import MultiplayerLeague from '@/components/game/MultiplayerLeague';
 import PlayerCareerTimeline from '@/components/game/PlayerCareerTimeline';
 import TacticalSetPieces from '@/components/game/TacticalSetPieces';
+import MatchWeatherEffects from '@/components/game/MatchWeatherEffects';
+import RefereeSystem from '@/components/game/RefereeSystem';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -195,6 +197,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   injury_recovery: InjuryRecovery,
   manager_career: ManagerCareer,
   tactical_set_pieces: TacticalSetPieces,
+  referee_system: RefereeSystem,
+  match_weather_effects: MatchWeatherEffects,
 };
 
 const gameScreens: GameScreen[] = [
@@ -258,6 +262,8 @@ const gameScreens: GameScreen[] = [
   'injury_recovery',
   'manager_career',
   'tactical_set_pieces',
+  'referee_system',
+  'match_weather_effects',
 ];
 
 export default function Home() {

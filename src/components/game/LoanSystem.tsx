@@ -31,6 +31,15 @@ import {
   History,
   UserRound,
   Calendar,
+  Eye,
+  Swords,
+  Timer,
+  Wallet,
+  Award,
+  Activity,
+  Play,
+  Plus,
+  ArrowDownRight,
 } from 'lucide-react';
 import { getClubsByLeague, ENRICHED_CLUBS, LEAGUES } from '@/lib/game/clubsData';
 import { NATIONALITIES, generatePlayerName, POSITION_WEIGHTS } from '@/lib/game/playerData';
@@ -692,6 +701,622 @@ function RecallButton({ playerName, onRecall }: { playerName: string; onRecall: 
 }
 
 // ============================================================
+// Mock Scout Board Targets
+// ============================================================
+interface ScoutTarget {
+  id: string;
+  name: string;
+  position: Position;
+  ovr: number;
+  age: number;
+  club: string;
+  league: string;
+  loanType: 'Season Long' | 'Short Term' | 'Emergency';
+  wageContribution: number;
+}
+
+const SCOUT_TARGETS: ScoutTarget[] = [
+  { id: 'scout_1', name: 'Matteo Guerra', position: 'CM', ovr: 77, age: 21, club: 'Atalanta', league: 'Serie A', loanType: 'Season Long', wageContribution: 70 },
+  { id: 'scout_2', name: 'Armando Broja', position: 'ST', ovr: 74, age: 22, club: 'Chelsea', league: 'Premier League', loanType: 'Short Term', wageContribution: 85 },
+  { id: 'scout_3', name: 'Seko Fofana', position: 'CDM', ovr: 79, age: 24, club: 'Lens', league: 'Ligue 1', loanType: 'Season Long', wageContribution: 60 },
+  { id: 'scout_4', name: 'Ivan Fresneda', position: 'RB', ovr: 73, age: 19, club: 'Valladolid', league: 'La Liga', loanType: 'Emergency', wageContribution: 50 },
+  { id: 'scout_5', name: 'Jamie Bynoe-Gittens', position: 'LW', ovr: 76, age: 20, club: 'Dortmund', league: 'Bundesliga', loanType: 'Season Long', wageContribution: 75 },
+  { id: 'scout_6', name: 'Leo Ostigard', position: 'CB', ovr: 75, age: 23, club: 'Brighton', league: 'Premier League', loanType: 'Short Term', wageContribution: 80 },
+];
+
+type ScoutSort = 'ovr_desc' | 'age_asc' | 'wage_asc';
+
+// ============================================================
+// Loan Market Scout Board
+// ============================================================
+function LoanMarketScoutBoard() {
+  const [posFilter, setPosFilter] = useState<string>('All');
+  const [ovrMin, setOvrMin] = useState(65);
+  const [leagueFilter, setLeagueFilter] = useState<string>('All');
+  const [sortBy, setSortBy] = useState<ScoutSort>('ovr_desc');
+
+  const filtered = useMemo(() => {
+    let list = [...SCOUT_TARGETS];
+    if (posFilter !== 'All') {
+      const map: Record<string, Position[]> = { GK: ['GK'], DEF: ['CB', 'LB', 'RB'], MID: ['CDM', 'CM', 'CAM', 'LM', 'RM'], FWD: ['LW', 'RW', 'ST', 'CF'] };
+      const allowed = map[posFilter] ?? [];
+      list = list.filter(p => allowed.includes(p.position));
+    }
+    list = list.filter(p => p.ovr >= ovrMin);
+    if (leagueFilter !== 'All') {
+      list = list.filter(p => p.league === leagueFilter);
+    }
+    switch (sortBy) {
+      case 'ovr_desc': list.sort((a, b) => b.ovr - a.ovr); break;
+      case 'age_asc': list.sort((a, b) => a.age - b.age); break;
+      case 'wage_asc': list.sort((a, b) => a.wageContribution - b.wageContribution); break;
+    }
+    return list;
+  }, [posFilter, ovrMin, leagueFilter, sortBy]);
+
+  const leagues = ['All', 'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1'];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3"
+    >
+      <div className="flex items-center gap-1.5">
+        <Eye className="h-3.5 w-3.5 text-emerald-400" />
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Loan Market Scout Board</span>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1">
+          {(['All', 'GK', 'DEF', 'MID', 'FWD'] as const).map(p => (
+            <button key={p} onClick={() => setPosFilter(p)} className={`px-2 py-0.5 text-[9px] font-medium rounded-md border transition-colors ${posFilter === p ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-[#0d1117] text-[#8b949e] border-[#30363d]'}`}>{p}</button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-[#484f58] flex-shrink-0">OVR ≥ {ovrMin}</span>
+          <div className="flex-1 h-1.5 bg-[#21262d] rounded-sm overflow-hidden">
+            <div className="h-full bg-emerald-500/50 rounded-sm" style={{ width: `${((ovrMin - 60) / 30) * 100}%` }} />
+          </div>
+          <input type="range" min={60} max={90} value={ovrMin} onChange={e => setOvrMin(Number(e.target.value))} className="w-16 h-1 accent-emerald-500" />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {leagues.map(l => (
+            <button key={l} onClick={() => setLeagueFilter(l)} className={`px-2 py-0.5 text-[9px] font-medium rounded-md border transition-colors ${leagueFilter === l ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-[#0d1117] text-[#8b949e] border-[#30363d]'}`}>{l === 'All' ? 'All' : l.split(' ')[0]}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {([['ovr_desc', 'OVR ↓'], ['age_asc', 'Age ↑'], ['wage_asc', 'Wage ↑']] as [ScoutSort, string][]).map(([val, label]) => (
+            <button key={val} onClick={() => setSortBy(val)} className={`px-2 py-0.5 text-[9px] font-medium rounded-md border transition-colors ${sortBy === val ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-[#0d1117] text-[#8b949e] border-[#30363d]'}`}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2-Col Grid of Scout Cards */}
+      <div className="grid grid-cols-2 gap-2">
+        {filtered.map((player, idx) => (
+          <motion.div
+            key={player.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, delay: idx * 0.04 }}
+            className={`bg-[#0d1117] border border-[#21262d] border-l-2 ${getPositionAccent(player.position)} rounded-lg p-2.5 flex flex-col gap-1.5`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-lg font-bold ${getOvrColor(player.ovr)}`}>{player.ovr}</span>
+              <Badge className={`text-[7px] px-1 py-0 ${player.loanType === 'Season Long' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : player.loanType === 'Emergency' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>{player.loanType}</Badge>
+            </div>
+            <p className="text-[11px] font-semibold text-[#c9d1d9] truncate">{player.name}</p>
+            <div className="flex items-center gap-1">
+              <Badge className="text-[7px] px-1 py-0 border-[#30363d] bg-[#21262d] text-[#8b949e]">{player.position}</Badge>
+              <span className="text-[9px] text-[#8b949e]">{player.age}y · {player.league.split(' ')[0]}</span>
+            </div>
+            <p className="text-[9px] text-[#8b949e]">{player.club}</p>
+            <div className="flex items-center justify-between text-[9px]">
+              <span className="text-[#484f58]">Wage contrib.</span>
+              <span className="text-[#c9d1d9] font-medium">{player.wageContribution}%</span>
+            </div>
+            <Button className="w-full h-6 text-[9px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 rounded-md mt-0.5">
+              Make Offer
+            </Button>
+          </motion.div>
+        ))}
+      </div>
+      {filtered.length === 0 && (
+        <p className="text-center text-[10px] text-[#484f58] py-4">No targets match filters</p>
+      )}
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Mock Comparison Data
+// ============================================================
+interface ComparisonPlayer {
+  name: string;
+  position: Position;
+  overall: number;
+  potential: number;
+  age: number;
+  weeklyWageK: number;
+  playingTimeGuarantee: number; // 0-100
+  developmentRating: number; // 0-100
+}
+
+const COMPARISON_PLAYERS: ComparisonPlayer[] = [
+  { name: 'Matteo Guerra', position: 'CM', overall: 77, potential: 84, age: 21, weeklyWageK: 45, playingTimeGuarantee: 80, developmentRating: 88 },
+  { name: 'Armando Broja', position: 'ST', overall: 74, potential: 82, age: 22, weeklyWageK: 55, playingTimeGuarantee: 65, developmentRating: 78 },
+  { name: 'Ivan Fresneda', position: 'RB', overall: 73, potential: 86, age: 19, weeklyWageK: 30, playingTimeGuarantee: 90, developmentRating: 92 },
+];
+
+// ============================================================
+// Loan Comparison Matrix
+// ============================================================
+function LoanComparisonMatrix() {
+  const metrics = [
+    { key: 'overall', label: 'Overall', max: 99, best: 'highest' as const },
+    { key: 'potential', label: 'Potential', max: 99, best: 'highest' as const },
+    { key: 'age', label: 'Age', max: 30, best: 'lowest' as const },
+    { key: 'weeklyWageK', label: 'Wage (K/wk)', max: 80, best: 'lowest' as const },
+    { key: 'playingTimeGuarantee', label: 'Playing Time %', max: 100, best: 'highest' as const },
+    { key: 'developmentRating', label: 'Dev. Rating', max: 100, best: 'highest' as const },
+  ];
+
+  const playerColors = ['bg-emerald-500', 'bg-sky-500', 'bg-amber-500'];
+  const playerColorsLight = ['bg-emerald-500/20', 'bg-sky-500/20', 'bg-amber-500/20'];
+
+  const recommendedIdx = COMPARISON_PLAYERS.reduce((best, p, i) => {
+    const score = p.developmentRating * 0.4 + p.potential * 0.3 + p.playingTimeGuarantee * 0.2 + (1 - p.weeklyWageK / 80) * 100 * 0.1;
+    const bestScore = COMPARISON_PLAYERS[best].developmentRating * 0.4 + COMPARISON_PLAYERS[best].potential * 0.3 + COMPARISON_PLAYERS[best].playingTimeGuarantee * 0.2 + (1 - COMPARISON_PLAYERS[best].weeklyWageK / 80) * 100 * 0.1;
+    return score > bestScore ? i : best;
+  }, 0);
+
+  const getBarWidth = (value: number, max: number) => Math.max(4, (value / max) * 100);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: 0.05 }}
+      className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3"
+    >
+      <div className="flex items-center gap-1.5">
+        <Swords className="h-3.5 w-3.5 text-emerald-400" />
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Loan Comparison Matrix</span>
+      </div>
+
+      {/* Player Headers */}
+      <div className="flex items-stretch gap-2">
+        <div className="w-20 flex-shrink-0" />
+        <div className="flex-1 flex gap-2">
+          {COMPARISON_PLAYERS.map((p, i) => (
+            <div key={p.name} className={`flex-1 bg-[#0d1117] border rounded-md p-2 text-center ${i === recommendedIdx ? 'border-emerald-500/40' : 'border-[#21262d]'}`}>
+              {i === recommendedIdx && (
+                <Badge className="text-[7px] px-1.5 py-0 mb-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 mx-auto block w-fit">
+                  <Award className="h-2.5 w-2.5 inline mr-0.5" /> Recommended Pick
+                </Badge>
+              )}
+              <p className="text-[10px] font-semibold text-[#c9d1d9] truncate">{p.name}</p>
+              <div className="flex items-center justify-center gap-1 mt-0.5">
+                <span className={`text-xs font-bold ${getOvrColor(p.overall)}`}>{p.overall}</span>
+                <Badge className="text-[7px] px-1 py-0 border-[#30363d] bg-[#21262d] text-[#8b949e]">{p.position}</Badge>
+              </div>
+              <div className={`h-1 mt-1.5 rounded-sm ${playerColors[i]}`} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Metrics Rows */}
+      <div className="space-y-2">
+        {metrics.map(metric => {
+          const values = COMPARISON_PLAYERS.map(p => {
+            const val = p[metric.key as keyof ComparisonPlayer] as number;
+            return val;
+          });
+          const bestVal = metric.best === 'highest'
+            ? Math.max(...values)
+            : Math.min(...values);
+
+          return (
+            <div key={metric.key} className="flex items-center gap-2">
+              <span className="text-[9px] text-[#8b949e] w-20 flex-shrink-0 text-right">{metric.label}</span>
+              <div className="flex-1 flex gap-2">
+                {COMPARISON_PLAYERS.map((p, i) => {
+                  const val = values[i];
+                  const isBest = val === bestVal;
+                  const barW = getBarWidth(val, metric.max);
+                  return (
+                    <div key={p.name} className="flex-1 flex items-center gap-1">
+                      <div className="flex-1 h-3 bg-[#21262d] rounded-sm overflow-hidden relative">
+                        <div
+                          className={`h-full rounded-sm ${isBest ? playerColors[i] : playerColorsLight[i]} transition-all duration-300`}
+                          style={{ width: `${barW}%` }}
+                        />
+                        <span className={`absolute inset-0 flex items-center justify-center text-[8px] font-bold ${isBest ? 'text-white' : 'text-[#c9d1d9]'}`}>
+                          {metric.key === 'weeklyWageK' ? `€${val}K` : val}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Mock Timeline Data
+// ============================================================
+interface TimelineEntry {
+  id: string;
+  club: string;
+  league: string;
+  season: number;
+  gamesPlayed: number;
+  goals: number;
+  assists: number;
+  successRating: 'Excellent' | 'Good' | 'Average' | 'Poor';
+}
+
+const TIMELINE_ENTRIES: TimelineEntry[] = [
+  { id: 'tl_1', club: 'Brentford', league: 'Championship', season: 1, gamesPlayed: 32, goals: 14, assists: 4, successRating: 'Excellent' },
+  { id: 'tl_2', club: 'Lille', league: 'Ligue 1', season: 2, gamesPlayed: 28, goals: 5, assists: 8, successRating: 'Good' },
+  { id: 'tl_3', club: 'Real Betis', league: 'La Liga', season: 3, gamesPlayed: 15, goals: 0, assists: 2, successRating: 'Average' },
+  { id: 'tl_4', club: 'Wolves', league: 'Premier League', season: 4, gamesPlayed: 20, goals: 2, assists: 3, successRating: 'Good' },
+];
+
+const SUCCESS_COLORS: Record<string, string> = {
+  Excellent: 'border-emerald-500 bg-emerald-500',
+  Good: 'bg-sky-500',
+  Average: 'bg-amber-500',
+  Poor: 'bg-red-500',
+};
+
+const SUCCESS_TEXT_COLORS: Record<string, string> = {
+  Excellent: 'text-emerald-400',
+  Good: 'text-sky-400',
+  Average: 'text-amber-400',
+  Poor: 'text-red-400',
+};
+
+// ============================================================
+// Loan History Timeline
+// ============================================================
+function LoanHistoryTimeline() {
+  const totalGoals = TIMELINE_ENTRIES.reduce((s, e) => s + e.goals, 0);
+  const totalAssists = TIMELINE_ENTRIES.reduce((s, e) => s + e.assists, 0);
+  const avgRating = TIMELINE_ENTRIES.reduce((s, e) => s + (e.goals + e.assists) / Math.max(1, e.gamesPlayed) * 10, 0) / TIMELINE_ENTRIES.length;
+
+  const trajectoryScores = TIMELINE_ENTRIES.map(e => (e.goals + e.assists * 0.5) / Math.max(1, e.gamesPlayed));
+  const recentAvg = (trajectoryScores[2] + trajectoryScores[3]) / 2;
+  const olderAvg = (trajectoryScores[0] + trajectoryScores[1]) / 2;
+  const trajectory = recentAvg > olderAvg + 0.02 ? 'Improving' : recentAvg < olderAvg - 0.02 ? 'Declining' : 'Plateauing';
+  const trajectoryColor = trajectory === 'Improving' ? 'text-emerald-400' : trajectory === 'Declining' ? 'text-red-400' : 'text-amber-400';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: 0.1 }}
+      className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3"
+    >
+      <div className="flex items-center gap-1.5">
+        <Timer className="h-3.5 w-3.5 text-emerald-400" />
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Loan History Timeline</span>
+      </div>
+
+      {/* Vertical Timeline */}
+      <div className="relative pl-6 space-y-0">
+        {/* Connecting line */}
+        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[#30363d]" />
+
+        {TIMELINE_ENTRIES.map((entry, idx) => {
+          const dotColor = SUCCESS_COLORS[entry.successRating];
+          const textColor = SUCCESS_TEXT_COLORS[entry.successRating];
+          const isLast = idx === TIMELINE_ENTRIES.length - 1;
+
+          return (
+            <motion.div
+              key={entry.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15, delay: idx * 0.06 }}
+              className={isLast ? 'relative pb-0' : 'relative pb-4'}
+            >
+              {/* Dot */}
+              <div className={`absolute left-[-18px] top-1.5 w-3.5 h-3.5 rounded-sm ${dotColor} flex items-center justify-center`}>
+                <div className="w-1.5 h-1.5 rounded-sm bg-[#0d1117]" />
+              </div>
+
+              {/* Card */}
+              <div className="bg-[#0d1117] border border-[#21262d] rounded-md p-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[11px] font-semibold text-[#c9d1d9]">{entry.club}</p>
+                  <Badge className={`text-[7px] px-1.5 py-0 ${textColor} border border-current/20`}>{entry.successRating}</Badge>
+                </div>
+                <p className="text-[9px] text-[#8b949e] mb-1.5">{entry.league} · Season {entry.season}</p>
+                <div className="flex items-center gap-3 text-[9px]">
+                  <span className="text-[#8b949e]"><strong className="text-[#c9d1d9]">{entry.gamesPlayed}</strong> apps</span>
+                  <span className="text-emerald-400"><strong>{entry.goals}</strong> goals</span>
+                  <span className="text-sky-400"><strong>{entry.assists}</strong> ast</span>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Career Trajectory & Summary */}
+      <div className="flex items-center justify-between bg-[#0d1117] border border-[#21262d] rounded-md p-2.5">
+        <div>
+          <span className="text-[9px] text-[#484f58]">Career Trajectory</span>
+          <div className="flex items-center gap-1">
+            <Activity className={`h-3 w-3 ${trajectoryColor}`} />
+            <span className={`text-[11px] font-semibold ${trajectoryColor}`}>{trajectory}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 text-center">
+          <div>
+            <p className="text-sm font-bold text-[#c9d1d9]">{TIMELINE_ENTRIES.length}</p>
+            <p className="text-[8px] text-[#484f58]">Total Spells</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-emerald-400">{totalGoals}</p>
+            <p className="text-[8px] text-[#484f58]">Total Goals</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-sky-400">{totalAssists}</p>
+            <p className="text-[8px] text-[#484f58]">Total Assists</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-amber-400">{avgRating.toFixed(1)}</p>
+            <p className="text-[8px] text-[#484f58]">Avg Rating</p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Loan Performance Tracker
+// ============================================================
+function LoanPerformanceTracker() {
+  const trackerData = {
+    playerName: 'Adrian Silva',
+    position: 'CM' as Position,
+    destinationClub: 'Southampton',
+    startWeek: 4,
+    endWeek: 38,
+    currentWeek: 22,
+    gamesPlayed: 12,
+    expectedGames: 18,
+    goals: 2,
+    targetGoals: 5,
+    avgRating: 6.9,
+    expectedRating: 6.5,
+    ovrStart: 72,
+    ovrCurrent: 74,
+  };
+
+  const gamesPct = Math.min(100, (trackerData.gamesPlayed / trackerData.expectedGames) * 100);
+  const goalsPct = Math.min(100, (trackerData.goals / trackerData.targetGoals) * 100);
+  const ratingPct = Math.min(100, (trackerData.avgRating / 10) * 100);
+  const durationPct = ((trackerData.currentWeek - trackerData.startWeek) / (trackerData.endWeek - trackerData.startWeek)) * 100;
+
+  const perfBars = [
+    { label: 'Matches Played vs Expected', current: trackerData.gamesPlayed, target: trackerData.expectedGames, pct: gamesPct, color: 'bg-emerald-500', overColor: 'text-emerald-400' },
+    { label: 'Goals vs Target', current: trackerData.goals, target: trackerData.targetGoals, pct: goalsPct, color: 'bg-sky-500', overColor: 'text-sky-400' },
+    { label: 'Avg Rating vs Expected', current: trackerData.avgRating, target: trackerData.expectedRating, pct: ratingPct, color: 'bg-amber-500', overColor: 'text-amber-400', isDecimal: true },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: 0.15 }}
+      className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3"
+    >
+      <div className="flex items-center gap-1.5">
+        <Activity className="h-3.5 w-3.5 text-emerald-400" />
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Loan Performance Tracker</span>
+      </div>
+
+      {/* Current Loan Card */}
+      <div className="bg-[#0d1117] border border-[#21262d] rounded-md p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`${getOvrBg(trackerData.ovrCurrent)} rounded-md px-2 py-1 text-center`}>
+            <span className={`text-sm font-bold ${getOvrColor(trackerData.ovrCurrent)}`}>{trackerData.ovrCurrent}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-[#c9d1d9]">{trackerData.playerName}</p>
+            <p className="text-[9px] text-[#8b949e]">{trackerData.destinationClub} · {trackerData.position}</p>
+          </div>
+          <Badge className="text-[8px] px-1.5 py-0 bg-sky-500/10 text-sky-400 border border-sky-500/20 flex-shrink-0">
+            <Play className="h-2.5 w-2.5 inline mr-0.5" /> Active
+          </Badge>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-[#161b22] rounded-md p-1.5">
+            <p className="text-[8px] text-[#484f58]">Weeks Left</p>
+            <p className="text-xs font-bold text-[#c9d1d9]">{trackerData.endWeek - trackerData.currentWeek}</p>
+          </div>
+          <div className="bg-[#161b22] rounded-md p-1.5">
+            <p className="text-[8px] text-[#484f58]">Games Left</p>
+            <p className="text-xs font-bold text-[#c9d1d9]">{trackerData.expectedGames - trackerData.gamesPlayed}</p>
+          </div>
+          <div className="bg-[#161b22] rounded-md p-1.5">
+            <p className="text-[8px] text-[#484f58]">Duration</p>
+            <p className="text-xs font-bold text-[#c9d1d9]">{Math.round(durationPct)}%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Bars */}
+      <div className="space-y-2">
+        {perfBars.map((bar, idx) => (
+          <div key={bar.label}>
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[9px] text-[#8b949e]">{bar.label}</span>
+              <span className="text-[9px] text-[#c9d1d9]">{bar.isDecimal ? bar.current.toFixed(1) : bar.current}/{bar.isDecimal ? bar.target.toFixed(1) : bar.target}</span>
+            </div>
+            <div className="h-2 bg-[#21262d] rounded-sm overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${bar.pct}%` }}
+                transition={{ duration: 0.4, delay: idx * 0.1 }}
+                className={`h-full rounded-sm ${bar.color}`}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Development Progress */}
+      <div className="flex items-center justify-between bg-[#0d1117] border border-[#21262d] rounded-md p-2.5">
+        <div>
+          <span className="text-[9px] text-[#484f58]">OVR Change Since Loan Start</span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[10px] text-[#8b949e]">{trackerData.ovrStart}</span>
+            <ArrowRight className="h-2.5 w-2.5 text-[#484f58]" />
+            <span className="text-xs font-bold text-emerald-400">{trackerData.ovrCurrent}</span>
+            <Badge className="text-[8px] px-1.5 py-0 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+              <Plus className="h-2.5 w-2.5 inline mr-0.5" />{trackerData.ovrCurrent - trackerData.ovrStart}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2">
+        <Button className="flex-1 h-7 text-[10px] bg-red-500/10 border border-red-500/25 text-red-400 hover:bg-red-500/20 rounded-md">
+          <XCircle className="h-3 w-3 mr-1" /> Recall from Loan
+        </Button>
+        <Button className="flex-1 h-7 text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 rounded-md">
+          <Plus className="h-3 w-3 mr-1" /> Extend Loan
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Loan Financial Impact
+// ============================================================
+function LoanFinancialImpact() {
+  const finData = {
+    wagesSavedOut: 2400000,
+    wagesCostIn: 1800000,
+    loanFeesOut: 350000,
+    loanFeesIn: 800000,
+    totalNetSaving: 50000,
+    projectedSeasonSaving: 120000,
+  };
+
+  const fmtMoney = (val: number) => val >= 1000000 ? `€${(val / 1000000).toFixed(1)}M` : `€${(val / 1000).toFixed(0)}K`;
+  const budgetMax = Math.max(finData.wagesSavedOut, finData.wagesCostIn, finData.loanFeesOut + finData.loanFeesIn) * 1.2;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: 0.2 }}
+      className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3"
+    >
+      <div className="flex items-center gap-1.5">
+        <Wallet className="h-3.5 w-3.5 text-emerald-400" />
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Loan Financial Impact</span>
+      </div>
+
+      {/* Income vs Expense */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-[#0d1117] border border-[#21262d] rounded-md p-2.5">
+          <div className="flex items-center gap-1 mb-1.5">
+            <ArrowDownRight className="h-2.5 w-2.5 text-emerald-400" />
+            <span className="text-[9px] text-[#484f58]">Wage Savings (Loaned Out)</span>
+          </div>
+          <p className="text-sm font-bold text-emerald-400">{fmtMoney(finData.wagesSavedOut)}</p>
+          <div className="h-1.5 bg-[#21262d] rounded-sm mt-1.5 overflow-hidden">
+            <div className="h-full bg-emerald-500/60 rounded-sm" style={{ width: `${(finData.wagesSavedOut / budgetMax) * 100}%` }} />
+          </div>
+        </div>
+        <div className="bg-[#0d1117] border border-[#21262d] rounded-md p-2.5">
+          <div className="flex items-center gap-1 mb-1.5">
+            <DollarSign className="h-2.5 w-2.5 text-amber-400" />
+            <span className="text-[9px] text-[#484f58]">Wage Cost (Loaned In)</span>
+          </div>
+          <p className="text-sm font-bold text-amber-400">{fmtMoney(finData.wagesCostIn)}</p>
+          <div className="h-1.5 bg-[#21262d] rounded-sm mt-1.5 overflow-hidden">
+            <div className="h-full bg-amber-500/60 rounded-sm" style={{ width: `${(finData.wagesCostIn / budgetMax) * 100}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Loan Fee Breakdown */}
+      <div className="bg-[#0d1117] border border-[#21262d] rounded-md p-2.5 space-y-2">
+        <p className="text-[9px] text-[#484f58] font-semibold uppercase tracking-wide">Loan Fee Breakdown</p>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-[#8b949e]">Fees received (loaning out)</span>
+          <span className="text-emerald-400 font-medium">{fmtMoney(finData.loanFeesOut)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-[#8b949e]">Fees paid (loaning in)</span>
+          <span className="text-red-400 font-medium">-{fmtMoney(finData.loanFeesIn)}</span>
+        </div>
+        <div className="border-t border-[#21262d] pt-1.5 flex items-center justify-between text-[10px]">
+          <span className="text-[#8b949e] font-medium">Net Fee Impact</span>
+          <span className="text-red-400 font-medium">-{fmtMoney(finData.loanFeesIn - finData.loanFeesOut)}</span>
+        </div>
+      </div>
+
+      {/* Future Projection */}
+      <div className="bg-[#0d1117] border border-[#21262d] rounded-md p-2.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[9px] text-[#484f58]">Projected Season Savings</span>
+            <p className="text-base font-bold text-emerald-400 mt-0.5">{fmtMoney(finData.projectedSeasonSaving)}</p>
+          </div>
+          <div className="text-right">
+            <span className="text-[9px] text-[#484f58]">Current Net Position</span>
+            <p className={`text-base font-bold mt-0.5 ${finData.totalNetSaving >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {finData.totalNetSaving >= 0 ? '+' : ''}{fmtMoney(finData.totalNetSaving)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Budget Impact Bar */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[9px] text-[#484f58]">Budget Impact</span>
+          <span className="text-[9px] text-emerald-400 font-medium">Positive</span>
+        </div>
+        <div className="h-3 bg-[#21262d] rounded-sm overflow-hidden relative">
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[#484f58]" />
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: '54%' }}
+            transition={{ duration: 0.4 }}
+            className="h-full bg-emerald-500/50 rounded-sm"
+          />
+        </div>
+        <div className="flex justify-between mt-0.5">
+          <span className="text-[8px] text-red-400">Cost</span>
+          <span className="text-[8px] text-emerald-400">Saving</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
 // Main LoanSystem Component
 // ============================================================
 export default function LoanSystem() {
@@ -1266,9 +1891,24 @@ export default function LoanSystem() {
       </Tabs>
 
       {/* Loan Market Insights Section */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 space-y-3">
         {/* Youth Loan Opportunities */}
         <YouthLoanOpportunities candidates={allCandidates} />
+
+        {/* Loan Market Scout Board */}
+        <LoanMarketScoutBoard />
+
+        {/* Loan Comparison Matrix */}
+        <LoanComparisonMatrix />
+
+        {/* Loan History Timeline */}
+        <LoanHistoryTimeline />
+
+        {/* Loan Performance Tracker */}
+        <LoanPerformanceTracker />
+
+        {/* Loan Financial Impact */}
+        <LoanFinancialImpact />
       </div>
     </div>
   );
