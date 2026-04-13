@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -48,6 +48,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'dynamic_difficulty', icon: <Gauge className="h-5 w-5" />, label: 'Difficulty' },
       { screen: 'pre_season_camp', icon: <Tent className="h-5 w-5" />, label: 'Pre-Season' },
       { screen: 'kit_customization', icon: <Shirt className="h-5 w-5" />, label: 'Kit' },
+      { screen: 'squad_rotation', icon: <RotateCcw className="h-5 w-5" />, label: 'Rotation' },
     ],
   },
   {
@@ -70,6 +71,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'potential_journey', icon: <Route className="h-5 w-5" />, label: 'Journey' },
       { screen: 'career_legacy_profile', icon: <Crown className="h-5 w-5" />, label: 'Legacy' },
       { screen: 'career_retirement', icon: <Hourglass className="h-5 w-5" />, label: 'Retirement' },
+      { screen: 'facilities_upgrades', icon: <Building2 className="h-5 w-5" />, label: 'Facilities' },
     ],
   },
   {

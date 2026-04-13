@@ -13,7 +13,8 @@ import {
   Ban, Clock, Star, Info, Gift, Coffee, Skull,
   ThumbsUp, ThumbsDown, Eye, Timer, Crown,
   Flag, UserCheck, MessageCircle, FileText, Lightbulb,
-  CircleDot, CheckCircle2, XCircle,
+  CircleDot, CheckCircle2, XCircle, User, Dumbbell,
+  CalendarDays,
 } from 'lucide-react';
 
 // ============================================================
@@ -68,10 +69,10 @@ const MINDSET_CONFIG: Record<PlayerMindset, {
     description: 'Play it safe. Lower risk, more team contribution, steady ratings.',
     effectDescription: 'Safe play, better team integration, steady floor',
     icon: <ShieldCheck className="h-5 w-5" />,
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/30',
-    borderLeftColor: 'border-l-blue-500',
+    color: 'text-sky-400',
+    bgColor: 'bg-sky-500/10',
+    borderColor: 'border-sky-500/30',
+    borderLeftColor: 'border-l-sky-500',
     effects: [
       { label: 'Team Play', value: '+10%', positive: true },
       { label: 'Rating Floor', value: '+0.3', positive: true },
@@ -104,26 +105,23 @@ function getMoraleLevel(morale: number): {
 }
 
 function getMoraleGaugeColor(morale: number): string {
-  if (morale >= 70) return '#34d399'; // emerald
-  if (morale >= 50) return '#facc15'; // yellow
+  if (morale >= 60) return '#34d399'; // emerald
   if (morale >= 30) return '#fbbf24'; // amber
   return '#f87171'; // red
 }
 
-function getMoraleGaugeTrackSegmentColor(segmentIndex: number): string {
-  // 4 segments: 0-25 (red), 25-50 (amber), 50-75 (yellow), 75-100 (emerald)
-  switch (segmentIndex) {
+function getTeamSpiritSegmentColor(segIndex: number): string {
+  // 3 segments: 0-30 (red), 30-60 (amber), 60-100 (emerald)
+  switch (segIndex) {
     case 0: return '#f87171';
     case 1: return '#fbbf24';
-    case 2: return '#facc15';
-    case 3: return '#34d399';
+    case 2: return '#34d399';
     default: return '#30363d';
   }
 }
 
 function getMoraleBarColor(morale: number): string {
-  if (morale >= 70) return 'bg-emerald-500';
-  if (morale >= 50) return 'bg-yellow-500';
+  if (morale >= 60) return 'bg-emerald-500';
   if (morale >= 30) return 'bg-amber-500';
   return 'bg-red-500';
 }
@@ -136,10 +134,10 @@ function getFactorCategoryConfig(category: MoraleFactor['category']): {
 } {
   switch (category) {
     case 'match': return { icon: <Target className="h-3.5 w-3.5" />, label: 'Match', color: 'text-orange-400', bg: 'bg-orange-500/10' };
-    case 'personal': return { icon: <Heart className="h-3.5 w-3.5" />, label: 'Personal', color: 'text-pink-400', bg: 'bg-pink-500/10' };
-    case 'team': return { icon: <Shield className="h-3.5 w-3.5" />, label: 'Team', color: 'text-sky-400', bg: 'bg-sky-500/10' };
+    case 'personal': return { icon: <User className="h-3.5 w-3.5" />, label: 'Personal', color: 'text-pink-400', bg: 'bg-pink-500/10' };
+    case 'team': return { icon: <Users className="h-3.5 w-3.5" />, label: 'Team', color: 'text-sky-400', bg: 'bg-sky-500/10' };
     case 'contract': return { icon: <FileText className="h-3.5 w-3.5" />, label: 'Contract', color: 'text-amber-400', bg: 'bg-amber-500/10' };
-    case 'social': return { icon: <Brain className="h-3.5 w-3.5" />, label: 'Social', color: 'text-purple-400', bg: 'bg-purple-500/10' };
+    case 'social': return { icon: <MessageCircle className="h-3.5 w-3.5" />, label: 'Social', color: 'text-purple-400', bg: 'bg-purple-500/10' };
   }
 }
 
@@ -164,7 +162,7 @@ function getMoraleTips(morale: number): { icon: React.ReactNode; text: string; p
   }
   if (morale >= 30) {
     return [
-      { icon: <Bed className="h-3.5 w-3.5 text-blue-400" />, text: 'Consider a rest day to recharge mentally before the next match.', priority: 'high' },
+      { icon: <Bed className="h-3.5 w-3.5 text-sky-400" />, text: 'Consider a rest day to recharge mentally before the next match.', priority: 'high' },
       { icon: <MessageCircle className="h-3.5 w-3.5 text-purple-400" />, text: 'Talk to your agent — they might have advice to lift your spirits.', priority: 'medium' },
       { icon: <Coffee className="h-3.5 w-3.5 text-sky-400" />, text: 'Grab coffee with a teammate to build relationships and morale.', priority: 'medium' },
       { icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />, text: 'Avoid aggressive mindset — your confidence can\'t support risk-taking right now.', priority: 'low' },
@@ -295,34 +293,33 @@ function computeMoraleFactors(gameState: NonNullable<ReturnType<typeof useGameSt
 }
 
 // ============================================================
-// Generate synthetic morale history for bar chart (5 checkpoints)
+// Generate synthetic morale history for sparkline (10 weeks)
 // ============================================================
 
-function generateMoraleCheckpoints(currentMorale: number): { week: string; value: number }[] {
-  const checkpoints: { week: string; value: number }[] = [];
-  let val = currentMorale - 18 + Math.random() * 12;
-  const labels = ['W-5', 'W-4', 'W-3', 'W-2', 'Now'];
-  for (let i = 0; i < 4; i++) {
-    val = Math.max(5, Math.min(95, val + (Math.random() - 0.45) * 14));
-    checkpoints.push({ week: labels[i], value: Math.round(val) });
+function generateMoraleSparkline(currentMorale: number): { week: number; value: number }[] {
+  const data: { week: number; value: number }[] = [];
+  let val = currentMorale - 22 + Math.random() * 14;
+  for (let i = 9; i >= 1; i--) {
+    val = Math.max(5, Math.min(95, val + (Math.random() - 0.45) * 12));
+    data.push({ week: i, value: Math.round(val) });
   }
-  checkpoints.push({ week: labels[4], value: currentMorale });
-  return checkpoints;
+  data.push({ week: 0, value: currentMorale });
+  return data;
 }
 
 // ============================================================
-// Enhanced SVG Semircular Gauge Component
+// Team Spirit SVG Gauge Component (3-segment semicircle)
 // ============================================================
 
-function MoraleGauge({ morale }: { morale: number }) {
-  const radius = 80;
-  const strokeWidth = 14;
-  const cx = 100;
-  const cy = 100;
-  const startAngle = 135;
-  const endAngle = 405;
+function TeamSpiritGauge({ morale }: { morale: number }) {
+  const radius = 72;
+  const strokeWidth = 12;
+  const cx = 90;
+  const cy = 90;
+  const startAngle = 180;
+  const endAngle = 360;
   const totalArc = endAngle - startAngle;
-  const segmentCount = 4;
+  const segmentCount = 3;
 
   function polarToCartesian(angle: number) {
     const rad = (angle * Math.PI) / 180;
@@ -333,24 +330,23 @@ function MoraleGauge({ morale }: { morale: number }) {
   }
 
   const gaugeColor = getMoraleGaugeColor(morale);
-  const level = getMoraleLevel(morale);
 
-  // Build colored track segments (4 zones)
+  // 3 color segment boundaries: red 0-30, amber 30-60, emerald 60-100
+  const segmentBounds = [0, 30, 60, 100];
   const trackSegments: { d: string; color: string }[] = [];
   for (let i = 0; i < segmentCount; i++) {
-    const segStartAngle = startAngle + (i / segmentCount) * totalArc;
-    const segEndAngle = startAngle + ((i + 1) / segmentCount) * totalArc;
+    const segStartAngle = startAngle + (segmentBounds[i] / 100) * totalArc;
+    const segEndAngle = startAngle + (segmentBounds[i + 1] / 100) * totalArc;
     const segStart = polarToCartesian(segStartAngle);
     const segEnd = polarToCartesian(segEndAngle);
-    const segArc = segEndAngle - segStartAngle;
     trackSegments.push({
       d: `M ${segStart.x} ${segStart.y} A ${radius} ${radius} 0 1 1 ${segEnd.x} ${segEnd.y}`,
-      color: getMoraleGaugeTrackSegmentColor(i),
+      color: getTeamSpiritSegmentColor(i),
     });
   }
 
   // Filled arc for current morale
-  const filledArc = (morale / 100) * totalArc;
+  const filledArc = (Math.min(100, Math.max(0, morale)) / 100) * totalArc;
   const filledEndAngle = startAngle + filledArc;
   const startPt = polarToCartesian(startAngle);
   const filledEndPt = polarToCartesian(filledEndAngle);
@@ -358,13 +354,13 @@ function MoraleGauge({ morale }: { morale: number }) {
     ? `M ${startPt.x} ${startPt.y} A ${radius} ${radius} 0 ${filledArc > 180 ? 1 : 0} 1 ${filledEndPt.x} ${filledEndPt.y}`
     : '';
 
-  // Determine which segment the morale falls in for the glow
-  const activeSegment = Math.min(3, Math.floor((morale / 100) * segmentCount));
-  const segmentColor = getMoraleGaugeTrackSegmentColor(activeSegment);
+  // Indicator circle position on the arc
+  const indicatorPos = polarToCartesian(filledEndAngle);
+  const indicatorR = radius;
 
   return (
     <div className="flex flex-col items-center">
-      <svg width="200" height="130" viewBox="0 0 200 130" className="block">
+      <svg width="180" height="110" viewBox="0 0 180 110" className="block">
         {/* Colored track segments (background) */}
         {trackSegments.map((seg, i) => (
           <path
@@ -373,21 +369,10 @@ function MoraleGauge({ morale }: { morale: number }) {
             fill="none"
             stroke={seg.color}
             strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            opacity={0.2}
+            strokeLinecap="butt"
+            opacity={0.18}
           />
         ))}
-        {/* Active segment glow */}
-        <motion.path
-          d={trackSegments[activeSegment].d}
-          fill="none"
-          stroke={segmentColor}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.35 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        />
         {/* Filled arc */}
         {morale > 0 && (
           <motion.path
@@ -396,81 +381,82 @@ function MoraleGauge({ morale }: { morale: number }) {
             stroke={gaugeColor}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
-            filter="url(#gaugeGlow)"
+            filter="url(#spiritGlow)"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           />
         )}
-        {/* Zone boundary tick marks at 30, 50, 70 */}
-        {[30, 50, 70].map(zone => {
-          const zoneAngle = startAngle + (zone / 100) * totalArc;
-          const innerR = radius + strokeWidth / 2 + 2;
-          const outerR = radius + strokeWidth / 2 + 7;
-          const rad = (zoneAngle * Math.PI) / 180;
-          return (
-            <line
-              key={zone}
-              x1={cx + innerR * Math.cos(rad)}
-              y1={cy + innerR * Math.sin(rad)}
-              x2={cx + outerR * Math.cos(rad)}
-              y2={cy + outerR * Math.sin(rad)}
-              stroke="#484f58"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              opacity="0.6"
-            />
-          );
-        })}
-        {/* Zone labels on the arc */}
-        {[0, 30, 50, 70, 100].map(zone => {
-          const labelAngle = startAngle + (zone / 100) * totalArc;
+        {/* Indicator circle at current value */}
+        {morale > 0 && (
+          <motion.circle
+            cx={indicatorPos.x}
+            cy={indicatorPos.y}
+            r={6}
+            fill={gaugeColor}
+            stroke="#0d1117"
+            strokeWidth={2.5}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          />
+        )}
+        {/* Labels: Low (0), Medium (50), High (100) */}
+        {[0, 50, 100].map((val, idx) => {
+          const labelAngle = startAngle + (val / 100) * totalArc;
           const labelR = radius + strokeWidth / 2 + 16;
           const rad = (labelAngle * Math.PI) / 180;
+          const labels = ['Low', 'Medium', 'High'];
+          const colors = ['#f87171', '#fbbf24', '#34d399'];
           return (
             <text
-              key={zone}
+              key={val}
               x={cx + labelR * Math.cos(rad)}
               y={cy + labelR * Math.sin(rad)}
               textAnchor="middle"
               dominantBaseline="central"
-              className="fill-[#484f58]"
+              fill={colors[idx]}
               fontSize="9"
+              fontWeight="600"
               fontFamily="ui-sans-serif, system-ui, sans-serif"
+              opacity={0.7}
             >
-              {zone}
+              {labels[idx]}
             </text>
           );
         })}
-        {/* Center morale number */}
-        <text
+        {/* Center percentage text */}
+        <motion.text
           x={cx}
-          y={cy - 8}
+          y={cy - 4}
           textAnchor="middle"
           dominantBaseline="central"
-          className="fill-[#c9d1d9]"
-          fontSize="36"
+          fill="#c9d1d9"
+          fontSize="28"
           fontWeight="bold"
           fontFamily="ui-sans-serif, system-ui, sans-serif"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
         >
-          {morale}
-        </text>
+          {morale}%
+        </motion.text>
         <text
           x={cx}
           y={cy + 16}
           textAnchor="middle"
           dominantBaseline="central"
-          className="fill-[#8b949e]"
-          fontSize="10"
+          fill="#8b949e"
+          fontSize="9"
           fontFamily="ui-sans-serif, system-ui, sans-serif"
-          letterSpacing="2"
+          letterSpacing="1.5"
         >
-          MORALE
+          TEAM SPIRIT
         </text>
         {/* SVG filter for glow */}
         <defs>
-          <filter id="gaugeGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+          <filter id="spiritGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -478,124 +464,171 @@ function MoraleGauge({ morale }: { morale: number }) {
           </filter>
         </defs>
       </svg>
-      {/* Level label below gauge */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35 }}
-        className="flex items-center gap-1.5 mt-1"
-      >
-        <span className={level.color}>{level.icon}</span>
-        <span className={`text-sm font-bold ${level.color}`}>{level.label}</span>
-      </motion.div>
     </div>
   );
 }
 
 // ============================================================
-// Morale History Bar Chart Component (5 checkpoints)
+// Emoji Mood Indicator
 // ============================================================
 
-function MoraleBarChart({ checkpoints }: { checkpoints: { week: string; value: number }[] }) {
-  const chartHeight = 100;
-  const barWidth = 36;
-  const gap = 12;
-  const totalWidth = checkpoints.length * barWidth + (checkpoints.length - 1) * gap;
-  const padding = 8;
+function EmojiMoodIndicator({ morale }: { morale: number }) {
+  let emoji: string;
+  let tintBg: string;
+  let label: string;
+  let labelColor: string;
+
+  if (morale >= 80) {
+    emoji = '😊';
+    tintBg = 'bg-emerald-500/10';
+    label = getMoraleLevel(morale).label;
+    labelColor = 'text-emerald-400';
+  } else if (morale >= 60) {
+    emoji = '🙂';
+    tintBg = 'bg-amber-500/10';
+    label = getMoraleLevel(morale).label;
+    labelColor = 'text-amber-400';
+  } else if (morale >= 40) {
+    emoji = '😐';
+    tintBg = 'bg-[#21262d]';
+    label = getMoraleLevel(morale).label;
+    labelColor = 'text-[#8b949e]';
+  } else if (morale >= 20) {
+    emoji = '😟';
+    tintBg = 'bg-orange-500/10';
+    label = getMoraleLevel(morale).label;
+    labelColor = 'text-orange-400';
+  } else {
+    emoji = '😤';
+    tintBg = 'bg-red-500/10';
+    label = getMoraleLevel(morale).label;
+    labelColor = 'text-red-400';
+  }
 
   return (
-    <div className="flex justify-center overflow-x-auto">
-      <svg
-        width={totalWidth + padding * 2}
-        height={chartHeight + 30}
-        viewBox={`0 0 ${totalWidth + padding * 2} ${chartHeight + 30}`}
-        className="block"
-      >
-        {/* Zone background bands */}
-        <rect x={padding} y={0} width={totalWidth} height={chartHeight * 0.30} fill="#34d399" opacity="0.04" />
-        <rect x={padding} y={chartHeight * 0.30} width={totalWidth} height={chartHeight * 0.20} fill="#facc15" opacity="0.04" />
-        <rect x={padding} y={chartHeight * 0.50} width={totalWidth} height={chartHeight * 0.20} fill="#fbbf24" opacity="0.04" />
-        <rect x={padding} y={chartHeight * 0.70} width={totalWidth} height={chartHeight * 0.30} fill="#f87171" opacity="0.04" />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.1 }}
+      className="flex flex-col items-center gap-1.5"
+    >
+      <div className={`w-16 h-16 rounded-xl ${tintBg} flex items-center justify-center`}>
+        <span className="text-[48px] leading-none" role="img" aria-label="mood emoji">{emoji}</span>
+      </div>
+      <span className={`text-xs font-bold ${labelColor}`}>{label}</span>
+    </motion.div>
+  );
+}
 
-        {/* Grid lines */}
-        {[30, 50, 70].map(v => {
-          const y = chartHeight - (v / 100) * chartHeight;
-          return (
-            <line
-              key={v}
-              x1={padding}
-              y1={y}
-              x2={padding + totalWidth}
-              y2={y}
-              stroke="#21262d"
-              strokeWidth="1"
-              strokeDasharray="3 3"
-            />
-          );
-        })}
+// ============================================================
+// Morale History SVG Sparkline (10 weeks)
+// ============================================================
 
-        {/* Bars */}
-        {checkpoints.map((cp, i) => {
-          const barH = Math.max(2, (cp.value / 100) * chartHeight);
-          const x = padding + i * (barWidth + gap);
-          const y = chartHeight - barH;
-          const color = getMoraleGaugeColor(cp.value);
-          const isLast = i === checkpoints.length - 1;
+function MoraleSparkline({ data }: { data: { week: number; value: number }[] }) {
+  const vw = 200;
+  const vh = 50;
+  const padX = 4;
+  const padY = 6;
+  const chartW = vw - padX * 2;
+  const chartH = vh - padY * 2;
+  const n = data.length;
 
+  const minVal = Math.min(...data.map(d => d.value));
+  const maxVal = Math.max(...data.map(d => d.value));
+  const range = maxVal - minVal || 1;
+
+  const points = data.map((d, i) => ({
+    x: padX + (n > 1 ? (i / (n - 1)) * chartW : chartW / 2),
+    y: padY + chartH - ((d.value - minVal) / range) * chartH,
+    value: d.value,
+    week: d.week,
+  }));
+
+  const lineStr = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaStr = `${lineStr} L ${points[points.length - 1].x} ${padY + chartH} L ${points[0].x} ${padY + chartH} Z`;
+
+  const minIdx = data.findIndex(d => d.value === minVal);
+  const maxIdx = data.findIndex(d => d.value === maxVal);
+
+  return (
+    <div className="flex justify-center">
+      <svg width={vw} height={vh + 16} viewBox={`0 0 ${vw} ${vh + 16}`} className="block">
+        {/* Grid line at mid */}
+        <line x1={padX} y1={padY + chartH / 2} x2={padX + chartW} y2={padY + chartH / 2} stroke="#21262d" strokeWidth="0.5" strokeDasharray="2 2" />
+
+        {/* Area fill */}
+        <motion.path
+          d={areaStr}
+          fill="#34d399"
+          opacity={0.08}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.08 }}
+          transition={{ duration: 0.5 }}
+        />
+
+        {/* Polyline */}
+        <motion.polyline
+          points={lineStr}
+          fill="none"
+          stroke="#34d399"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        />
+
+        {/* Dot markers */}
+        {points.map((p, i) => {
+          const isLast = i === points.length - 1;
+          const isMax = i === maxIdx;
+          const isMin = i === minIdx;
           return (
             <g key={i}>
-              <motion.rect
-                x={x}
-                y={y}
-                width={barWidth}
-                height={barH}
-                rx={4}
-                fill={color}
-                opacity={isLast ? 0.9 : 0.55}
+              <motion.circle
+                cx={p.x}
+                cy={p.y}
+                r={isLast ? 3.5 : isMax || isMin ? 3 : 2}
+                fill={isLast ? '#34d399' : isMax ? '#fbbf24' : isMin ? '#f87171' : '#34d399'}
+                stroke="#0d1117"
+                strokeWidth={1.5}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: isLast ? 0.9 : 0.55 }}
-                transition={{ duration: 0.3, delay: 0.15 + i * 0.06 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.15 + i * 0.03 }}
               />
-              {/* Value label */}
-              <text
-                x={x + barWidth / 2}
-                y={y - 5}
-                textAnchor="middle"
-                className="fill-[#c9d1d9]"
-                fontSize="10"
-                fontWeight="600"
-                fontFamily="ui-sans-serif, system-ui, sans-serif"
-                opacity={isLast ? 1 : 0.6}
-              >
-                {cp.value}
-              </text>
-              {/* Week label */}
-              <text
-                x={x + barWidth / 2}
-                y={chartHeight + 16}
-                textAnchor="middle"
-                className={isLast ? 'fill-[#c9d1d9]' : 'fill-[#484f58]'}
-                fontSize="9"
-                fontWeight={isLast ? '700' : '400'}
-                fontFamily="ui-sans-serif, system-ui, sans-serif"
-              >
-                {cp.week}
-              </text>
-              {/* Current indicator */}
-              {isLast && (
-                <motion.circle
-                  cx={x + barWidth / 2}
-                  cy={chartHeight + 24}
-                  r={2}
-                  fill={color}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                />
+              {/* Min / Max labels */}
+              {(isMax || isMin) && (
+                <text
+                  x={p.x}
+                  y={p.y - (isMax ? 6 : 8)}
+                  textAnchor="middle"
+                  fill={isMax ? '#fbbf24' : '#f87171'}
+                  fontSize="7"
+                  fontWeight="700"
+                  fontFamily="ui-sans-serif, system-ui, sans-serif"
+                >
+                  {p.value}
+                </text>
               )}
             </g>
           );
         })}
+
+        {/* X-axis week labels (every other) */}
+        {points.filter((_, i) => i % 3 === 0 || i === points.length - 1).map((p, i) => (
+          <text
+            key={i}
+            x={p.x}
+            y={vh + 12}
+            textAnchor="middle"
+            fill="#484f58"
+            fontSize="7"
+            fontFamily="ui-sans-serif, system-ui, sans-serif"
+          >
+            {p.week === 0 ? 'Now' : `-${p.week}w`}
+          </text>
+        ))}
       </svg>
     </div>
   );
@@ -742,6 +775,169 @@ function TeamDynamicsCard({ dynamics, currentWeek }: { dynamics: NonNullable<Ret
 }
 
 // ============================================================
+// Morale Factor Breakdown Card (center-origin horizontal bars)
+// ============================================================
+
+function FactorBreakdownCard({ factor, index, currentWeek }: {
+  factor: MoraleFactor;
+  index: number;
+  currentWeek: number;
+}) {
+  const isPositive = factor.impact > 0;
+  const catConfig = getFactorCategoryConfig(factor.category);
+  const hasExpiry = factor.expiresWeek && factor.expiresWeek > currentWeek;
+  const absImpact = Math.abs(factor.impact);
+  const barMaxWidth = 45; // percentage of half-width
+  const maxPossibleImpact = 25;
+  const barWidth = Math.min(barMaxWidth, (absImpact / maxPossibleImpact) * barMaxWidth);
+
+  return (
+    <motion.div
+      key={factor.id}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.18 + index * 0.06 }}
+      className="p-3 rounded-lg border border-[#21262d] bg-[#0d1117]"
+    >
+      {/* Top row: icon, label, category badge, impact */}
+      <div className="flex items-center gap-2.5 mb-2.5">
+        <div className={`w-7 h-7 rounded-md ${catConfig.bg} flex items-center justify-center ${catConfig.color} shrink-0`}>
+          {catConfig.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-xs font-medium text-[#c9d1d9] truncate block">{factor.label}</span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <Badge className={`${catConfig.bg} ${catConfig.color} border-0 text-[8px]`}>
+              {catConfig.label}
+            </Badge>
+            {hasExpiry && (
+              <span className="flex items-center gap-0.5 text-[9px] text-amber-400">
+                <Clock className="h-2.5 w-2.5" />
+                Expires Wk {factor.expiresWeek}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className={`flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md ${
+          isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'
+        }`}>
+          {isPositive ? (
+            <ArrowUp className="h-3 w-3 text-emerald-400" />
+          ) : (
+            <ArrowDown className="h-3 w-3 text-red-400" />
+          )}
+          <span className={`text-[10px] font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+            {isPositive ? '+' : ''}{factor.impact}
+          </span>
+        </div>
+      </div>
+
+      {/* Center-origin horizontal bar */}
+      <div className="flex items-center gap-0 h-3">
+        {/* Left side (negative bars extend left) */}
+        <div className="flex-1 flex justify-end">
+          {!isPositive && (
+            <motion.div
+              className="h-full rounded-sm bg-red-500"
+              style={{ width: `${barWidth}%` }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.7 }}
+              transition={{ delay: 0.25 + index * 0.06 }}
+            />
+          )}
+        </div>
+        {/* Center divider */}
+        <div className="w-px h-3 bg-[#30363d] shrink-0" />
+        {/* Right side (positive bars extend right) */}
+        <div className="flex-1">
+          {isPositive && (
+            <motion.div
+              className="h-full rounded-sm bg-emerald-500"
+              style={{ width: `${barWidth}%` }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.7 }}
+              transition={{ delay: 0.25 + index * 0.06 }}
+            />
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Quick Actions Section
+// ============================================================
+
+function QuickActionsSection({ morale }: { morale: number }) {
+  const actions = [
+    {
+      id: 'team_meeting',
+      label: 'Team Meeting',
+      description: 'Rally the squad with a motivational team talk',
+      effect: '+5 Morale',
+      icon: <Users className="h-4 w-4" />,
+      color: 'text-emerald-400',
+      iconBg: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      recommended: morale < 50,
+    },
+    {
+      id: 'individual_training',
+      label: 'Individual Training',
+      description: 'Focused session to sharpen skills and confidence',
+      effect: '+3 Morale, +2 Fitness',
+      icon: <Dumbbell className="h-4 w-4" />,
+      color: 'text-sky-400',
+      iconBg: 'bg-sky-500/10',
+      borderColor: 'border-sky-500/30',
+      recommended: morale >= 50 && morale < 80,
+    },
+    {
+      id: 'rest_day',
+      label: 'Rest Day',
+      description: 'Take time off to recover physically and mentally',
+      effect: '+4 Morale, -3 Fitness',
+      icon: <Bed className="h-4 w-4" />,
+      color: 'text-purple-400',
+      iconBg: 'bg-purple-500/10',
+      borderColor: 'border-purple-500/30',
+      recommended: morale >= 80,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {actions.map((action, i) => (
+        <motion.div
+          key={action.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 + i * 0.08 }}
+          className={`p-3 rounded-lg border bg-[#161b22] ${action.borderColor} ${
+            action.recommended ? 'ring-1 ring-emerald-500/20' : ''
+          }`}
+        >
+          <div className={`w-8 h-8 rounded-lg ${action.iconBg} flex items-center justify-center ${action.color} mb-2`}>
+            {action.icon}
+          </div>
+          <span className="text-[11px] font-semibold text-[#c9d1d9] block leading-tight">{action.label}</span>
+          <span className="text-[9px] text-[#8b949e] block mt-1 leading-tight">{action.description}</span>
+          <div className="mt-2 pt-1.5 border-t border-[#21262d]">
+            <span className="text-[9px] text-emerald-400 font-medium">{action.effect}</span>
+          </div>
+          {action.recommended && (
+            <Badge className="bg-emerald-500/10 text-emerald-400 border-0 text-[8px] mt-1.5 w-full justify-center">
+              Recommended
+            </Badge>
+          )}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -755,9 +951,9 @@ export default function MoralePanel() {
     return computeMoraleFactors(gameState);
   }, [gameState]);
 
-  const moraleCheckpoints = useMemo(() => {
+  const moraleSparkline = useMemo(() => {
     if (!gameState) return [];
-    return generateMoraleCheckpoints(gameState.player.morale);
+    return generateMoraleSparkline(gameState.player.morale);
   }, [gameState]);
 
   const player = gameState?.player;
@@ -797,8 +993,8 @@ export default function MoralePanel() {
       icon: <Bed className="h-4 w-4" />,
       effect: '+3 Morale',
       cost: '-5 Fitness',
-      color: 'text-blue-400',
-      borderColor: 'border-blue-500/30',
+      color: 'text-sky-400',
+      borderColor: 'border-sky-500/30',
       disabled: playerFitness < 15,
       disabledReason: playerFitness < 15 ? 'Fitness too low' : undefined,
     },
@@ -855,7 +1051,7 @@ export default function MoralePanel() {
   return (
     <div className="max-w-lg mx-auto px-4 py-4 pb-20 space-y-4">
       {/* ══════════════════════════════════════════════════════
-          Section 1: Header + Enhanced Morale Gauge
+          Section 1: Header + Emoji Mood + Team Spirit Gauge
           ══════════════════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -875,9 +1071,14 @@ export default function MoralePanel() {
           </Badge>
         </div>
 
-        {/* Enhanced Semircular Gauge */}
-        <div className="flex justify-center py-2">
-          <MoraleGauge morale={player.morale} />
+        {/* Emoji Mood Indicator */}
+        <div className="flex justify-center mb-4">
+          <EmojiMoodIndicator morale={player.morale} />
+        </div>
+
+        {/* Team Spirit Semi-Circular Gauge */}
+        <div className="flex justify-center py-1">
+          <TeamSpiritGauge morale={player.morale} />
         </div>
 
         {/* Linear bar (compact) */}
@@ -944,7 +1145,7 @@ export default function MoralePanel() {
       </motion.div>
 
       {/* ══════════════════════════════════════════════════════
-          Section 3: Morale History Bar Chart (5 checkpoints)
+          Section 3: Morale History SVG Sparkline (10 weeks)
           ══════════════════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -955,21 +1156,20 @@ export default function MoralePanel() {
         <h2 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-2">
           <Activity className="h-4 w-4 text-[#8b949e]" />
           Morale Trend
-          <span className="text-[10px] text-[#484f58] font-normal ml-auto">Last 5 checkpoints</span>
+          <span className="text-[10px] text-[#484f58] font-normal ml-auto">Last 10 weeks</span>
         </h2>
-        <MoraleBarChart checkpoints={moraleCheckpoints} />
+        <MoraleSparkline data={moraleSparkline} />
         <div className="flex items-center justify-between mt-2 text-[10px] text-[#484f58]">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-red-400" /> Low (0-29)</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-amber-400" /> Med (30-49)</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-yellow-400" /> Avg (50-69)</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-emerald-400" /> High (70+)</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-emerald-400" /> Current</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-amber-400" /> Peak</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-red-400" /> Low</span>
           </div>
         </div>
       </motion.div>
 
       {/* ══════════════════════════════════════════════════════
-          Section 4: Morale Factors Grid (enhanced cards)
+          Section 4: Morale Factors Breakdown (center-origin bars)
           ══════════════════════════════════════════════════════ */}
       {sortedFactors.length > 0 && (
         <motion.div
@@ -981,76 +1181,50 @@ export default function MoralePanel() {
           <h2 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-2">
             <Info className="h-4 w-4 text-[#8b949e]" />
             Morale Factors
-            <span className="text-[10px] text-[#484f58] font-normal ml-auto">Sorted by impact</span>
+            <span className="text-[10px] text-[#484f58] font-normal ml-auto">Visual breakdown</span>
           </h2>
           <div className="grid grid-cols-1 gap-2">
-            {sortedFactors.map((factor, i) => {
-              const isPositive = factor.impact > 0;
-              const catConfig = getFactorCategoryConfig(factor.category);
-              const hasExpiry = factor.expiresWeek && factor.expiresWeek > currentWeek;
-              const weeksLeft = hasExpiry && factor.expiresWeek ? factor.expiresWeek - currentWeek : 0;
-
-              return (
-                <motion.div
-                  key={factor.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.18 + i * 0.04 }}
-                  className={`p-3 rounded-lg border ${
-                    isPositive
-                      ? 'bg-emerald-500/5 border-emerald-500/10'
-                      : 'bg-red-500/5 border-red-500/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    {/* Category icon */}
-                    <div className={`w-7 h-7 rounded-md ${catConfig.bg} flex items-center justify-center ${catConfig.color} shrink-0`}>
-                      {catConfig.icon}
-                    </div>
-                    {/* Label & category badge */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-[#c9d1d9] truncate">{factor.label}</span>
-                        <Badge className={`${catConfig.bg} ${catConfig.color} border-0 text-[9px] shrink-0`}>
-                          {catConfig.label}
-                        </Badge>
-                      </div>
-                    </div>
-                    {/* Impact value */}
-                    <div className={`flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-md ${
-                      isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'
-                    }`}>
-                      {isPositive ? (
-                        <ArrowUp className="h-3 w-3 text-emerald-400" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3 text-red-400" />
-                      )}
-                      <span className={`text-xs font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {isPositive ? '+' : ''}{factor.impact}
-                      </span>
-                    </div>
-                  </div>
-                  {/* Description & expiry */}
-                  <div className="flex items-center justify-between mt-1.5 pl-[38px]">
-                    <span className="text-[10px] text-[#484f58]">
-                      {isPositive ? 'Boosts morale' : 'Drains morale'} by {Math.abs(factor.impact)} points
-                    </span>
-                    {hasExpiry && (
-                      <span className="flex items-center gap-1 text-[10px] text-amber-400">
-                        <Timer className="h-3 w-3" />
-                        {weeksLeft}w left
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+            {sortedFactors.map((factor, i) => (
+              <FactorBreakdownCard
+                key={factor.id}
+                factor={factor}
+                index={i}
+                currentWeek={currentWeek}
+              />
+            ))}
+          </div>
+          {/* Legend */}
+          <div className="flex items-center justify-center gap-4 mt-3 pt-2 border-t border-[#21262d]">
+            <span className="flex items-center gap-1 text-[9px] text-[#484f58]">
+              <span className="inline-block w-3 h-1.5 rounded-sm bg-emerald-500 opacity-70" /> Positive
+            </span>
+            <span className="text-[9px] text-[#30363d]">|</span>
+            <span className="flex items-center gap-1 text-[9px] text-[#484f58]">
+              <span className="inline-block w-3 h-1.5 rounded-sm bg-red-500 opacity-70" /> Negative
+            </span>
           </div>
         </motion.div>
       )}
 
       {/* ══════════════════════════════════════════════════════
-          Section 5: Team Dynamics Card
+          Section 5: Quick Actions
+          ══════════════════════════════════════════════════════ */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+      >
+        <h2 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-[#8b949e]" />
+          Quick Actions
+          <span className="text-[10px] text-[#484f58] font-normal ml-auto">Boost your morale</span>
+        </h2>
+        <QuickActionsSection morale={player.morale} />
+      </motion.div>
+
+      {/* ══════════════════════════════════════════════════════
+          Section 6: Team Dynamics Card
           ══════════════════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -1067,7 +1241,7 @@ export default function MoralePanel() {
       </motion.div>
 
       {/* ══════════════════════════════════════════════════════
-          Section 6: Morale Tips
+          Section 7: Morale Tips
           ══════════════════════════════════════════════════════ */}
       {moraleTips.length > 0 && (
         <motion.div
@@ -1112,7 +1286,7 @@ export default function MoralePanel() {
       )}
 
       {/* ══════════════════════════════════════════════════════
-          Section 7: Boost Morale Actions
+          Section 8: Boost Morale Actions
           ══════════════════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -1174,7 +1348,7 @@ export default function MoralePanel() {
       </motion.div>
 
       {/* ══════════════════════════════════════════════════════
-          Section 8: Enhanced Mindset Selection
+          Section 9: Enhanced Mindset Selection
           ══════════════════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -1254,7 +1428,7 @@ export default function MoralePanel() {
       </motion.div>
 
       {/* ══════════════════════════════════════════════════════
-          Section 9: How Morale Works
+          Section 10: How Morale Works
           ══════════════════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}

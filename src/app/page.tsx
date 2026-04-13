@@ -67,6 +67,8 @@ import TransferMarket from '@/components/game/TransferMarket';
 import PersonalFinances from '@/components/game/PersonalFinances';
 import CareerRetirement from '@/components/game/CareerRetirement';
 import TacticalFormationBoard from '@/components/game/TacticalFormationBoard';
+import SquadRotationPlanner from '@/components/game/SquadRotationPlanner';
+import FacilitiesUpgrades from '@/components/game/FacilitiesUpgrades';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -131,6 +133,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   personal_finances: PersonalFinances,
   tactical_formation_board: TacticalFormationBoard,
   career_retirement: CareerRetirement,
+  squad_rotation: SquadRotationPlanner,
+  facilities_upgrades: FacilitiesUpgrades,
 };
 
 const gameScreens: GameScreen[] = [
@@ -162,6 +166,8 @@ const gameScreens: GameScreen[] = [
   'personal_finances',
   'tactical_formation_board',
   'career_retirement',
+  'squad_rotation',
+  'facilities_upgrades',
 ];
 
 export default function Home() {

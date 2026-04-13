@@ -7,6 +7,7 @@ import {
   Globe, Trophy, Star,
   Swords, Crown, Flame,
   Target, Zap, TrendingUp, BarChart3, Clock,
+  Shield, UserCheck, Calendar, History, MapPin, Flag, Award,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -97,7 +98,7 @@ function FormDots({ form }: { form: FormResult[] }) {
     D: 'bg-amber-400',
     L: 'bg-red-400',
   };
-  const labelMap: Record<FormResult, string> = {
+ const labelMap: Record<FormResult, string> = {
     W: 'W',
     D: 'D',
     L: 'L',
@@ -108,7 +109,7 @@ function FormDots({ form }: { form: FormResult[] }) {
       {form.map((r, i) => (
         <span
           key={i}
-          className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full ${colorMap[r]} text-[7px] font-bold text-[#0d1117]`}
+          className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-lg ${colorMap[r]} text-[7px] font-bold text-[#0d1117]`}
           title={labelMap[r]}
         >
           {labelMap[r]}
@@ -154,10 +155,10 @@ function StageStepper({
                 <motion.div
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  className={`w-4 h-4 rounded-full ${dotColor}`}
+                  className={`w-4 h-4 rounded-lg ${dotColor}`}
                 />
               ) : (
-                <div className={`w-4 h-4 rounded-full ${dotColor}`} />
+                <div className={`w-4 h-4 rounded-lg ${dotColor}`} />
               )}
               <span className={`text-[9px] font-semibold ${textColor}`}>
                 {stage.label}
@@ -208,11 +209,15 @@ function GroupTable({
       {/* Zone legend */}
       <div className="flex gap-3 px-3 py-1.5 border-b border-[#30363d]">
         <div className="flex items-center gap-1 text-[9px] text-[#8b949e]">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="w-2 h-2 rounded-sm bg-emerald-400" />
           Qualify
         </div>
         <div className="flex items-center gap-1 text-[9px] text-[#8b949e]">
-          <span className="w-2 h-2 rounded-full bg-red-400" />
+          <span className="w-2 h-2 rounded-sm bg-amber-400" />
+          Europa
+        </div>
+        <div className="flex items-center gap-1 text-[9px] text-[#8b949e]">
+          <span className="w-2 h-2 rounded-sm bg-red-400" />
           Eliminated
         </div>
       </div>
@@ -236,6 +241,7 @@ function GroupTable({
               const isPlayer = team.clubId === playerClubId;
               const gd = team.goalsFor - team.goalsAgainst;
               const qualifies = idx < 2;
+              const isEuropa = idx === 2;
               const isBottom = idx >= sorted.length - 1;
               const club = getClubById(team.clubId);
               const form = getTeamForm(fixtures, group, team.clubId);
@@ -252,9 +258,11 @@ function GroupTable({
                     className={`py-1.5 px-1.5 text-center ${
                       qualifies
                         ? 'text-emerald-400'
-                        : isBottom
-                          ? 'text-red-400'
-                          : 'text-[#8b949e]'
+                        : isEuropa
+                          ? 'text-amber-400'
+                          : isBottom
+                            ? 'text-red-400'
+                            : 'text-[#8b949e]'
                     }`}
                   >
                     <div className="flex items-center gap-1.5">
@@ -262,9 +270,11 @@ function GroupTable({
                         className={`w-0.5 self-stretch ${
                           qualifies
                             ? 'bg-emerald-400'
-                            : isBottom
-                              ? 'bg-red-400'
-                              : 'bg-transparent'
+                            : isEuropa
+                              ? 'bg-amber-400'
+                              : isBottom
+                                ? 'bg-red-400'
+                                : 'bg-transparent'
                         }`}
                       />
                       {idx + 1}
@@ -837,6 +847,408 @@ function NextMatchTimeline({
 }
 
 // ============================================================
+// NEW: Competition Tree SVG
+// ============================================================
+function CompetitionTreeSVG({
+  fixtures,
+  playerClubId,
+  knockoutRound,
+  eliminated,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+  knockoutRound: number;
+  eliminated: boolean;
+}) {
+  const stageOrder: Array<ContinentalFixture['stage']> = ['round_of_16', 'quarter_final', 'semi_final', 'final'];
+  const stageLabels = ['R16', 'QF', 'SF', 'Final'];
+
+  // Get fixtures per stage
+  const rounds = stageOrder.map(stage => ({
+    stage,
+    fixtures: fixtures.filter(f => f.stage === stage),
+  }));
+
+  const colW = 62;
+  const colGap = 10;
+  const boxH = 34;
+  const boxGap = 8;
+  const viewBoxW = 320;
+  const startY = 16;
+  const trophyX = viewBoxW - 20;
+  const trophyY = startY + 40;
+
+  // Helper to get short name
+  const getShort = (clubId: string) => {
+    const club = getClubById(clubId);
+    return club?.shortName ?? '???';
+  };
+
+  const getLogo = (clubId: string) => {
+    const club = getClubById(clubId);
+    return club?.logo ?? '⚽';
+  };
+
+  const isPlayerClub = (clubId: string) => clubId === playerClubId;
+
+  return (
+    <div className="overflow-x-auto">
+      <svg viewBox={`0 0 ${viewBoxW} 180`} className="w-full" style={{ minWidth: viewBoxW }}>
+        {/* Stage column headers */}
+        {stageLabels.map((label, i) => {
+          const x = 10 + i * (colW + colGap);
+          const isActive = !eliminated && knockoutRound > 0 && i <= knockoutRound - 1;
+          const isCurrent = !eliminated && knockoutRound > 0 && i === knockoutRound - 1;
+          return (
+            <g key={label}>
+              <rect x={x} y={2} width={colW} height={16} rx="4" fill={isCurrent ? '#10b981' : isActive ? '#21262d' : '#161b22'} stroke={isCurrent ? '#10b981' : '#30363d'} strokeWidth="0.8" />
+              <text x={x + colW / 2} y={13} textAnchor="middle" className={isCurrent ? 'fill-emerald-400' : 'fill-[#8b949e]'} fontSize="8" fontWeight="600">{label}</text>
+            </g>
+          );
+        })}
+
+        {/* Match boxes per column */}
+        {rounds.map((round, colIdx) => {
+          const x = 10 + colIdx * (colW + colGap);
+          if (round.fixtures.length === 0) {
+            return (
+              <g key={round.stage}>
+                <rect x={x} y={startY} width={colW} height={boxH} rx="4" fill="#161b22" stroke="#30363d" strokeWidth="0.8" strokeDasharray="3 2" />
+                <text x={x + colW / 2} y={startY + boxH / 2 + 3} textAnchor="middle" className="fill-[#484f58]" fontSize="7">TBD</text>
+              </g>
+            );
+          }
+          return (
+            <g key={round.stage}>
+              {round.fixtures.slice(0, 3).map((fix, fIdx) => {
+                const y = startY + fIdx * (boxH + boxGap);
+                const involvesPlayer = fix.homeClubId === playerClubId || fix.awayClubId === playerClubId;
+                const hasResult = fix.played;
+                return (
+                  <g key={fix.id}>
+                    <rect
+                      x={x}
+                      y={y}
+                      width={colW}
+                      height={boxH}
+                      rx="4"
+                      fill={involvesPlayer ? '#10b981' : '#21262d'}
+                      stroke={involvesPlayer ? '#10b981' : '#30363d'}
+                      strokeWidth="0.8"
+                    />
+                    <text x={x + 3} y={y + 13} className={involvesPlayer ? 'fill-emerald-400' : 'fill-[#c9d1d9]'} fontSize="7" fontWeight="600">{getShort(fix.homeClubId)}</text>
+                    <text x={x + colW / 2} y={y + 24} textAnchor="middle" className="fill-[#8b949e]" fontSize="7">
+                      {hasResult ? `${fix.homeScore}-${fix.awayScore}` : 'vs'}
+                    </text>
+                    <text x={x + colW - 3} y={y + 13} textAnchor="end" className={involvesPlayer ? 'fill-emerald-400' : 'fill-[#c9d1d9]'} fontSize="7" fontWeight="600">{getShort(fix.awayClubId)}</text>
+                  </g>
+                );
+              })}
+              {round.fixtures.length > 3 && (
+                <text x={x + colW / 2} y={startY + 3 * (boxH + boxGap) + 12} textAnchor="middle" className="fill-[#484f58]" fontSize="7">+{round.fixtures.length - 3} more</text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Connecting lines between columns */}
+        {rounds.slice(0, -1).map((round, colIdx) => {
+          const nextRound = rounds[colIdx + 1];
+          if (round.fixtures.length === 0 || nextRound.fixtures.length === 0) return null;
+          const x1 = 10 + colIdx * (colW + colGap) + colW;
+          const x2 = 10 + (colIdx + 1) * (colW + colGap);
+          const midX = (x1 + x2) / 2;
+          const matchCount = Math.min(round.fixtures.length, 2);
+          return (
+            <g key={`conn-${colIdx}`}>
+              {[0, 1].map(i => (
+                <line
+                  key={i}
+                  x1={x1}
+                  y1={startY + i * (boxH + boxGap) + boxH / 2}
+                  x2={midX}
+                  y2={startY + (i === 0 ? 0 : matchCount - 1) * (boxH + boxGap) + boxH / 2}
+                  stroke="#30363d"
+                  strokeWidth="0.8"
+                />
+              ))}
+              {[0, 1].map(i => (
+                <line
+                  key={`r${i}`}
+                  x1={midX}
+                  y1={startY + (i === 0 ? 0 : matchCount - 1) * (boxH + boxGap) + boxH / 2}
+                  x2={x2}
+                  y2={startY + i * (boxH + boxGap) + boxH / 2}
+                  stroke="#30363d"
+                  strokeWidth="0.8"
+                />
+              ))}
+            </g>
+          );
+        })}
+
+        {/* Trophy at the end */}
+        <g>
+          <text x={trophyX} y={trophyY + 14} textAnchor="middle" fontSize="22">🏆</text>
+          <text x={trophyX} y={trophyY + 30} textAnchor="middle" className="fill-amber-400" fontSize="7" fontWeight="600">Trophy</text>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Competition Stats Grid
+// ============================================================
+function CompetitionStatsGrid({
+  fixtures,
+  playerClubId,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+}) {
+  const stats = useMemo(() => {
+    const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+    let goalsFor = 0;
+    let cleanSheets = 0;
+    let totalRating = 0;
+    let rated = 0;
+
+    for (const f of played) {
+      const isHome = f.homeClubId === playerClubId;
+      goalsFor += isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+      if ((isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0)) === 0) cleanSheets++;
+    }
+
+    // Avg rating from recent results (approximate from form)
+    for (const f of played) {
+      const isHome = f.homeClubId === playerClubId;
+      const myGoals = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+      const oppGoals = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+      let r = 6.0;
+      if (myGoals > oppGoals) r = 7.0 + Math.min(2.0, myGoals * 0.3);
+      else if (myGoals === oppGoals) r = 6.5;
+      else r = 5.0 + Math.max(0, (oppGoals - myGoals) > 2 ? 0 : 1);
+      totalRating += r;
+      rated++;
+    }
+
+    return {
+      goalsFor,
+      cleanSheets,
+      avgRating: rated > 0 ? Math.round((totalRating / rated) * 10) / 10 : 0,
+    };
+  }, [fixtures, playerClubId]);
+
+  const cards = [
+    {
+      icon: <Target className="h-4 w-4" />,
+      label: 'Goals Scored',
+      value: stats.goalsFor,
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10',
+    },
+    {
+      icon: <Shield className="h-4 w-4" />,
+      label: 'Clean Sheets',
+      value: stats.cleanSheets,
+      color: 'text-sky-400',
+      bg: 'bg-sky-500/10',
+    },
+    {
+      icon: <Award className="h-4 w-4" />,
+      label: 'Avg Rating',
+      value: stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '-',
+      color: stats.avgRating >= 7.0 ? 'text-amber-400' : 'text-[#8b949e]',
+      bg: stats.avgRating >= 7.0 ? 'bg-amber-500/10' : 'bg-[#21262d]',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {cards.map(c => (
+        <div key={c.label} className={`${c.bg} rounded-lg p-3 text-center`}>
+          <div className="flex items-center justify-center gap-1 mb-1">
+            <span className={c.color}>{c.icon}</span>
+            <span className="text-[9px] text-[#8b949e]">{c.label}</span>
+          </div>
+          <span className={`text-xl font-bold block ${c.color}`}>{c.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Opponent Scout Cards
+// ============================================================
+function OpponentScoutCards({
+  nextMatch,
+  continentalFixtures,
+  playerClubId,
+}: {
+  nextMatch: ContinentalFixture;
+  continentalFixtures: ContinentalFixture[];
+  playerClubId: string;
+}) {
+  const opponentClubId = nextMatch.homeClubId === playerClubId ? nextMatch.awayClubId : nextMatch.homeClubId;
+  const club = getClubById(opponentClubId);
+  const countries = ['🇪🇸', '🇬🇧', '🇩🇪', '🇫🇷', '🇮🇹', '🇵🇹', '🇳🇱', '🇧🇪'];
+
+  const form = continentalFixtures.filter(f => f.played && (f.homeClubId === opponentClubId || f.awayClubId === opponentClubId)).slice(0, 4).map(f => {
+    const isHome = f.homeClubId === opponentClubId;
+    const myG = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+    const oppG = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+    return myG > oppG ? 'W' as const : myG < oppG ? 'L' as const : 'D' as const;
+  });
+
+  const wins = form.filter(r => r === 'W').length;
+  const ovr = Math.min(95, Math.max(60, 75 + (wins * 3) - (form.filter(r => r === 'L').length * 2)));
+  const country = countries[(club?.id ?? 'X').charCodeAt(0) % countries.length] ?? '🏴';
+
+  // Historical record against player's club
+  const headToHead = continentalFixtures.filter(
+    f => f.played && ((f.homeClubId === playerClubId && f.awayClubId === opponentClubId) || (f.awayClubId === playerClubId && f.homeClubId === opponentClubId))
+  );
+  const h2hWins = headToHead.filter(f => {
+    const isHome = f.homeClubId === playerClubId;
+    const myG = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+    const oppG = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+    return myG > oppG;
+  }).length;
+  const h2hDraws = headToHead.filter(f => {
+    const isHome = f.homeClubId === playerClubId;
+    const myG = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+    const oppG = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+    return myG === oppG;
+  }).length;
+  const h2hLosses = headToHead.length - h2hWins - h2hDraws;
+
+  return (
+    <div className="bg-[#21262d] rounded-lg p-3 space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-[#1c2333] flex items-center justify-center text-lg">{club?.logo ?? '⚽'}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-[#c9d1d9]">{club?.name ?? '???'}</span>
+            <span className="text-sm">{country}</span>
+          </div>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-[10px] text-[#8b949e]"><span className="text-[#c9d1d9] font-semibold">OVR</span> {ovr}</span>
+            <span className="text-[10px] text-[#8b949e]"><span className="text-[#c9d1d9] font-semibold">Key:</span> {club?.shortName ?? 'Player'}</span>
+          </div>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-[9px] text-[#484f58]">Form:</span>
+            {form.length > 0 ? (
+              <FormDots form={form} />
+            ) : (
+              <span className="text-[9px] text-[#484f58]">No data</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Historical record */}
+      <div className="border-t border-[#30363d] pt-2">
+        <p className="text-[10px] text-[#8b949e] font-semibold mb-1.5">Head-to-Head Record</p>
+        {headToHead.length > 0 ? (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-sm bg-emerald-400 text-[7px] font-bold text-[#0d1117] flex items-center justify-center">{h2hWins}</span>
+              <span className="text-[9px] text-emerald-400">{h2hWins}W</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-sm bg-amber-400 text-[7px] font-bold text-[#0d1117] flex items-center justify-center">{h2hDraws}</span>
+              <span className="text-[9px] text-amber-400">{h2hDraws}D</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-sm bg-red-400 text-[7px] font-bold text-[#0d1117] flex items-center justify-center">{h2hLosses}</span>
+              <span className="text-[9px] text-red-400">{h2hLosses}L</span>
+            </div>
+            <span className="text-[9px] text-[#484f58]">({headToHead.length} matches)</span>
+          </div>
+        ) : (
+          <p className="text-[9px] text-[#484f58]">No previous meetings in this competition.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Continental History Panel
+// ============================================================
+function ContinentalHistoryPanel({
+  currentClub,
+  currentSeason,
+}: {
+  currentClub: { id: string; name: string; shortName: string; logo: string };
+  currentSeason: number;
+}) {
+  // Deterministic past campaigns
+  const campaigns = useMemo(() => {
+    const compNames = ['Champions League', 'Europa League', 'Conference League'];
+    const finishes = ['Winner', 'Runner-up', 'Semi-Final', 'Quarter-Final', 'Group Stage', 'R16'];
+    const seasons = Math.min(currentSeason - 1, 5);
+    const result: Array<{ season: number; competition: string; finish: string }> = [];
+
+    for (let i = 0; i < seasons; i++) {
+      const s = currentSeason - 1 - i;
+      const seedVal = (currentClub.id.charCodeAt(0) * 7 + s * 13) % 100;
+      const compIdx = seedVal % 3;
+      const finishIdx = Math.min(finishes.length - 1, Math.floor(seedVal / 25));
+      result.push({ season: s, competition: compNames[compIdx], finish: finishes[finishIdx] });
+    }
+    return result;
+  }, [currentClub.id, currentSeason]);
+
+  if (campaigns.length === 0) {
+    return (
+      <p className="text-xs text-[#484f58] text-center py-3">No previous continental campaigns.</p>
+    );
+  }
+
+  const finishColors: Record<string, string> = {
+    'Winner': 'text-amber-400',
+    'Runner-up': 'text-sky-400',
+    'Semi-Final': 'text-purple-400',
+    'Quarter-Final': 'text-emerald-400',
+    'Group Stage': 'text-[#8b949e]',
+    'R16': 'text-[#c9d1d9]',
+  };
+  const finishEmojis: Record<string, string> = {
+    'Winner': '🏆',
+    'Runner-up': '🥈',
+    'Semi-Final': '🥉',
+    'Quarter-Final': '⭐',
+    'Group Stage': '📋',
+    'R16': '📅',
+  };
+
+  return (
+    <div className="space-y-2 max-h-48 overflow-y-auto">
+      {campaigns.map(c => (
+        <div key={`${c.season}-${c.competition}`} className="flex items-center gap-3 p-2 rounded-lg bg-[#21262d]">
+          <div className="w-8 h-8 rounded-lg bg-[#1c2333] flex items-center justify-center text-xs shrink-0">
+            {c.competition === 'Champions League' ? '🇪🇺' : c.competition === 'Europa League' ? '🟠' : '🔵'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-[#8b949e]">S{c.season}</span>
+              <span className="text-[10px] text-[#c9d1d9] font-medium truncate">{c.competition}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-xs">{finishEmojis[c.finish]}</span>
+            <span className={`text-[10px] font-semibold ${finishColors[c.finish] ?? 'text-[#8b949e]'}`}>{c.finish}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -1372,6 +1784,55 @@ export default function ContinentalPanel() {
                 fixtures={continentalFixtures}
               />
             )}
+
+            {/* Competition Tree (SVG) */}
+            <div className="rounded-lg bg-[#161b22] border border-[#30363d] p-4">
+              <h3 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-1.5">
+                <Trophy className="h-4 w-4 text-amber-400" /> Tournament Path
+              </h3>
+              <CompetitionTreeSVG
+                fixtures={continentalFixtures}
+                playerClubId={currentClub.id}
+                knockoutRound={continentalKnockoutRound}
+                eliminated={continentalEliminated}
+              />
+            </div>
+
+            {/* Competition Stats (3-column) */}
+            <div className="rounded-lg bg-[#161b22] border border-[#30363d] p-4">
+              <h3 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-1.5">
+                <BarChart3 className="h-4 w-4 text-emerald-400" /> Competition Stats
+              </h3>
+              <CompetitionStatsGrid
+                fixtures={continentalFixtures}
+                playerClubId={currentClub.id}
+              />
+            </div>
+
+            {/* Opponent Scout Cards */}
+            {nextMatch && (
+              <div className="rounded-lg bg-[#161b22] border border-[#30363d] p-4">
+                <h3 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-1.5">
+                  <Swords className="h-4 w-4 text-sky-400" /> Opponent Scout
+                </h3>
+                <OpponentScoutCards
+                  nextMatch={nextMatch}
+                  continentalFixtures={continentalFixtures}
+                  playerClubId={currentClub.id}
+                />
+              </div>
+            )}
+
+            {/* Continental History */}
+            <div className="rounded-lg bg-[#161b22] border border-[#30363d] p-4">
+              <h3 className="text-sm font-semibold text-[#c9d1d9] mb-3 flex items-center gap-1.5">
+                <History className="h-4 w-4 text-purple-400" /> Continental History
+              </h3>
+              <ContinentalHistoryPanel
+                currentClub={currentClub}
+                currentSeason={currentSeason}
+              />
+            </div>
 
             {/* Match schedule */}
             <div className="rounded-lg bg-[#161b22] border border-[#30363d] p-4">

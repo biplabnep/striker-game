@@ -32,6 +32,11 @@ import {
   Music,
   Zap,
   ArrowLeft,
+  ShoppingCart,
+  Ticket,
+  Hash,
+  Percent,
+  UserCheck,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -641,6 +646,273 @@ function BrandCategoryRow({ cat, avg }: { cat: BrandCategory; avg: number }) {
 }
 
 // ============================================================
+// NEW: Supporter Base Donut Chart (SVG)
+// ============================================================
+function SupporterDonutChart({ demographics, totalFans }: { demographics: { local: number; national: number; international: number }; totalFans: number }) {
+  const home = demographics.local;
+  const away = Math.round(demographics.national * 0.4);
+  const intl = demographics.international;
+  const casual = 100 - home - away - intl;
+  const segments = [
+    { label: 'Home', value: home, color: '#10b981' },
+    { label: 'Away', value: away, color: '#38bdf8' },
+    { label: 'International', value: intl, color: '#f59e0b' },
+    { label: 'Casual', value: Math.max(0, casual), color: '#a855f7' },
+  ];
+
+  const cx = 40, cy = 40, r = 28, strokeWidth = 10;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  const arcs = segments.map(seg => {
+    const len = (seg.value / 100) * circumference;
+    const dashArray = `${len} ${circumference - len}`;
+    const dashOffset = -offset;
+    offset += len;
+    return { ...seg, dashArray, dashOffset };
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <svg viewBox="0 0 80 80" className="w-20 h-20">
+        {arcs.map((arc, i) => (
+          <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={arc.color} strokeWidth={strokeWidth}
+            strokeDasharray={arc.dashArray} strokeDashoffset={arc.dashOffset} strokeLinecap="butt" />
+        ))}
+        <text x={cx} y={cy - 2} textAnchor="middle" className="fill-[#c9d1d9]" fontSize="11" fontWeight="bold">{formatNumber(totalFans)}</text>
+        <text x={cx} y={cy + 9} textAnchor="middle" className="fill-[#8b949e]" fontSize="6">fans</text>
+      </svg>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+        {segments.map(seg => (
+          <span key={seg.label} className="flex items-center gap-1 text-[10px] text-[#8b949e]">
+            <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: seg.color }} />
+            {seg.label} {seg.value}%
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Engagement Trend Line Chart (SVG)
+// ============================================================
+function EngagementTrendChart({ data }: { data: number[] }) {
+  const w = 280, h = 80, px = 30, py = 8, pw = w - px - 6, ph = h - py - 16;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = px + (i / (data.length - 1)) * pw;
+    const y = py + ph - ((v - min) / range) * ph;
+    return `${x},${y}`;
+  });
+  const polyStr = pts.join(' ');
+  const areaStr = `${pts[0]} ${pts.map(p => p.split(',')[0]).slice(1).join(' ')} ${pts[pts.length - 1]} ${px + pw},${py + ph} ${px},${py + ph}`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+      {/* Grid lines */}
+      {[0, 0.33, 0.66, 1].map((f, i) => {
+        const y = py + ph - f * ph;
+        const val = Math.round(min + f * range);
+        return (
+          <g key={i}>
+            <line x1={px} y1={y} x2={px + pw} y2={y} stroke="#30363d" strokeWidth="0.5" />
+            <text x={px - 4} y={y + 3} textAnchor="end" className="fill-[#8b949e]" fontSize="6">{val}</text>
+          </g>
+        );
+      })}
+      {/* Filled area */}
+      <polygon points={areaStr} fill="#10b981" opacity="0.15" />
+      {/* Line */}
+      <polyline points={polyStr} fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Dots */}
+      {data.map((v, i) => {
+        const x = px + (i / (data.length - 1)) * pw;
+        const y = py + ph - ((v - min) / range) * ph;
+        return <circle key={i} cx={x} cy={y} r="2" fill="#10b981" />;
+      })}
+      {/* X-axis labels */}
+      {data.map((_, i) => {
+        const x = px + (i / (data.length - 1)) * pw;
+        return <text key={i} x={x} y={h - 2} textAnchor="middle" className="fill-[#484f58]" fontSize="6">W{i + 1}</text>;
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// NEW: Social Media Reach Card
+// ============================================================
+function SocialMediaReachCard({ profiles, playerName, week }: { profiles: SocialProfile[]; playerName: string; week: number }) {
+  const totalFollowers = profiles.reduce((s, p) => s + p.followers, 0);
+  const prevTotal = Math.max(100, totalFollowers - seededInt(playerName, week, 'st', 200, 2000));
+  const trend = totalFollowers >= prevTotal ? 'up' : 'down';
+  const trendPct = Math.round(Math.abs((totalFollowers - prevTotal) / prevTotal) * 100);
+  const mentions = seededInt(playerName, week, 'sm', 50, 5000);
+  const hashtagPop = seededInt(playerName, week, 'hp', 30, 95);
+  const twPct = Math.round((profiles[0]?.followers ?? 0) / totalFollowers * 100);
+  const igPct = Math.round((profiles[1]?.followers ?? 0) / totalFollowers * 100);
+  const ttPct = 100 - twPct - igPct;
+
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Social Reach</p>
+          <p className="text-xl font-bold text-[#c9d1d9] mt-0.5">{formatNumber(totalFollowers)}</p>
+        </div>
+        <div className={`flex items-center gap-1 text-xs font-semibold ${trend === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
+          {trend === 'up' ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+          {trendPct}%
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Hash className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-[10px] text-[#8b949e]">Hashtag Popularity</span>
+            <span className="text-[10px] font-bold text-amber-400">{hashtagPop}%</span>
+          </div>
+          <div className="h-1.5 bg-slate-700/50 rounded-sm overflow-hidden">
+            <div className="h-full rounded-sm bg-amber-500" style={{ width: `${hashtagPop}%` }} />
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <MessageCircle className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+        <span className="text-[11px] text-[#c9d1d9]">{formatNumber(mentions)} mentions this week</span>
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-[10px] text-[#8b949e] font-medium">Platform Breakdown</p>
+        {[{ label: 'Twitter', pct: twPct, color: 'bg-sky-500' }, { label: 'Instagram', pct: igPct, color: 'bg-pink-500' }, { label: 'TikTok', pct: Math.max(0, ttPct), color: 'bg-violet-500' }].map(p => (
+          <div key={p.label} className="flex items-center gap-2">
+            <span className="text-[9px] text-[#8b949e] w-16">{p.label}</span>
+            <div className="flex-1 h-2 bg-slate-700/50 rounded-sm overflow-hidden">
+              <div className={`h-full rounded-sm ${p.color}`} style={{ width: `${p.pct}%` }} />
+            </div>
+            <span className="text-[9px] text-[#c9d1d9] w-7 text-right">{p.pct}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Terrace Chatter Section
+// ============================================================
+function TerraceChatter({ playerName, week, form, mood }: { playerName: string; week: number; form: number; mood: FanMood }) {
+  const chatterPool = {
+    ecstatic: [
+      `We are going to win the league this season! ${playerName} is unreal!`,
+      `Best atmosphere I've ever experienced at the ground. Incredible times!`,
+      `${playerName} >> every other player in the league. Not even close.`,
+      `The future is ours! With ${playerName} leading the charge, anything is possible!`,
+    ],
+    happy: [
+      `Good run of form lately. ${playerName} looking sharp every match.`,
+      `Top half finish looking likely. ${playerName} making the difference.`,
+      `European football next season? With ${playerName}, why not!`,
+      `Love watching this team play. ${playerName} brings something special.`,
+    ],
+    neutral: [
+      `Decent season so far. Could go either way from here.`,
+      `${playerName} needs to find consistency. Flashes of brilliance but too many quiet games.`,
+      `Mid-table is fine for now, but we want more. Push on, lads!`,
+      `The gaffer needs to sort out the tactics. ${playerName} can only do so much alone.`,
+    ],
+    frustrated: [
+      `This is getting worrying. ${playerName} has gone off the boil recently.`,
+      `How many points dropped from winning positions?! Unacceptable.`,
+      `We need reinforcements in January. ${playerName} can't carry this team forever.`,
+      `The board needs to back the manager. This squad isn't good enough.`,
+    ],
+    angry: [
+      `RELEGATION BATTLE?! How has it come to this?!`,
+      `${playerName} is wasted in this team. Honestly feel sorry for the lad.`,
+      `Sack the manager! Sack the board! Disgrace of a season!`,
+      `I've supported this club for 30 years and this is rock bottom. Disgraceful.`,
+    ],
+  };
+
+  const pool = chatterPool[mood] ?? chatterPool.neutral;
+  const selected = pool.slice(0, 3).map((text, i) => {
+    const nIdx = seededInt(playerName, week, `tc${i}`, 0, 7);
+    const names = ['TerraceLegend', 'COYS_88', 'NorthStandArmy', 'MatchDayDave', 'FaithfulFan', 'UltraVoice', 'StandUpIfYou', 'GroveEndCrew'];
+    const avatars = ['\u26bd', '\ud83c\udfc6', '\ud83d\udd25', '\u2b50', '\ud83c\udfc8', '\ud83e\udd47', '\ud83d\udc63', '\ud83d\ude4c'];
+    return { name: names[nIdx], text, avatar: avatars[nIdx] };
+  });
+
+  const moodColors: Record<FanMood, string> = {
+    ecstatic: 'border-emerald-500/20',
+    happy: 'border-emerald-500/10',
+    neutral: 'border-[#30363d]',
+    frustrated: 'border-orange-500/20',
+    angry: 'border-red-500/20',
+  };
+
+  return (
+    <div className="space-y-2">
+      {selected.map((c, i) => (
+        <div key={i} className={`flex gap-2.5 p-2.5 rounded-lg bg-[#161b22] border ${moodColors[mood]}`}>
+          <div className="w-7 h-7 rounded-lg bg-[#21262d] flex items-center justify-center text-xs shrink-0">{c.avatar}</div>
+          <div className="flex-1 min-w-0">
+            <span className="text-[10px] font-semibold text-emerald-400">{c.name}</span>
+            <p className="text-[11px] text-[#8b949e] leading-relaxed mt-0.5">{c.text}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Merchandise Sales Card
+// ============================================================
+function MerchandiseSalesCard({ playerName, reputation, week }: { playerName: string; reputation: number; week: number }) {
+  const jerseySales = Math.max(50, reputation * 30 + seededInt(playerName, week, 'js', 100, 2000));
+  const seasonTickets = Math.max(500, reputation * 80 + seededInt(playerName, week, 'st', 200, 5000));
+  const fillRate = Math.min(98, Math.max(55, reputation * 2 + seededInt(playerName, week, 'fr', 50, 85)));
+  const capacity = 60000;
+
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <ShoppingCart className="h-3.5 w-3.5 text-amber-400" />
+        <span className="text-xs text-[#8b949e] font-semibold">Merchandise & Tickets</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-base">\ud83d\udc63</span>
+            <span className="text-[10px] text-[#8b949e]">Jersey Sales</span>
+          </div>
+          <span className="text-sm font-bold text-[#c9d1d9]">{formatNumber(jerseySales)}</span>
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Ticket className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] text-[#8b949e]">Season Tickets</span>
+          </div>
+          <span className="text-sm font-bold text-[#c9d1d9]">{formatNumber(seasonTickets)}</span>
+        </div>
+      </div>
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] text-[#8b949e]">Stadium Fill Rate</span>
+          <span className={`text-[10px] font-bold ${fillRate >= 90 ? 'text-emerald-400' : fillRate >= 75 ? 'text-amber-400' : 'text-red-400'}`}>{fillRate}%</span>
+        </div>
+        <div className="h-2 bg-slate-700/50 rounded-sm overflow-hidden">
+          <div className={`h-full rounded-sm ${fillRate >= 90 ? 'bg-emerald-500' : fillRate >= 75 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${fillRate}%` }} />
+        </div>
+        <span className="text-[9px] text-[#484f58]">{formatNumber(Math.round(capacity * fillRate / 100))} / {formatNumber(capacity)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -753,8 +1025,55 @@ export default function FanEngagement() {
 
           {/* ====== TAB 1: FAN BASE ====== */}
           <TabsContent value="fans" className="mt-3 space-y-3">
-            {/* Fan Count */}
+            {/* Fan Mood Emoji Display — at the very top after header */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+              <Card className="bg-[#161b22] border-[#30363d]">
+                <CardContent className="p-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className={`w-16 h-16 rounded-xl ${(() => {
+                      if (fanData.moodScore >= 80) return 'bg-emerald-500/15';
+                      if (fanData.moodScore >= 60) return 'bg-green-500/15';
+                      if (fanData.moodScore >= 40) return 'bg-amber-500/15';
+                      if (fanData.moodScore >= 20) return 'bg-orange-500/15';
+                      return 'bg-red-500/15';
+                    })()} flex items-center justify-center`}>
+                      <motion.span
+                        className="text-[48px] leading-none"
+                        animate={{ opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        {(() => {
+                          if (fanData.moodScore >= 80) return '\ud83e\udd73';
+                          if (fanData.moodScore >= 60) return '\ud83d\ude0a';
+                          if (fanData.moodScore >= 40) return '\ud83d\ude10';
+                          if (fanData.moodScore >= 20) return '\ud83d\ude15';
+                          return '\ud83d\ude21';
+                        })()}
+                      </motion.span>
+                    </div>
+                    <div className="text-center">
+                      <p className={`text-sm font-bold ${(() => {
+                        if (fanData.moodScore >= 80) return 'text-emerald-400';
+                        if (fanData.moodScore >= 60) return 'text-green-400';
+                        if (fanData.moodScore >= 40) return 'text-amber-400';
+                        if (fanData.moodScore >= 20) return 'text-orange-400';
+                        return 'text-red-400';
+                      })()}`}>{fanData.moodScore}% Fan Satisfaction</p>
+                      <p className="text-[10px] text-[#484f58]">{(() => {
+                        if (fanData.moodScore >= 80) return 'Title chase — fans are ecstatic!';
+                        if (fanData.moodScore >= 60) return 'Good form — fans are happy!';
+                        if (fanData.moodScore >= 40) return 'Mid-table — fans are neutral.';
+                        if (fanData.moodScore >= 20) return 'Bad form — fans are concerned.';
+                        return 'Relegation battle — fans are furious!';
+                      })()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Fan Count */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.05 }}>
               <Card className="bg-[#161b22] border-[#30363d]">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -771,7 +1090,7 @@ export default function FanEngagement() {
             </motion.div>
 
             {/* Fan Growth Chart */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.05 }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.1 }}>
               <Card className="bg-[#161b22] border-[#30363d]">
                 <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
@@ -798,34 +1117,51 @@ export default function FanEngagement() {
               </Card>
             </motion.div>
 
-            {/* Fan Mood */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.15 }}>
+            {/* Supporter Base Distribution Donut Chart */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.17 }}>
               <Card className="bg-[#161b22] border-[#30363d]">
                 <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
-                    <Heart className="h-3.5 w-3.5 text-rose-400" /> Fan Mood
+                    <UserCheck className="h-3.5 w-3.5 text-emerald-400" /> Supporter Base
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-3">
-                  <FanMoodDisplay mood={fanData.mood} score={fanData.moodScore} />
+                <CardContent className="px-4 pb-4">
+                  <SupporterDonutChart demographics={fanData.demographics} totalFans={fanData.totalFans} />
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Fan Comments */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.2 }}>
+            {/* Fan Engagement Trend */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.19 }}>
               <Card className="bg-[#161b22] border-[#30363d]">
                 <CardHeader className="pb-2 pt-3 px-4">
                   <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
-                    <MessageCircle className="h-3.5 w-3.5 text-amber-400" /> Fan Comments
+                    <TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> Engagement Trend (Last 8 Weeks)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-2 pb-2 max-h-72 overflow-y-auto">
-                  <div className="divide-y divide-[#21262d]">
-                    {fanComments.map((c, i) => <FanComment key={i} comment={c} index={i} />)}
-                  </div>
+                <CardContent className="px-4 pb-3">
+                  <EngagementTrendChart data={fanData.growthHistory.slice(-8)} />
                 </CardContent>
               </Card>
+            </motion.div>
+
+            {/* Terrace Chatter */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.21 }}>
+              <Card className="bg-[#161b22] border-[#30363d]">
+                <CardHeader className="pb-2 pt-3 px-4">
+                  <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-amber-400" /> Terrace Chatter
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <TerraceChatter playerName={player.name} week={week} form={player.form} mood={fanData.mood} />
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Merchandise Sales */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.22 }}>
+              <MerchandiseSalesCard playerName={player.name} reputation={playerReputation} week={week} />
             </motion.div>
           </TabsContent>
 
@@ -847,6 +1183,11 @@ export default function FanEngagement() {
                   ))}
                 </CardContent>
               </Card>
+            </motion.div>
+
+            {/* Social Media Reach */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.05 }}>
+              <SocialMediaReachCard profiles={socialProfiles} playerName={player.name} week={week} />
             </motion.div>
 
             {/* New Post Button */}
