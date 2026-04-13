@@ -155,3 +155,35 @@
 .animate-ticker:hover {
   animation-play-state: paused;
 }
+
+/* Breaking news ticker animation */
+@keyframes breaking-ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-breaking-ticker {
+  animation: breaking-ticker 50s linear infinite;
+}
+
+.animate-breaking-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* Confidence bar fill animation */
+@keyframes confidence-fill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: var(--confidence-width);
+  }
+}
+
+.animate-confidence-fill {
+  animation: confidence-fill 0.8s ease-out forwards;
+}

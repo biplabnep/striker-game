@@ -11,10 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   Calendar, TrendingUp, TrendingDown, Zap, Heart, Activity, Trophy,
-  ArrowRight, Bell, Star, Swords, Table, ChevronRight, Flame,
+  ArrowRight, ArrowRightLeft, Bell, Star, Swords, Table, ChevronRight, Flame,
   ArrowUp, ArrowDown, Minus, Target, Goal, CircleDot, FileText, UserCircle,
   Dumbbell, BarChart3, Shield, MapPin, Clock, Users, Sparkles,
-  GraduationCap, ArrowUpCircle, Crosshair, History
+  GraduationCap, ArrowUpCircle, Crosshair, History, Wallet, Handshake, Mic
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WeeklySummary from '@/components/game/WeeklySummary';
@@ -639,6 +639,65 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Quick Actions Row — pill buttons */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        <button
+          onClick={() => setScreen('training')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+        >
+          <Dumbbell className="h-3.5 w-3.5" />
+          Train Now
+        </button>
+        <button
+          onClick={() => setScreen('league_table')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#21262d] border border-[#30363d] text-[#c9d1d9] text-xs font-medium hover:bg-[#30363d] transition-colors"
+        >
+          <Table className="h-3.5 w-3.5" />
+          View Table
+        </button>
+        <button
+          onClick={() => setScreen('transfers')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#21262d] border border-[#30363d] text-[#c9d1d9] text-xs font-medium hover:bg-[#30363d] transition-colors"
+        >
+          <ArrowRightLeft className="h-3.5 w-3.5" />
+          Check Transfers
+        </button>
+        <button
+          onClick={() => setScreen('press_conference')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#21262d] border border-[#30363d] text-[#c9d1d9] text-xs font-medium hover:bg-[#30363d] transition-colors"
+        >
+          <Mic className="h-3.5 w-3.5" />
+          Press Conference
+        </button>
+      </div>
+
+      {/* Financial Overview Card */}
+      <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+        <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Financial Overview</CardTitle>
+          <Wallet className="h-3.5 w-3.5 text-[#8b949e]" />
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-[#0d1117] border border-[#21262d]">
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-xs font-bold text-emerald-400">{formatCurrency(player.marketValue, 'M')}</span>
+              <span className="text-[9px] text-[#484f58] font-medium">Market Value</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-[#0d1117] border border-[#21262d]">
+              <Wallet className="h-3.5 w-3.5 text-amber-400" />
+              <span className="text-xs font-bold text-amber-400">{formatCurrency(player.contract.weeklyWage, 'K')}</span>
+              <span className="text-[9px] text-[#484f58] font-medium">Weekly Wage</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-[#0d1117] border border-[#21262d]">
+              <FileText className="h-3.5 w-3.5 text-cyan-400" />
+              <span className="text-xs font-bold text-cyan-400">{player.contract.yearsRemaining}yr</span>
+              <span className="text-[9px] text-[#484f58] font-medium">Contract Left</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Section Header: Quick Actions */}
       <div className="flex items-center gap-2 mb-1">
         <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Quick Actions</span>
@@ -898,23 +957,21 @@ export default function Dashboard() {
 
       {/* Match Day Countdown Card */}
       {nextOpponent && nextFixture && winProbability && (
-        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+        <Card className={`bg-[#161b22] border-[#30363d] overflow-hidden border-l-[3px] ${isHome ? 'border-l-emerald-500' : 'border-l-amber-500'}`}>
 
           <CardHeader className="pb-2 pt-3 px-4 relative">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Next Match</CardTitle>
               <div className="flex items-center gap-1.5">
+                {/* Match Day indicator */}
+                <Badge className={`text-[9px] font-bold ${isHome ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'}`}>
+                  {isHome ? '🏠 HOME' : '✈️ AWAY'}
+                </Badge>
                 {/* Competition Badge */}
                 <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e]">
                   {nextFixture.competition === 'league' ? '🏆 League' :
                    nextFixture.competition === 'cup' ? '🏆 Cup' :
                    nextFixture.competition === 'continental' ? '🌍 Continental' : '🤝 Friendly'}
-                </Badge>
-                {/* Home/Away Badge */}
-                <Badge className={`text-[10px] font-bold ${
-                  isHome ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
-                }`}>
-                  {isHome ? 'HOME' : 'AWAY'}
                 </Badge>
               </div>
             </div>

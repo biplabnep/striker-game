@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -56,6 +56,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'manager_office', icon: <Briefcase className="h-5 w-5" />, label: 'Manager' },
       { screen: 'player_agent_hub', icon: <UserRound className="h-5 w-5" />, label: 'Agent' },
       { screen: 'career_milestones', icon: <Trophy className="h-5 w-5" />, label: 'Milestones' },
+      { screen: 'achievements_system', icon: <Award className="h-5 w-5" />, label: 'Achievements' },
     ],
   },
   {
@@ -86,6 +87,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'events', icon: <Bell className="h-5 w-5" />, label: 'Events' },
       { screen: 'world_football_news', icon: <Newspaper className="h-5 w-5" />, label: 'News' },
       { screen: 'post_match_analysis', icon: <FileText className="h-5 w-5" />, label: 'Analysis' },
+      { screen: 'press_conference', icon: <Mic className="h-5 w-5" />, label: 'Press Conf' },
     ],
   },
   {
@@ -103,6 +105,13 @@ const moreCategories: NavCategory[] = [
       { screen: 'settings', icon: <Settings className="h-5 w-5" />, label: 'Settings' },
     ],
   },
+];
+
+const quickAccessScreens: NavItem[] = [
+  { screen: 'training', icon: <Dumbbell className="h-5 w-5" />, label: 'Training' },
+  { screen: 'transfers', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Transfers' },
+  { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },
+  { screen: 'player_profile', icon: <UserCircle className="h-5 w-5" />, label: 'Profile' },
 ];
 
 const allMoreItems = moreCategories.flatMap(c => c.items);
@@ -214,6 +223,39 @@ export default function BottomNav() {
 
                 {/* Scrollable Content */}
                 <div className="max-h-[60vh] overflow-y-auto overscroll-contain px-2 pb-2">
+                  {/* Quick Access Row — only shown when not searching */}
+                  {!searchQuery.trim() && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.12, delay: 0.02 }}
+                    >
+                      <div className="flex items-center gap-1.5 px-2 pt-1 pb-1.5">
+                        <Sparkles className="h-3 w-3 text-emerald-400" />
+                        <span className="text-[10px] font-semibold tracking-wide uppercase text-emerald-400">Quick Access</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5 mb-2">
+                        {quickAccessScreens.map(item => {
+                          const isActive = screen === item.screen;
+                          return (
+                            <button
+                              key={`quick-${item.screen}`}
+                              onClick={() => handleScreenSelect(item.screen)}
+                              className={`relative flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg border transition-all ${
+                                isActive
+                                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                  : 'text-[#8b949e] bg-[#0d1117] border-[#21262d] hover:border-emerald-500/20 hover:text-[#c9d1d9]'
+                              }`}
+                            >
+                              {item.icon}
+                              <span className="text-[10px] font-medium leading-tight text-center truncate w-full">{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* Recent Section — only show when not searching */}
                   {!searchQuery.trim() && recentItems.length > 0 && (
                     <motion.div
@@ -268,6 +310,7 @@ export default function BottomNav() {
                         <div className="flex items-center gap-2 px-2 pt-2 pb-1">
                           <span className="text-[#8b949e]">{category.icon}</span>
                           <span className="text-[10px] font-semibold tracking-wide uppercase text-[#8b949e]">{category.title}</span>
+                          <span className="text-[8px] font-medium text-[#484f58] bg-[#21262d] px-1.5 py-0.5 rounded-sm">{category.items.length}</span>
                           <div className="flex-1 h-px bg-[#30363d]/50" />
                         </div>
 
@@ -286,6 +329,9 @@ export default function BottomNav() {
                                     : 'text-[#8b949e] hover:bg-[#21262d] hover:text-[#c9d1d9]'
                                 }`}
                               >
+                                {isActive && (
+                                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-emerald-400 rounded-full" />
+                                )}
                                 <div className="relative">
                                   {item.icon}
                                   {hasBadge && (
@@ -293,6 +339,9 @@ export default function BottomNav() {
                                   )}
                                 </div>
                                 <span className="text-[10px] font-medium leading-tight text-center">{item.label}</span>
+                                {isActive && (
+                                  <span className="absolute -top-0.5 right-0 text-[6px] font-bold uppercase text-emerald-400 bg-emerald-500/15 px-1 py-px rounded-sm">Current</span>
+                                )}
                               </button>
                             );
                           })}
@@ -320,7 +369,10 @@ export default function BottomNav() {
       </AnimatePresence>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0d1117] border-t border-[#30363d] safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 safe-area-bottom">
+        {/* Emerald glow line above nav */}
+        <div className="h-px bg-emerald-500/10" />
+        <div className="bg-[#0d1117] border-t border-[#30363d]">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-around px-1 py-1.5">
             {mainNavItems.map(item => {
@@ -341,13 +393,13 @@ export default function BottomNav() {
                   <div className={`relative transition-all duration-200 ${isActive ? 'text-emerald-400' : 'text-[#8b949e] group-hover:text-[#c9d1d9]'}`}>
                     {item.icon}
                   </div>
-                  <span className={`text-[10px] mt-0.5 font-medium transition-all ${isActive ? 'text-emerald-400' : 'text-[#484f58] group-hover:text-[#8b949e]'}`}>
+                  <span className={`text-[10px] mt-0.5 font-medium transition-all ${isActive ? 'text-emerald-400 [text-shadow:0_0_8px_rgba(16,185,129,0.4)]' : 'text-[#484f58] group-hover:text-[#8b949e]'}`}>
                     {item.label}
                   </span>
                   {isActive && (
                     <motion.div
                       layoutId="bottomNavIndicator"
-                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-emerald-400 rounded-full"
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-400 rounded-full"
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
@@ -375,18 +427,19 @@ export default function BottomNav() {
                   </span>
                 )}
               </div>
-              <span className={`text-[10px] mt-0.5 font-medium transition-all ${(isMoreActive || moreOpen) ? 'text-emerald-400' : 'text-[#484f58] group-hover:text-[#8b949e]'}`}>
+              <span className={`text-[10px] mt-0.5 font-medium transition-all ${(isMoreActive || moreOpen) ? 'text-emerald-400 [text-shadow:0_0_8px_rgba(16,185,129,0.4)]' : 'text-[#484f58] group-hover:text-[#8b949e]'}`}>
                 More
               </span>
               {(isMoreActive || moreOpen) && (
                 <motion.div
                   layoutId="bottomNavIndicatorMore"
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-emerald-400 rounded-full"
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-400 rounded-full"
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
             </button>
           </div>
+        </div>
         </div>
       </nav>
     </>

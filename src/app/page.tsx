@@ -50,6 +50,8 @@ import PreMatchScoutReport from '@/components/game/PreMatchScoutReport';
 import DreamTransfer from '@/components/game/DreamTransfer';
 import MatchStatsComparison from '@/components/game/MatchStatsComparison';
 import CareerMilestones from '@/components/game/CareerMilestones';
+import PressConferenceEnhanced from '@/components/game/PressConferenceEnhanced';
+import AchievementsSystem from '@/components/game/AchievementsSystem';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -97,6 +99,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   pre_match_scout: PreMatchScoutReport,
   match_stats_comparison: MatchStatsComparison,
   career_milestones: CareerMilestones,
+  press_conference: PressConferenceEnhanced,
+  achievements_system: AchievementsSystem,
 };
 
 const gameScreens: GameScreen[] = [
@@ -111,6 +115,8 @@ const gameScreens: GameScreen[] = [
   'pre_match_scout', 'dream_transfer',
   'match_stats_comparison',
   'career_milestones',
+  'press_conference',
+  'achievements_system',
 ];
 
 export default function Home() {
@@ -131,8 +137,8 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-[#0d1117] text-[#c9d1d9]">
       <main className="flex-1 overflow-y-auto pb-20">
         {/* key forces unmount/remount on screen change — no AnimatePresence needed */}
-        <ErrorBoundary>
-          <ScreenComponent key={screen} />
+        <ErrorBoundary key={screen}>
+          <ScreenComponent />
         </ErrorBoundary>
       </main>
       {isGameScreen && gameState && <BottomNav />}

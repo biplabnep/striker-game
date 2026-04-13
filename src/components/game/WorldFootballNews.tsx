@@ -25,6 +25,10 @@ import {
   UserCircle,
   Shield,
   Sprout,
+  AlertTriangle,
+  ThumbsUp,
+  Repeat2,
+  BookmarkCheck,
 } from 'lucide-react';
 
 // ============================================================
@@ -41,7 +45,7 @@ type NewsCategory =
   | 'social'
   | 'manager';
 
-interface NewsItem {
+type BaseNewsItem = {
   id: string;
   category: NewsCategory;
   headline: string;
@@ -53,9 +57,36 @@ interface NewsItem {
   isHot: boolean;
   hasImage: boolean;
   imageIcon: string;
+};
+
+interface NewsItem extends BaseNewsItem {
+  readTime: number;
+  reliability: 'reliable' | 'rumor';
+  relatedToClub: boolean;
 }
 
-type FilterTab = 'all' | 'transfer' | 'match' | 'player' | 'league';
+interface TransferRumor {
+  id: string;
+  club: string;
+  confidence: 'Low' | 'Medium' | 'High';
+  confidencePercent: number;
+  source: string;
+  fee: string;
+  detail: string;
+  timeAgo: string;
+}
+
+interface SocialReaction {
+  id: string;
+  username: string;
+  handle: string;
+  avatarInitial: string;
+  text: string;
+  likes: number;
+  retweets: number;
+}
+
+type FilterTab = 'all' | 'transfer' | 'match' | 'rumors' | 'international' | 'your_club';
 
 // ============================================================
 // Constants
@@ -80,6 +111,10 @@ const NEWS_SOURCES = [
   'The Telegraph',
   'BBC Radio 5 Live',
   'Football Daily',
+];
+
+const RELIABLE_SOURCES = [
+  'BBC Sport', 'Sky Sports', 'The Athletic', 'ESPN FC', 'Premier League.com', 'UEFA.com', 'BBC Radio 5 Live',
 ];
 
 const TIME_AGOS = [
@@ -174,9 +209,39 @@ const CATEGORY_CONFIG: Record<NewsCategory, {
 const FILTER_TABS: { value: FilterTab; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'transfer', label: 'Transfers' },
-  { value: 'match', label: 'Results' },
-  { value: 'player', label: 'Player' },
-  { value: 'league', label: 'League' },
+  { value: 'match', label: 'Match Reports' },
+  { value: 'rumors', label: 'Rumors' },
+  { value: 'international', label: 'International' },
+  { value: 'your_club', label: 'Your Club' },
+];
+
+const SOCIAL_USERNAMES = [
+  { username: 'FootballInsider', handle: '@footyinsider', initial: 'F' },
+  { username: 'TacticalTom', handle: '@tactical_tom', initial: 'T' },
+  { username: 'MatchDaySarah', handle: '@matchdaysarah', initial: 'S' },
+  { username: 'GoalAlertUK', handle: '@goalalertuk', initial: 'G' },
+  { username: 'ThePitchExpert', handle: '@pitchexpert', initial: 'P' },
+  { username: 'StatsManDave', handle: '@statsmandave', initial: 'D' },
+  { username: 'TransferCentre', handle: '@transfercentre', initial: 'T' },
+  { username: 'FanViewAlex', handle: '@fanviewalex', initial: 'A' },
+];
+
+const SOCIAL_REACTION_TEMPLATES = [
+  (playerName: string, clubName: string) => [
+    `Can't believe how good ${playerName} has been this season. ${clubName} have a real star on their hands.`,
+    `${playerName} is absolutely class. Will be playing at the highest level soon, mark my words.`,
+    `Just watched ${playerName}'s highlights again. The potential is unreal. Future Ballon d'Or contender?`,
+  ],
+  (playerName: string, clubName: string) => [
+    `If ${clubName} sell ${playerName} they're making a massive mistake. Keep him at all costs!`,
+    `${playerName} to a top club this summer? I'd put money on it. The talent is undeniable.`,
+    `Scouts from every top team watching ${playerName} right now. This is going to be a busy transfer window.`,
+  ],
+  (playerName: string, clubName: string) => [
+    `${playerName}'s work rate and attitude are just as impressive as the technical ability. Rare combination.`,
+    `People sleeping on ${playerName}. Trust me, this player is going to be world-class within 2 years.`,
+    `The way ${playerName} reads the game is beyond their years. ${clubName} academy deserves huge credit.`,
+  ],
 ];
 
 // ============================================================
@@ -225,6 +290,31 @@ function getPositionLabel(position: string): string {
   return map[position] ?? 'player';
 }
 
+function getReadTime(summary: string): number {
+  const words = summary.split(/\s+/).length;
+  return Math.max(1, Math.min(6, Math.ceil(words / 40)));
+}
+
+function getReliability(item: BaseNewsItem): 'reliable' | 'rumor' {
+  if (RELIABLE_SOURCES.includes(item.source) && item.category !== 'transfer') {
+    return 'reliable';
+  }
+  if (item.category === 'match' || item.category === 'league' || item.category === 'international') {
+    return 'reliable';
+  }
+  if (item.category === 'transfer') {
+    return RELIABLE_SOURCES.includes(item.source) ? 'reliable' : 'rumor';
+  }
+  if (item.category === 'social' || item.category === 'player') {
+    return Math.random() > 0.6 ? 'rumor' : 'reliable';
+  }
+  return 'reliable';
+}
+
+function isRelatedToClub(item: BaseNewsItem, clubName: string): boolean {
+  return item.headline.includes(clubName) || item.summary.includes(clubName);
+}
+
 // ============================================================
 // Big clubs for transfer rumors (not the player's current club)
 // ============================================================
@@ -246,14 +336,13 @@ function getRivalClubs(currentClubName: string): string[] {
 // News Generation Functions (by category)
 // ============================================================
 
-function generateTransferNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generateTransferNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { player, currentClub } = state;
   const rivals = getRivalClubs(currentClub.name);
   const leagueName = getLeagueName(currentClub.league);
 
-  const templates: (() => NewsItem)[] = [
-    // Transfer interest in the player
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       const club = randomFrom(rivals);
       const isHot = player.reputation > 60;
@@ -287,7 +376,6 @@ function generateTransferNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'ArrowUpDown',
       };
     },
-    // Club signings
     () => {
       const fromLeague = randomFrom(LEAGUES);
       const toLeague = randomFrom(LEAGUES.filter(l => l.id !== fromLeague.id));
@@ -295,8 +383,8 @@ function generateTransferNews(state: GameState, count: number): NewsItem[] {
       return {
         id: generateId(),
         category: 'transfer',
-        headline: `${fee}M€ deal: Star completes ${fromLeague.name} to ${toLeague.name} move`,
-        summary: `A major transfer has been completed as a key player moves from the ${fromLeague.name} to the ${toLeague.name}. The deal is reported to be worth around €${fee}M, making it one of the biggest of the window.`,
+        headline: `${fee}M\u20AC deal: Star completes ${fromLeague.name} to ${toLeague.name} move`,
+        summary: `A major transfer has been completed as a key player moves from the ${fromLeague.name} to the ${toLeague.name}. The deal is reported to be worth around \u20AC${fee}M, making it one of the biggest of the window.`,
         source: randomFrom(['Sky Sports', 'BBC Sport', 'ESPN FC']),
         timeAgo: randomFrom(TIME_AGOS.slice(0, 4)),
         reads: formatReads(randomBetween(3000, 15000)),
@@ -306,7 +394,6 @@ function generateTransferNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'ArrowUpDown',
       };
     },
-    // Loan news
     () => {
       const club = randomFrom(rivals);
       return {
@@ -323,7 +410,6 @@ function generateTransferNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'ArrowUpDown',
       };
     },
-    // Release clause
     () => {
       const amount = player.marketValue > 0
         ? Math.round(player.marketValue * 1.5 / 1000000)
@@ -331,8 +417,8 @@ function generateTransferNews(state: GameState, count: number): NewsItem[] {
       return {
         id: generateId(),
         category: 'transfer',
-        headline: `${player.name}'s release clause revealed: €${amount}M`,
-        summary: `Details of ${player.name}'s contract at ${currentClub.name} have emerged, with the ${getPositionLabel(player.position)} having a release clause of approximately €${amount}M. Several clubs are monitoring the situation.`,
+        headline: `${player.name}'s release clause revealed: \u20AC${amount}M`,
+        summary: `Details of ${player.name}'s contract at ${currentClub.name} have emerged, with the ${getPositionLabel(player.position)} having a release clause of approximately \u20AC${amount}M. Several clubs are monitoring the situation.`,
         source: randomFrom(['The Athletic', 'Marca', 'Football Italia', 'BBC Sport']),
         timeAgo: randomFrom(TIME_AGOS.slice(3, 9)),
         reads: formatReads(randomBetween(2000, 9000)),
@@ -342,13 +428,12 @@ function generateTransferNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'ArrowUpDown',
       };
     },
-    // Generic transfer window news
     () => {
       const league = randomFrom(LEAGUES);
       return {
         id: generateId(),
         category: 'transfer',
-        headline: `${league.name} clubs spend record €${randomBetween(400, 1200)}M in transfer window`,
+        headline: `${league.name} clubs spend record \u20AC${randomBetween(400, 1200)}M in transfer window`,
         summary: `Clubs across the ${league.name} have broken spending records in the latest transfer window, with several high-profile deals completed on deadline day.`,
         source: randomFrom(NEWS_SOURCES),
         timeAgo: randomFrom(TIME_AGOS.slice(0, 5)),
@@ -368,13 +453,12 @@ function generateTransferNews(state: GameState, count: number): NewsItem[] {
   return items;
 }
 
-function generateMatchNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generateMatchNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { player, currentClub, recentResults, leagueTable } = state;
   const leagueName = getLeagueName(currentClub.league);
 
-  const templates: (() => NewsItem)[] = [
-    // Player scored recently
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       const result = recentResults[0];
       if (!result) {
@@ -427,11 +511,9 @@ function generateMatchNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'Trophy',
       };
     },
-    // League standings race
     () => {
       const playerStanding = leagueTable.find(s => s.clubId === currentClub.id);
       const position = playerStanding ? leagueTable.indexOf(playerStanding) + 1 : 10;
-      const leader = leagueTable[0];
 
       if (position <= 4) {
         return {
@@ -462,7 +544,6 @@ function generateMatchNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'Trophy',
       };
     },
-    // Other league results
     () => {
       const league = randomFrom(LEAGUES.filter(l => l.id !== currentClub.league));
       const homeGoals = randomBetween(0, 5);
@@ -483,7 +564,6 @@ function generateMatchNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'Trophy',
       };
     },
-    // Player rating
     () => {
       const rating = player.seasonStats.averageRating || player.form;
       if (rating >= 7.5) {
@@ -524,12 +604,11 @@ function generateMatchNews(state: GameState, count: number): NewsItem[] {
   return items;
 }
 
-function generatePlayerNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generatePlayerNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { player, currentClub } = state;
 
-  const templates: (() => NewsItem)[] = [
-    // High form praise
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       if (player.form >= 7.5) {
         return {
@@ -560,7 +639,6 @@ function generatePlayerNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'UserCircle',
       };
     },
-    // Stats milestone
     () => {
       const { goals, assists, appearances } = player.seasonStats;
       const stat = goals > assists ? goals : assists;
@@ -594,13 +672,12 @@ function generatePlayerNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'UserCircle',
       };
     },
-    // Overall rating
     () => {
       if (player.overall >= 80) {
         return {
           id: generateId(),
           category: 'player',
-          headline: `${player.name} rated at ${player.overall} OVR — among the world's best`,
+          headline: `${player.name} rated at ${player.overall} OVR \u2014 among the world's best`,
           summary: `At just ${player.age} years old, ${player.name} has developed into one of the highest-rated players in world football. Their overall rating of ${player.overall} reflects their incredible growth and consistency.`,
           source: randomFrom(['The Athletic', 'ESPN FC', 'Goal.com']),
           timeAgo: randomFrom(TIME_AGOS.slice(2, 8)),
@@ -625,7 +702,6 @@ function generatePlayerNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'UserCircle',
       };
     },
-    // Wonderkid narrative
     () => {
       return {
         id: generateId(),
@@ -641,7 +717,6 @@ function generatePlayerNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'UserCircle',
       };
     },
-    // Injury concern
     () => {
       if (state.currentInjury) {
         return {
@@ -681,12 +756,12 @@ function generatePlayerNews(state: GameState, count: number): NewsItem[] {
   return items;
 }
 
-function generateLeagueNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generateLeagueNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { currentClub, leagueTable } = state;
   const leagueName = getLeagueName(currentClub.league);
 
-  const templates: (() => NewsItem)[] = [
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       const otherLeague = randomFrom(LEAGUES.filter(l => l.id !== currentClub.league));
       return {
@@ -750,7 +825,6 @@ function generateLeagueNews(state: GameState, count: number): NewsItem[] {
         imageIcon: 'TrendingUp',
       };
     },
-    // European qualification
     () => {
       const playerStanding = leagueTable.find(s => s.clubId === currentClub.id);
       const position = playerStanding ? leagueTable.indexOf(playerStanding) + 1 : 10;
@@ -777,11 +851,11 @@ function generateLeagueNews(state: GameState, count: number): NewsItem[] {
   return items;
 }
 
-function generateInternationalNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generateInternationalNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { player, currentClub, internationalCareer } = state;
 
-  const templates: (() => NewsItem)[] = [
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       if (internationalCareer.caps > 0) {
         return {
@@ -853,13 +927,13 @@ function generateInternationalNews(state: GameState, count: number): NewsItem[] 
   return items;
 }
 
-function generateYouthNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generateYouthNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { currentClub, youthTeams } = state;
 
   const hasYouth = youthTeams.length > 0 && youthTeams.some(t => t.players.length > 0);
 
-  const templates: (() => NewsItem)[] = [
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       if (hasYouth) {
         return {
@@ -914,11 +988,11 @@ function generateYouthNews(state: GameState, count: number): NewsItem[] {
   return items;
 }
 
-function generateSocialNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generateSocialNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { player, currentClub } = state;
 
-  const templates: (() => NewsItem)[] = [
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       const followers = player.reputation > 60 ? randomBetween(500, 5000) : randomBetween(10, 500);
       return {
@@ -976,11 +1050,11 @@ function generateSocialNews(state: GameState, count: number): NewsItem[] {
   return items;
 }
 
-function generateManagerNews(state: GameState, count: number): NewsItem[] {
-  const items: NewsItem[] = [];
+function generateManagerNews(state: GameState, count: number): BaseNewsItem[] {
+  const items: BaseNewsItem[] = [];
   const { currentClub, teamDynamics } = state;
 
-  const templates: (() => NewsItem)[] = [
+  const templates: (() => BaseNewsItem)[] = [
     () => {
       return {
         id: generateId(),
@@ -1058,13 +1132,102 @@ function generateManagerNews(state: GameState, count: number): NewsItem[] {
 }
 
 // ============================================================
+// Enhanced Generation: Breaking News, Transfer Rumors, Social Reactions
+// ============================================================
+
+function generateBreakingHeadlines(state: GameState): string[] {
+  const { player, currentClub } = state;
+  const rivals = getRivalClubs(currentClub.name);
+  const leagueName = getLeagueName(currentClub.league);
+
+  const pool: string[] = [];
+
+  if (player.form >= 8) {
+    pool.push(`${player.name} delivers stunning performance \u2014 ${currentClub.name} fans erupt`);
+  }
+  if (player.reputation > 50) {
+    pool.push(`BREAKING: ${randomFrom(rivals)} ready to table \u20AC${randomBetween(30, 100)}M bid for ${player.name}`);
+  }
+  if (state.currentInjury) {
+    pool.push(`INJURY ALERT: ${player.name} suffers setback \u2014 tests underway at ${currentClub.name}`);
+  }
+  pool.push(`${randomFrom(BIG_CLUBS)} complete shock signing on deadline day`);
+  pool.push(`${leagueName} title race takes dramatic twist after latest results`);
+  pool.push(`${randomFrom(BIG_CLUBS)} part ways with manager after disastrous run`);
+  if (player.overall >= 80) {
+    pool.push(`${player.name} named in Team of the Season so far by leading pundits`);
+  }
+  pool.push(`Record-breaking attendance as ${leagueName} delivers thrilling matchday`);
+
+  const count = Math.min(pool.length, randomBetween(3, 5));
+  return pool.slice(0, count);
+}
+
+function generateTransferRumors(state: GameState): TransferRumor[] {
+  const { player, currentClub } = state;
+  const rivals = getRivalClubs(currentClub.name);
+  const selected = rivals.sort(() => Math.random() - 0.5).slice(0, 4);
+
+  const confidenceLevels: Array<{ confidence: TransferRumor['confidence']; percent: number }> = [
+    { confidence: 'High', percent: randomBetween(65, 90) },
+    { confidence: 'Medium', percent: randomBetween(35, 64) },
+    { confidence: 'Low', percent: randomBetween(15, 34) },
+    { confidence: 'Medium', percent: randomBetween(40, 65) },
+  ];
+
+  const details: string[] = [
+    `Scouts from ${currentClub.name}'s training ground have been spotted at multiple matches. The ${getPositionLabel(player.position)} fits their tactical setup perfectly.`,
+    `Director of football has personally watched ${player.name} three times this month. A formal approach could come before the window closes.`,
+    `Sources within the club confirm ${player.name} is on their shortlist, though no official contact has been made with ${currentClub.name} yet.`,
+    `The club's sporting director views ${player.name} as a long-term investment. Initial talks may begin during the upcoming international break.`,
+  ];
+
+  return selected.slice(0, randomBetween(3, 4)).map((club, i) => {
+    const fee = player.marketValue > 0
+      ? Math.round(player.marketValue * (1 + Math.random() * 0.8) / 1000000)
+      : randomBetween(15, 80);
+    const level = confidenceLevels[i % confidenceLevels.length];
+    return {
+      id: generateId(),
+      club,
+      confidence: level.confidence,
+      confidencePercent: level.percent,
+      source: randomFrom(['The Athletic', 'Sky Sports', 'Marca', 'Goal.com', 'L\'Equipe']),
+      fee: `\u20AC${fee}M`,
+      detail: details[i % details.length].replace('{club}', club),
+      timeAgo: randomFrom(TIME_AGOS.slice(0, 5)),
+    };
+  });
+}
+
+function generateSocialReactionsForItem(item: NewsItem, state: GameState): SocialReaction[] {
+  const { player, currentClub } = state;
+  const count = randomBetween(2, 3);
+  const templateGroup = SOCIAL_REACTION_TEMPLATES[randomBetween(0, SOCIAL_REACTION_TEMPLATES.length - 1)];
+  const reactions: SocialReaction[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const user = SOCIAL_USERNAMES[(Math.floor(Math.random() * SOCIAL_USERNAMES.length) + i) % SOCIAL_USERNAMES.length];
+    reactions.push({
+      id: generateId(),
+      username: user.username,
+      handle: user.handle,
+      avatarInitial: user.initial,
+      text: templateGroup(player.name, currentClub.name)[i % templateGroup(player.name, currentClub.name).length],
+      likes: randomBetween(50, 5000),
+      retweets: randomBetween(10, 2000),
+    });
+  }
+  return reactions;
+}
+
+// ============================================================
 // Main News Generator
 // ============================================================
 
 function generateNewsItems(gameState: GameState): NewsItem[] {
-  const items: NewsItem[] = [];
+  const items: BaseNewsItem[] = [];
 
-  // Generate from each category with weighted counts based on game state
   items.push(...generateTransferNews(gameState, randomBetween(2, 4)));
   items.push(...generateMatchNews(gameState, randomBetween(2, 4)));
   items.push(...generatePlayerNews(gameState, randomBetween(3, 5)));
@@ -1080,14 +1243,63 @@ function generateNewsItems(gameState: GameState): NewsItem[] {
     [items[i], items[j]] = [items[j], items[i]];
   }
 
-  return items;
+  // Enrich with enhanced fields
+  const clubName = gameState.currentClub.name;
+  return items.map((item): NewsItem => ({
+    ...item,
+    readTime: getReadTime(item.summary),
+    reliability: getReliability(item),
+    relatedToClub: isRelatedToClub(item, clubName),
+  }));
 }
 
 // ============================================================
 // Sub-Components
 // ============================================================
 
-function NewsCard({ item, index }: { item: NewsItem; index: number }) {
+function BreakingNewsBanner({ headlines }: { headlines: string[] }) {
+  if (headlines.length === 0) return null;
+
+  const doubled = [...headlines, ...headlines];
+
+  return (
+    <motion.div
+      className="bg-red-600/15 border-b border-red-600/25"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="flex items-center max-w-lg mx-auto px-4 py-2 gap-3">
+        <div className="shrink-0 flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
+          <AlertTriangle className="h-3 w-3" />
+          LIVE
+        </div>
+        <div className="overflow-hidden flex-1">
+          <div className="flex animate-breaking-ticker whitespace-nowrap">
+            {doubled.map((headline, i) => (
+              <span
+                key={`${headline}-${i}`}
+                className="text-[11px] text-red-300/90 mx-6 inline-block"
+              >
+                {headline}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function NewsCard({
+  item,
+  index,
+  socialReactions,
+}: {
+  item: NewsItem;
+  index: number;
+  socialReactions?: SocialReaction[];
+}) {
   const config = CATEGORY_CONFIG[item.category];
 
   return (
@@ -1102,9 +1314,9 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
       className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
     >
       <div className="p-4">
-        {/* Top row: category badge + hot badge + time */}
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-2">
+        {/* Top row: category badge + trending badge + related tag + time */}
+        <div className="flex items-start justify-between mb-2.5 gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Badge
               variant="outline"
               className={`text-[10px] px-1.5 py-0 border ${config.badgeColor} ${config.badgeTextColor}`}
@@ -1115,11 +1327,17 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
             {item.isHot && (
               <Badge className="text-[9px] px-1.5 py-0 bg-orange-500/15 text-orange-400 border border-orange-500/30">
                 <Flame className="h-3 w-3 mr-0.5" />
-                Hot
+                Trending
+              </Badge>
+            )}
+            {item.relatedToClub && (
+              <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <Users className="h-3 w-3 mr-0.5" />
+                Your Club
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1 text-[#8b949e]">
+          <div className="flex items-center gap-1 text-[#8b949e] shrink-0">
             <Clock className="h-3 w-3" />
             <span className="text-[10px]">{item.timeAgo}</span>
           </div>
@@ -1144,10 +1362,30 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
           {item.summary}
         </p>
 
-        {/* Footer: source + engagement */}
+        {/* Social Reactions for major stories */}
+        {item.isHot && socialReactions && socialReactions.length > 0 && (
+          <SocialReactions reactions={socialReactions} />
+        )}
+
+        {/* Footer: source credibility + read time + engagement */}
         <div className="flex items-center justify-between pt-2.5 border-t border-[#30363d]">
-          <span className="text-[10px] text-[#8b949e] font-medium">{item.source}</span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {/* Source credibility indicator */}
+            <span
+              className={`w-1.5 h-1.5 rounded-sm shrink-0 ${
+                item.reliability === 'reliable' ? 'bg-emerald-500' : 'bg-amber-500'
+              }`}
+            />
+            <span className="text-[10px] text-[#8b949e] font-medium truncate">
+              {item.source}
+            </span>
+            <span className="text-[10px] text-[#484f58] shrink-0">&middot;</span>
+            <span className="text-[10px] text-[#8b949e] shrink-0 flex items-center gap-0.5">
+              <BookmarkCheck className="h-2.5 w-2.5" />
+              {item.readTime} min
+            </span>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-1 text-[#8b949e]">
               <Eye className="h-3 w-3" />
               <span className="text-[10px]">{item.reads}</span>
@@ -1162,6 +1400,120 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
           </div>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+function SocialReactions({ reactions }: { reactions: SocialReaction[] }) {
+  return (
+    <div className="mt-2.5 mb-1 pl-2 border-l-2 border-[#30363d] space-y-2">
+      {reactions.map(r => (
+        <div key={r.id} className="flex items-start gap-2">
+          <div className="w-5 h-5 rounded bg-[#21262d] border border-[#30363d] flex items-center justify-center shrink-0 mt-0.5">
+            <span className="text-[8px] text-[#8b949e] font-bold">{r.avatarInitial}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1 flex-wrap">
+              <span className="text-[10px] font-semibold text-[#c9d1d9]">{r.username}</span>
+              <span className="text-[10px] text-[#484f58]">&middot;</span>
+              <p className="text-[10px] text-[#8b949e] leading-relaxed">{r.text}</p>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-0.5 text-[#484f58]">
+                <ThumbsUp className="h-2.5 w-2.5" />
+                <span className="text-[9px]">
+                  {r.likes >= 1000 ? `${(r.likes / 1000).toFixed(1)}K` : r.likes}
+                </span>
+              </div>
+              <div className="flex items-center gap-0.5 text-[#484f58]">
+                <Repeat2 className="h-2.5 w-2.5" />
+                <span className="text-[9px]">
+                  {r.retweets >= 1000 ? `${(r.retweets / 1000).toFixed(1)}K` : r.retweets}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TransferRumorSection({ rumors }: { rumors: TransferRumor[] }) {
+  if (rumors.length === 0) return null;
+
+  return (
+    <motion.div
+      className="mt-6 space-y-2.5"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.15 }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+          <ArrowUpDown className="h-3.5 w-3.5 text-sky-400" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-[#c9d1d9] leading-tight">Transfer Rumors About You</h2>
+          <p className="text-[10px] text-[#8b949e]">Latest interest from around Europe</p>
+        </div>
+      </div>
+
+      {rumors.map((rumor) => {
+        const barColor = rumor.confidence === 'High'
+          ? 'bg-emerald-500'
+          : rumor.confidence === 'Medium'
+            ? 'bg-amber-500'
+            : 'bg-red-500';
+        const textColor = rumor.confidence === 'High'
+          ? 'text-emerald-400'
+          : rumor.confidence === 'Medium'
+            ? 'text-amber-400'
+            : 'text-red-400';
+
+        return (
+          <div
+            key={rumor.id}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-3.5"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-[#c9d1d9] leading-tight">
+                  {rumor.club}
+                </p>
+                <p className="text-[10px] text-[#8b949e] mt-0.5">
+                  {rumor.source} &middot; {rumor.timeAgo}
+                </p>
+              </div>
+              <span className="text-sm font-bold text-sky-400 shrink-0 ml-2">
+                {rumor.fee}
+              </span>
+            </div>
+
+            {/* Confidence bar */}
+            <div className="mb-2.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-[#8b949e]">Confidence</span>
+                <span className={`text-[10px] font-semibold ${textColor}`}>
+                  {rumor.confidence}
+                </span>
+              </div>
+              <div className="h-1.5 bg-[#21262d] rounded-sm overflow-hidden">
+                <div
+                  className={`h-full rounded-sm ${barColor} animate-confidence-fill`}
+                  style={
+                    { '--confidence-width': `${rumor.confidencePercent}%` } as React.CSSProperties
+                  }
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-[#8b949e] leading-relaxed">
+              {rumor.detail}
+            </p>
+          </div>
+        );
+      })}
     </motion.div>
   );
 }
@@ -1239,9 +1591,44 @@ export default function WorldFootballNews() {
     return generateNewsItems(gameState);
   }, [gameState, refreshKey]);
 
+  const breakingHeadlines = useMemo(() => {
+    if (!gameState) return [];
+    return generateBreakingHeadlines(gameState);
+  }, [gameState, refreshKey]);
+
+  const transferRumors = useMemo(() => {
+    if (!gameState) return [];
+    return generateTransferRumors(gameState);
+  }, [gameState, refreshKey]);
+
+  const socialReactionsMap = useMemo(() => {
+    const map = new Map<string, SocialReaction[]>();
+    if (!gameState) return map;
+    for (const item of newsItems) {
+      if (item.isHot) {
+        map.set(item.id, generateSocialReactionsForItem(item, gameState));
+      }
+    }
+    return map;
+  }, [newsItems, gameState]);
+
   const filteredItems = useMemo(() => {
-    if (activeFilter === 'all') return newsItems;
-    return newsItems.filter(item => item.category === activeFilter);
+    switch (activeFilter) {
+      case 'all':
+        return newsItems;
+      case 'transfer':
+        return newsItems.filter(i => i.category === 'transfer');
+      case 'match':
+        return newsItems.filter(i => i.category === 'match');
+      case 'rumors':
+        return newsItems.filter(i => i.reliability === 'rumor');
+      case 'international':
+        return newsItems.filter(i => i.category === 'international');
+      case 'your_club':
+        return newsItems.filter(i => i.relatedToClub);
+      default:
+        return newsItems;
+    }
   }, [newsItems, activeFilter]);
 
   const visibleItems = useMemo(() => {
@@ -1261,12 +1648,15 @@ export default function WorldFootballNews() {
     setTimeout(() => setIsRefreshing(false), 1200);
   };
 
-  // Category counts for badges
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: newsItems.length };
-    for (const item of newsItems) {
-      counts[item.category] = (counts[item.category] || 0) + 1;
-    }
+    const counts: Record<string, number> = {
+      all: newsItems.length,
+      transfer: newsItems.filter(i => i.category === 'transfer').length,
+      match: newsItems.filter(i => i.category === 'match').length,
+      rumors: newsItems.filter(i => i.reliability === 'rumor').length,
+      international: newsItems.filter(i => i.category === 'international').length,
+      your_club: newsItems.filter(i => i.relatedToClub).length,
+    };
     return counts;
   }, [newsItems]);
 
@@ -1310,6 +1700,9 @@ export default function WorldFootballNews() {
             </button>
           </div>
         </motion.header>
+
+        {/* Breaking News Banner */}
+        <BreakingNewsBanner headlines={breakingHeadlines} />
 
         <div className="px-4 pt-3 space-y-3">
           {/* Quick Stats Bar */}
@@ -1361,12 +1754,11 @@ export default function WorldFootballNews() {
 
           {/* Filter Tabs */}
           <motion.div
-            className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1"
+            className="flex items-center gap-0 overflow-x-auto pb-1 -mx-1 px-1 border-b border-[#21262d]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2, delay: 0.1 }}
           >
-            <Filter className="h-3.5 w-3.5 text-[#484f58] shrink-0 mt-1" />
             {FILTER_TABS.map(tab => {
               const isActive = activeFilter === tab.value;
               const count = categoryCounts[tab.value] || 0;
@@ -1378,15 +1770,16 @@ export default function WorldFootballNews() {
                     setVisibleCount(10);
                   }}
                   className={`
-                    shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border
+                    shrink-0 px-3 py-2 text-xs font-medium transition-colors
+                    border-b-2 -mb-px
                     ${isActive
-                      ? 'bg-[#c9d1d9] text-[#0d1117] border-[#c9d1d9]'
-                      : 'bg-transparent text-[#8b949e] border-[#30363d] hover:bg-[#21262d] hover:text-[#c9d1d9]'
+                      ? 'text-emerald-400 border-emerald-500'
+                      : 'text-[#8b949e] border-transparent hover:text-[#c9d1d9]'
                     }
                   `}
                 >
                   {tab.label}
-                  <span className={`ml-1 text-[10px] ${isActive ? 'text-[#0d1117]/60' : 'text-[#484f58]'}`}>
+                  <span className={`ml-1 text-[10px] ${isActive ? 'text-emerald-400/60' : 'text-[#484f58]'}`}>
                     {count}
                   </span>
                 </button>
@@ -1424,7 +1817,12 @@ export default function WorldFootballNews() {
                 <EmptyState />
               ) : (
                 visibleItems.map((item, index) => (
-                  <NewsCard key={item.id} item={item} index={index} />
+                  <NewsCard
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    socialReactions={socialReactionsMap.get(item.id)}
+                  />
                 ))
               )}
             </motion.div>
@@ -1461,6 +1859,16 @@ export default function WorldFootballNews() {
               </span>
               <div className="h-px flex-1 bg-[#30363d]" />
             </motion.div>
+          )}
+
+          {/* Transfer Rumor Section */}
+          {transferRumors.length > 0 && activeFilter === 'all' && (
+            <TransferRumorSection rumors={transferRumors} />
+          )}
+
+          {/* Transfer Rumor Section - also show on transfer/rumors filter */}
+          {transferRumors.length > 0 && (activeFilter === 'transfer' || activeFilter === 'rumors') && (
+            <TransferRumorSection rumors={transferRumors} />
           )}
         </div>
       </div>
