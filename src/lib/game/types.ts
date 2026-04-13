@@ -610,6 +610,7 @@ export type GameScreen =
   | 'hall_of_fame'
   | 'player_traits'
   | 'match_highlights'
+  | 'match_highlights_enhanced'
   | 'pre_match_scout'
   | 'dream_transfer';
 

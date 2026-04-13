@@ -45,6 +45,7 @@ import WorldFootballNews from '@/components/game/WorldFootballNews';
 import HallOfFame from '@/components/game/HallOfFame';
 import PlayerTraitsPanel from '@/components/game/PlayerTraitsEnhanced';
 import MatchHighlights from '@/components/game/MatchHighlights';
+import MatchHighlightsEnhanced from '@/components/game/MatchHighlightsEnhanced';
 import PreMatchScoutReport from '@/components/game/PreMatchScoutReport';
 import DreamTransfer from '@/components/game/DreamTransfer';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
@@ -90,6 +91,7 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   player_traits: PlayerTraitsPanel,
   dream_transfer: DreamTransfer,
   match_highlights: MatchHighlights,
+  match_highlights_enhanced: MatchHighlightsEnhanced,
   pre_match_scout: PreMatchScoutReport,
 };
 
@@ -101,7 +103,7 @@ const gameScreens: GameScreen[] = [
   'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub',
   'career_statistics', 'tactical_briefing', 'player_of_the_month',
   'post_match_analysis', 'player_comparison', 'transfer_negotiation',
-  'fan_engagement', 'world_football_news', 'hall_of_fame', 'player_traits', 'match_highlights',
+  'fan_engagement', 'world_football_news', 'hall_of_fame', 'player_traits', 'match_highlights', 'match_highlights_enhanced',
   'pre_match_scout', 'dream_transfer',
 ];
 
