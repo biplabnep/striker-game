@@ -81,8 +81,7 @@ export default function MainMenu() {
       <div
         className="absolute inset-0 opacity-[0.04]"
         style={{
-          backgroundImage:
-            'radial-gradient(circle, #c9d1d9 1px, transparent 1px)',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='32' height='32' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='1' fill='%23c9d1d9'/%3E%3C/svg%3E")`,
           backgroundSize: '32px 32px',
         }}
       />

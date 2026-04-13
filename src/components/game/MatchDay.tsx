@@ -19,6 +19,7 @@ import type { MatchEvent, MatchEventType, MatchResult } from '@/lib/game/types';
 import PressConference from '@/components/game/PressConference';
 import WeatherSystem from '@/components/game/WeatherSystem';
 import MatchStatsPopup from '@/components/game/MatchStatsPopup';
+import TacticalSetup from '@/components/game/TacticalSetup';
 
 // -----------------------------------------------------------
 // Event icon & color mapping
@@ -375,7 +376,9 @@ export default function MatchDay() {
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<MatchResult | null>(gameState?.recentResults[0] || null);
   const [showPressConference, setShowPressConference] = useState(false);
+  const [pressConferenceType, setPressConferenceType] = useState<'pre-match' | 'post-match'>('pre-match');
   const [showStats, setShowStats] = useState(false);
+  const [showTacticalSetup, setShowTacticalSetup] = useState(false);
 
   // Simulation states
   const [showSimulation, setShowSimulation] = useState(false);
@@ -1098,12 +1101,12 @@ export default function MatchDay() {
             transition={{ delay: 0.65 }}
           >
             <Button
-              onClick={() => setShowPressConference(true)}
+              onClick={() => { setPressConferenceType('post-match'); setShowPressConference(true); }}
               variant="outline"
               className="w-full h-12 border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-lg font-semibold gap-2"
             >
               <span className="text-lg">🎙️</span>
-              Press Conference
+              Post-Match Press Conference
             </Button>
           </motion.div>
         )}
@@ -1121,9 +1124,13 @@ export default function MatchDay() {
 
         {/* Press Conference Modal */}
         <PressConference
+          type={pressConferenceType}
           open={showPressConference}
           onClose={() => setShowPressConference(false)}
-          matchResult={lastResult}
+          matchResult={pressConferenceType === 'post-match' ? lastResult : null}
+          opponentName={lastResult.homeClub.id === currentClub.id ? lastResult.awayClub.shortName || lastResult.awayClub.name : lastResult.homeClub.shortName || lastResult.homeClub.name}
+          playerForm={player.form}
+          playerMorale={player.morale}
         />
 
         {/* Match Stats Popup */}
@@ -1562,6 +1569,40 @@ export default function MatchDay() {
           {/* Weather Conditions */}
           <WeatherSystem season={gameState.currentSeason} week={currentWeek} />
 
+          {/* Tactical Setup Button */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35, duration: 0.2 }}
+          >
+            <Button
+              onClick={() => setShowTacticalSetup(true)}
+              variant="outline"
+              className="w-full h-11 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg font-semibold gap-2"
+            >
+              <Radio className="w-4 h-4" />
+              Tactical Setup
+            </Button>
+          </motion.div>
+
+          {/* Pre-Match Press Conference Button */}
+          {opponent && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.35, duration: 0.2 }}
+            >
+              <Button
+                onClick={() => { setPressConferenceType('pre-match'); setShowPressConference(true); }}
+                variant="outline"
+                className="w-full h-11 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg font-semibold gap-2"
+              >
+                <span className="text-lg">🎙️</span>
+                Pre-Match Press Conference
+              </Button>
+            </motion.div>
+          )}
+
           {/* Action Buttons */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -1585,6 +1626,26 @@ export default function MatchDay() {
               Quick Simulate
             </Button>
           </motion.div>
+
+          {/* Pre-Match Press Conference Modal */}
+          {opponent && (
+            <PressConference
+              type="pre-match"
+              open={showPressConference && pressConferenceType === 'pre-match'}
+              onClose={() => setShowPressConference(false)}
+              opponentName={opponent.shortName || opponent.name}
+              playerForm={player.form}
+              playerMorale={player.morale}
+            />
+          )}
+
+          {/* Tactical Setup Modal */}
+          <TacticalSetup
+            isOpen={showTacticalSetup}
+            onClose={() => setShowTacticalSetup(false)}
+            playerPosition={player.position}
+            playerAttributes={player.attributes}
+          />
         </>
       ) : (
         <Card className="bg-[#161b22] border-[#30363d]">

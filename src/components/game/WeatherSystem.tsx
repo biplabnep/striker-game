@@ -301,7 +301,7 @@ export default function WeatherSystem({ season, week }: WeatherSystemProps) {
           {/* Weather & Temperature Row */}
           <div className="flex items-center gap-4">
             {/* Weather icon in colored circle */}
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 ${weather.iconBg}`}>
+            <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${weather.iconBg}`}>
               <span className={weather.iconColor}>{weather.icon}</span>
             </div>
 

@@ -1,24 +1,21 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Mic, Camera, ThumbsUp, ThumbsDown, MessageSquare,
-  Heart, Star, TrendingUp, TrendingDown, Newspaper, Share2,
-  Eye, X, Sparkles, Flame, AlertTriangle, CheckCircle2,
-  ChevronRight, Zap, Minus
+  Mic, TrendingUp, TrendingDown, Newspaper,
+  Heart, Flame, X, Shield, Star, MessageSquare
 } from 'lucide-react';
 import type { MatchResult } from '@/lib/game/types';
 
 // ============================================================
 // Types
 // ============================================================
-type AnswerStyle = 'confident' | 'humble' | 'controversial';
+type AnswerStyle = 'confident' | 'cautious' | 'controversial';
 
-interface MediaQuestion {
+interface PressConferenceQuestion {
   id: string;
   text: string;
   category: string;
@@ -38,271 +35,191 @@ interface AnswerRecord {
 }
 
 // ============================================================
-// Question generation pools
+// Pre-match question pools
 // ============================================================
-const WIN_QUESTIONS: Omit<MediaQuestion, 'id'>[] = [
+const PRE_MATCH_QUESTIONS: Omit<PressConferenceQuestion, 'id'>[] = [
   {
-    text: "Brilliant performance today! What was the key to your team's dominant display?",
-    category: 'performance',
+    text: "Your thoughts on the upcoming match against {opponent}?",
+    category: 'opponent',
     answers: [
-      { style: 'confident', text: "We were simply the better side. Our quality showed from the first whistle.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "Full credit to the whole team — everyone worked incredibly hard today.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "We should be winning like this every week. Anything less is unacceptable.", moraleEffect: 8, reputationEffect: -2 },
+      { style: 'confident', text: "We're fully prepared. I expect us to get the three points.", moraleEffect: 3, reputationEffect: 2 },
+      { style: 'cautious', text: "It'll be a tough test. We respect them but believe in ourselves.", moraleEffect: 1, reputationEffect: 1 },
+      { style: 'controversial', text: "We should beat them easily. Anything less would be disappointing.", moraleEffect: 2, reputationEffect: 3 },
     ],
   },
   {
-    text: "Three points in the bag — are you now thinking about a title challenge?",
-    category: 'ambition',
+    text: "How is your form heading into this game?",
+    category: 'form',
     answers: [
-      { style: 'confident', text: "Absolutely. We have the quality to compete at the very top.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "We take it one game at a time. There's still a long way to go.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "If we don't win the league, it's a failure. Simple as that.", moraleEffect: -5, reputationEffect: 5 },
+      { style: 'confident', text: "I'm feeling sharp. Training has been excellent this week.", moraleEffect: 4, reputationEffect: 2 },
+      { style: 'cautious', text: "I'm working hard to find my best level. Every session counts.", moraleEffect: 2, reputationEffect: 1 },
+      { style: 'controversial', text: "My form has been the best on the team. Others need to step up.", moraleEffect: 1, reputationEffect: 4 },
     ],
   },
   {
-    text: "The team spirit looks incredible right now. What's the atmosphere like in the dressing room?",
-    category: 'team_spirit',
+    text: "Any changes to your preparation this week?",
+    category: 'preparation',
     answers: [
-      { style: 'confident', text: "The bond is unbreakable. We back each other 100%.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "We're a family. Every player fights for the person next to them.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "Honestly? Some players need to work harder. I'm carrying this team.", moraleEffect: -5, reputationEffect: -3 },
-    ],
-  },
-];
-
-const DRAW_QUESTIONS: Omit<MediaQuestion, 'id'>[] = [
-  {
-    text: "A point today, but you must feel like chances were missed. What's your assessment?",
-    category: 'missed_chances',
-    answers: [
-      { style: 'confident', text: "We created enough to win. The goals will come, I'm sure of it.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "We have to be more clinical. Credit to the opposition, they made it tough.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "We were robbed. The finishing was embarrassing — myself included.", moraleEffect: -5, reputationEffect: -3 },
+      { style: 'confident', text: "We've studied them thoroughly. We know exactly what to do.", moraleEffect: 3, reputationEffect: 1 },
+      { style: 'cautious', text: "Just the usual routine — focused training and recovery.", moraleEffect: 1, reputationEffect: 1 },
+      { style: 'controversial', text: "I've been doing extra sessions because some players aren't pulling their weight.", moraleEffect: -2, reputationEffect: 3 },
     ],
   },
   {
-    text: "The manager made some tactical changes today. Do you think they worked?",
-    category: 'tactics',
+    text: "What's your target for this match?",
+    category: 'target',
     answers: [
-      { style: 'confident', text: "We trust the gaffer completely. The system is working.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "We're still adapting. It takes time for new ideas to click.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "We need to be braver. Playing safe isn't going to get us anywhere.", moraleEffect: -3, reputationEffect: -2 },
-    ],
-  },
-  {
-    text: "What needs to change to turn draws into wins going forward?",
-    category: 'improvement',
-    answers: [
-      { style: 'confident', text: "Nothing major — just a bit more composure in the final third.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "We need to keep working hard on the training ground. Details matter.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "Maybe some players shouldn't be starting. We need more quality.", moraleEffect: -5, reputationEffect: -3 },
-    ],
-  },
-];
-
-const LOSS_QUESTIONS: Omit<MediaQuestion, 'id'>[] = [
-  {
-    text: "Tough result today. Where did it go wrong for the team?",
-    category: 'performance',
-    answers: [
-      { style: 'confident', text: "One bad day doesn't define us. We'll bounce back stronger.", moraleEffect: 5, reputationEffect: 1 },
-      { style: 'humble', text: "We weren't good enough. We have to hold our hands up and accept that.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "The referee cost us. That's the reality and everyone knows it.", moraleEffect: -5, reputationEffect: -3 },
-    ],
-  },
-  {
-    text: "Team morale must be low after this. How do you lift the squad for the next match?",
-    category: 'morale',
-    answers: [
-      { style: 'confident', text: "We're fighters. One setback won't break our spirit.", moraleEffect: 5, reputationEffect: 1 },
-      { style: 'humble', text: "It's about staying together and working through it as a team.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "Some players need to look in the mirror. The effort wasn't there.", moraleEffect: -8, reputationEffect: -3 },
-    ],
-  },
-  {
-    text: "Are you worried about the direction the team is heading?",
-    category: 'future',
-    answers: [
-      { style: 'confident', text: "Not at all. This is a bump in the road. Trust the process.", moraleEffect: 5, reputationEffect: 1 },
-      { style: 'humble', text: "We need to be honest about where we are and improve every day.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "If things don't change, I might have to consider my future here.", moraleEffect: -8, reputationEffect: 5 },
-    ],
-  },
-];
-
-const GREAT_RATING_QUESTIONS: Omit<MediaQuestion, 'id'>[] = [
-  {
-    text: "Outstanding individual display! You were the best player on the pitch — how does it feel?",
-    category: 'personal',
-    answers: [
-      { style: 'confident', text: "This is what I do. I set high standards and I deliver.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "I'm just grateful to help the team. My teammates made it easy.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "About time I got the recognition I deserve. I've been doing this all season.", moraleEffect: 8, reputationEffect: -3 },
-    ],
-  },
-  {
-    text: "Your rating today was exceptional. Do you feel you've reached a new level?",
-    category: 'achievement',
-    answers: [
-      { style: 'confident', text: "I've worked hard for this. I know what I'm capable of.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "There's always room to improve. I'm just getting started.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "I've been at this level for a while — people are just noticing now.", moraleEffect: 8, reputationEffect: -2 },
-    ],
-  },
-];
-
-const GOAL_QUESTIONS: Omit<MediaQuestion, 'id'>[] = [
-  {
-    text: "You found the back of the net today! Take us through that goal...",
-    category: 'goal',
-    answers: [
-      { style: 'confident', text: "It's what I'm paid to do. I knew exactly where to be.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "Great build-up play from the team. I just had to finish it off.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "Should've had more. Their defence was there for the taking.", moraleEffect: 8, reputationEffect: -2 },
-    ],
-  },
-  {
-    text: "That goal could be a turning point for your season. How important was it?",
-    category: 'goal',
-    answers: [
-      { style: 'confident', text: "Every goal is important. But I always back myself to deliver.", moraleEffect: 5, reputationEffect: 2 },
-      { style: 'humble', text: "It means a lot, especially after the hard work in training.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "I should be scoring every game. One goal is the bare minimum.", moraleEffect: -5, reputationEffect: 5 },
-    ],
-  },
-];
-
-const CARD_QUESTIONS: Omit<MediaQuestion, 'id'>[] = [
-  {
-    text: "You received a card today. Was it justified or do you feel hard done by?",
-    category: 'discipline',
-    answers: [
-      { style: 'confident', text: "I play on the edge — that's my game. No apologies.", moraleEffect: 5, reputationEffect: -1 },
-      { style: 'humble', text: "I have to be smarter. You can't help the team from the sideline.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "The officials need to understand the intensity of the game. That was never a card.", moraleEffect: -3, reputationEffect: -3 },
-    ],
-  },
-  {
-    text: "Discipline has been a talking point. Do you need to rein it in?",
-    category: 'discipline',
-    answers: [
-      { style: 'confident', text: "I know where the line is. This is professional football, not a tea party.", moraleEffect: 5, reputationEffect: -2 },
-      { style: 'humble', text: "I'll learn from it. I don't want to let my teammates down.", moraleEffect: 2, reputationEffect: 3 },
-      { style: 'controversial', text: "Maybe if referees did their job properly, I wouldn't need to make those challenges.", moraleEffect: -5, reputationEffect: -3 },
+      { style: 'confident', text: "Three points and a strong performance. Nothing less.", moraleEffect: 4, reputationEffect: 2 },
+      { style: 'cautious', text: "A solid team display. Results will take care of themselves.", moraleEffect: 1, reputationEffect: 2 },
+      { style: 'controversial', text: "I want to score and make a statement. The spotlight should be on me.", moraleEffect: 2, reputationEffect: 4 },
     ],
   },
 ];
 
 // ============================================================
-// Helper: Pick N random items
+// Post-match question pools
+// ============================================================
+const POST_MATCH_GENERIC: Omit<PressConferenceQuestion, 'id'>[] = [
+  {
+    text: "What are your thoughts on the team's overall performance?",
+    category: 'overall',
+    answers: [
+      { style: 'confident', text: "We showed real character and quality out there today.", moraleEffect: 3, reputationEffect: 1 },
+      { style: 'cautious', text: "There were positives but also areas we need to improve.", moraleEffect: 1, reputationEffect: 2 },
+      { style: 'controversial', text: "Some players didn't show up. We need better from everyone.", moraleEffect: -3, reputationEffect: 3 },
+    ],
+  },
+];
+
+const POST_MATCH_WIN: Omit<PressConferenceQuestion, 'id'>[] = [
+  {
+    text: "Brilliant performance! What was the key to victory?",
+    category: 'victory',
+    answers: [
+      { style: 'confident', text: "Our quality shone through. We controlled the game from start to finish.", moraleEffect: 5, reputationEffect: 2 },
+      { style: 'cautious', text: "Great team effort. Everyone contributed to this result.", moraleEffect: 2, reputationEffect: 3 },
+      { style: 'controversial', text: "I told you we'd win. This team is built around me.", moraleEffect: 3, reputationEffect: 5 },
+    ],
+  },
+];
+
+const POST_MATCH_LOSS: Omit<PressConferenceQuestion, 'id'>[] = [
+  {
+    text: "Tough result today. What went wrong?",
+    category: 'defeat',
+    answers: [
+      { style: 'confident', text: "One bad game won't define our season. We'll bounce back.", moraleEffect: 4, reputationEffect: 1 },
+      { style: 'cautious', text: "We have to be honest — we weren't good enough today.", moraleEffect: 1, reputationEffect: 3 },
+      { style: 'controversial', text: "The referee was a disgrace. Everyone saw it.", moraleEffect: -4, reputationEffect: 4 },
+    ],
+  },
+];
+
+const POST_MATCH_DRAW: Omit<PressConferenceQuestion, 'id'>[] = [
+  {
+    text: "A hard-fought draw. How do you feel about the result?",
+    category: 'draw',
+    answers: [
+      { style: 'confident', text: "We deserved more, but we take the point and move on.", moraleEffect: 3, reputationEffect: 1 },
+      { style: 'cautious', text: "A fair result. Both teams had their moments.", moraleEffect: 1, reputationEffect: 2 },
+      { style: 'controversial', text: "Dropped points. We should be winning these games.", moraleEffect: -2, reputationEffect: 3 },
+    ],
+  },
+];
+
+const POST_MATCH_GOAL: Omit<PressConferenceQuestion, 'id'>[] = [
+  {
+    text: "Your goal was fantastic. Talk us through it.",
+    category: 'goal',
+    answers: [
+      { style: 'confident', text: "I saw the opening and took it. That's what I do.", moraleEffect: 5, reputationEffect: 2 },
+      { style: 'cautious', text: "Great team build-up. I was just in the right place at the right time.", moraleEffect: 2, reputationEffect: 3 },
+      { style: 'controversial', text: "I should have had a hat-trick. One goal isn't enough.", moraleEffect: 1, reputationEffect: 5 },
+    ],
+  },
+];
+
+const POST_MATCH_CARD: Omit<PressConferenceQuestion, 'id'>[] = [
+  {
+    text: "The yellow card — was it deserved?",
+    category: 'card',
+    answers: [
+      { style: 'confident', text: "I play with intensity. That's part of my game.", moraleEffect: 3, reputationEffect: -1 },
+      { style: 'cautious', text: "I need to be smarter in those situations. Lesson learned.", moraleEffect: 1, reputationEffect: 2 },
+      { style: 'controversial', text: "That was never a card. The referee needs to look at himself.", moraleEffect: -3, reputationEffect: 3 },
+    ],
+  },
+];
+
+// ============================================================
+// Helpers
 // ============================================================
 function pickRandom<T>(arr: T[], n: number): T[] {
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(n, arr.length));
 }
 
-// ============================================================
-// Helper: Generate questions based on match result
-// ============================================================
-function generateQuestions(result: MatchResult): MediaQuestion[] {
-  const isHome = result.homeClub.id === useGameStore.getState().gameState?.currentClub.id;
-  const playerScore = isHome ? result.homeScore : result.awayScore;
-  const opponentScore = isHome ? result.awayScore : result.homeScore;
-  const won = playerScore > opponentScore;
-  const drew = playerScore === opponentScore;
+function determineResult(result: MatchResult): 'win' | 'draw' | 'loss' {
+  const clubId = useGameStore.getState().gameState?.currentClub.id;
+  if (!clubId) return 'draw';
+  const isHome = result.homeClub.id === clubId;
+  const myScore = isHome ? result.homeScore : result.awayScore;
+  const theirScore = isHome ? result.awayScore : result.homeScore;
+  if (myScore > theirScore) return 'win';
+  if (myScore < theirScore) return 'loss';
+  return 'draw';
+}
 
-  const questions: Omit<MediaQuestion, 'id'>[] = [];
-
-  // Base questions by result
-  if (won) {
-    questions.push(...pickRandom(WIN_QUESTIONS, 2));
-  } else if (drew) {
-    questions.push(...pickRandom(DRAW_QUESTIONS, 2));
-  } else {
-    questions.push(...pickRandom(LOSS_QUESTIONS, 2));
-  }
-
-  // Great personal rating
-  if (result.playerRating >= 8.0) {
-    questions.push(...pickRandom(GREAT_RATING_QUESTIONS, 1));
-  }
-
-  // Scored a goal
-  if (result.playerGoals > 0) {
-    questions.push(...pickRandom(GOAL_QUESTIONS, 1));
-  }
-
-  // Got a card
-  const playerCards = result.events.filter(
-    e => e.playerId === useGameStore.getState().gameState?.player.id &&
-    (e.type === 'yellow_card' || e.type === 'red_card' || e.type === 'second_yellow')
+function playerGotCard(result: MatchResult): boolean {
+  const playerId = useGameStore.getState().gameState?.player.id;
+  if (!playerId) return false;
+  return result.events.some(
+    e => e.playerId === playerId && (e.type === 'yellow_card' || e.type === 'red_card' || e.type === 'second_yellow')
   );
-  if (playerCards.length > 0) {
-    questions.push(...pickRandom(CARD_QUESTIONS, 1));
-  }
+}
 
-  // Pick exactly 3
-  const selected = pickRandom(questions, 3);
-
-  return selected.map((q, i) => ({
+function generatePreMatchQuestions(opponentName: string): PressConferenceQuestion[] {
+  const filled = PRE_MATCH_QUESTIONS.map(q => ({
     ...q,
-    id: `q-${i}-${Date.now()}`,
+    text: q.text.replace('{opponent}', opponentName),
+    id: `pre-${q.category}-${Date.now()}`,
   }));
+  return pickRandom(filled, 4);
+}
+
+function generatePostMatchQuestions(result: MatchResult): PressConferenceQuestion[] {
+  const pool: Omit<PressConferenceQuestion, 'id'>[] = [];
+  const outcome = determineResult(result);
+
+  if (outcome === 'win') pool.push(...POST_MATCH_WIN);
+  else if (outcome === 'loss') pool.push(...POST_MATCH_LOSS);
+  else pool.push(...POST_MATCH_DRAW);
+
+  pool.push(...POST_MATCH_GENERIC);
+
+  if (result.playerGoals > 0) pool.push(...POST_MATCH_GOAL);
+  if (playerGotCard(result)) pool.push(...POST_MATCH_CARD);
+
+  const selected = pickRandom(pool, 4);
+  return selected.map((q, i) => ({ ...q, id: `post-${i}-${Date.now()}` }));
 }
 
 // ============================================================
-// Helper: Generate headline based on answers
+// Compute media rating (0-100)
 // ============================================================
-function generateHeadline(answers: AnswerRecord[], result: MatchResult, playerName: string): string {
-  const isHome = result.homeClub.id === useGameStore.getState().gameState?.currentClub.id;
-  const playerScore = isHome ? result.homeScore : result.awayScore;
-  const opponentScore = isHome ? result.awayScore : result.homeScore;
-  const won = playerScore > opponentScore;
-  const drew = playerScore === opponentScore;
-
-  const controversialCount = answers.filter(a => a.style === 'controversial').length;
-  const confidentCount = answers.filter(a => a.style === 'confident').length;
-  const humbleCount = answers.filter(a => a.style === 'humble').length;
-
-  if (controversialCount >= 2) {
-    if (won) return `${playerName} Sparks Outrage with Post-Match Comments After Win`;
-    if (drew) return `${playerName} Blasts Teammates in Explosive Press Conference`;
-    return `${playerName} Lashes Out After Humiliating Defeat`;
-  }
-  if (controversialCount === 1) {
-    if (won) return `${playerName} Fires Warning to Rivals Despite Victory`;
-    return `${playerName} Makes Bold Claims in Tense Press Conference`;
-  }
-  if (confidentCount >= 2) {
-    if (won) return `${playerName} Sends Strong Message with Confident Post-Match Interview`;
-    return `${playerName} Remains Defiant Despite Setback`;
-  }
-  if (humbleCount >= 2) {
-    if (won) return `${playerName} Stays Grounded After Impressive Performance`;
-    if (drew) return `${playerName} Vows to Improve After Honest Self-Assessment`;
-    return `${playerName} Takes Responsibility in Classy Post-Match Interview`;
-  }
-  if (won) return `${playerName} Pleased with Team Performance in Victory`;
-  if (drew) return `${playerName} Reflects on Hard-Fought Draw`;
-  return `${playerName} Disappointed but Determined After Loss`;
-}
-
-// ============================================================
-// Helper: Compute media sentiment (0-100)
-// ============================================================
-function computeSentiment(answers: AnswerRecord[]): number {
+function computeMediaRating(answers: AnswerRecord[]): number {
   let score = 50;
   for (const a of answers) {
-    if (a.style === 'humble') score += 12;
-    else if (a.style === 'confident') score += 5;
-    else if (a.style === 'controversial') score -= 10;
-    score += a.reputationEffect * 1.5;
+    if (a.style === 'cautious') score += 10;
+    else if (a.style === 'confident') score += 4;
+    else if (a.style === 'controversial') score -= 8;
+    score += a.reputationEffect * 1.2;
   }
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
 // ============================================================
-// Reporter Avatar data
+// Reporter data
 // ============================================================
 const REPORTER_AVATARS = ['🧑‍💼', '👩‍💼', '🧑‍🎤', '👨‍💻', '👩‍🏫', '🧑‍🔬', '👨‍🎨', '👩‍⚖️'];
 const REPORTER_NAMES = [
@@ -311,118 +228,9 @@ const REPORTER_NAMES = [
 ];
 
 // ============================================================
-// SVG Sentiment Gauge
-// ============================================================
-function SentimentGauge({ value }: { value: number }) {
-  const radius = 60;
-  const strokeWidth = 10;
-  const cx = 80;
-  const cy = 70;
-  const startAngle = -210;
-  const endAngle = 30;
-  const totalAngle = endAngle - startAngle;
-  const valueAngle = startAngle + (value / 100) * totalAngle;
-
-  const polarToCartesian = (angle: number) => {
-    const rad = (angle * Math.PI) / 180;
-    return {
-      x: cx + radius * Math.cos(rad),
-      y: cy + radius * Math.sin(rad),
-    };
-  };
-
-  const arcPath = (start: number, end: number) => {
-    const s = polarToCartesian(start);
-    const e = polarToCartesian(end);
-    const largeArc = end - start > 180 ? 1 : 0;
-    return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${largeArc} 1 ${e.x} ${e.y}`;
-  };
-
-  const bgColor = value < 33 ? '#ef4444' : value < 66 ? '#f59e0b' : '#10b981';
-  const label = value < 33 ? 'Negative' : value < 66 ? 'Mixed' : 'Positive';
-
-  return (
-    <div className="flex flex-col items-center">
-      <svg width="160" height="90" viewBox="0 0 160 90">
-        {/* Background arc segments */}
-        <path d={arcPath(startAngle, startAngle + totalAngle / 3)} stroke="#ef4444" strokeWidth={strokeWidth} fill="none" opacity={0.2} strokeLinecap="round" />
-        <path d={arcPath(startAngle + totalAngle / 3, startAngle + (2 * totalAngle) / 3)} stroke="#f59e0b" strokeWidth={strokeWidth} fill="none" opacity={0.2} strokeLinecap="round" />
-        <path d={arcPath(startAngle + (2 * totalAngle) / 3, endAngle)} stroke="#10b981" strokeWidth={strokeWidth} fill="none" opacity={0.2} strokeLinecap="round" />
-
-        {/* Value arc */}
-        <motion.path
-          d={arcPath(startAngle, valueAngle)}
-          stroke={bgColor}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeLinecap="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-        />
-
-        {/* Needle dot */}
-        <motion.circle
-          cx={polarToCartesian(valueAngle).x}
-          cy={polarToCartesian(valueAngle).y}
-          r="6"
-          fill={bgColor}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, type: 'spring', stiffness: 300 }}
-        />
-      </svg>
-      <div className="text-center -mt-2">
-        <span className="text-2xl font-black" style={{ color: bgColor }}>{value}</span>
-        <span className="text-xs text-[#8b949e] ml-1">/ 100</span>
-      </div>
-      <Badge className={`mt-1 text-[10px] ${value < 33 ? 'bg-red-500/20 text-red-400 border-red-500/30' : value < 66 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>
-        {label} Sentiment
-      </Badge>
-    </div>
-  );
-}
-
-// ============================================================
-// Typewriter component
-// ============================================================
-function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) {
-  const [displayed, setDisplayed] = useState('');
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    setDisplayed('');
-    setDone(false);
-    let i = 0;
-    const timer = setInterval(() => {
-      i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) {
-        clearInterval(timer);
-        setDone(true);
-      }
-    }, speed);
-    return () => clearInterval(timer);
-  }, [text, speed]);
-
-  return (
-    <span>
-      {displayed}
-      {!done && (
-        <motion.span
-          animate={{ opacity: [1, 0] }}
-          transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
-          className="inline-block w-0.5 h-4 bg-amber-400 ml-0.5 align-middle"
-        />
-      )}
-    </span>
-  );
-}
-
-// ============================================================
 // Answer style config
 // ============================================================
-const ANSWER_STYLE_CONFIG: Record<AnswerStyle, {
+const STYLE_CONFIG: Record<AnswerStyle, {
   label: string;
   icon: React.ReactNode;
   borderColor: string;
@@ -440,9 +248,9 @@ const ANSWER_STYLE_CONFIG: Record<AnswerStyle, {
     riskLabel: 'Low Risk',
     riskColor: 'text-emerald-400',
   },
-  humble: {
-    label: 'Humble',
-    icon: <Heart className="w-3.5 h-3.5" />,
+  cautious: {
+    label: 'Cautious',
+    icon: <Shield className="w-3.5 h-3.5" />,
     borderColor: 'border-sky-500/40',
     bgColor: 'bg-sky-500/10 hover:bg-sky-500/20',
     textColor: 'text-sky-400',
@@ -461,95 +269,119 @@ const ANSWER_STYLE_CONFIG: Record<AnswerStyle, {
 };
 
 // ============================================================
-// Main PressConference Component
+// Main Component Props
 // ============================================================
-interface PressConferenceProps {
+export interface PressConferenceProps {
+  type: 'pre-match' | 'post-match';
   open: boolean;
   onClose: () => void;
-  matchResult: MatchResult | null;
+  matchResult?: MatchResult | null;
+  opponentName: string;
+  playerForm: number;
+  playerMorale: number;
 }
 
-export default function PressConference({ open, onClose, matchResult }: PressConferenceProps) {
+// ============================================================
+// Main Component
+// ============================================================
+export default function PressConference({
+  type,
+  open,
+  onClose,
+  matchResult,
+  opponentName,
+  playerForm,
+  playerMorale,
+}: PressConferenceProps) {
   const gameState = useGameStore(state => state.gameState);
   const player = gameState?.player;
   const currentClub = gameState?.currentClub;
 
-  const [phase, setPhase] = useState<'flash' | 'questions' | 'reaction'>('flash');
-  const [questions, setQuestions] = useState<MediaQuestion[]>([]);
-  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  // Generate questions (re-generated when open or type changes)
+  const [openKey, setOpenKey] = useState(0);
+
+  const questions = useMemo(() => {
+    if (!open) return [];
+    if (type === 'pre-match') {
+      return generatePreMatchQuestions(opponentName);
+    } else if (matchResult) {
+      return generatePostMatchQuestions(matchResult);
+    }
+    return [];
+  }, [openKey, type, matchResult, opponentName]);
+
+  const [phase, setPhase] = useState<'intro' | 'questions' | 'summary'>('intro');
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [showQuestion, setShowQuestion] = useState(false);
 
-  // Generate questions when modal opens
+  // Track open changes to trigger question regeneration
+  const prevOpenRef = useRef(false);
   useEffect(() => {
-    if (open && matchResult) {
-      const generated = generateQuestions(matchResult);
-      setQuestions(generated);
-      setCurrentQuestionIdx(0);
+    if (open && !prevOpenRef.current) {
+      // Just opened — reset all state for fresh conference
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentionally resetting state on modal open
+      setOpenKey(k => k + 1);
+      setCurrentIdx(0);
       setAnswers([]);
-      setPhase('flash');
+      setPhase('intro');
       setShowQuestion(false);
+    }
+    prevOpenRef.current = open;
+  }, [open]);
 
-      // Flash phase → questions phase
-      const flashTimer = setTimeout(() => {
+  // Auto-transition from intro to questions after delay
+  useEffect(() => {
+    if (open && phase === 'intro' && questions.length > 0) {
+      const timer = setTimeout(() => {
         setPhase('questions');
         setShowQuestion(true);
-      }, 1200);
-
-      return () => clearTimeout(flashTimer);
-    }
-  }, [open, matchResult]);
-
-  const currentQuestion = questions[currentQuestionIdx];
-  const allAnswered = currentQuestionIdx >= questions.length;
-
-  // Move to reaction phase when all questions answered
-  useEffect(() => {
-    if (allAnswered && answers.length === 3 && phase === 'questions') {
-      const timer = setTimeout(() => setPhase('reaction'), 600);
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [allAnswered, answers.length, phase]);
+  }, [open, phase, questions.length]);
 
-  const handleAnswer = useCallback((answerStyle: AnswerStyle) => {
+  const currentQuestion = questions[currentIdx];
+  const allAnswered = currentIdx >= questions.length;
+
+  const handleAnswer = (style: AnswerStyle) => {
     if (!currentQuestion) return;
-
-    const answer = currentQuestion.answers.find(a => a.style === answerStyle);
+    const answer = currentQuestion.answers.find(a => a.style === style);
     if (!answer) return;
 
-    const record: AnswerRecord = {
+    setAnswers(prev => [...prev, {
       questionId: currentQuestion.id,
-      style: answerStyle,
+      style,
       moraleEffect: answer.moraleEffect,
       reputationEffect: answer.reputationEffect,
-    };
+    }]);
 
-    setAnswers(prev => [...prev, record]);
-
-    // Transition to next question
     setShowQuestion(false);
+    const isLast = currentIdx >= questions.length - 1;
     setTimeout(() => {
-      setCurrentQuestionIdx(prev => prev + 1);
-      setShowQuestion(true);
-    }, 400);
-  }, [currentQuestion]);
+      if (isLast) {
+        setPhase('summary');
+      } else {
+        setCurrentIdx(prev => prev + 1);
+        setShowQuestion(true);
+      }
+    }, 350);
+  };
 
   const handleApplyEffects = useCallback(() => {
-    const store = useGameStore.getState();
-    const gs = store.gameState;
+    const gs = useGameStore.getState().gameState;
     if (!gs) return;
 
     let totalMorale = 0;
-    let totalReputation = 0;
+    let totalRep = 0;
     for (const a of answers) {
       totalMorale += a.moraleEffect;
-      totalReputation += a.reputationEffect;
+      totalRep += a.reputationEffect;
     }
 
     const newMorale = Math.max(0, Math.min(100, gs.player.morale + totalMorale));
-    const newReputation = Math.max(0, Math.min(100, gs.player.reputation + totalReputation));
+    const newReputation = Math.max(0, Math.min(100, gs.player.reputation + totalRep));
 
-    // Use zustand's internal set through the store API
     useGameStore.setState({
       gameState: {
         ...gs,
@@ -564,33 +396,24 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
     onClose();
   }, [answers, onClose]);
 
-  // Compute reaction data
-  const sentiment = useMemo(() => computeSentiment(answers), [answers]);
-  const headline = useMemo(() => {
-    if (!player || !matchResult) return '';
-    return generateHeadline(answers, matchResult, player.name.split(' ').pop() || player.name);
-  }, [answers, matchResult, player]);
+  // Computed summary values
+  const mediaRating = useMemo(() => computeMediaRating(answers), [answers]);
+  const totalMoraleEffect = useMemo(() => answers.reduce((s, a) => s + a.moraleEffect, 0), [answers]);
+  const totalRepEffect = useMemo(() => answers.reduce((s, a) => s + a.reputationEffect, 0), [answers]);
 
-  const totalMoraleEffect = useMemo(() => answers.reduce((sum, a) => sum + a.moraleEffect, 0), [answers]);
-  const totalReputationEffect = useMemo(() => answers.reduce((sum, a) => sum + a.reputationEffect, 0), [answers]);
+  if (!open || !player || !currentClub) return null;
 
-  // Social media counts (procedurally generated based on sentiment)
-  const socialLikes = useMemo(() => Math.round((sentiment * 120 + Math.random() * 2000) * (answers.filter(a => a.style === 'controversial').length + 1)), [sentiment, answers]);
-  const socialRetweets = useMemo(() => Math.round(socialLikes * (0.15 + Math.random() * 0.2)), [socialLikes]);
-
-  if (!open || !matchResult || !player || !currentClub) return null;
-
-  // Determine match result type
-  const isHome = matchResult.homeClub.id === currentClub.id;
-  const playerScore = isHome ? matchResult.homeScore : matchResult.awayScore;
-  const opponentScore = isHome ? matchResult.awayScore : matchResult.homeScore;
-  const won = playerScore > opponentScore;
-  const drew = playerScore === opponentScore;
-
-  // Current reporter
-  const reporterIdx = currentQuestionIdx % REPORTER_AVATARS.length;
+  const reporterIdx = currentIdx % REPORTER_AVATARS.length;
   const reporterAvatar = REPORTER_AVATARS[reporterIdx];
   const reporterName = REPORTER_NAMES[reporterIdx];
+
+  const ratingLabel = mediaRating < 33 ? 'Negative' : mediaRating < 66 ? 'Mixed' : 'Positive';
+  const ratingColor = mediaRating < 33 ? 'text-red-400' : mediaRating < 66 ? 'text-amber-400' : 'text-emerald-400';
+  const ratingBadgeClass = mediaRating < 33
+    ? 'bg-red-500/20 text-red-400 border-red-500/30'
+    : mediaRating < 66
+    ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
 
   return (
     <AnimatePresence>
@@ -599,22 +422,15 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 "
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
         >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 250, damping: 25 }}
-            className="relative w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin rounded-lg"
-            style={{
-              backgroundColor: '#161b22',
-              border: '1px solid rgba(220, 38, 38, 0.15)',
-            }}
+            transition={{ duration: 0.15 }}
+            className="relative w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin rounded-lg bg-[#161b22] border border-[#30363d]"
           >
-            {/* Red carpet / warm gradient overlay */}
-            <div className="absolute inset-0 bg-red-950/5 pointer-events-none rounded-lg" />
-
             {/* Close button */}
             <button
               onClick={onClose}
@@ -623,76 +439,62 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
               <X className="w-4 h-4" />
             </button>
 
-            {/* ==================== FLASH PHASE ==================== */}
-            {phase === 'flash' && (
+            {/* ==================== INTRO PHASE ==================== */}
+            {phase === 'intro' && (
               <div className="relative p-8 text-center">
-                {/* Camera flash effect */}
-                <motion.div
-                  initial={{ opacity: 1 }}
-                  animate={{ opacity: 0 }}
-                  transition={{ duration: 0.2, delay: 0.2 }}
-                  className="absolute inset-0 bg-white/30 pointer-events-none rounded-lg"
-                />
-
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                  transition={{ duration: 0.15 }}
                   className="text-5xl mb-4"
                 >
-                  🎙️
+                  {type === 'pre-match' ? '🎙️' : '📰'}
                 </motion.div>
 
                 <motion.h2
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.2 }}
                   className="text-xl font-black text-white tracking-wider"
                 >
-                  PRESS CONFERENCE
+                  {type === 'pre-match' ? 'PRE-MATCH' : 'POST-MATCH'} PRESS CONFERENCE
                 </motion.h2>
 
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
+                  transition={{ delay: 0.4 }}
                   className="mt-3 flex items-center justify-center gap-2"
                 >
                   <span className="text-2xl">{currentClub.logo}</span>
                   <div>
                     <p className="text-sm text-[#c9d1d9] font-medium">{player.name.split(' ').pop()}</p>
                     <p className="text-[10px] text-[#8b949e]">
-                      {won ? 'After Victory' : drew ? 'After Draw' : 'After Defeat'} • {matchResult.homeClub.shortName || matchResult.homeClub.name.slice(0, 3)} {matchResult.homeScore}-{matchResult.awayScore} {matchResult.awayClub.shortName || matchResult.awayClub.name.slice(0, 3)}
+                      {type === 'pre-match'
+                        ? `vs ${opponentName}`
+                        : matchResult
+                          ? `${matchResult.homeClub.shortName || matchResult.homeClub.name.slice(0, 3)} ${matchResult.homeScore}-${matchResult.awayScore} ${matchResult.awayClub.shortName || matchResult.awayClub.name.slice(0, 3)}`
+                          : 'Post-Match'
+                      }
                     </p>
                   </div>
                 </motion.div>
-
-                {/* Flash effect dots */}
-                <div className="absolute top-4 left-4 flex gap-1">
-                  {[...Array(3)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: [0, 1, 0] }}
-                      transition={{ duration: 0.2, delay: i * 0.15, repeat: 1 }}
-                      className="w-2 h-2 rounded-full bg-amber-400"
-                    />
-                  ))}
-                </div>
               </div>
             )}
 
             {/* ==================== QUESTIONS PHASE ==================== */}
             {phase === 'questions' && currentQuestion && (
               <div className="relative p-5">
-                {/* Header */}
+                {/* Header bar */}
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/30 px-2 py-0.5 rounded-full">
-                    <Mic className="w-3 h-3 text-red-400" />
-                    <span className="text-[10px] font-bold text-red-400 tracking-wider">LIVE</span>
+                  <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    <Mic className="w-3 h-3 text-emerald-400" />
+                    <span className="text-[10px] font-bold text-emerald-400 tracking-wider">
+                      {type === 'pre-match' ? 'PRE-MATCH' : 'POST-MATCH'}
+                    </span>
                   </div>
                   <span className="text-[10px] text-[#8b949e]">
-                    Question {currentQuestionIdx + 1} of {questions.length}
+                    Question {Math.min(currentIdx + 1, questions.length)} of {questions.length}
                   </span>
                   <div className="flex-1" />
                   <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e]">
@@ -700,66 +502,59 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                   </Badge>
                 </div>
 
-                {/* Progress dots */}
+                {/* Progress indicator */}
                 <div className="flex gap-2 mb-5 justify-center">
                   {questions.map((_, i) => (
                     <div
                       key={i}
                       className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                        i < currentQuestionIdx
+                        i < currentIdx
                           ? 'bg-emerald-400'
-                          : i === currentQuestionIdx
-                          ? 'bg-amber-400 scale-125'
+                          : i === currentIdx
+                          ? 'bg-amber-400'
                           : 'bg-slate-700'
                       }`}
                     />
                   ))}
                 </div>
 
-                {/* Reporter card */}
+                {/* Question area */}
                 <AnimatePresence mode="wait">
                   {showQuestion && (
                     <motion.div
-                      key={currentQuestionIdx}
+                      key={currentIdx}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
+                      transition={{ duration: 0.15 }}
                     >
-                      {/* Reporter avatar + name */}
+                      {/* Reporter */}
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 rounded-xl bg-[#21262d] border border-[#30363d] flex items-center justify-center text-xl">
                           {reporterAvatar}
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-[#c9d1d9]">{reporterName}</p>
-                          <p className="text-[9px] text-[#8b949e]">Senior Football Correspondent</p>
-                        </div>
-                        <div className="ml-auto">
-                          <Badge className="text-[8px] bg-red-500/15 text-red-400 border-red-500/25">
-                            <Camera className="w-2.5 h-2.5 mr-0.5" />
-                            LIVE
-                          </Badge>
+                          <p className="text-[9px] text-[#8b949e]">Football Correspondent</p>
                         </div>
                       </div>
 
-                      {/* Question with typewriter */}
-                      <div className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-5">
+                      {/* Question bubble with emerald left border */}
+                      <div className="bg-[#21262d] border border-[#30363d] border-l-4 border-l-emerald-500 rounded-lg p-4 mb-5">
                         <p className="text-sm text-[#c9d1d9] leading-relaxed">
-                          <TypewriterText text={currentQuestion.text} speed={20} />
+                          {currentQuestion.text}
                         </p>
                       </div>
 
-                      {/* Answer options */}
+                      {/* Response cards */}
                       <div className="space-y-2.5">
                         {currentQuestion.answers.map((answer) => {
-                          const config = ANSWER_STYLE_CONFIG[answer.style];
+                          const config = STYLE_CONFIG[answer.style];
                           return (
-                            <motion.button
+                            <button
                               key={answer.style}
                               onClick={() => handleAnswer(answer.style)}
-                              whileHover={{ opacity: 0.9 }}
-                              className={`w-full text-left p-3.5 rounded-lg border transition-all duration-200 ${config.borderColor} ${config.bgColor} group`}
+                              className={`w-full text-left p-3.5 rounded-lg border transition-all duration-200 ${config.borderColor} ${config.bgColor} group cursor-pointer`}
                             >
                               <div className="flex items-start gap-3">
                                 <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${config.bgColor} border ${config.borderColor}`}>
@@ -772,10 +567,10 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                                       {config.riskLabel}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-[#c9d1d9] leading-relaxed pr-8">
+                                  <p className="text-xs text-[#c9d1d9] leading-relaxed">
                                     {answer.text}
                                   </p>
-                                  {/* Effect indicators */}
+                                  {/* Effect preview */}
                                   <div className="flex gap-2 mt-2">
                                     {answer.moraleEffect !== 0 && (
                                       <span className={`text-[9px] font-medium flex items-center gap-0.5 ${answer.moraleEffect > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -785,15 +580,14 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
                                     )}
                                     {answer.reputationEffect !== 0 && (
                                       <span className={`text-[9px] font-medium flex items-center gap-0.5 ${answer.reputationEffect > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                        {answer.reputationEffect > 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                                        {answer.reputationEffect > 0 ? <Star className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
                                         Rep {answer.reputationEffect > 0 ? '+' : ''}{answer.reputationEffect}
                                       </span>
                                     )}
                                   </div>
                                 </div>
-                                <ChevronRight className={`w-4 h-4 ${config.textColor} opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0 mt-2`} />
                               </div>
-                            </motion.button>
+                            </button>
                           );
                         })}
                       </div>
@@ -803,151 +597,132 @@ export default function PressConference({ open, onClose, matchResult }: PressCon
               </div>
             )}
 
-            {/* ==================== REACTION PHASE ==================== */}
-            {phase === 'reaction' && (
+            {/* ==================== SUMMARY PHASE ==================== */}
+            {phase === 'summary' && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.15 }}
                 className="relative p-5"
               >
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-5">
                   <Newspaper className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm font-bold text-white">Media Reaction</span>
+                  <span className="text-sm font-bold text-white">Conference Summary</span>
                 </div>
 
-                {/* Sentiment Gauge */}
+                {/* Media Rating */}
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
+                  transition={{ delay: 0.1 }}
+                  className="bg-[#21262d] border border-[#30363d] rounded-lg p-4 mb-4 text-center"
                 >
-                  <p className="text-[10px] text-[#8b949e]  font-semibold mb-3 text-center">
-                    Media Sentiment
-                  </p>
-                  <SentimentGauge value={sentiment} />
+                  <p className="text-[10px] text-[#8b949e] font-semibold mb-2">Media Rating</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={`text-4xl font-black ${ratingColor}`}>{mediaRating}</span>
+                    <span className="text-xs text-[#8b949e]">/ 100</span>
+                  </div>
+                  <Badge className={`mt-2 text-[10px] ${ratingBadgeClass}`}>
+                    {ratingLabel} Coverage
+                  </Badge>
                 </motion.div>
 
-                {/* Headline */}
+                {/* Morale Change */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-[#21262d] border border-[#30363d] rounded-lg p-4 mb-4"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Heart className="w-3.5 h-3.5 text-rose-400" />
+                    <span className="text-[10px] text-rose-400 font-bold">Morale Change</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#8b949e]">Morale</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-[#8b949e]">{playerMorale}</span>
+                      <span className={`text-sm font-bold flex items-center gap-0.5 ${totalMoraleEffect >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {totalMoraleEffect >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        {totalMoraleEffect > 0 ? '+' : ''}{totalMoraleEffect}
+                      </span>
+                      <span className="text-sm text-white font-bold">{Math.max(0, Math.min(100, playerMorale + totalMoraleEffect))}</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Reputation Change */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-[#21262d] border border-[#30363d] rounded-lg p-4 mb-4"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Star className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-[10px] text-amber-400 font-bold">Reputation Change</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#8b949e]">Reputation</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-[#8b949e]">{player.reputation}</span>
+                      <span className={`text-sm font-bold flex items-center gap-0.5 ${totalRepEffect >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {totalRepEffect >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        {totalRepEffect > 0 ? '+' : ''}{totalRepEffect}
+                      </span>
+                      <span className="text-sm text-white font-bold">{Math.max(0, Math.min(100, player.reputation + totalRepEffect))}</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Answer breakdown */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  className="bg-[#21262d] border border-[#30363d] rounded-lg p-4 mb-5"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="text-[10px] text-sky-400 font-bold">Your Responses</span>
+                  </div>
+                  <div className="space-y-2">
+                    {answers.map((a, i) => {
+                      const cfg = STYLE_CONFIG[a.style];
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#484f58] font-mono w-4">{i + 1}.</span>
+                          <span className={`text-[10px] font-bold ${cfg.textColor}`}>{cfg.label}</span>
+                          <div className="flex-1" />
+                          {a.moraleEffect !== 0 && (
+                            <span className={`text-[9px] ${a.moraleEffect > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {a.moraleEffect > 0 ? '+' : ''}{a.moraleEffect} morale
+                            </span>
+                          )}
+                          {a.reputationEffect !== 0 && (
+                            <span className={`text-[9px] ${a.reputationEffect > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {a.reputationEffect > 0 ? '+' : ''}{a.reputationEffect} rep
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+
+                {/* Confirm button */}
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.5 }}
-                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Newspaper className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-[10px] text-amber-400 font-bold ">Key Headline</span>
-                  </div>
-                  <p className="text-sm font-bold text-white leading-snug">
-                    &ldquo;{headline}&rdquo;
-                  </p>
-                </motion.div>
-
-                {/* Social media reaction */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.7 }}
-                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-4"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
-                    <span className="text-[10px] text-sky-400 font-bold ">Social Reaction</span>
-                  </div>
-                  <div className="flex items-center justify-around">
-                    <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-4 h-4 text-rose-400" />
-                        <span className="text-lg font-black text-white">{socialLikes.toLocaleString()}</span>
-                      </div>
-                      <span className="text-[9px] text-[#8b949e]">Likes</span>
-                    </div>
-                    <div className="w-px h-8 bg-slate-700/50" />
-                    <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-1">
-                        <Share2 className="w-4 h-4 text-sky-400" />
-                        <span className="text-lg font-black text-white">{socialRetweets.toLocaleString()}</span>
-                      </div>
-                      <span className="text-[9px] text-[#8b949e]">Retweets</span>
-                    </div>
-                    <div className="w-px h-8 bg-slate-700/50" />
-                    <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-4 h-4 text-emerald-400" />
-                        <span className="text-lg font-black text-white">{((socialLikes + socialRetweets) * 3.2).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
-                      </div>
-                      <span className="text-[9px] text-[#8b949e]">Impressions</span>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Effect Summary */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.9 }}
-                  className="bg-[#161b22]/60 border border-[#30363d] rounded-lg p-4 mb-5"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-[10px] text-amber-400 font-bold ">Effect Summary</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#21262d] rounded-lg p-3 text-center">
-                      <p className="text-[9px] text-[#8b949e] uppercase mb-1">Morale</p>
-                      <div className="flex items-center justify-center gap-1">
-                        {totalMoraleEffect > 0 ? (
-                          <TrendingUp className="w-4 h-4 text-emerald-400" />
-                        ) : totalMoraleEffect < 0 ? (
-                          <TrendingDown className="w-4 h-4 text-red-400" />
-                        ) : (
-                          <Minus className="w-4 h-4 text-[#8b949e]" />
-                        )}
-                        <span className={`text-lg font-black ${totalMoraleEffect > 0 ? 'text-emerald-400' : totalMoraleEffect < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
-                          {totalMoraleEffect > 0 ? '+' : ''}{totalMoraleEffect}
-                        </span>
-                      </div>
-                      <p className="text-[9px] text-[#8b949e] mt-0.5">
-                        {player.morale} → {Math.max(0, Math.min(100, player.morale + totalMoraleEffect))}
-                      </p>
-                    </div>
-                    <div className="bg-[#21262d] rounded-lg p-3 text-center">
-                      <p className="text-[9px] text-[#8b949e] uppercase mb-1">Reputation</p>
-                      <div className="flex items-center justify-center gap-1">
-                        {totalReputationEffect > 0 ? (
-                          <TrendingUp className="w-4 h-4 text-emerald-400" />
-                        ) : totalReputationEffect < 0 ? (
-                          <TrendingDown className="w-4 h-4 text-red-400" />
-                        ) : (
-                          <Minus className="w-4 h-4 text-[#8b949e]" />
-                        )}
-                        <span className={`text-lg font-black ${totalReputationEffect > 0 ? 'text-emerald-400' : totalReputationEffect < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>
-                          {totalReputationEffect > 0 ? '+' : ''}{totalReputationEffect}
-                        </span>
-                      </div>
-                      <p className="text-[9px] text-[#8b949e] mt-0.5">
-                        {player.reputation} → {Math.max(0, Math.min(100, player.reputation + totalReputationEffect))}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Continue button */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.1 }}
-                >
-                  <Button
+                  <button
                     onClick={handleApplyEffects}
-                    className="w-full h-12 bg-red-700 hover:bg-red-600 rounded-lg font-semibold text-white transition-colors"
+                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors cursor-pointer"
                   >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Leave Press Conference
-                  </Button>
+                    Confirm & Apply Effects
+                  </button>
                 </motion.div>
               </motion.div>
             )}
