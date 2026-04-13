@@ -5,7 +5,7 @@ import { useGameStore } from '@/store/gameStore';
 import type { GameState, MatchResult, Trophy, SeasonAward } from '@/lib/game/types';
 import { motion } from 'framer-motion';
 import {
-  Trophy,
+  Trophy as TrophyIcon,
   Award,
   Target,
   Star,
@@ -319,7 +319,7 @@ export default function HallOfFame() {
       label: 'First Trophy',
       achieved: !!firstTrophy,
       season: firstTrophy?.season,
-      icon: <Trophy className="h-3.5 w-3.5" />,
+      icon: <TrophyIcon className="h-3.5 w-3.5" />,
     });
 
     // First international call-up
@@ -619,7 +619,7 @@ export default function HallOfFame() {
               delay={SEC_DELAY + ITEM_DELAY * 10}
             />
             <RecordCard
-              icon={<Trophy className="h-4 w-4" />}
+              icon={<TrophyIcon className="h-4 w-4" />}
               value={trophies.length}
               label="Total Trophies"
               color="text-amber-400"
@@ -735,7 +735,7 @@ export default function HallOfFame() {
         <section>
           <SectionHeader
             title="Trophy Cabinet"
-            icon={<Trophy className="h-4 w-4" />}
+            icon={<TrophyIcon className="h-4 w-4" />}
             delay={SEC_DELAY * 3}
           />
 
@@ -762,7 +762,7 @@ export default function HallOfFame() {
                   }}
                 >
                   <span className="text-amber-400">
-                    <Trophy className="h-4 w-4" />
+                    <TrophyIcon className="h-4 w-4" />
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#c9d1d9] font-medium truncate">
@@ -786,7 +786,7 @@ export default function HallOfFame() {
                 delay: SEC_DELAY * 3 + ITEM_DELAY,
               }}
             >
-              <Trophy className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+              <TrophyIcon className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
               <p className="text-xs text-[#484f58]">No trophies yet</p>
               <p className="text-[10px] text-[#30363d] mt-1">
                 Win competitions to add trophies here

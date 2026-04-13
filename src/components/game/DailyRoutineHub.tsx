@@ -661,7 +661,7 @@ function ScheduleSlot({
 
       {act ? (
         <div className="flex items-center gap-1">
-          <ActivityIcon actId={actId} size="sm" />
+          <ActivityIcon actId={actId!} size="sm" />
           <span className={`text-[10px] font-medium leading-tight ${cat?.textClass || 'text-[#8b949e]'} truncate`}>
             {act.abbrev}
           </span>

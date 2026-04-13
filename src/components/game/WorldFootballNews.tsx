@@ -183,7 +183,7 @@ const FILTER_TABS: { value: FilterTab; label: string }[] = [
 // Helpers
 // ============================================================
 
-function randomFrom<T>(arr: T[]): T {
+function randomFrom<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 

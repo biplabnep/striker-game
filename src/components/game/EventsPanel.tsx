@@ -441,7 +441,7 @@ export default function EventsPanel() {
                     }}
                   >
                     <Card className="bg-[#161b22]/90  border-[#30363d] overflow-hidden">
-                      {/* Gradient left border */}
+                      {/* Left border */}
                       <div className="flex">
                         <div
                           className="w-1 shrink-0"

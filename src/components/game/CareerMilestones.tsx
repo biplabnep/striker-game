@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
+import type { MatchResult } from '@/lib/game/types';
 import {
   Trophy, Target, Lock, CheckCircle2, Flame, Star, Clock,
   TrendingUp, Award, Zap, ChevronDown, ChevronRight,
@@ -209,9 +210,9 @@ export default function CareerMilestones() {
   let longestWinStreak = 0;
   let currentWinStreak = 0;
   for (const r of allResults) {
-    const playerTeam = r.playerTeam ?? 'home';
-    const playerScore = playerTeam === 'home' ? r.homeScore : r.awayScore;
-    const oppScore = playerTeam === 'home' ? r.awayScore : r.homeScore;
+    const isHome = r.homeClub.id === currentClub.id;
+    const playerScore = isHome ? r.homeScore : r.awayScore;
+    const oppScore = isHome ? r.awayScore : r.homeScore;
     if (playerScore > oppScore) {
       currentWinStreak++;
       longestWinStreak = Math.max(longestWinStreak, currentWinStreak);

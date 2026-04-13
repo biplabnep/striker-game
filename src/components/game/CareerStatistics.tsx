@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { PlayerAttributes } from '@/lib/game/types';
+import { CoreAttribute, PlayerAttributes } from '@/lib/game/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
@@ -36,16 +36,16 @@ import {
 // ── Constants ──────────────────────────────────────────────
 const ANIM = { duration: 0.18, ease: 'easeOut' as const };
 
-const ATTR_KEYS: (keyof PlayerAttributes)[] = [
+const ATTR_KEYS: CoreAttribute[] = [
   'pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical',
 ];
 
-const ATTR_LABELS: Record<keyof PlayerAttributes, string> = {
+const ATTR_LABELS: Record<CoreAttribute, string> = {
   pace: 'Pace', shooting: 'Shooting', passing: 'Passing',
   dribbling: 'Dribbling', defending: 'Defending', physical: 'Physical',
 };
 
-const ATTR_ICONS: Record<keyof PlayerAttributes, React.ReactNode> = {
+const ATTR_ICONS: Record<CoreAttribute, React.ReactNode> = {
   pace: <Wind className="h-3 w-3" />,
   shooting: <Target className="h-3 w-3" />,
   passing: <Swords className="h-3 w-3" />,

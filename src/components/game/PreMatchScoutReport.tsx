@@ -543,7 +543,7 @@ export default function PreMatchScoutReport() {
     };
   }, [gameState]);
 
-  if (!data || !data.fixture) {
+  if (!gameState || !data || !data.fixture) {
     return (
       <div className={`${DARK_BG} min-h-screen`}>
         <div className="max-w-lg mx-auto px-4 py-6">

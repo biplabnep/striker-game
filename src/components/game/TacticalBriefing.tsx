@@ -14,8 +14,6 @@ import {
   CloudRain,
   Wind,
   CloudLightning,
-  Home,
-  Away,
   Trophy,
   TrendingUp,
   TrendingDown,
@@ -1071,7 +1069,8 @@ function SetPiecesTab() {
   const gameState = useGameStore((s) => s.gameState);
   if (!gameState) return null;
 
-  const { player, currentWeek, currentSeason, upcomingFixtures, attributes } = gameState;
+  const { player, currentWeek, currentSeason, upcomingFixtures } = gameState;
+  const attributes = player.attributes;
 
   const nextFixture = upcomingFixtures.find(
     (f) =>

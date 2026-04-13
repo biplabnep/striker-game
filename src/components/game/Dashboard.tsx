@@ -683,7 +683,7 @@ export default function Dashboard() {
       {/* Season Progress Card */}
       <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
         <div className="relative">
-          {/* Subtle gradient background */}
+          {/* Subtle background accent */}
           <div className="absolute inset-0 bg-emerald-950/10 pointer-events-none" />
           <CardContent className="p-4 relative z-10">
             {/* Header row */}
@@ -1507,7 +1507,7 @@ function EnhancedStatBar({
           <div className="h-full bg-amber-900/20" style={{ width: '25%' }} />
           <div className="h-full bg-emerald-900/20" style={{ width: '40%' }} />
         </div>
-        {/* Animated gradient fill */}
+        {/* Animated fill */}
         <motion.div
           className="h-full rounded-full relative z-10"
           initial={{ width: 0 }}

@@ -515,7 +515,7 @@ export default function CareerHub() {
                         <g>
                           <motion.path
                             d={`M ${fillPoints} Z`}
-                            fill="url(#ratingGrad)"
+                            fill="#10B981"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 0.15 }}
                             transition={{ duration: 1, delay: 0.6 }}
@@ -550,12 +550,7 @@ export default function CareerHub() {
                               />
                             );
                           })}
-                          <defs>
-                            <linearGradient id="ratingGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#10B981" />
-                              <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
-                            </linearGradient>
-                          </defs>
+
                         </g>
                       );
                     })()}

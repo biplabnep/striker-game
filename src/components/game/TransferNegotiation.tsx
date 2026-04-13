@@ -168,7 +168,7 @@ function getClubReaction(
   playerOverall: number,
   agentQuality: number
 ): { accepted: boolean; newWage: number; newContractLength: number; newSigningBonus: number; newReleaseClause: number | undefined; patienceLoss: number } {
-  const { offer, round, patience, currentWage } = negotiation;
+  const { offer, round, patience, currentWage, currentContractLength, currentSigningBonus } = negotiation;
   const wageDiff = counterWage - currentWage;
   const wageDiffPct = currentWage > 0 ? wageDiff / currentWage : 0;
 
@@ -643,11 +643,11 @@ export default function TransferNegotiation() {
             </p>
           </div>
           <Badge className={`text-[10px] ${
-            negotiation.difficulty === 'easy' ? 'bg-emerald-700' :
-            negotiation.difficulty === 'hard' ? 'bg-red-700' :
+            negotiation.offer.difficulty === 'easy' ? 'bg-emerald-700' :
+            negotiation.offer.difficulty === 'hard' ? 'bg-red-700' :
             'bg-amber-700'
           }`}>
-            {negotiation.difficulty === 'easy' ? 'Favorable' : negotiation.difficulty === 'hard' ? 'Tough' : 'Standard'}
+            {negotiation.offer.difficulty === 'easy' ? 'Favorable' : negotiation.offer.difficulty === 'hard' ? 'Tough' : 'Standard'}
           </Badge>
         </motion.div>
 

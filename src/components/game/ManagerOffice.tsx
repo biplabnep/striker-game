@@ -190,7 +190,7 @@ export default function ManagerOffice() {
   const currentWeek = gameState?.currentWeek ?? 1;
   const currentSeason = gameState?.currentSeason ?? 1;
 
-  const managerName = club?.managerName || 'Coach Thomas';
+  const managerName = 'Coach Thomas';
 
   const showToast = useCallback((message: string, type: 'positive' | 'negative' | 'neutral' = 'neutral') => {
     setToast({ message, type });

@@ -268,7 +268,7 @@ function generateSocialProfiles(playerName: string, overall: number, reputation:
   ];
 }
 
-function generateSocialPosts(playerName: string, week: number, season: number, form: number, goals: number): SocialPost[] {
+function generateSocialPosts(playerName: string, week: number, season: number, form: number, goals: number, reputation: number): SocialPost[] {
   const posts: SocialPost[] = [];
   const templates = [
     { text: `Matchday ready \ud83d\udcaa Let\u2019s get the 3 points today! ${week}th matchday of the season.`, platform: 'X (Twitter)' },
@@ -662,7 +662,7 @@ export default function FanEngagement() {
 
   const initialPosts = useMemo(() => {
     if (!player) return [];
-    return generateSocialPosts(player.name, week, season, player.form, player.seasonStats.goals);
+    return generateSocialPosts(player.name, week, season, player.form, player.seasonStats.goals, player.reputation);
   }, [player, week, season]);
 
   // Use initial values if state hasn't been modified by user actions

@@ -949,7 +949,7 @@ function CareerPlanTab({
 
   // Short-term goals
   const shortTermGoals = useMemo(() => {
-    const goals = [];
+    const goals: { icon: React.ComponentType<{ className?: string }>; title: string; current: number; target: number; color: string }[] = [];
     const isAttacker = ['ST', 'LW', 'RW', 'CAM'].includes(player.position);
     const isDefender = ['CB', 'LB', 'RB', 'CDM'].includes(player.position);
     const isGK = player.position === 'GK';

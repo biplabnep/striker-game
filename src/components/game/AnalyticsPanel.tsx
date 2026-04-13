@@ -315,7 +315,7 @@ export default function AnalyticsPanel() {
       </h2>
 
       {/* ============================================= */}
-      {/* Overall & Potential - Gradient Header Card */}
+      {/* Overall & Potential - Header Card */}
       {/* ============================================= */}
       <motion.div
         initial={{ opacity: 0 }}

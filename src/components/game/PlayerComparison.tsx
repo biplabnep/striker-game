@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { PlayerAttributes, Position } from '@/lib/game/types';
+import { CoreAttribute, PlayerAttributes, Position } from '@/lib/game/types';
 import { getAttributeCategory, getPositionCategory, getPositionColor } from '@/lib/game/gameUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // -----------------------------------------------------------
 // Attribute metadata
 // -----------------------------------------------------------
-const ATTR_META: Record<keyof PlayerAttributes, { label: string; icon: React.ReactNode; short: string }> = {
+const ATTR_META: Record<CoreAttribute, { label: string; icon: React.ReactNode; short: string }> = {
   pace:      { label: 'Pace',      icon: <Footprints className="h-3.5 w-3.5" />, short: 'PAC' },
   shooting:  { label: 'Shooting',  icon: <Crosshair className="h-3.5 w-3.5" />,  short: 'SHO' },
   passing:   { label: 'Passing',   icon: <Target className="h-3.5 w-3.5" />,    short: 'PAS' },
@@ -25,12 +25,12 @@ const ATTR_META: Record<keyof PlayerAttributes, { label: string; icon: React.Rea
   physical:  { label: 'Physical',  icon: <Dumbbell className="h-3.5 w-3.5" />,  short: 'PHY' },
 };
 
-const ATTR_KEYS: (keyof PlayerAttributes)[] = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
+const ATTR_KEYS: CoreAttribute[] = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
 
 // -----------------------------------------------------------
 // Position weights for distributing growth
 // -----------------------------------------------------------
-const POS_WEIGHTS: Record<string, Record<keyof PlayerAttributes, number>> = {
+const POS_WEIGHTS: Record<string, Record<CoreAttribute, number>> = {
   attack:     { pace: 0.20, shooting: 0.35, passing: 0.10, dribbling: 0.20, defending: 0.02, physical: 0.13 },
   midfield:   { pace: 0.10, shooting: 0.12, passing: 0.30, dribbling: 0.20, defending: 0.13, physical: 0.15 },
   defence:    { pace: 0.12, shooting: 0.02, passing: 0.10, dribbling: 0.05, defending: 0.40, physical: 0.31 },
@@ -40,7 +40,7 @@ const POS_WEIGHTS: Record<string, Record<keyof PlayerAttributes, number>> = {
 // -----------------------------------------------------------
 // League average baselines per position
 // -----------------------------------------------------------
-const LEAGUE_AVG: Record<string, Record<keyof PlayerAttributes, number>> = {
+const LEAGUE_AVG: Record<string, Record<CoreAttribute, number>> = {
   attack:     { pace: 72, shooting: 70, passing: 62, dribbling: 68, defending: 35, physical: 65 },
   midfield:   { pace: 65, shooting: 60, passing: 70, dribbling: 66, defending: 58, physical: 68 },
   defence:    { pace: 62, shooting: 40, passing: 58, dribbling: 50, defending: 72, physical: 74 },
@@ -395,7 +395,7 @@ export default function PlayerComparison() {
                             </span>
                           </div>
                           <span className={`text-xs font-mono font-bold ${isPrimary ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
-                            {suitibility}%
+                            {suitability}%
                           </span>
                         </div>
                       );
