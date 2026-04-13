@@ -638,7 +638,9 @@ export type GameScreen =
   | 'media_interview'
   | 'loan_system'
   | 'jersey_number'
-  | 'sponsor_system';
+  | 'sponsor_system'
+  | 'trophy_cabinet'
+  | 'career_events';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

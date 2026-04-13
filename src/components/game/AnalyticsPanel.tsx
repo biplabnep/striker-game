@@ -302,6 +302,115 @@ export default function AnalyticsPanel() {
     return result;
   }, [gameState]);
 
+  // ---- Heatmap data (7 days × 5 time slots) ----
+  const heatmapData = useMemo(() => {
+    if (!gameState) return [] as number[][];
+    const attrs = ATTR_KEYS.map(k => gameState.player.attributes[k] ?? 0);
+    const overall = attrs.reduce((a, b) => a + b, 0) / attrs.length;
+    // Deterministic pseudo-random from overall
+    const seed = overall * 7 + (gameState.player.potential * 3);
+    const seededRandom = (i: number) => {
+      const x = Math.sin(seed + i * 127.1) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    const grid: number[][] = [];
+    for (let d = 0; d < 7; d++) {
+      const row: number[] = [];
+      for (let t = 0; t < 5; t++) {
+        const base = overall / 100;
+        // Simulate variation: weekends slightly higher performance
+        const dayBonus = d >= 5 ? 0.08 : 0;
+        const timeBonus = t >= 2 && t <= 3 ? 0.06 : 0;
+        const noise = (seededRandom(d * 5 + t) - 0.5) * 0.4;
+        row.push(Math.max(0, Math.min(1, base + dayBonus + timeBonus + noise)));
+      }
+      grid.push(row);
+    }
+    return grid;
+  }, [gameState]);
+
+  // ---- League average values for spider chart comparison ----
+  const leagueAverageValues = useMemo(() => {
+    if (!gameState) return [65, 60, 62, 58, 55, 63] as number[];
+    const p = gameState.player;
+    const base = Math.max(40, Math.min(85, p.overall - 5));
+    // Slight per-attribute variation based on league position
+    return ATTR_KEYS.map((_, i) => {
+      const variation = Math.sin(i * 1.8) * 8;
+      return Math.round(base + variation);
+    });
+  }, [gameState]);
+
+  // ---- Season trend data (simulated monthly) ----
+  const seasonTrendData = useMemo(() => {
+    if (!gameState) return null;
+    const p = gameState.player;
+    const overall = p.overall;
+    const seed = overall + p.potential;
+    const seededRandom = (i: number) => {
+      const x = Math.sin(seed + i * 73.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    const goalsPerMonth = Array.from({ length: 8 }, (_, i) => {
+      const base = p.seasonStats.goals / Math.max(1, p.seasonStats.appearances || 8);
+      return Math.max(0, Math.round((base * (0.5 + seededRandom(i * 3) * 1.2)) * 10) / 10);
+    });
+    const avgRatingTrend = Array.from({ length: 8 }, (_, i) => {
+      const base = p.seasonStats.averageRating || 6.5;
+      return Math.max(4, Math.min(10, +(base + (seededRandom(i * 3 + 50) - 0.5) * 1.5).toFixed(1)));
+    });
+    const minutesPlayed = Array.from({ length: 8 }, (_, i) => {
+      const base = p.seasonStats.appearances > 0 ? 60 : 30;
+      return Math.max(0, Math.round(base + (seededRandom(i * 3 + 100) - 0.3) * 50));
+    });
+    const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+    return { goalsPerMonth, avgRatingTrend, minutesPlayed, months };
+  }, [gameState]);
+
+  // ---- Strengths & Weaknesses ----
+  const strengthsWeaknesses = useMemo(() => {
+    if (!gameState) return null;
+    const entries = ATTR_KEYS.map(k => ({
+      key: k as CoreAttribute,
+      label: ATTR_FULL_LABELS[k],
+      value: gameState.player.attributes[k] ?? 0,
+      icon: ATTR_ICONS[k],
+      category: ATTR_CATEGORIES[k],
+    }));
+    const sorted = [...entries].sort((a, b) => b.value - a.value);
+    return {
+      strengths: sorted.slice(0, 3),
+      weaknesses: sorted.slice(-3).reverse(),
+    };
+  }, [gameState]);
+
+  // ---- Development Trajectory ----
+  const developmentTrajectory = useMemo(() => {
+    if (!gameState) return null;
+    const p = gameState.player;
+    const currentOverall = p.overall;
+    const potential = p.potential;
+    const age = p.age || 22;
+    const gap = potential - currentOverall;
+    // Simulate 8 future seasons (2 seasons × 4 quarters per season shown as months)
+    const numPoints = 24;
+    const projected: { x: number; y: number }[] = [];
+    const upperBound: { x: number; y: number }[] = [];
+    const lowerBound: { x: number; y: number }[] = [];
+    for (let i = 0; i < numPoints; i++) {
+      const t = i / (numPoints - 1);
+      // Age curve: faster growth early, slower near peak, slight decline at very old age
+      const ageFactor = age < 26 ? 1.0 : age < 29 ? 0.7 : age < 32 ? 0.3 : -0.1;
+      const growth = gap * (1 - Math.pow(1 - t, 2)) * ageFactor;
+      const value = Math.min(potential, currentOverall + growth);
+      const noise = Math.sin(i * 2.7) * 1.5;
+      projected.push({ x: i, y: value + noise });
+      upperBound.push({ x: i, y: Math.min(potential + 2, value + 4 + noise * 0.5) });
+      lowerBound.push({ x: i, y: Math.max(currentOverall - 3, value - 4 + noise * 0.5) });
+    }
+    return { projected, upperBound, lowerBound, numPoints, currentOverall, potential };
+  }, [gameState]);
+
   // ---- Early return ----
   if (!gameState) return null;
 
@@ -1281,6 +1390,619 @@ export default function AnalyticsPanel() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* ============================================= */}
+      {/* Performance Heatmap (7 days × 5 time slots) */}
+      {/* ============================================= */}
+      {heatmapData.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.5 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                <Flame className="h-3 w-3 text-amber-400" /> Performance Heatmap
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <div className="flex justify-center">
+                <svg width={310} height={200} viewBox="0 0 310 200" className="select-none">
+                  {/* Time-of-day labels (top) */}
+                  {['Dawn', 'AM', 'Noon', 'PM', 'Night'].map((label, t) => (
+                    <text
+                      key={label}
+                      x={55 + t * 44}
+                      y={14}
+                      textAnchor="middle"
+                      className="fill-[#484f58]"
+                      fontSize={8}
+                    >
+                      {label}
+                    </text>
+                  ))}
+                  {/* Day-of-week labels + grid cells */}
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, d) => {
+                    const rowY = 24 + d * 24;
+                    return (
+                      <g key={day}>
+                        <text
+                          x={30}
+                          y={rowY + 14}
+                          textAnchor="end"
+                          className="fill-[#484f58]"
+                          fontSize={9}
+                          fontWeight={d >= 5 ? 700 : 400}
+                          fill={d >= 5 ? '#8b949e' : '#484f58'}
+                        >
+                          {day}
+                        </text>
+                        {heatmapData[d].map((val, t) => {
+                          // Color: dark red=poor, amber=average, emerald=excellent
+                          let fillColor: string;
+                          if (val >= 0.7) fillColor = '#059669'; // emerald
+                          else if (val >= 0.55) fillColor = '#10b981';
+                          else if (val >= 0.45) fillColor = '#f59e0b'; // amber
+                          else if (val >= 0.35) fillColor = '#f97316';
+                          else fillColor = '#dc2626'; // red
+                          const opacity = 0.25 + val * 0.55;
+                          return (
+                            <rect
+                              key={t}
+                              x={42 + t * 44}
+                              y={rowY}
+                              width={38}
+                              height={20}
+                              rx={4}
+                              fill={fillColor}
+                              opacity={opacity}
+                              stroke="#21262d"
+                              strokeWidth={0.5}
+                            />
+                          );
+                        })}
+                      </g>
+                    );
+                  })}
+                  {/* Legend */}
+                  <g>
+                    <text x={55} y={198} className="fill-[#484f58]" fontSize={7}>Poor</text>
+                    <rect x={78} y={191} width={12} height={8} rx={2} fill="#dc2626" opacity={0.45} />
+                    <rect x={94} y={191} width={12} height={8} rx={2} fill="#f97316" opacity={0.5} />
+                    <rect x={110} y={191} width={12} height={8} rx={2} fill="#f59e0b" opacity={0.55} />
+                    <rect x={126} y={191} width={12} height={8} rx={2} fill="#10b981" opacity={0.6} />
+                    <rect x={142} y={191} width={12} height={8} rx={2} fill="#059669" opacity={0.65} />
+                    <text x={160} y={198} className="fill-[#484f58]" fontSize={7}>Excellent</text>
+                  </g>
+                </svg>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Attribute Comparison Spider Chart (vs League Avg) */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.52 }}
+      >
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                <Shield className="h-3 w-3 text-blue-400" /> vs League Average
+              </CardTitle>
+              {/* Legend */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-1.5 bg-emerald-500 opacity-80" />
+                  <span className="text-[8px] text-[#8b949e]">You</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-1.5 bg-sky-500 opacity-50" />
+                  <span className="text-[8px] text-[#8b949e]">League</span>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pb-3 flex justify-center">
+            <svg
+              width={200}
+              height={200}
+              viewBox="0 0 200 200"
+              className="select-none"
+            >
+              {/* Grid hexagons */}
+              {[20, 40, 60, 80, 100].map(level => {
+                const r = (level / 100) * 75;
+                const cx = 100;
+                const cy = 100;
+                const pts = ATTR_KEYS.map((_, i) => {
+                  const angle = -Math.PI / 2 + (2 * Math.PI * i) / 6;
+                  return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+                }).join(' ');
+                return (
+                  <polygon
+                    key={level}
+                    points={pts}
+                    fill="none"
+                    stroke="#334155"
+                    strokeWidth={0.4}
+                    opacity={0.4}
+                  />
+                );
+              })}
+              {/* Axis lines */}
+              {ATTR_KEYS.map((_, i) => {
+                const angle = -Math.PI / 2 + (2 * Math.PI * i) / 6;
+                return (
+                  <line
+                    key={i}
+                    x1={100}
+                    y1={100}
+                    x2={100 + 75 * Math.cos(angle)}
+                    y2={100 + 75 * Math.sin(angle)}
+                    stroke="#334155"
+                    strokeWidth={0.4}
+                    opacity={0.3}
+                  />
+                );
+              })}
+              {/* League average polygon (sky, lower opacity) */}
+              <polygon
+                points={leagueAverageValues.map((v, i) => {
+                  const angle = -Math.PI / 2 + (2 * Math.PI * i) / 6;
+                  const r = (v / 100) * 75;
+                  return `${100 + r * Math.cos(angle)},${100 + r * Math.sin(angle)}`;
+                }).join(' ')}
+                fill="rgba(14, 165, 233, 0.1)"
+                stroke="#0ea5e9"
+                strokeWidth={1.5}
+                strokeDasharray="3 2"
+                opacity={0.6}
+              />
+              {/* Player polygon (emerald, higher opacity) */}
+              <motion.polygon
+                points={attrValues.map((v, i) => {
+                  const angle = -Math.PI / 2 + (2 * Math.PI * i) / 6;
+                  const r = (v / 100) * 75;
+                  return `${100 + r * Math.cos(angle)},${100 + r * Math.sin(angle)}`;
+                }).join(' ')}
+                fill="rgba(16, 185, 129, 0.2)"
+                stroke="#10b981"
+                strokeWidth={2}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.6 }}
+              />
+              {/* Labels with comparison values */}
+              {ATTR_KEYS.map((key, i) => {
+                const angle = -Math.PI / 2 + (2 * Math.PI * i) / 6;
+                const labelR = 88;
+                const lx = 100 + labelR * Math.cos(angle);
+                const ly = 100 + labelR * Math.sin(angle);
+                const val = player.attributes[key] ?? 0;
+                const leagueVal = leagueAverageValues[i];
+                const diff = val - leagueVal;
+                return (
+                  <g key={key}>
+                    <text
+                      x={lx}
+                      y={ly - 2}
+                      textAnchor="middle"
+                      className="fill-[#8b949e]"
+                      fontSize={7}
+                      fontWeight={600}
+                    >
+                      {ATTR_LABELS[key]}
+                    </text>
+                    <text
+                      x={lx}
+                      y={ly + 8}
+                      textAnchor="middle"
+                      fill={diff >= 0 ? '#10b981' : '#ef4444'}
+                      fontSize={8}
+                      fontWeight={700}
+                    >
+                      {diff >= 0 ? '+' : ''}{diff}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ============================================= */}
+      {/* Season Trend Charts (3 mini charts) */}
+      {/* ============================================= */}
+      {seasonTrendData && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.54 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                <BarChart3 className="h-3 w-3 text-emerald-400" /> Season Trends
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 space-y-4">
+              {/* Mini Chart Helper: renders a small sparkline */}
+              {([
+                {
+                  title: 'Goals / Month',
+                  data: seasonTrendData.goalsPerMonth,
+                  color: '#10b981',
+                  areaColor: 'rgba(16, 185, 129, 0.1)',
+                  format: (v: number) => v.toFixed(1),
+                  currentVal: seasonTrendData.goalsPerMonth[seasonTrendData.goalsPerMonth.length - 1],
+                },
+                {
+                  title: 'Avg Rating',
+                  data: seasonTrendData.avgRatingTrend,
+                  color: '#0ea5e9',
+                  areaColor: 'rgba(14, 165, 233, 0.1)',
+                  format: (v: number) => v.toFixed(1),
+                  currentVal: seasonTrendData.avgRatingTrend[seasonTrendData.avgRatingTrend.length - 1],
+                },
+                {
+                  title: 'Minutes Played',
+                  data: seasonTrendData.minutesPlayed,
+                  color: '#f59e0b',
+                  areaColor: 'rgba(245, 158, 11, 0.1)',
+                  format: (v: number) => Math.round(v).toString(),
+                  currentVal: seasonTrendData.minutesPlayed[seasonTrendData.minutesPlayed.length - 1],
+                },
+              ] as const).map((chart, ci) => {
+                const data = chart.data;
+                const maxV = Math.max(...data, 0.01);
+                const minV = Math.min(...data, 0);
+                const rangeV = maxV - minV || 1;
+                const cLeft = 30;
+                const cRight = 170;
+                const cTop = 5;
+                const cBottom = 30;
+                const cW = cRight - cLeft;
+                const cH = cBottom - cTop;
+                const pts = data.map((v, i) => ({
+                  x: cLeft + (data.length > 1 ? (i / (data.length - 1)) * cW : cW / 2),
+                  y: cBottom - ((v - minV) / rangeV) * cH,
+                }));
+                const lastPt = pts[pts.length - 1];
+                return (
+                  <div key={ci}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-[#8b949e] font-medium">{chart.title}</span>
+                      <span className="text-xs font-bold tabular-nums" style={{ color: chart.color }}>
+                        {chart.format(chart.currentVal)}
+                      </span>
+                    </div>
+                    <svg width="100%" height={40} viewBox="0 0 200 40" className="select-none" preserveAspectRatio="xMidYMid meet">
+                      {/* Gridline */}
+                      <line x1={cLeft} y1={cBottom} x2={cRight} y2={cBottom} stroke="#30363d" strokeWidth={0.3} opacity={0.4} />
+                      {/* Area fill */}
+                      <polygon
+                        points={pts.map(p => `${p.x},${p.y}`).join(' ') + ` ${pts[pts.length - 1].x},${cBottom} ${pts[0].x},${cBottom}`}
+                        fill={chart.areaColor}
+                        stroke="none"
+                      />
+                      {/* Line */}
+                      <polyline
+                        points={pts.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill="none"
+                        stroke={chart.color}
+                        strokeWidth={1.5}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                      {/* Highlight current dot */}
+                      <circle
+                        cx={lastPt.x}
+                        cy={lastPt.y}
+                        r={3}
+                        fill={chart.color}
+                        stroke="#161b22"
+                        strokeWidth={1.5}
+                      />
+                      {/* Month labels */}
+                      {seasonTrendData.months.map((m, i) => {
+                        const x = cLeft + (data.length > 1 ? (i / (data.length - 1)) * cW : cW / 2);
+                        return (
+                          <text
+                            key={m}
+                            x={x}
+                            y={38}
+                            textAnchor="middle"
+                            className="fill-[#484f58]"
+                            fontSize={5}
+                          >
+                            {m}
+                          </text>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Strengths & Weaknesses Cards */}
+      {/* ============================================= */}
+      {strengthsWeaknesses && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.56 }}
+        >
+          <div className="grid grid-cols-2 gap-3">
+            {/* Strengths */}
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="text-[10px] text-emerald-400 flex items-center gap-1.5">
+                  <TrendingUp className="h-3 w-3" /> Strengths
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-2.5">
+                {strengthsWeaknesses.strengths.map((s, i) => (
+                  <motion.div
+                    key={s.key}
+                    className="space-y-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 + i * 0.06 }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[#8b949e]">{s.icon}</span>
+                        <span className="text-[11px] text-[#c9d1d9]">{s.label}</span>
+                      </div>
+                      <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[9px] px-1.5 py-0 h-4">
+                        {s.value}
+                      </Badge>
+                    </div>
+                    <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-emerald-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${s.value}%` }}
+                        transition={{ duration: 0.3, delay: 0.65 + i * 0.06, ease: 'easeOut' }}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Weaknesses */}
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="text-[10px] text-red-400 flex items-center gap-1.5">
+                  <TrendingDown className="h-3 w-3" /> Weaknesses
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-2.5">
+                {strengthsWeaknesses.weaknesses.map((w, i) => {
+                  const suggestions: Record<string, string> = {
+                    pace: 'Sprint drills & agility work',
+                    shooting: 'Target practice & finishing',
+                    passing: 'Short-pass repetition drills',
+                    dribbling: 'Cone drills & close control',
+                    defending: 'Positioning & tackle timing',
+                    physical: 'Strength & stamina training',
+                  };
+                  return (
+                    <motion.div
+                      key={w.key}
+                      className="space-y-1"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.6 + i * 0.06 }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[#8b949e]">{w.icon}</span>
+                          <span className="text-[11px] text-[#c9d1d9]">{w.label}</span>
+                        </div>
+                        <Badge className="bg-red-500/15 text-red-400 border-red-500/25 text-[9px] px-1.5 py-0 h-4">
+                          {w.value}
+                        </Badge>
+                      </div>
+                      <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full bg-red-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${w.value}%` }}
+                          transition={{ duration: 0.3, delay: 0.65 + i * 0.06, ease: 'easeOut' }}
+                        />
+                      </div>
+                      <p className="text-[8px] text-[#484f58] leading-tight">
+                        {suggestions[w.key] || 'Focus training here'}
+                      </p>
+                    </motion.div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Development Trajectory (Area Chart + Confidence Band) */}
+      {/* ============================================= */}
+      {developmentTrajectory && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.58 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                  <TrendingUp className="h-3 w-3 text-purple-400" /> Development Trajectory
+                </CardTitle>
+                <Badge
+                  variant="outline"
+                  className="text-[9px] text-purple-400 border-purple-500/30 bg-purple-500/10"
+                >
+                  Next 2 Seasons
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <svg width="100%" height={130} viewBox="0 0 320 130" className="select-none" preserveAspectRatio="xMidYMid meet">
+                {(() => {
+                  const { projected, upperBound, lowerBound, numPoints, currentOverall, potential } = developmentTrajectory;
+                  const cLeft = 35;
+                  const cRight = 305;
+                  const cTop = 8;
+                  const cBottom = 105;
+                  const cW = cRight - cLeft;
+                  const cH = cBottom - cTop;
+                  const yMin = currentOverall - 5;
+                  const yMax = potential + 5;
+                  const yRange = yMax - yMin || 1;
+                  const toX = (i: number) => cLeft + (i / (numPoints - 1)) * cW;
+                  const toY = (v: number) => cBottom - ((v - yMin) / yRange) * cH;
+
+                  // Build confidence band polygon
+                  const upperPts = upperBound.map(p => `${toX(p.x)},${toY(p.y)}`).join(' ');
+                  const lowerPts = lowerBound.map(p => `${toX(p.x)},${toY(p.y)}`).reverse().join(' ');
+                  const bandPoints = upperPts + ' ' + lowerPts;
+
+                  // Build area polygon
+                  const areaPoints = projected.map(p => `${toX(p.x)},${toY(p.y)}`).join(' ')
+                    + ` ${toX(projected[projected.length - 1].x)},${cBottom}`
+                    + ` ${toX(projected[0].x)},${cBottom}`;
+
+                  const linePoints = projected.map(p => `${toX(p.x)},${toY(p.y)}`).join(' ');
+
+                  return (
+                    <>
+                      {/* Y-axis gridlines + labels */}
+                      {[Math.ceil(yMin / 5) * 5, Math.ceil(yMin / 5) * 5 + 5, Math.ceil(yMin / 5) * 5 + 10].filter(v => v <= yMax && v >= yMin).map(v => {
+                        const y = toY(v);
+                        return (
+                          <g key={v}>
+                            <line x1={cLeft} y1={y} x2={cRight} y2={y} stroke="#30363d" strokeWidth={0.3} opacity={0.4} />
+                            <text x={cLeft - 4} y={y + 3} textAnchor="end" className="fill-[#484f58]" fontSize={7}>{v}</text>
+                          </g>
+                        );
+                      })}
+
+                      {/* Baseline */}
+                      <line x1={cLeft} y1={cBottom} x2={cRight} y2={cBottom} stroke="#30363d" strokeWidth={0.3} opacity={0.4} />
+
+                      {/* Confidence band (lower opacity area) */}
+                      <polygon
+                        points={bandPoints}
+                        fill="rgba(168, 85, 247, 0.08)"
+                        stroke="none"
+                      />
+
+                      {/* Projected area fill */}
+                      <polygon
+                        points={areaPoints}
+                        fill="rgba(168, 85, 247, 0.12)"
+                        stroke="none"
+                      />
+
+                      {/* Projected line */}
+                      <polyline
+                        points={linePoints}
+                        fill="none"
+                        stroke="#a855f7"
+                        strokeWidth={2}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+
+                      {/* Current point */}
+                      <circle
+                        cx={toX(0)}
+                        cy={toY(projected[0].y)}
+                        r={4}
+                        fill="#a855f7"
+                        stroke="#161b22"
+                        strokeWidth={2}
+                      />
+                      {/* Current label */}
+                      <text
+                        x={toX(0)}
+                        y={toY(projected[0].y) - 8}
+                        textAnchor="middle"
+                        fill="#c084fc"
+                        fontSize={8}
+                        fontWeight={700}
+                      >
+                        OVR {currentOverall}
+                      </text>
+
+                      {/* End point (projected) */}
+                      <circle
+                        cx={toX(numPoints - 1)}
+                        cy={toY(projected[projected.length - 1].y)}
+                        r={3}
+                        fill="#a855f7"
+                        stroke="#161b22"
+                        strokeWidth={1.5}
+                        opacity={0.7}
+                      />
+
+                      {/* Potential ceiling line */}
+                      <line
+                        x1={cLeft}
+                        y1={toY(potential)}
+                        x2={cRight}
+                        y2={toY(potential)}
+                        stroke="#f59e0b"
+                        strokeWidth={0.8}
+                        strokeDasharray="4 3"
+                        opacity={0.4}
+                      />
+                      <text
+                        x={cRight}
+                        y={toY(potential) - 4}
+                        textAnchor="end"
+                        fill="#f59e0b"
+                        fontSize={7}
+                        opacity={0.6}
+                      >
+                        Potential {potential}
+                      </text>
+
+                      {/* X-axis season labels */}
+                      <text x={cLeft} y={118} textAnchor="middle" className="fill-[#484f58]" fontSize={7}>Now</text>
+                      <text x={toX(Math.floor(numPoints / 2))} y={118} textAnchor="middle" className="fill-[#484f58]" fontSize={7}>+1 Season</text>
+                      <text x={cRight} y={118} textAnchor="middle" className="fill-[#484f58]" fontSize={7}>+2 Seasons</text>
+
+                      {/* Legend */}
+                      <g>
+                        <line x1={cLeft} y1={127} x2={cLeft + 16} y2={127} stroke="#a855f7" strokeWidth={1.5} />
+                        <text x={cLeft + 20} y={129} className="fill-[#484f58]" fontSize={6}>Projected</text>
+                        <rect x={cLeft + 60} y={124} width={10} height={6} rx={1} fill="rgba(168, 85, 247, 0.15)" stroke="rgba(168, 85, 247, 0.3)" strokeWidth={0.3} />
+                        <text x={cLeft + 74} y={129} className="fill-[#484f58]" fontSize={6}>Confidence</text>
+                      </g>
+                    </>
+                  );
+                })()}
+              </svg>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 }

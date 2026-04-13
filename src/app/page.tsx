@@ -73,6 +73,8 @@ import MediaInterview from '@/components/game/MediaInterview';
 import LoanSystem from '@/components/game/LoanSystem';
 import JerseyNumber from '@/components/game/JerseyNumber';
 import SponsorSystem from '@/components/game/SponsorSystem';
+import TrophyCabinet from '@/components/game/TrophyCabinet';
+import DynamicCareerEvents from '@/components/game/DynamicCareerEvents';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -143,6 +145,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   media_interview: MediaInterview,
   jersey_number: JerseyNumber,
   sponsor_system: SponsorSystem,
+  trophy_cabinet: TrophyCabinet,
+  career_events: DynamicCareerEvents,
 };
 
 const gameScreens: GameScreen[] = [
@@ -180,6 +184,8 @@ const gameScreens: GameScreen[] = [
   'media_interview',
   'jersey_number',
   'sponsor_system',
+  'trophy_cabinet',
+  'career_events',
 ];
 
 export default function Home() {

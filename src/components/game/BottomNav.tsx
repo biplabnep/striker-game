@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -75,6 +75,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'loan_system', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Loans' },
       { screen: 'jersey_number', icon: <Shirt className="h-5 w-5" />, label: 'Jersey' },
       { screen: 'sponsor_system', icon: <Gem className="h-5 w-5" />, label: 'Sponsors' },
+      { screen: 'trophy_cabinet', icon: <Trophy className="h-5 w-5" />, label: 'Trophies' },
+      { screen: 'career_events', icon: <CalendarClock className="h-5 w-5" />, label: 'Events' },
     ],
   },
   {

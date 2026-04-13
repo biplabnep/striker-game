@@ -340,6 +340,45 @@ const shownTrainingFocusSeasons = new Set<number>();
     }
   }, [gameState?.currentWeek, gameState?.currentSeason, gameState]);
 
+  // ===== COMPUTED VALUES (before early return) =====
+  const recentResultsSafe = gameState?.recentResults ?? [];
+  const leagueTableSafe = gameState?.leagueTable ?? [];
+  const leaguePosSafe = (gameState as any)?.leaguePos ?? (gameState?.leagueTable?.findIndex((e: any) => e.clubId === gameState?.currentClub?.id) ?? 0) + 1;
+  const currentClubIdSafe = gameState?.currentClub?.id ?? '';
+
+  // Sparkline data (last 5 matches reversed to chronological)
+  const sparklineData = useMemo(() => {
+    const last5 = recentResultsSafe.slice(0, 5).reverse();
+    return {
+      goals: last5.map((r: any) => r.playerGoals ?? 0),
+      assists: last5.map((r: any) => r.playerAssists ?? 0),
+      ratings: last5.map((r: any) => r.playerRating ?? 6.0),
+    };
+  }, [recentResultsSafe]);
+
+  // Form dots (last 5 results) for next match card
+  const formDots = recentResultsSafe.slice(0, 5).map((r: any) => {
+    if (!gameState?.currentClub?.id) return 'D';
+    const won = (r.homeClub?.id === gameState.currentClub.id && r.homeScore > r.awayScore) ||
+                (r.awayClub?.id === gameState.currentClub.id && r.awayScore > r.homeScore);
+    const drew = r.homeScore === r.awayScore;
+    return won ? 'W' : drew ? 'D' : 'L';
+  });
+
+  // Club standing mini-table (5 rows centered on player's club)
+  const standingsMini = useMemo(() => {
+    if (leagueTableSafe.length === 0) return [];
+    const pos = Math.max(0, leaguePosSafe - 1);
+    const start = Math.max(0, Math.min(pos - 2, leagueTableSafe.length - 5));
+    const end = Math.min(leagueTableSafe.length, start + 5);
+    return leagueTableSafe.slice(start, end).map((entry: any, i: number) => ({
+      ...entry,
+      position: start + i + 1,
+      gd: (entry.goalsFor ?? 0) - (entry.goalsAgainst ?? 0),
+      isPlayer: entry.clubId === currentClubIdSafe,
+    }));
+  }, [leagueTableSafe, leaguePosSafe, currentClubIdSafe]);
+
   if (!gameState) return null;
 
   const { player, currentClub, currentWeek, currentSeason, recentResults = [], upcomingFixtures = [], activeEvents = [], leagueTable = [], trainingAvailable = 0, seasons = [], currentInjury } = gameState;
@@ -380,6 +419,9 @@ const shownTrainingFocusSeasons = new Set<number>();
     return won ? 'W' : drew ? 'D' : 'L';
   };
 
+  // Previous season league position for comparison
+  const prevLeaguePosition = seasons.length > 0 ? seasons[seasons.length - 1].leaguePosition : null;
+
   return (
     <>
     <div className="p-4 max-w-lg mx-auto space-y-4">
@@ -398,6 +440,46 @@ const shownTrainingFocusSeasons = new Set<number>();
           )}
         </button>
       </div>
+
+      {/* Compact Season Progress Bar */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg p-3"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3 w-3 text-emerald-400" />
+            <span className="text-[9px] text-[#484f58] uppercase tracking-widest font-semibold">Season {currentSeason} Progress</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-bold text-[#c9d1d9]">{currentWeek}</span>
+            <span className="text-[9px] text-[#8b949e]">/ {seasonMatchdays}</span>
+          </div>
+        </div>
+        <div className="relative">
+          <div className="h-2 bg-[#21262d] rounded-lg overflow-hidden">
+            <motion.div
+              className="h-full rounded-lg bg-emerald-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${seasonProgress}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            />
+          </div>
+          {/* Phase marker lines */}
+          <div className="absolute top-0 left-0 right-0 h-2 pointer-events-none">
+            <div className="absolute top-2 left-[25%] w-px h-2 bg-[#484f58]/30" />
+            <div className="absolute top-2 left-[50%] w-px h-2 bg-[#484f58]/30" />
+            <div className="absolute top-2 left-[75%] w-px h-2 bg-[#484f58]/30" />
+          </div>
+          <div className="flex justify-between mt-1.5">
+            {['Start', 'Mid-season', 'Final stretch', 'End'].map((label) => (
+              <span key={label} className="text-[6px] text-[#484f58] uppercase tracking-wider">{label}</span>
+            ))}
+          </div>
+        </div>
+      </motion.div>
 
       {/* Section Header: Player */}
       <div className="flex items-center gap-2 mb-1">
@@ -628,6 +710,33 @@ const shownTrainingFocusSeasons = new Set<number>();
               )}
             </motion.div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Attribute Radar Mini-Chart Card */}
+      <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <AttributeRadarChart attributes={player.attributes} />
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Key Attributes</span>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
+                {(['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'] as const).map((key) => {
+                  const val = player.attributes[key] ?? 50;
+                  return (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className="text-[9px] text-[#8b949e] uppercase tracking-wider">{key.slice(0, 3)}</span>
+                      <span className={`text-[10px] font-bold ${
+                        val >= 75 ? 'text-emerald-400' :
+                        val >= 60 ? 'text-amber-400' :
+                        val >= 45 ? 'text-orange-400' : 'text-red-400'
+                      }`}>{Math.round(val)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -958,6 +1067,52 @@ const shownTrainingFocusSeasons = new Set<number>();
         </CardContent>
       </Card>
 
+      {/* Club Standing Mini-Table */}
+      {standingsMini.length > 0 && (
+        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+          <CardHeader className="pb-1 pt-3 px-4 flex-row items-center justify-between">
+            <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">League Standings</CardTitle>
+            <button
+              onClick={() => setScreen('league_table')}
+              className="flex items-center gap-0.5 text-[9px] text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              Full table <ChevronRight className="h-3 w-3" />
+            </button>
+          </CardHeader>
+          <CardContent className="px-2 pb-3">
+            {/* Table header */}
+            <div className="grid grid-cols-12 gap-0 px-2 pb-1 border-b border-[#21262d]">
+              <span className="col-span-1 text-[7px] text-[#484f58] font-semibold">#</span>
+              <span className="col-span-4 text-[7px] text-[#484f58] font-semibold">Club</span>
+              <span className="col-span-1 text-[7px] text-[#484f58] font-semibold text-center">P</span>
+              <span className="col-span-1 text-[7px] text-[#484f58] font-semibold text-center">W</span>
+              <span className="col-span-1 text-[7px] text-[#484f58] font-semibold text-center">D</span>
+              <span className="col-span-1 text-[7px] text-[#484f58] font-semibold text-center">L</span>
+              <span className="col-span-1 text-[7px] text-[#484f58] font-semibold text-center">GD</span>
+              <span className="col-span-2 text-[7px] text-[#484f58] font-semibold text-right">Pts</span>
+            </div>
+            {/* Table rows */}
+            {standingsMini.map((row) => (
+              <div
+                key={row.clubId}
+                className={`grid grid-cols-12 gap-0 px-2 py-1.5 text-[10px] rounded-sm ${
+                  row.isPlayer ? 'bg-emerald-500/10 border-l-2 border-l-emerald-500' : 'hover:bg-[#21262d]'
+                }`}
+              >
+                <span className={`col-span-1 font-bold ${row.isPlayer ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>{row.position}</span>
+                <span className={`col-span-4 truncate ${row.isPlayer ? 'text-emerald-400 font-semibold' : 'text-[#8b949e]'}`}>{row.clubName}</span>
+                <span className="col-span-1 text-[#8b949e] text-center">{row.played}</span>
+                <span className="col-span-1 text-emerald-400/70 text-center">{row.won}</span>
+                <span className="col-span-1 text-amber-400/70 text-center">{row.drawn}</span>
+                <span className="col-span-1 text-red-400/70 text-center">{row.lost}</span>
+                <span className={`col-span-1 text-center font-medium ${row.gd > 0 ? 'text-emerald-400' : row.gd < 0 ? 'text-red-400' : 'text-[#8b949e]'}`}>{row.gd > 0 ? '+' : ''}{row.gd}</span>
+                <span className={`col-span-2 text-right font-bold ${row.isPlayer ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>{row.points}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Match Day Countdown Card */}
       {nextOpponent && nextFixture && winProbability && (
         <Card className={`bg-[#161b22] border-[#30363d] overflow-hidden border-l-[3px] ${isHome ? 'border-l-emerald-500' : 'border-l-amber-500'}`}>
@@ -1104,6 +1259,37 @@ const shownTrainingFocusSeasons = new Set<number>();
               );
             })()}
 
+            {/* Form indicator (last 5 results) */}
+            {formDots.length > 0 && (
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <span className="text-[9px] text-[#8b949e] uppercase tracking-wider font-medium">Form</span>
+                <div className="flex items-center gap-1">
+                  {formDots.map((result, i) => (
+                    <div
+                      key={i}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[8px] font-bold text-white ${
+                        result === 'W' ? 'bg-emerald-500' :
+                        result === 'D' ? 'bg-amber-500' : 'bg-red-500'
+                      }`}
+                    >
+                      {result}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Countdown display */}
+            <div className="flex items-center justify-center gap-2 mb-3 px-3 py-2 rounded-lg bg-[#21262d] border border-[#30363d]">
+              <Clock className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-[10px] text-[#8b949e]">
+                {nextFixture.matchday <= currentWeek ? 'Match this week!' :
+                 nextFixture.matchday === currentWeek + 1 ? 'Next week' :
+                 `In ${nextFixture.matchday - currentWeek} weeks`}
+              </span>
+              <span className="text-[10px] text-[#484f58]">&bull; Week {nextFixture.matchday}</span>
+            </div>
+
             {/* Week info */}
             <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-[#30363d]">
               <Clock className="h-3 w-3 text-[#8b949e]" />
@@ -1165,10 +1351,20 @@ const shownTrainingFocusSeasons = new Set<number>();
             <div>
               <p className="text-lg font-bold text-emerald-400">{player.seasonStats.goals}</p>
               <p className="text-[10px] text-[#8b949e]">Goals</p>
+              {sparklineData.goals.length >= 2 && (
+                <div className="flex justify-center mt-1">
+                  <SparklineChart data={sparklineData.goals} color="#10b981" width={80} height={24} />
+                </div>
+              )}
             </div>
             <div>
               <p className="text-lg font-bold text-cyan-400">{player.seasonStats.assists}</p>
               <p className="text-[10px] text-[#8b949e]">Assists</p>
+              {sparklineData.assists.length >= 2 && (
+                <div className="flex justify-center mt-1">
+                  <SparklineChart data={sparklineData.assists} color="#38bdf8" width={80} height={24} />
+                </div>
+              )}
             </div>
             <div>
               <p className="text-lg font-bold text-amber-400">{player.seasonStats.appearances}</p>
@@ -1177,6 +1373,11 @@ const shownTrainingFocusSeasons = new Set<number>();
             <div>
               <p className="text-lg font-bold text-[#c9d1d9]">{player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'}</p>
               <p className="text-[10px] text-[#8b949e]">Avg Rating</p>
+              {sparklineData.ratings.length >= 2 && (
+                <div className="flex justify-center mt-1">
+                  <SparklineChart data={sparklineData.ratings} color="#f59e0b" width={80} height={24} />
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#30363d]">
@@ -1704,16 +1905,25 @@ function QuickActionButton({
     purple: 'bg-purple-500/10',
   };
 
+  const accentBorderClasses = {
+    emerald: 'border-l-[3px] border-l-emerald-500',
+    amber: 'border-l-[3px] border-l-amber-500',
+    cyan: 'border-l-[3px] border-l-cyan-500',
+    purple: 'border-l-[3px] border-l-purple-500',
+  };
+
   return (
     <motion.button
       onClick={onClick}
-      className={`group flex flex-col items-center gap-2 p-3.5 rounded-lg border ${colorClasses[accentColor]} ${borderClasses[accentColor]} transition-all duration-150`}
+      className={`group flex items-start gap-2.5 p-3 rounded-lg border ${colorClasses[accentColor]} ${borderClasses[accentColor]} ${accentBorderClasses[accentColor]} transition-all duration-150`}
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${iconBgClasses[accentColor]}`}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${iconBgClasses[accentColor]}`}>
         {icon}
       </div>
-      <span className="text-[11px] font-semibold text-[#c9d1d9]">{label}</span>
-      <span className="text-[7px] text-[#8b949e] leading-tight text-center">{description}</span>
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-[11px] font-semibold text-[#c9d1d9]">{label}</span>
+        <span className="text-[7px] text-[#8b949e] leading-tight">{description}</span>
+      </div>
     </motion.button>
   );
 }
@@ -1803,5 +2013,91 @@ function FormationDots({ formation, color, flip = false }: { formation: string; 
       </svg>
       <span className="text-[8px] text-[#484f58] mt-0.5">{formation}</span>
     </div>
+  );
+}
+
+// ==========================================
+// Sparkline Chart Component
+// ==========================================
+function SparklineChart({ data, color, width = 120, height = 32 }: { data: number[]; color: string; width?: number; height?: number }) {
+  if (data.length < 2) return null;
+  const minVal = Math.min(...data);
+  const maxVal = Math.max(...data);
+  const range = maxVal - minVal || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - minVal) / range) * (height - 6) - 3;
+    return `${x},${y}`;
+  });
+  const pointsStr = pts.join(' ');
+  const lastX = width;
+  const lastY = height - ((data[data.length - 1] - minVal) / range) * (height - 6) - 3;
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <polygon
+        points={`0,${height} ${pointsStr} ${width},${height}`}
+        fill={color + '12'}
+      />
+      <polyline
+        points={pointsStr}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx={lastX} cy={lastY} r={2} fill={color} />
+    </svg>
+  );
+}
+
+// ==========================================
+// Attribute Radar Mini-Chart Component
+// ==========================================
+function AttributeRadarChart({ attributes }: { attributes: PlayerAttributes }) {
+  const attrKeys = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'] as const;
+  const values = attrKeys.map(k => Math.min(99, Math.max(1, attributes[k] ?? 50)));
+  const n = values.length;
+  const cx = 40, cy = 40, r = 30;
+  const angleStep = (2 * Math.PI) / n;
+  const computePoints = (radius: number) => {
+    return Array.from({ length: n }, (_, i) => {
+      const angle = angleStep * i - Math.PI / 2;
+      return `${cx + radius * Math.cos(angle)},${cy + radius * Math.sin(angle)}`;
+    }).join(' ');
+  };
+  const dataPoints = values.map((v, i) => {
+    const angle = angleStep * i - Math.PI / 2;
+    const rv = (v / 99) * r;
+    return `${cx + rv * Math.cos(angle)},${cy + rv * Math.sin(angle)}`;
+  }).join(' ');
+
+  return (
+    <motion.svg
+      width="80"
+      height="80"
+      viewBox="0 0 80 80"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6, delay: 0.2 }}
+    >
+      {[0.33, 0.66, 1].map(scale => (
+        <polygon key={scale} points={computePoints(r * scale)} fill="none" stroke="#30363d" strokeWidth="0.5" />
+      ))}
+      {Array.from({ length: n }, (_, i) => {
+        const angle = angleStep * i - Math.PI / 2;
+        return (
+          <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke="#30363d" strokeWidth="0.5" />
+        );
+      })}
+      <polygon points={dataPoints} fill="rgba(16,185,129,0.12)" stroke="#10b981" strokeWidth="1" />
+      {values.map((v, i) => {
+        const angle = angleStep * i - Math.PI / 2;
+        const rv = (v / 99) * r;
+        return (
+          <circle key={i} cx={cx + rv * Math.cos(angle)} cy={cy + rv * Math.sin(angle)} r={1.5} fill="#10b981" />
+        );
+      })}
+    </motion.svg>
   );
 }
