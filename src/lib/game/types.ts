@@ -650,7 +650,9 @@ export type GameScreen =
   | 'career_mode_selector'
   | 'match_engine_simulation'
   | 'training_drill_mini_games'
-  | 'season_review_documentary';
+  | 'season_review_documentary'
+  | 'in_game_store'
+  | 'scouting_network';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

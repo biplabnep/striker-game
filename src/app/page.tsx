@@ -85,6 +85,8 @@ import MatchEngineSimulation from '@/components/game/MatchEngineSimulation';
 import CareerModeSelector from '@/components/game/CareerModeSelector';
 import TrainingDrillMiniGames from '@/components/game/TrainingDrillMiniGames';
 import SeasonReviewDocumentary from '@/components/game/SeasonReviewDocumentary';
+import InGameStore from '@/components/game/InGameStore';
+import ScoutingNetwork from '@/components/game/ScoutingNetwork';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -167,6 +169,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   match_engine_simulation: MatchEngineSimulation,
   training_drill_mini_games: TrainingDrillMiniGames,
   season_review_documentary: SeasonReviewDocumentary,
+  in_game_store: InGameStore,
+  scouting_network: ScoutingNetwork,
 };
 
 const gameScreens: GameScreen[] = [
@@ -216,6 +220,8 @@ const gameScreens: GameScreen[] = [
   'match_engine_simulation',
   'training_drill_mini_games',
   'season_review_documentary',
+  'in_game_store',
+  'scouting_network',
 ];
 
 export default function Home() {

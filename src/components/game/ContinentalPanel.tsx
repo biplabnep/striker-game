@@ -8,6 +8,7 @@ import {
   Swords, Crown, Flame,
   Target, Zap, TrendingUp, BarChart3, Clock,
   Shield, UserCheck, Calendar, History, MapPin, Flag, Award,
+  Plane, Tv, Moon, BookOpen, Timer, Route, Medal,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1249,6 +1250,959 @@ function ContinentalHistoryPanel({
 }
 
 // ============================================================
+// NEW: European Journey Overview
+// ============================================================
+function EuropeanJourneyOverview({
+  fixtures,
+  playerClubId,
+  currentClub,
+  currentSeason,
+  continentalCompetition,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+  currentClub: { id: string; name: string; shortName: string; logo: string };
+  currentSeason: number;
+  continentalCompetition: ContinentalCompetition;
+}) {
+  const opponentTrips = useMemo(() => {
+    const cities = ['Madrid', 'Munich', 'Milan', 'Paris', 'London', 'Lisbon', 'Amsterdam', 'Barcelona', 'Turin', 'Rome'];
+    const seen = new Set<string>();
+    const result: Array<{ clubId: string; name: string; logo: string; city: string; distance: number }> = [];
+
+    for (const f of fixtures) {
+      const oppId = f.homeClubId === playerClubId ? f.awayClubId : f.homeClubId;
+      if (oppId === playerClubId || seen.has(oppId)) continue;
+      seen.add(oppId);
+
+      const club = getClubById(oppId);
+      const seed = ((oppId.charCodeAt(0) * 17) + (oppId.charCodeAt(Math.max(0, oppId.length - 1)) * 7)) % cities.length;
+      const distance = 500 + ((oppId.charCodeAt(0) * 41 + oppId.charCodeAt(Math.min(1, oppId.length - 1)) * 23) % 2000);
+
+      result.push({
+        clubId: oppId,
+        name: club?.shortName ?? '???',
+        logo: club?.logo ?? '⚽',
+        city: cities[seed],
+        distance,
+      });
+    }
+    return result.slice(0, 6);
+  }, [fixtures, playerClubId]);
+
+  const journeyStats = useMemo(() => {
+    const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+    let goalsFor = 0;
+    let goalsAgainst = 0;
+    let cleanSheets = 0;
+
+    for (const f of played) {
+      const isHome = f.homeClubId === playerClubId;
+      goalsFor += isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+      goalsAgainst += isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+      if ((isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0)) === 0) cleanSheets++;
+    }
+
+    const totalDist = opponentTrips.reduce((s, o) => s + o.distance, 0);
+    const avgRating = played.length > 0
+      ? Math.round((6.2 + (goalsFor / Math.max(1, played.length)) * 0.4 - (goalsAgainst / Math.max(1, played.length)) * 0.15) * 10) / 10
+      : 0;
+
+    return { goalsFor, goalsAgainst, appearances: played.length, cleanSheets, totalDist, avgRating };
+  }, [fixtures, playerClubId, opponentTrips]);
+
+  const pedigreeStars = useMemo(() => {
+    return ((currentClub.id.charCodeAt(0) * 3 + currentSeason) % 5) + 1;
+  }, [currentClub.id, currentSeason]);
+
+  const compLabel = continentalCompetition === 'champions_league' ? 'Champions League' : 'Europa League';
+
+  const playerGroup = useMemo(() => {
+    return fixtures.find(f => f.homeClubId === playerClubId || f.awayClubId === playerClubId)?.group ?? null;
+  }, [fixtures, playerClubId]);
+
+  const mapNodes = useMemo(() => {
+    const cx = 120;
+    const cy = 85;
+    const oppNodes = opponentTrips.map((o, i) => {
+      const angle = (i / Math.max(opponentTrips.length, 1)) * 2 * Math.PI - Math.PI / 2;
+      const r = 60;
+      return { ...o, x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
+    });
+    return { cx, cy, oppNodes };
+  }, [opponentTrips]);
+
+  return (
+    <div className="space-y-3">
+      {/* Competition Banner */}
+      <div className="bg-[#21262d] rounded-lg p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 rounded-lg bg-amber-500/15 shrink-0">
+            <Globe className="h-5 w-5 text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold text-[#c9d1d9]">{compLabel}</h3>
+            <p className="text-[10px] text-[#8b949e]">
+              Season {currentSeason}{playerGroup ? ` · Group ${playerGroup}` : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-0.5" title={`Pedigree: ${pedigreeStars}/5`}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className={`h-3.5 w-3.5 ${i < pedigreeStars ? 'text-amber-400' : 'text-[#30363d]'}`} />
+            ))}
+          </div>
+        </div>
+
+        {/* SVG Map Visualization */}
+        <div className="bg-[#0d1117] rounded-lg p-2 mb-3">
+          <svg viewBox="0 0 240 170" className="w-full" style={{ minWidth: 200 }}>
+            <ellipse cx="120" cy="85" rx="105" ry="72" fill="none" stroke="#21262d" strokeWidth="1" strokeDasharray="6 3" />
+            {mapNodes.oppNodes.map((o) => (
+              <g key={o.clubId}>
+                <line x1={mapNodes.cx} y1={mapNodes.cy} x2={o.x} y2={o.y} stroke="#30363d" strokeWidth="0.8" strokeDasharray="3 2" />
+                <rect x={(mapNodes.cx + o.x) / 2 - 14} y={(mapNodes.cy + o.y) / 2 - 5} width="28" height="10" rx="3" fill="#161b22" />
+                <text x={(mapNodes.cx + o.x) / 2} y={(mapNodes.cy + o.y) / 2 + 2} textAnchor="middle" fill="#484f58" fontSize="5.5">{o.distance}km</text>
+              </g>
+            ))}
+            <circle cx={mapNodes.cx} cy={mapNodes.cy} r="14" fill="#34d399" opacity="0.15" />
+            <circle cx={mapNodes.cx} cy={mapNodes.cy} r="8" fill="#161b22" stroke="#34d399" strokeWidth="1.2" />
+            <text x={mapNodes.cx} y={mapNodes.cy + 3} textAnchor="middle" fontSize="8">{currentClub.logo}</text>
+            <text x={mapNodes.cx} y={mapNodes.cy - 18} textAnchor="middle" fill="#34d399" fontSize="7" fontWeight="600">HOME</text>
+            {mapNodes.oppNodes.map((o) => (
+              <g key={`node-${o.clubId}`}>
+                <circle cx={o.x} cy={o.y} r="10" fill="#161b22" stroke="#30363d" strokeWidth="0.8" />
+                <text x={o.x} y={o.y + 3} textAnchor="middle" fontSize="8">{o.logo}</text>
+                <text x={o.x} y={o.y - 14} textAnchor="middle" fill="#8b949e" fontSize="6" fontWeight="500">{o.city}</text>
+              </g>
+            ))}
+          </svg>
+        </div>
+
+        {/* Total Distance */}
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <Plane className="h-3.5 w-3.5 text-[#8b949e]" />
+          <span className="text-[10px] text-[#8b949e]">Total Away Distance:</span>
+          <span className="text-xs font-bold text-[#c9d1d9]">{journeyStats.totalDist.toLocaleString()} km</span>
+        </div>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-5 gap-1.5">
+          {([
+            { label: 'Goals', value: journeyStats.goalsFor, color: 'text-emerald-400' },
+            { label: 'Assists', value: 0, color: 'text-amber-400' },
+            { label: 'Apps', value: journeyStats.appearances, color: 'text-[#c9d1d9]' },
+            { label: 'Clean Sht', value: journeyStats.cleanSheets, color: 'text-sky-400' },
+            { label: 'Avg Rtg', value: journeyStats.avgRating > 0 ? journeyStats.avgRating.toFixed(1) : '-', color: 'text-purple-400' },
+          ] as Array<{ label: string; value: string | number; color: string }>).map((s) => (
+            <div key={s.label} className="bg-[#161b22] rounded-lg p-2 text-center">
+              <span className={`text-sm font-bold block ${s.color}`}>{s.value}</span>
+              <span className="text-[8px] text-[#484f58] leading-tight">{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Pedigree Badge */}
+        <div className="mt-3 bg-[#161b22] rounded-lg p-2.5 flex items-center gap-2.5">
+          <Award className="h-4 w-4 text-amber-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-[#c9d1d9] font-semibold">European Pedigree</p>
+            <p className="text-[9px] text-[#484f58]">
+              {pedigreeStars >= 4 ? 'Elite European Club' : pedigreeStars >= 3 ? 'Established Side' : pedigreeStars >= 2 ? 'Growing Presence' : 'Building Experience'}
+            </p>
+          </div>
+          <div className="flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className={`h-3 w-3 ${i < pedigreeStars ? 'text-amber-400' : 'text-[#30363d]'}`} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Group Stage Analytics
+// ============================================================
+function GroupStageAnalytics({
+  fixtures,
+  standings,
+  group,
+  playerClubId,
+}: {
+  fixtures: ContinentalFixture[];
+  standings: ContinentalGroupStanding[];
+  group: string;
+  playerClubId: string;
+}) {
+  const sorted = useMemo(() => sortGroupStandings(standings), [standings]);
+
+  const playerStanding = useMemo(
+    () => sorted.find(s => s.clubId === playerClubId),
+    [sorted, playerClubId]
+  );
+
+  // Points per matchday (cumulative)
+  const pointsProgression = useMemo(() => {
+    const groupFixtures = fixtures
+      .filter(f => f.group === group && f.played)
+      .sort((a, b) => a.matchday - b.matchday);
+
+    const cumPoints: number[] = [0];
+    for (const f of groupFixtures) {
+      const isHome = f.homeClubId === playerClubId;
+      const gf = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+      const ga = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+      let pts = 0;
+      if (gf > ga) pts = 3;
+      else if (gf === ga) pts = 1;
+      cumPoints.push(cumPoints[cumPoints.length - 1] + pts);
+    }
+    return cumPoints;
+  }, [fixtures, group, playerClubId]);
+
+  // GD per matchday (cumulative)
+  const gdProgression = useMemo(() => {
+    const groupFixtures = fixtures
+      .filter(f => f.group === group && f.played)
+      .sort((a, b) => a.matchday - b.matchday);
+
+    const cumGD: number[] = [0];
+    for (const f of groupFixtures) {
+      const isHome = f.homeClubId === playerClubId;
+      const gd = (isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0)) - (isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0));
+      cumGD.push(cumGD[cumGD.length - 1] + gd);
+    }
+    return cumGD;
+  }, [fixtures, group, playerClubId]);
+
+  // Home vs Away split
+  const homeAwaySplit = useMemo(() => {
+    const homeFixtures = fixtures.filter(f => f.group === group && f.played && f.homeClubId === playerClubId);
+    const awayFixtures = fixtures.filter(f => f.group === group && f.played && f.awayClubId === playerClubId);
+
+    const calc = (fixs: ContinentalFixture[], isHome: boolean) => {
+      let w = 0, d = 0, l = 0, gf = 0, ga = 0;
+      for (const f of fixs) {
+        const myG = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+        const oppG = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+        gf += myG; ga += oppG;
+        if (myG > oppG) w++; else if (myG === oppG) d++; else l++;
+      }
+      return { w, d, l, gf, ga, pts: w * 3 + d };
+    };
+
+    return {
+      home: calc(homeFixtures, true),
+      away: calc(awayFixtures, false),
+    };
+  }, [fixtures, group, playerClubId]);
+
+  // Group difficulty rating
+  const groupDifficulty = useMemo(() => {
+    if (sorted.length === 0) return { rating: 0, label: 'Unknown', color: '#8b949e' };
+    const avgPoints = sorted.reduce((s, t) => s + t.points, 0) / sorted.length;
+    const avgPlayed = sorted.reduce((s, t) => s + t.played, 0) / sorted.length;
+    const pointsPerGame = avgPlayed > 0 ? avgPoints / avgPlayed : 0;
+
+    if (pointsPerGame >= 2.0) return { rating: 5, label: 'Very Hard', color: '#ef4444' };
+    if (pointsPerGame >= 1.7) return { rating: 4, label: 'Hard', color: '#f59e0b' };
+    if (pointsPerGame >= 1.4) return { rating: 3, label: 'Medium', color: '#8b949e' };
+    if (pointsPerGame >= 1.0) return { rating: 2, label: 'Easy', color: '#34d399' };
+    return { rating: 1, label: 'Very Easy', color: '#3b82f6' };
+  }, [sorted]);
+
+  // Group Stage Verdict
+  const verdict = useMemo(() => {
+    if (!playerStanding || playerStanding.played === 0) return { text: 'Pending', color: 'text-[#8b949e]' };
+    const playerRank = sorted.indexOf(playerStanding);
+    const expectedRank = Math.min(sorted.length - 1, Math.floor(sorted.length / 2));
+    const pointsPerGame = playerStanding.played > 0 ? playerStanding.points / playerStanding.played : 0;
+
+    if (playerRank < expectedRank && pointsPerGame >= 2.0) return { text: 'Overperformed', color: 'text-emerald-400' };
+    if (playerRank <= expectedRank + 1) return { text: 'As Expected', color: 'text-amber-400' };
+    return { text: 'Underperformed', color: 'text-red-400' };
+  }, [sorted, playerStanding]);
+
+  // SVG chart helper
+  const renderLineChart = (data: number[], color: string, maxVal: number, chartH: number) => {
+    if (data.length < 2) return null;
+    const w = 220;
+    const padX = 20;
+    const padY = 10;
+    const stepX = (w - padX * 2) / Math.max(data.length - 1, 1);
+
+    const points = data.map((v, i) => {
+      const x = padX + i * stepX;
+      const y = padY + chartH - (v / Math.max(maxVal, 1)) * (chartH - padY);
+      return `${x},${y}`;
+    }).join(' ');
+
+    return (
+      <svg viewBox={`0 0 ${w} ${chartH + padY * 2}`} className="w-full" style={{ minWidth: 180 }}>
+        {/* Zero line */}
+        <line x1={padX} y1={padY + chartH / 2} x2={w - padX} y2={padY + chartH / 2} stroke="#21262d" strokeWidth="0.5" strokeDasharray="3 2" />
+        {/* Data line */}
+        <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        {/* Data dots */}
+        {data.map((v, i) => {
+          const x = padX + i * stepX;
+          const y = padY + chartH - (v / Math.max(maxVal, 1)) * (chartH - padY);
+          return <circle key={i} cx={x} cy={y} r="2.5" fill={color} />;
+        })}
+        {/* Matchday labels */}
+        {data.map((_, i) => {
+          const x = padX + i * stepX;
+          return <text key={`lbl-${i}`} x={x} y={chartH + padY * 2 - 2} textAnchor="middle" fill="#484f58" fontSize="6">MD{i}</text>;
+        })}
+      </svg>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Difficulty & Verdict */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-[#21262d] rounded-lg p-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Flame className="h-3.5 w-3.5 text-[#8b949e]" />
+            <span className="text-[10px] text-[#8b949e] font-semibold">Group Difficulty</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-2 flex-1 rounded-sm"
+                style={{ backgroundColor: i < groupDifficulty.rating ? groupDifficulty.color : '#30363d' }}
+              />
+            ))}
+          </div>
+          <p className="text-xs font-semibold mt-1" style={{ color: groupDifficulty.color }}>{groupDifficulty.label}</p>
+        </div>
+        <div className="bg-[#21262d] rounded-lg p-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <BarChart3 className="h-3.5 w-3.5 text-[#8b949e]" />
+            <span className="text-[10px] text-[#8b949e] font-semibold">Verdict</span>
+          </div>
+          <p className={`text-lg font-bold ${verdict.color}`}>{verdict.text}</p>
+          {playerStanding && (
+            <p className="text-[9px] text-[#484f58] mt-0.5">
+              {playerStanding.points} pts from {playerStanding.played} games
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Points Progression Chart */}
+      <div className="bg-[#21262d] rounded-lg p-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">Points Progression</span>
+        </div>
+        {renderLineChart(pointsProgression, '#34d399', Math.max(...pointsProgression, 3), 50) ?? (
+          <p className="text-[10px] text-[#484f58] text-center py-2">Play matches to see progression</p>
+        )}
+      </div>
+
+      {/* GD Trend Chart */}
+      <div className="bg-[#21262d] rounded-lg p-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <BarChart3 className="h-3.5 w-3.5 text-amber-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">Goal Difference Trend</span>
+        </div>
+        {renderLineChart(gdProgression, '#f59e0b', Math.max(Math.abs(Math.max(...gdProgression)), Math.abs(Math.min(...gdProgression)), 1), 50) ?? (
+          <p className="text-[10px] text-[#484f58] text-center py-2">Play matches to see trend</p>
+        )}
+      </div>
+
+      {/* Home vs Away Split */}
+      <div className="bg-[#21262d] rounded-lg p-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Shield className="h-3.5 w-3.5 text-sky-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">Home vs Away Split</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'Home', data: homeAwaySplit.home, color: 'text-emerald-400', border: 'border-emerald-500/20' },
+            { label: 'Away', data: homeAwaySplit.away, color: 'text-amber-400', border: 'border-amber-500/20' },
+          ].map((side) => (
+            <div key={side.label} className={`bg-[#161b22] border ${side.border} rounded-lg p-2.5`}>
+              <p className={`text-[10px] font-semibold ${side.color} mb-1.5`}>{side.label}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-[#484f58]">W/D/L</span>
+                <span className="text-xs font-semibold text-[#c9d1d9]">
+                  {side.data.w}/{side.data.d}/{side.data.l}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-[#484f58]">GF/GA</span>
+                <span className="text-xs font-semibold text-[#c9d1d9]">
+                  {side.data.gf}/{side.data.ga}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#484f58]">Pts</span>
+                <span className={`text-xs font-bold ${side.color}`}>{side.data.pts}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Knockout Stage Tracker
+// ============================================================
+function KnockoutStageTracker({
+  knockoutFixtures,
+  playerClubId,
+  eliminated,
+}: {
+  knockoutFixtures: ContinentalFixture[];
+  playerClubId: string;
+  eliminated: boolean;
+}) {
+  const playerFixtures = useMemo(() => {
+    return knockoutFixtures
+      .filter(f => f.homeClubId === playerClubId || f.awayClubId === playerClubId)
+      .sort((a, b) => {
+        const stageOrder: Record<string, number> = { round_of_16: 1, quarter_final: 2, semi_final: 3, final: 4 };
+        return (stageOrder[a.stage] ?? 0) - (stageOrder[b.stage] ?? 0);
+      });
+  }, [knockoutFixtures, playerClubId]);
+
+  const eliminationFixture = useMemo(() => {
+    if (!eliminated || playerFixtures.length === 0) return null;
+    const lastPlayed = [...playerFixtures].reverse().find(f => f.played);
+    if (!lastPlayed) return null;
+    const isHome = lastPlayed.homeClubId === playerClubId;
+    const myG = isHome ? (lastPlayed.homeScore ?? 0) : (lastPlayed.awayScore ?? 0);
+    const oppG = isHome ? (lastPlayed.awayScore ?? 0) : (lastPlayed.homeScore ?? 0);
+    if (myG >= oppG) return null; // Didn't lose last match, eliminated differently
+    return lastPlayed;
+  }, [eliminated, playerFixtures]);
+
+  const stages: Array<{ key: string; label: string; icon: React.ReactNode; color: string }> = [
+    { key: 'round_of_16', label: 'Round of 16', icon: <Swords className="h-3.5 w-3.5" />, color: 'text-[#8b949e]' },
+    { key: 'quarter_final', label: 'Quarter-Final', icon: <Swords className="h-3.5 w-3.5" />, color: 'text-sky-400' },
+    { key: 'semi_final', label: 'Semi-Final', icon: <Trophy className="h-3.5 w-3.5" />, color: 'text-purple-400' },
+    { key: 'final', label: 'Final', icon: <Crown className="h-3.5 w-3.5" />, color: 'text-amber-400' },
+  ];
+
+  if (playerFixtures.length === 0 && knockoutFixtures.length === 0) return null;
+
+  const reachedFinal = playerFixtures.some(f => f.stage === 'final' && f.played);
+
+  return (
+    <div className="space-y-3">
+      {/* Visual Bracket SVG */}
+      <div className="bg-[#21262d] rounded-lg p-3">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Route className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">Route to the Final</span>
+        </div>
+        <svg viewBox="0 0 260 160" className="w-full" style={{ minWidth: 220 }}>
+          {/* Round columns */}
+          {stages.map((stage, colIdx) => {
+            const x = 10 + colIdx * 65;
+            const fix = playerFixtures.find(f => f.stage === stage.key);
+            const isPlayed = fix?.played ?? false;
+            const isElimRound = eliminationFixture?.stage === stage.key;
+
+            return (
+              <g key={stage.key}>
+                {/* Round header */}
+                <rect x={x} y={2} width={58} height={14} rx="4" fill={fix ? (isElimRound ? '#ef4444' : '#21262d') : '#161b22'} stroke={fix ? (isElimRound ? '#ef4444' : '#34d399') : '#30363d'} strokeWidth="0.6" />
+                <text x={x + 29} y={11} textAnchor="middle" fill={fix ? (isElimRound ? '#ef4444' : '#34d399') : '#484f58'} fontSize="6" fontWeight="600">{stage.label}</text>
+
+                {fix ? (
+                  <g>
+                    {/* Match box */}
+                    <rect x={x} y={22} width={58} height={52} rx="4" fill={isElimRound ? '#ef444420' : '#161b22'} stroke={isElimRound ? '#ef4444' : '#34d399'} strokeWidth="0.8" />
+                    {/* Home team */}
+                    <text x={x + 4} y={36} fill={fix.homeClubId === playerClubId ? '#34d399' : '#c9d1d9'} fontSize="6" fontWeight="600">
+                      {getClubById(fix.homeClubId)?.shortName ?? '???'}
+                    </text>
+                    <text x={x + 54} y={36} textAnchor="end" fill="#8b949e" fontSize="6">
+                      {isPlayed ? String(fix.homeScore ?? 0) : '-'}
+                    </text>
+                    {/* Away team */}
+                    <text x={x + 4} y={50} fill={fix.awayClubId === playerClubId ? '#34d399' : '#c9d1d9'} fontSize="6" fontWeight="600">
+                      {getClubById(fix.awayClubId)?.shortName ?? '???'}
+                    </text>
+                    <text x={x + 54} y={50} textAnchor="end" fill="#8b949e" fontSize="6">
+                      {isPlayed ? String(fix.awayScore ?? 0) : '-'}
+                    </text>
+                    {/* Agg / Status */}
+                    {isPlayed ? (
+                      <text x={x + 29} y={68} textAnchor="middle" fill="#484f58" fontSize="5.5">
+                        {(() => {
+                          const isHomeP = fix.homeClubId === playerClubId;
+                          const pG = isHomeP ? (fix.homeScore ?? 0) : (fix.awayScore ?? 0);
+                          const oG = isHomeP ? (fix.awayScore ?? 0) : (fix.homeScore ?? 0);
+                          return pG > oG ? 'Won' : pG < oG ? 'Lost' : 'Draw';
+                        })()}
+                      </text>
+                    ) : (
+                      <text x={x + 29} y={68} textAnchor="middle" fill="#8b949e" fontSize="5.5">Upcoming</text>
+                    )}
+                  </g>
+                ) : (
+                  <g>
+                    <rect x={x} y={22} width={58} height={52} rx="4" fill="#161b22" stroke="#30363d" strokeWidth="0.6" strokeDasharray="3 2" />
+                    <text x={x + 29} y={50} textAnchor="middle" fill="#30363d" fontSize="7">TBD</text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Connector lines between rounds */}
+          {stages.slice(0, -1).map((stage, i) => {
+            const x1 = 10 + i * 65 + 58;
+            const x2 = 10 + (i + 1) * 65;
+            const hasFix1 = playerFixtures.some(f => f.stage === stage.key);
+            const hasFix2 = playerFixtures.some(f => f.stage === stages[i + 1].key);
+            if (!hasFix1 || !hasFix2) return null;
+            return (
+              <g key={`conn-${stage.key}`}>
+                <line x1={x1} y1={48} x2={x2} y2={48} stroke="#34d399" strokeWidth="0.8" opacity="0.5" />
+                <polygon points={`${x2 - 4},45 ${x2},48 ${x2 - 4},51`} fill="#34d399" opacity="0.5" />
+              </g>
+            );
+          })}
+
+          {/* Trophy marker at end */}
+          {reachedFinal && (
+            <g>
+              <text x={250} y={52} textAnchor="middle" fontSize="18">🏆</text>
+            </g>
+          )}
+        </svg>
+      </div>
+
+      {/* Match-by-match detail */}
+      {playerFixtures.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 px-1">
+            <Swords className="h-3.5 w-3.5 text-[#8b949e]" />
+            <span className="text-[10px] text-[#8b949e] font-semibold">Knockout Match Details</span>
+          </div>
+          {playerFixtures.map((fix) => {
+            const oppId = fix.homeClubId === playerClubId ? fix.awayClubId : fix.homeClubId;
+            const oppClub = getClubById(oppId);
+            const isHome = fix.homeClubId === playerClubId;
+            const myG = isHome ? (fix.homeScore ?? 0) : (fix.awayScore ?? 0);
+            const oppG = isHome ? (fix.awayScore ?? 0) : (fix.homeScore ?? 0);
+            const isElim = eliminationFixture?.id === fix.id;
+
+            return (
+              <div
+                key={fix.id}
+                className={`bg-[#21262d] rounded-lg p-2.5 border ${isElim ? 'border-red-500/30' : 'border-[#30363d]'}`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${
+                    fix.stage === 'final' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
+                    fix.stage === 'semi_final' ? 'bg-purple-500/15 text-purple-400 border-purple-500/20' :
+                    'bg-[#161b22] text-[#8b949e] border-[#30363d]'
+                  }`}>
+                    {getStageName(fix.stage)}
+                  </Badge>
+                  <span className="text-[9px] text-[#484f58]">{isHome ? 'Home' : 'Away'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">{oppClub?.logo ?? '⚽'}</span>
+                    <span className="text-xs font-semibold text-[#c9d1d9]">{oppClub?.shortName ?? '???'}</span>
+                  </div>
+                  {fix.played ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-sm font-bold ${myG > oppG ? 'text-emerald-400' : myG < oppG ? 'text-red-400' : 'text-amber-400'}`}>
+                        {myG} - {oppG}
+                      </span>
+                      <span className="text-[9px] text-[#484f58]">(Agg)</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-[#8b949e]">vs</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Elimination indicator */}
+      {eliminated && eliminationFixture && (
+        <div className="bg-red-500/10 rounded-lg p-3 border border-red-500/20">
+          <div className="flex items-center gap-2">
+            <Swords className="h-4 w-4 text-red-400 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-red-400">Road Ends Here</p>
+              <p className="text-[10px] text-[#8b949e]">
+                Eliminated in {getStageName(eliminationFixture.stage)} by {getClubById(
+                  eliminationFixture.homeClubId === playerClubId ? eliminationFixture.awayClubId : eliminationFixture.homeClubId
+                )?.shortName ?? 'Opponent'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final victory indicator */}
+      {reachedFinal && !eliminated && (
+        <div className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/20">
+          <div className="flex items-center gap-2">
+            <Crown className="h-4 w-4 text-amber-400 shrink-0" />
+            <p className="text-xs font-semibold text-amber-400">European Champions!</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: European Records & Milestones
+// ============================================================
+function EuropeanRecordsMilestones({
+  fixtures,
+  playerClubId,
+  currentClub,
+  currentSeason,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+  currentClub: { id: string; name: string; shortName: string; logo: string };
+  currentSeason: number;
+}) {
+  const allTimeStats = useMemo(() => {
+    // All-time across seasons (deterministic from current state + simulated history)
+    const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+    let totalGoals = 0;
+    let totalAssists = 0;
+    let totalApps = played.length;
+
+    for (const f of played) {
+      const isHome = f.homeClubId === playerClubId;
+      totalGoals += isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+    }
+
+    // Add simulated historical stats
+    const histSeed = (currentClub.id.charCodeAt(0) * 11 + currentSeason) % 10;
+    const histApps = histSeed * 3;
+    const histGoals = Math.floor(histSeed * 1.5);
+
+    return {
+      totalGoals: totalGoals + histGoals,
+      totalAssists: totalAssists + Math.floor(histSeed * 0.8),
+      totalApps: totalApps + histApps,
+      trophies: histSeed >= 8 ? 1 : 0,
+      cleanSheets: played.filter(f => {
+        const isHome = f.homeClubId === playerClubId;
+        return (isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0)) === 0;
+      }).length + Math.floor(histSeed * 0.4),
+    };
+  }, [fixtures, playerClubId, currentClub.id, currentSeason]);
+
+  const milestones: Array<{ label: string; current: number; target: number; emoji: string }> = useMemo(() => {
+    return [
+      { label: 'First Appearance', current: Math.min(allTimeStats.totalApps, 1), target: 1, emoji: '🥇' },
+      { label: '10 Appearances', current: allTimeStats.totalApps, target: 10, emoji: '📋' },
+      { label: '50 Appearances', current: allTimeStats.totalApps, target: 50, emoji: '🏅' },
+      { label: 'First Goal', current: Math.min(allTimeStats.totalGoals, 1), target: 1, emoji: '⚽' },
+      { label: '10 Goals', current: allTimeStats.totalGoals, target: 10, emoji: '🎯' },
+      { label: '25 Goals', current: allTimeStats.totalGoals, target: 25, emoji: '🏆' },
+    ];
+  }, [allTimeStats]);
+
+  // Club greats comparison (deterministic)
+  const clubGreats = useMemo(() => {
+    const names = ['R. Legend', 'M. Great', 'S. Icon', 'A. Hero', 'T. Star'];
+    return names.map((name, i) => {
+      const seed = (currentClub.id.charCodeAt(0) * (i + 3) + i * 17) % 50;
+      return {
+        name,
+        goals: 5 + seed,
+        apps: 15 + seed * 2,
+        isPlayer: false,
+      };
+    }).sort((a, b) => b.goals - a.goals).slice(0, 5);
+  }, [currentClub.id]);
+
+  const playerRank = useMemo(() => {
+    let rank = 1;
+    for (const g of clubGreats) {
+      if (allTimeStats.totalGoals >= g.goals) break;
+      rank++;
+    }
+    return rank;
+  }, [clubGreats, allTimeStats.totalGoals]);
+
+  return (
+    <div className="space-y-3">
+      {/* All-time Stats */}
+      <div className="bg-[#21262d] rounded-lg p-3">
+        <div className="flex items-center gap-1.5 mb-3">
+          <BookOpen className="h-3.5 w-3.5 text-purple-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">All-Time European Stats</span>
+        </div>
+        <div className="grid grid-cols-5 gap-1.5">
+          {([
+            { label: 'Goals', value: allTimeStats.totalGoals, color: 'text-emerald-400' },
+            { label: 'Assists', value: allTimeStats.totalAssists, color: 'text-amber-400' },
+            { label: 'Apps', value: allTimeStats.totalApps, color: 'text-[#c9d1d9]' },
+            { label: 'CS', value: allTimeStats.cleanSheets, color: 'text-sky-400' },
+            { label: 'Trophies', value: allTimeStats.trophies, color: 'text-amber-400' },
+          ] as Array<{ label: string; value: number; color: string }>).map((s) => (
+            <div key={s.label} className="bg-[#161b22] rounded-lg p-2 text-center">
+              <span className={`text-sm font-bold block ${s.color}`}>{s.value}</span>
+              <span className="text-[8px] text-[#484f58] leading-tight">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Milestones */}
+      <div className="bg-[#21262d] rounded-lg p-3">
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <Medal className="h-3.5 w-3.5 text-amber-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">European Milestones</span>
+        </div>
+        <div className="space-y-2.5">
+          {milestones.map((m) => {
+            const pct = Math.min(100, (m.current / m.target) * 100);
+            const achieved = m.current >= m.target;
+            return (
+              <div key={m.label}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs">{m.emoji}</span>
+                    <span className={`text-[10px] font-medium ${achieved ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
+                      {m.label}
+                    </span>
+                  </div>
+                  <span className="text-[9px] text-[#484f58]">
+                    {m.current}/{m.target}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-[#161b22] rounded-sm overflow-hidden">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="h-full rounded-sm"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: achieved ? '#34d399' : '#f59e0b',
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Club Greats Comparison */}
+      <div className="bg-[#21262d] rounded-lg p-3">
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <Trophy className="h-3.5 w-3.5 text-amber-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">Club European Greats</span>
+          <span className="text-[9px] text-[#484f58] ml-auto">Your rank: #{playerRank}</span>
+        </div>
+        <div className="space-y-1">
+          {clubGreats.map((g, i) => (
+            <div
+              key={g.name}
+              className="flex items-center gap-2 py-1 px-2 rounded text-xs"
+              style={{ backgroundColor: i === playerRank - 1 ? 'rgba(52, 211, 153, 0.08)' : 'transparent' }}
+            >
+              <span className={`w-4 text-center font-bold ${i < 3 ? 'text-amber-400' : 'text-[#484f58]'}`}>{i + 1}</span>
+              <span className={`flex-1 font-medium ${i === playerRank - 1 ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
+                {g.name}
+              </span>
+              <span className="text-[#8b949e] text-[10px]">{g.goals}G</span>
+              <span className="text-[#484f58] text-[10px]">{g.apps}A</span>
+            </div>
+          ))}
+          {/* Player's row */}
+          <div className="flex items-center gap-2 py-1 px-2 rounded text-xs bg-emerald-500/10 border border-emerald-500/20 mt-1">
+            <span className="w-4 text-center font-bold text-emerald-400">#{playerRank}</span>
+            <span className="flex-1 font-semibold text-emerald-400">You ({currentClub.shortName})</span>
+            <span className="text-emerald-400 text-[10px]">{allTimeStats.totalGoals}G</span>
+            <span className="text-emerald-400/60 text-[10px]">{allTimeStats.totalApps}A</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// NEW: Match Day Experience
+// ============================================================
+function MatchDayExperience({
+  nextMatch,
+  playerClubId,
+  currentWeek,
+}: {
+  nextMatch: ContinentalFixture;
+  playerClubId: string;
+  currentWeek: number;
+}) {
+  const isHome = nextMatch.homeClubId === playerClubId;
+  const opponentClub = getClubById(isHome ? nextMatch.awayClubId : nextMatch.homeClubId);
+
+  const matchDayData = useMemo(() => {
+    // Deterministic atmosphere, channel, commentator
+    const seed = (nextMatch.id.charCodeAt(0) * 7 + nextMatch.matchday * 13) % 100;
+    const atmosphereLevel = 2 + (seed % 4); // 2-5
+
+    const channels = ['Sky Sports', 'BT Sport', 'Canal+', 'DAZN', 'Paramount+'];
+    const commentators = ['Martin Tyler', 'Peter Drury', 'Darren Fletcher', 'Jim Beglin', 'Robbie Savage'];
+    const channel = channels[seed % channels.length];
+    const commentator = commentators[seed % commentators.length];
+
+    const isEvening = nextMatch.matchday % 2 === 0;
+    const kickoff = isEvening ? '20:00' : '21:00';
+
+    const hypeTexts = [
+      'A massive European night awaits under the floodlights.',
+      'The atmosphere is electric ahead of this continental clash.',
+      'European football returns with a blockbuster encounter.',
+      'All eyes are on this heavyweight European contest.',
+      'A night of high drama under the lights.',
+    ];
+    const hype = hypeTexts[seed % hypeTexts.length];
+
+    return { atmosphereLevel, channel, commentator, isEvening, kickoff, hype };
+  }, [nextMatch.id, nextMatch.matchday]);
+
+  return (
+    <div className="bg-[#21262d] rounded-lg p-3 space-y-3">
+      <div className="flex items-center gap-1.5">
+        <Moon className="h-3.5 w-3.5 text-purple-400" />
+        <span className="text-[10px] text-[#8b949e] font-semibold uppercase tracking-wide">Match Day Experience</span>
+      </div>
+
+      {/* Stadium SVG Placeholder */}
+      <div className="bg-[#0d1117] rounded-lg p-2">
+        <svg viewBox="0 0 240 100" className="w-full" style={{ minWidth: 200 }}>
+          {/* Sky */}
+          <rect width="240" height="50" rx="4" fill="#0d1117" />
+          {/* Stars for evening match */}
+          {matchDayData.isEvening && (
+            <>
+              <circle cx="30" cy="15" r="1" fill="#f59e0b" opacity="0.6" />
+              <circle cx="80" cy="10" r="0.8" fill="#f59e0b" opacity="0.4" />
+              <circle cx="150" cy="18" r="1.2" fill="#f59e0b" opacity="0.5" />
+              <circle cx="200" cy="8" r="0.7" fill="#f59e0b" opacity="0.3" />
+              <circle cx="120" cy="6" r="1" fill="#f59e0b" opacity="0.5" />
+            </>
+          )}
+          {/* Stadium outline */}
+          <path d="M 20 50 L 40 30 L 80 25 L 160 25 L 200 30 L 220 50 L 220 70 L 20 70 Z" fill="#161b22" stroke="#30363d" strokeWidth="0.8" />
+          {/* Pitch */}
+          <rect x="50" y="45" width="140" height="20" rx="2" fill="#1a472a" opacity="0.6" />
+          <line x1="120" y1="45" x2="120" y2="65" stroke="#2d6a3f" strokeWidth="0.5" />
+          <circle cx="120" cy="55" r="4" fill="none" stroke="#2d6a3f" strokeWidth="0.5" />
+          {/* Stands */}
+          <rect x="25" y="50" width="20" height="15" rx="2" fill="#21262d" />
+          <rect x="195" y="50" width="20" height="15" rx="2" fill="#21262d" />
+          <rect x="50" y="50" width="140" height="3" rx="1" fill="#21262d" />
+          {/* Floodlights */}
+          <rect x="15" y="20" width="3" height="15" rx="1" fill="#30363d" />
+          <rect x="222" y="20" width="3" height="15" rx="1" fill="#30363d" />
+          <circle cx="16.5" cy="19" r="2.5" fill="#f59e0b" opacity="0.15" />
+          <circle cx="223.5" cy="19" r="2.5" fill="#f59e0b" opacity="0.15" />
+          {/* Crowd dots */}
+          {Array.from({ length: 12 }).map((_, i) => (
+            <circle key={i} cx={30 + i * 15 + (i % 3) * 3} cy={54} r="1" fill="#34d399" opacity="0.3" />
+          ))}
+          {/* Label */}
+          <text x="120" y="88" textAnchor="middle" fill="#484f58" fontSize="6" fontWeight="500">
+            {isHome ? getClubById(playerClubId)?.shortName ?? 'Home' : opponentClub?.shortName ?? 'Away'} Stadium
+          </text>
+        </svg>
+      </div>
+
+      {/* Atmosphere Level */}
+      <div className="bg-[#161b22] rounded-lg p-2.5">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] text-[#8b949e] font-semibold">Atmosphere Level</span>
+          <span className="text-[10px] font-bold text-amber-400">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <span key={i} className={i < matchDayData.atmosphereLevel ? 'text-amber-400' : 'text-[#30363d]'}>★</span>
+            ))}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-2 flex-1 rounded-sm"
+              style={{ backgroundColor: i < matchDayData.atmosphereLevel ? '#f59e0b' : '#30363d' }}
+            />
+          ))}
+        </div>
+        <p className="text-[9px] text-[#484f58] mt-1">
+          {matchDayData.atmosphereLevel >= 4 ? 'Roaring crowd expected' :
+           matchDayData.atmosphereLevel >= 3 ? 'Good atmosphere anticipated' :
+           'Moderate crowd expected'}
+        </p>
+      </div>
+
+      {/* Badges Row */}
+      <div className="flex items-center gap-2">
+        {matchDayData.isEvening && (
+          <Badge className="bg-purple-500/15 text-purple-400 border-purple-500/20 text-[9px] px-2">
+            <Moon className="h-3 w-3 mr-1" /> Under the Lights
+          </Badge>
+        )}
+        <Badge className="bg-sky-500/15 text-sky-400 border-sky-500/20 text-[9px] px-2">
+          <Clock className="h-3 w-3 mr-1" /> {matchDayData.kickoff} Kick-off
+        </Badge>
+      </div>
+
+      {/* TV Broadcast Info */}
+      <div className="bg-[#161b22] rounded-lg p-2.5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Tv className="h-3 w-3 text-sky-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">Broadcast</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-[#c9d1d9]">{matchDayData.channel}</p>
+            <p className="text-[9px] text-[#484f58]">Commentary: {matchDayData.commentator}</p>
+          </div>
+          <span className="text-[9px] text-[#484f58]">
+            {nextMatch.stage === 'group' ? `MD ${nextMatch.matchday}` : getStageName(nextMatch.stage)}
+          </span>
+        </div>
+      </div>
+
+      {/* Pre-match Hype */}
+      <div className="bg-[#161b22] rounded-lg p-2.5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Flame className="h-3 w-3 text-amber-400" />
+          <span className="text-[10px] text-[#8b949e] font-semibold">Pre-Match Build-Up</span>
+        </div>
+        <p className="text-[11px] text-[#c9d1d9] italic leading-relaxed">{matchDayData.hype}</p>
+        <p className="text-[9px] text-[#484f58] mt-1">
+          {isHome
+            ? `${getClubById(playerClubId)?.shortName ?? 'Home'} host ${opponentClub?.shortName ?? 'Opponent'}`
+            : `${getClubById(playerClubId)?.shortName ?? 'Away'} travel to face ${opponentClub?.shortName ?? 'Opponent'}`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -1663,6 +2617,18 @@ export default function ContinentalPanel() {
           >
             Knockout
           </TabsTrigger>
+          <TabsTrigger
+            value="journey"
+            className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400"
+          >
+            Journey
+          </TabsTrigger>
+          <TabsTrigger
+            value="records"
+            className="flex-1 text-xs data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400"
+          >
+            Records
+          </TabsTrigger>
         </TabsList>
 
         {/* ============================================================ */}
@@ -1773,6 +2739,15 @@ export default function ContinentalPanel() {
                   playerClubId={currentClub.id}
                 />
               </div>
+            )}
+
+            {/* Match Day Experience */}
+            {nextMatch && (
+              <MatchDayExperience
+                nextMatch={nextMatch}
+                playerClubId={currentClub.id}
+                currentWeek={currentWeek}
+              />
             )}
 
             {/* Player's group standing */}
@@ -1907,15 +2882,26 @@ export default function ContinentalPanel() {
             className="space-y-3"
           >
             {Object.keys(groups).length > 0 ? (
-              Object.entries(groups).map(([group, standings]) => (
-                <GroupTable
-                  key={group}
-                  standings={standings}
-                  group={group}
-                  playerClubId={currentClub.id}
-                  fixtures={continentalFixtures}
-                />
-              ))
+              <>
+                {Object.entries(groups).map(([group, standings]) => (
+                  <GroupTable
+                    key={group}
+                    standings={standings}
+                    group={group}
+                    playerClubId={currentClub.id}
+                    fixtures={continentalFixtures}
+                  />
+                ))}
+                {/* Group Stage Analytics for player's group */}
+                {playerGroup && groups[playerGroup] && (
+                  <GroupStageAnalytics
+                    fixtures={continentalFixtures}
+                    standings={groups[playerGroup]}
+                    group={playerGroup}
+                    playerClubId={currentClub.id}
+                  />
+                )}
+              </>
             ) : (
               <div className="text-center py-8 text-[#8b949e] text-sm">
                 <Globe className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -1935,10 +2921,18 @@ export default function ContinentalPanel() {
             className="space-y-3"
           >
             {knockoutFixtures.length > 0 ? (
-              <KnockoutBracketView
-                knockoutFixtures={knockoutFixtures}
-                playerClubId={currentClub.id}
-              />
+              <>
+                <KnockoutBracketView
+                  knockoutFixtures={knockoutFixtures}
+                  playerClubId={currentClub.id}
+                />
+                {/* Knockout Stage Tracker */}
+                <KnockoutStageTracker
+                  knockoutFixtures={knockoutFixtures}
+                  playerClubId={currentClub.id}
+                  eliminated={continentalEliminated}
+                />
+              </>
             ) : (
               <div className="text-center py-8 text-[#8b949e] text-sm">
                 <Trophy className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -1948,6 +2942,43 @@ export default function ContinentalPanel() {
                 </p>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {/* ============================================================ */}
+        {/* Journey Tab (NEW) */}
+        {/* ============================================================ */}
+        {activeTab === 'journey' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-3"
+          >
+            <EuropeanJourneyOverview
+              fixtures={continentalFixtures}
+              playerClubId={currentClub.id}
+              currentClub={currentClub}
+              currentSeason={currentSeason}
+              continentalCompetition={continentalCompetition}
+            />
+          </motion.div>
+        )}
+
+        {/* ============================================================ */}
+        {/* Records Tab (NEW) */}
+        {/* ============================================================ */}
+        {activeTab === 'records' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-3"
+          >
+            <EuropeanRecordsMilestones
+              fixtures={continentalFixtures}
+              playerClubId={currentClub.id}
+              currentClub={currentClub}
+              currentSeason={currentSeason}
+            />
           </motion.div>
         )}
       </Tabs>

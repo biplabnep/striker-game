@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getClubById, CUP_NAMES, CUP_MATCH_WEEKS } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import {
   Trophy, XCircle, Crown, Swords, ChevronRight, Calendar, Users,
   CheckCircle2, Target, BarChart3, TrendingUp, MapPin, MinusCircle,
-  Eye, Flame, Star, Zap, Home, Plane, Clock, Award, Flag, Activity
+  Eye, Flame, Star, Zap, Home, Plane, Clock, Award, Flag, Activity,
+  Compass, Cloud, BookOpen, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Fixture, MatchResult, MatchEvent } from '@/lib/game/types';
@@ -501,6 +502,249 @@ export default function CupBracket() {
 
     return { rounds: bracketRounds };
   }, [cupInfo, gameState, cupMatchScoreLookup]);
+
+  // ─── Tournament Overview Dashboard data ─────────────────────────────
+  const tournamentOverview = useMemo(() => {
+    if (!gameState || !cupInfo || !cupStatistics) return null;
+
+    const cupResults = gameState.recentResults.filter(r => r.competition === 'cup');
+    const goalsConceded = cupResults.reduce((sum, r) => {
+      const isHome = r.homeClub.id === gameState.currentClub.id;
+      return sum + (isHome ? r.awayScore : r.homeScore);
+    }, 0);
+
+    let totalOpponentPos = 0;
+    let oppCount = 0;
+    for (const result of cupResults) {
+      const opponentId = result.homeClub.id === gameState.currentClub.id
+        ? result.awayClub.id : result.homeClub.id;
+      const oppIdx = gameState.leagueTable.findIndex(s => s.clubId === opponentId);
+      if (oppIdx >= 0) {
+        totalOpponentPos += oppIdx + 1;
+        oppCount++;
+      }
+    }
+    const totalTeams = gameState.leagueTable.length || 1;
+    const difficulty = oppCount > 0
+      ? Math.round(((totalTeams - totalOpponentPos / oppCount) / totalTeams) * 100)
+      : 50;
+
+    return {
+      season: gameState.currentSeason,
+      matchesPlayed: cupResults.length,
+      goalsScored: cupStatistics.cupGoals,
+      goalsConceded,
+      difficulty,
+      path: cupRunTimeline.map(m => ({
+        round: m.roundName,
+        opponent: m.opponent,
+        opponentLogo: m.opponentLogo,
+        result: m.result,
+        score: `${m.playerScore}-${m.opponentScore}`,
+      })),
+    };
+  }, [gameState, cupInfo, cupStatistics, cupRunTimeline]);
+
+  // ─── Match Preview Panel data ──────────────────────────────────────
+  const matchPreview = useMemo(() => {
+    if (!gameState || !cupInfo?.playerNextCupMatch || !cupInfo.nextCupOpponent || cupInfo.cupEliminated || cupInfo.isCupWinner) return null;
+
+    const opponent = cupInfo.nextCupOpponent;
+    const playerClub = gameState.currentClub;
+    const isHome = cupInfo.playerNextCupMatch.homeClubId === playerClub.id;
+
+    const h2hMatches = gameState.recentResults.filter(r =>
+      (r.homeClub.id === playerClub.id && r.awayClub.id === opponent.id) ||
+      (r.homeClub.id === opponent.id && r.awayClub.id === playerClub.id)
+    );
+    const h2hWins = h2hMatches.filter(r => {
+      const ih = r.homeClub.id === playerClub.id;
+      return (ih ? r.homeScore : r.awayScore) > (ih ? r.awayScore : r.homeScore);
+    }).length;
+    const h2hDraws = h2hMatches.filter(r => r.homeScore === r.awayScore).length;
+    const h2hLosses = h2hMatches.length - h2hWins - h2hDraws;
+    const h2hFor = h2hMatches.reduce((s, r) => {
+      const ih = r.homeClub.id === playerClub.id;
+      return s + (ih ? r.homeScore : r.awayScore);
+    }, 0);
+    const h2hAgainst = h2hMatches.reduce((s, r) => {
+      const ih = r.homeClub.id === playerClub.id;
+      return s + (ih ? r.awayScore : r.homeScore);
+    }, 0);
+
+    const seed = (playerClub.id + opponent.id).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    const stadiums = ['City Stadium', 'Arena Grounds', 'National Park', 'Community Field', 'Royal Dome'];
+    const weatherOpts = ['Sunny, 22°C', 'Cloudy, 18°C', 'Light Rain, 15°C', 'Windy, 19°C', 'Clear, 24°C'];
+
+    const qualityDiff = playerClub.quality - opponent.quality;
+    const homeBonus = isHome ? 8 : 0;
+    const winProb = Math.min(90, Math.max(10, Math.round(50 + qualityDiff * 0.5 + homeBonus)));
+
+    const formations = ['4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '5-3-2'];
+    const positions = ['ATT', 'MID', 'DEF'];
+    const pStats = [72 + (seed * 7 % 18), 68 + (seed * 11 % 20), 65 + (seed * 13 % 22)];
+    const oStats = [70 + ((seed + 17) * 7 % 18), 70 + ((seed + 17) * 11 % 20), 68 + ((seed + 17) * 13 % 22)];
+
+    return {
+      isHome,
+      h2h: { wins: h2hWins, draws: h2hDraws, losses: h2hLosses, for: h2hFor, against: h2hAgainst },
+      venue: { name: stadiums[seed % stadiums.length], capacity: 20000 + (seed * 37 % 60000), weather: weatherOpts[seed % weatherOpts.length] },
+      battles: positions.map((p, i) => ({ pos: p, player: pStats[i], opponent: oStats[i] })),
+      winProb,
+      formation: formations[seed % formations.length],
+      instruction: isHome ? 'Press high, attack from the whistle' : 'Stay compact, hit on the counter',
+    };
+  }, [gameState, cupInfo]);
+
+  // ─── Cup History Timeline data ──────────────────────────────────────
+  const cupHistoryTimeline = useMemo(() => {
+    if (!gameState || !historicalPerformance) return [];
+
+    const entries: {
+      season: number;
+      roundReached: string;
+      opponent: string;
+      score: string;
+      goalScorers: string[];
+      isBest: boolean;
+      cleanSheet: boolean;
+    }[] = [];
+
+    for (const trophy of historicalPerformance.cupTrophies) {
+      const sd = trophy.season * 31;
+      const opps = ['Rival United', 'City FC', 'Athletic Club', 'Wanderers'];
+      entries.push({
+        season: trophy.season,
+        roundReached: 'Winner',
+        opponent: opps[sd % opps.length],
+        score: `${2 + (sd % 3)}-${sd % 2}`,
+        goalScorers: ['Martinez', 'Silva', 'Fernandes'].slice(0, 1 + (sd % 3)),
+        isBest: true,
+        cleanSheet: sd % 4 === 0,
+      });
+    }
+
+    const cupResults = gameState.recentResults.filter(r => r.competition === 'cup');
+    const maxRd = gameState.cupFixtures.length > 0 ? Math.max(...gameState.cupFixtures.map(f => f.matchday)) : 1;
+    for (const r of cupResults) {
+      const ih = r.homeClub.id === gameState.currentClub.id;
+      const opp = ih ? r.awayClub : r.homeClub;
+      const rIdx = CUP_MATCH_WEEKS.findIndex(w => w === r.week);
+      entries.push({
+        season: r.season,
+        roundReached: getRoundName(rIdx >= 0 ? rIdx + 1 : 1, maxRd),
+        opponent: opp.shortName,
+        score: `${r.homeScore}-${r.awayScore}`,
+        goalScorers: r.playerGoals > 0 ? ['You'] : [],
+        isBest: false,
+        cleanSheet: ih ? r.awayScore === 0 : r.homeScore === 0,
+      });
+    }
+
+    return entries.sort((a, b) => b.season - a.season);
+  }, [gameState, historicalPerformance]);
+
+  // ─── Cup Stats Deep Dive data ───────────────────────────────────────
+  const cupStatsDeep = useMemo(() => {
+    if (!gameState || !cupStatistics) return null;
+
+    const cupResults = gameState.recentResults.filter(r => r.competition === 'cup');
+    const cleanSheets = cupResults.filter(r => {
+      const ih = r.homeClub.id === gameState.currentClub.id;
+      return ih ? r.awayScore === 0 : r.homeScore === 0;
+    }).length;
+
+    const minSeason = cupResults.length > 0 ? Math.min(...cupResults.map(c => c.season)) : 0;
+    const firstSeason = cupResults.filter(r => r.season === minSeason);
+    const prevGoals = firstSeason.reduce((s, r) => s + r.playerGoals, 0);
+    const prevAssists = firstSeason.reduce((s, r) => s + r.playerAssists, 0);
+    const prevApps = firstSeason.length;
+
+    const specialistRating = Math.min(5, Math.max(1,
+      Math.round(cupStatistics.cupGoals * 0.3 + cupStatistics.motmAwards * 0.8 + cupStatistics.winRate * 0.02 + (historicalPerformance?.cupTrophies.length ?? 0) * 1.5)
+    ));
+
+    const sparkline = cupResults.slice(-5).map(r => r.playerRating);
+
+    return {
+      goals: { value: cupStatistics.cupGoals, trend: cupStatistics.cupGoals - prevGoals },
+      assists: { value: cupStatistics.cupAssists, trend: cupStatistics.cupAssists - prevAssists },
+      cleanSheets: { value: cleanSheets, trend: 0 },
+      appearances: { value: cupStatistics.cupAppearances, trend: cupStatistics.cupAppearances - prevApps },
+      winRate: { value: cupStatistics.winRate, trend: 0 },
+      motm: { value: cupStatistics.motmAwards, trend: 0 },
+      specialistRating,
+      sparkline,
+    };
+  }, [gameState, cupStatistics, historicalPerformance]);
+
+  // ─── Famous Cup Moments data ────────────────────────────────────────
+  const famousCupMoments = useMemo(() => {
+    if (!gameState) return [];
+
+    const cupResults = gameState.recentResults.filter(r => r.competition === 'cup');
+    const moments: { type: string; title: string; description: string; season: number; color: string }[] = [];
+
+    // Giant Killing — beating a higher-ranked opponent
+    const giantKill = cupResults.find(r => {
+      const ih = r.homeClub.id === gameState.currentClub.id;
+      if ((ih ? r.homeScore : r.awayScore) <= (ih ? r.awayScore : r.homeScore)) return false;
+      const oppId = ih ? r.awayClub.id : r.homeClub.id;
+      const oppPos = gameState.leagueTable.findIndex(s => s.clubId === oppId) + 1;
+      const myPos = gameState.leagueTable.findIndex(s => s.clubId === gameState.currentClub.id) + 1;
+      return oppPos > 0 && myPos > 0 && oppPos < myPos;
+    });
+    if (giantKill) {
+      const ih = giantKill.homeClub.id === gameState.currentClub.id;
+      moments.push({
+        type: 'Giant Killing',
+        title: 'Upset Victory!',
+        description: `Beat league-higher ${(ih ? giantKill.awayClub : giantKill.homeClub).shortName} ${giantKill.homeScore}-${giantKill.awayScore}`,
+        season: giantKill.season,
+        color: '#34d399',
+      });
+    }
+
+    // Last Minute Hero — late dramatic contribution
+    const lastMin = cupResults.find(r => r.playerGoals > 0 && r.playerRating >= 7.5);
+    if (lastMin) {
+      const ih = lastMin.homeClub.id === gameState.currentClub.id;
+      moments.push({
+        type: 'Last Minute Hero',
+        title: 'Dramatic Impact',
+        description: `Key performance vs ${(ih ? lastMin.awayClub : lastMin.homeClub).shortName} (${lastMin.playerRating.toFixed(1)})`,
+        season: lastMin.season,
+        color: '#f59e0b',
+      });
+    }
+
+    // Hat-Trick in the Cup
+    const hatTrick = cupResults.find(r => r.playerGoals >= 3);
+    if (hatTrick) {
+      const ih = hatTrick.homeClub.id === gameState.currentClub.id;
+      moments.push({
+        type: 'Hat-Trick Hero',
+        title: 'Cup Hat-Trick!',
+        description: `Scored ${hatTrick.playerGoals} vs ${(ih ? hatTrick.awayClub : hatTrick.homeClub).shortName}`,
+        season: hatTrick.season,
+        color: '#ef4444',
+      });
+    }
+
+    // Cup Final Day
+    if (historicalPerformance && historicalPerformance.cupTrophies.length > 0) {
+      const t = historicalPerformance.cupTrophies[0];
+      moments.push({
+        type: 'Cup Final Day',
+        title: 'Lifted the Trophy!',
+        description: `Won the ${t.name} in Season ${t.season}`,
+        season: t.season,
+        color: '#a78bfa',
+      });
+    }
+
+    return moments.slice(0, 4);
+  }, [gameState, historicalPerformance]);
 
   // ─── Early return ────────────────────────────────────────────────────
   if (!cupInfo || !gameState) return null;
@@ -1083,6 +1327,128 @@ export default function CupBracket() {
         </motion.div>
       )}
 
+      {/* ─── Tournament Overview Dashboard ──────────────────────────── */}
+      {tournamentOverview && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.08 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                <Compass className="h-3 w-3 text-amber-500" />
+                Tournament Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              {/* Summary banner */}
+              <div className="bg-[#21262d] rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-bold text-[#c9d1d9]">{cupName}</p>
+                    <p className="text-[10px] text-[#8b949e]">Season {tournamentOverview.season}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] border-amber-700/50 text-amber-400">
+                    {isCupWinner ? 'Winner' : cupEliminated ? 'Eliminated' : `Round ${cupRound}`}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-emerald-400 tabular-nums">{tournamentOverview.matchesPlayed}</p>
+                    <p className="text-[8px] text-[#484f58]">Played</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-emerald-400 tabular-nums">{tournamentOverview.goalsScored}</p>
+                    <p className="text-[8px] text-[#484f58]">Scored</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-red-400 tabular-nums">{tournamentOverview.goalsConceded}</p>
+                    <p className="text-[8px] text-[#484f58]">Conceded</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-amber-400 tabular-nums">{tournamentOverview.difficulty}%</p>
+                    <p className="text-[8px] text-[#484f58]">Difficulty</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SVG tournament path visualization */}
+              {tournamentOverview.path.length > 0 && (
+                <div>
+                  <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider mb-2">Your Cup Path</p>
+                  <div className="overflow-x-auto custom-scrollbar -mx-4 px-4">
+                    <svg width={tournamentOverview.path.length * 110 + 20} height={56} className="min-w-full">
+                      <rect width="100%" height="100%" fill="#0d1117" rx={4} />
+                      {tournamentOverview.path.map((step, i) => {
+                        const x = 10 + i * 110;
+                        const isWin = step.result === 'W';
+                        return (
+                          <g key={i}>
+                            {i > 0 && (
+                              <line x1={x - 10} y1={28} x2={x - 2} y2={28} stroke={isWin ? '#34d399' : '#ef4444'} strokeWidth={2} strokeLinecap="round" />
+                            )}
+                            <circle cx={x + 20} cy={28} r={18} fill={isWin ? '#0d2818' : '#2d0d0d'} stroke={isWin ? '#34d399' : '#ef4444'} strokeWidth={1} />
+                            <text x={x + 20} y={26} textAnchor="middle" fontSize={10} fill={isWin ? '#34d399' : '#ef4444'} fontWeight={700} fontFamily="system-ui">
+                              {step.score}
+                            </text>
+                            <text x={x + 20} y={38} textAnchor="middle" fontSize={6} fill="#8b949e" fontFamily="system-ui">
+                              vs {step.opponent.substring(0, 8)}
+                            </text>
+                            <text x={x + 20} y={10} textAnchor="middle" fontSize={7} fill="#484f58" fontFamily="system-ui">
+                              {step.round.substring(0, 6)}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              {/* Best Cup Run indicator */}
+              <div className="flex items-center gap-2 bg-[#21262d] rounded-lg p-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                  <Trophy className="h-4 w-4 text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] text-[#8b949e]">Best Cup Run</p>
+                  <p className="text-xs font-bold text-amber-300">{cupStatistics?.bestRun ?? '—'}</p>
+                </div>
+                {historicalPerformance && historicalPerformance.cupTrophies.length > 0 && (
+                  <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] px-2">
+                    <Crown className="h-2.5 w-2.5 mr-0.5" />
+                    {historicalPerformance.cupTrophies.length}x Winner
+                  </Badge>
+                )}
+              </div>
+
+              {/* Cup difficulty meter */}
+              <div className="bg-[#21262d] rounded-lg p-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider">Cup Difficulty</span>
+                  <span className={`text-[10px] font-bold ${
+                    tournamentOverview.difficulty > 65 ? 'text-red-400' : tournamentOverview.difficulty > 40 ? 'text-amber-400' : 'text-emerald-400'
+                  }`}>
+                    {tournamentOverview.difficulty > 65 ? 'Hard' : tournamentOverview.difficulty > 40 ? 'Medium' : 'Easy'}
+                  </span>
+                </div>
+                <div className="h-2 bg-[#0d1117] rounded-sm overflow-hidden">
+                  <div
+                    className="h-full rounded-sm"
+                    style={{
+                      width: `${tournamentOverview.difficulty}%`,
+                      backgroundColor: tournamentOverview.difficulty > 65 ? '#ef4444' : tournamentOverview.difficulty > 40 ? '#f59e0b' : '#34d399',
+                    }}
+                  />
+                </div>
+                <p className="text-[8px] text-[#484f58] mt-1">Based on opponents' league positions</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* ─── Cup Winner Celebration ─────────────────────────────────── */}
       {isCupWinner && (
         <motion.div
@@ -1374,6 +1740,144 @@ export default function CupBracket() {
                   <span className="text-[#8b949e]">{nextCupOpponent.quality}</span>
                 </div>
                 <p className="text-[7px] text-[#484f58] text-center mt-1">Quality Rating</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ─── Match Preview Panel ────────────────────────────────────── */}
+      {matchPreview && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                  <Eye className="h-3 w-3 text-sky-400" />
+                  Match Preview
+                </CardTitle>
+                <Badge variant="outline" className="text-[9px] border-sky-700/50 text-sky-400">
+                  {getRoundName(cupRound, maxRound)}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              {/* Head-to-head record card */}
+              <div className="bg-[#21262d] rounded-lg p-2.5">
+                <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider mb-2">Head-to-Head Record</p>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-emerald-400">{matchPreview.h2h.wins}</p>
+                    <p className="text-[8px] text-[#484f58]">Wins</p>
+                  </div>
+                  <div className="w-px h-8 bg-[#30363d]" />
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-amber-400">{matchPreview.h2h.draws}</p>
+                    <p className="text-[8px] text-[#484f58]">Draws</p>
+                  </div>
+                  <div className="w-px h-8 bg-[#30363d]" />
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-red-400">{matchPreview.h2h.losses}</p>
+                    <p className="text-[8px] text-[#484f58]">Losses</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-3 mt-2 text-[9px] text-[#8b949e]">
+                  <span>GF: <span className="text-emerald-400 font-bold">{matchPreview.h2h.for}</span></span>
+                  <span>GA: <span className="text-red-400 font-bold">{matchPreview.h2h.against}</span></span>
+                </div>
+              </div>
+
+              {/* Key position matchup comparisons */}
+              <div className="bg-[#21262d] rounded-lg p-2.5">
+                <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider mb-2">Key Position Battles</p>
+                <div className="space-y-2">
+                  {matchPreview.battles.map((b, i) => {
+                    const total = b.player + b.opponent;
+                    const pPct = Math.round((b.player / total) * 100);
+                    return (
+                      <div key={i}>
+                        <div className="flex items-center justify-between text-[9px] mb-0.5">
+                          <span className="text-emerald-400 font-medium">{b.player}</span>
+                          <span className="text-[#484f58]">{b.pos}</span>
+                          <span className="text-sky-400 font-medium">{b.opponent}</span>
+                        </div>
+                        <div className="flex h-1.5 rounded-sm overflow-hidden bg-[#0d1117]">
+                          <div className="h-full bg-emerald-500/60 rounded-l-sm" style={{ width: `${pPct}%` }} />
+                          <div className="h-full bg-sky-500/60 rounded-r-sm" style={{ width: `${100 - pPct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Venue info card */}
+              <div className="bg-[#21262d] rounded-lg p-2.5">
+                <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider mb-2">Venue Information</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                    <MapPin className="h-4 w-4 text-sky-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-[#c9d1d9]">{matchPreview.venue.name}</p>
+                    <p className="text-[9px] text-[#8b949e]">Capacity: {matchPreview.venue.capacity.toLocaleString()}</p>
+                  </div>
+                  <Badge className={`text-[8px] px-1.5 py-0 h-4 border ${
+                    matchPreview.isHome ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                  }`}>
+                    {matchPreview.isHome ? 'HOME' : 'AWAY'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-2 text-[9px] text-[#8b949e]">
+                  <Cloud className="h-3 w-3" />
+                  <span>{matchPreview.venue.weather}</span>
+                </div>
+              </div>
+
+              {/* Tactical Preview mini section */}
+              <div className="bg-[#21262d] rounded-lg p-2.5">
+                <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider mb-2">Tactical Preview</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-[#484f58]">Formation</p>
+                    <p className="text-sm font-bold text-[#c9d1d9]">{matchPreview.formation}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-[#484f58]">Key Instruction</p>
+                    <p className="text-xs text-amber-300">{matchPreview.instruction}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Win probability donut chart */}
+              <div className="flex items-center gap-3 bg-[#21262d] rounded-lg p-3">
+                <svg width="64" height="64" viewBox="0 0 64 64" className="flex-shrink-0">
+                  <circle cx="32" cy="32" r="24" fill="none" stroke="#21262d" strokeWidth={6} />
+                  <circle
+                    cx="32" cy="32" r="24" fill="none"
+                    stroke={matchPreview.winProb >= 50 ? '#34d399' : '#f59e0b'}
+                    strokeWidth={6}
+                    strokeDasharray={`${matchPreview.winProb * 1.508} ${150.8 - matchPreview.winProb * 1.508}`}
+                    strokeLinecap="round"
+                    transform="rotate(-90 32 32)"
+                  />
+                  <text x="32" y="30" textAnchor="middle" fontSize="14" fontWeight={800} fill="#c9d1d9" fontFamily="system-ui">
+                    {matchPreview.winProb}%
+                  </text>
+                  <text x="32" y="42" textAnchor="middle" fontSize="7" fill="#8b949e" fontFamily="system-ui">
+                    Win
+                  </text>
+                </svg>
+                <div>
+                  <p className="text-[10px] text-[#8b949e] font-semibold uppercase tracking-wider">Win Probability</p>
+                  <p className="text-xs text-[#c9d1d9] mt-0.5">
+                    {matchPreview.winProb >= 65 ? 'Strong favourite' : matchPreview.winProb >= 45 ? 'Even contest' : 'Underdog'}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1692,6 +2196,118 @@ export default function CupBracket() {
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+            {/* ─── Cup History Timeline ────────────────────────────────────── */}
+      {cupHistoryTimeline.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.32 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                  <BookOpen className="h-3 w-3 text-amber-500" />
+                  Cup History Timeline
+                </CardTitle>
+                <span className="text-[9px] text-[#484f58]">{cupHistoryTimeline.length} entries</span>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              {/* Vertical timeline */}
+              <div className="relative">
+                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-[#30363d]" />
+                <div className="space-y-0">
+                  {cupHistoryTimeline.map((entry, idx) => (
+                    <motion.div
+                      key={`${entry.season}-${entry.roundReached}-${idx}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.32 + idx * 0.05 }}
+                      className="relative flex items-start gap-3 py-2"
+                    >
+                      {/* Timeline node */}
+                      <div className="relative z-10 flex-shrink-0 mt-1">
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${
+                          entry.isBest
+                            ? 'bg-amber-500/20 border-amber-500/40'
+                            : 'bg-[#21262d] border-[#30363d]'
+                        }`}>
+                          {entry.isBest ? (
+                            <Trophy className="h-3 w-3 text-amber-400" />
+                          ) : (
+                            <Flag className="h-2.5 w-2.5 text-[#8b949e]" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Entry card */}
+                      <div className={`flex-1 rounded-lg border p-2.5 min-w-0 ${
+                        entry.isBest
+                          ? 'bg-amber-500/[0.06] border-amber-500/20'
+                          : 'bg-[#21262d]/60 border-[#30363d]'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold text-[#c9d1d9]">
+                            Season {entry.season}
+                          </span>
+                          <Badge className={`text-[7px] px-1.5 py-0 h-4 border font-semibold ${getResultBadgeColor(
+                            entry.roundReached === 'Winner' ? 'Winner' :
+                            entry.roundReached.includes('Semi') ? 'Semi-Finalist' :
+                            entry.roundReached.includes('Quarter') ? 'Quarter-Finalist' :
+                            'Quarter-Finalist'
+                          )}`}>
+                            {entry.roundReached}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-[#8b949e]">vs {entry.opponent}</span>
+                          <span className="font-bold text-[#c9d1d9] tabular-nums">{entry.score}</span>
+                        </div>
+                        {entry.goalScorers.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Target className="h-2.5 w-2.5 text-emerald-400" />
+                            <span className="text-[8px] text-emerald-400">{entry.goalScorers.join(', ')}</span>
+                          </div>
+                        )}
+                        {entry.cleanSheet && (
+                          <span className="text-[7px] bg-sky-500/15 text-sky-300 px-1 py-0 rounded-sm mt-1 inline-block border border-sky-500/20">
+                            Clean Sheet
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stats summary */}
+              <div className="mt-3 pt-3 border-t border-[#30363d]">
+                <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider mb-2">All-Time Cup Records</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-[#21262d] rounded-md p-2 text-center">
+                    <p className="text-sm font-bold text-amber-400 tabular-nums">{historicalPerformance?.cupTrophies.length ?? 0}</p>
+                    <p className="text-[8px] text-[#484f58]">Cup Trophies</p>
+                  </div>
+                  <div className="bg-[#21262d] rounded-md p-2 text-center">
+                    <p className="text-sm font-bold text-emerald-400 tabular-nums">{cupStatistics?.winRate ?? 0}%</p>
+                    <p className="text-[8px] text-[#484f58]">Cup Win Rate</p>
+                  </div>
+                  <div className="bg-[#21262d] rounded-md p-2 text-center">
+                    <p className="text-sm font-bold text-sky-400 tabular-nums">{cupStatistics?.cupGoals ?? 0}</p>
+                    <p className="text-[8px] text-[#484f58]">Total Cup Goals</p>
+                  </div>
+                  <div className="bg-[#21262d] rounded-md p-2 text-center">
+                    <p className="text-sm font-bold text-purple-400 tabular-nums">{cupHistoryTimeline.filter(e => e.cleanSheet).length}</p>
+                    <p className="text-[8px] text-[#484f58]">Clean Sheets</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -2249,6 +2865,122 @@ export default function CupBracket() {
                   Cup matches occur every 4 weeks (Weeks {CUP_MATCH_WEEKS.slice(0, 4).join(', ')}...)
                   • Single elimination knockout format
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ─── Cup Statistics Deep Dive ────────────────────────────────── */}
+      {cupStatsDeep && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                  <BarChart3 className="h-3 w-3 text-amber-500" />
+                  Cup Stats Deep Dive
+                </CardTitle>
+                <Badge className="bg-amber-500/15 text-amber-300 border border-amber-500/20 text-[8px] px-1.5">
+                  {Array.from({ length: cupStatsDeep.specialistRating }, () => '★').join('')}{Array.from({ length: 5 - cupStatsDeep.specialistRating }, () => '☆').join('')}
+                  <span className="ml-1 text-[#8b949e]">Specialist</span>
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              {/* 2x3 stats grid with sparklines */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Cup Goals', value: cupStatsDeep.goals.value, trend: cupStatsDeep.goals.trend, color: '#34d399', spark: cupStatsDeep.sparkline },
+                  { label: 'Cup Assists', value: cupStatsDeep.assists.value, trend: cupStatsDeep.assists.trend, color: '#3b82f6', spark: cupStatsDeep.sparkline },
+                  { label: 'Clean Sheets', value: cupStatsDeep.cleanSheets.value, trend: cupStatsDeep.cleanSheets.trend, color: '#a78bfa', spark: cupStatsDeep.sparkline },
+                  { label: 'Appearances', value: cupStatsDeep.appearances.value, trend: cupStatsDeep.appearances.trend, color: '#f59e0b', spark: cupStatsDeep.sparkline },
+                  { label: 'Win Rate', value: cupStatsDeep.winRate.value, trend: cupStatsDeep.winRate.trend, color: '#34d399', spark: cupStatsDeep.sparkline },
+                  { label: 'MotM Awards', value: cupStatsDeep.motm.value, trend: cupStatsDeep.motm.trend, color: '#ef4444', spark: cupStatsDeep.sparkline },
+                ].map((stat, i) => (
+                  <div key={i} className="bg-[#21262d] rounded-lg p-2 text-center">
+                    <div className="flex items-center justify-center mb-1">
+                      {/* Mini sparkline SVG */}
+                      <svg width={48} height={16} viewBox="0 0 48 16" className="opacity-50">
+                        {stat.spark.length > 1 && (
+                          <polyline
+                            points={stat.spark.map((v: number, si: number) => `${si * (48 / (stat.spark.length - 1))},${16 - (v / 10) * 14}`).join(' ')}
+                            fill="none"
+                            stroke={stat.color}
+                            strokeWidth={1.5}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        )}
+                      </svg>
+                    </div>
+                    <p className="text-sm font-bold tabular-nums" style={{ color: stat.color }}>
+                      {stat.label === 'Win Rate' ? `${stat.value}%` : stat.value}
+                    </p>
+                    <p className="text-[7px] text-[#484f58] mt-0.5">{stat.label}</p>
+                    {stat.trend !== 0 && (
+                      <span className={`text-[7px] font-bold ${stat.trend > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {stat.trend > 0 ? '↑' : '↓'} {Math.abs(stat.trend)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ─── Famous Cup Moments ──────────────────────────────────────── */}
+      {famousCupMoments.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.38 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-xs text-[#8b949e] flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-amber-500" />
+                Famous Cup Moments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="space-y-2">
+                {famousCupMoments.map((moment, idx) => (
+                  <motion.div
+                    key={`${moment.type}-${idx}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.38 + idx * 0.06 }}
+                    className="flex items-start gap-3 bg-[#21262d] rounded-lg p-3 border border-[#30363d]"
+                  >
+                    {/* SVG placeholder moment icon */}
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${moment.color}15` }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2l2.09 6.26L20.18 9l-5.09 3.74L17.18 19 12 15.27 6.82 19l2.09-6.26L3.82 9l6.09-.74L12 2z" fill={moment.color} opacity={0.8} />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <Badge className="text-[7px] px-1 py-0 h-3.5 border font-bold" style={{
+                          backgroundColor: `${moment.color}15`,
+                          color: moment.color,
+                          borderColor: `${moment.color}30`,
+                        }}>
+                          {moment.type}
+                        </Badge>
+                        <span className="text-[8px] text-[#484f58]">S{moment.season}</span>
+                      </div>
+                      <p className="text-xs font-bold text-[#c9d1d9]">{moment.title}</p>
+                      <p className="text-[10px] text-[#8b949e] mt-0.5 leading-relaxed">{moment.description}</p>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </CardContent>
           </Card>
