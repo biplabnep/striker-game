@@ -81,6 +81,8 @@ import CareerStatsDeepDive from '@/components/game/CareerStatsDeepDive';
 import CoachCareerMode from '@/components/game/CoachCareerMode';
 import FantasyDraft from '@/components/game/FantasyDraft';
 import InternationalTournament from '@/components/game/InternationalTournament';
+import MatchEngineSimulation from '@/components/game/MatchEngineSimulation';
+import CareerModeSelector from '@/components/game/CareerModeSelector';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -159,6 +161,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   coach_career: CoachCareerMode,
   fantasy_draft: FantasyDraft,
   international_tournament: InternationalTournament,
+  career_mode_selector: CareerModeSelector,
+  match_engine_simulation: MatchEngineSimulation,
 };
 
 const gameScreens: GameScreen[] = [
@@ -204,6 +208,8 @@ const gameScreens: GameScreen[] = [
   'coach_career',
   'fantasy_draft',
   'international_tournament',
+  'career_mode_selector',
+  'match_engine_simulation',
 ];
 
 export default function Home() {

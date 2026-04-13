@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getPlayerNationInfo } from '@/lib/game/internationalEngine';
 import { motion } from 'framer-motion';
@@ -29,6 +29,10 @@ import {
   Wind,
   Cloud,
   Sun,
+  Activity,
+  Lock,
+  Heart,
+  GitCompareArrows,
 } from 'lucide-react';
 
 // ============================================================
@@ -715,7 +719,7 @@ function TournamentBracketSVG({ matches, playerNation }: { matches: KnockoutMatc
                 const nextMatch = nextRoundMatches[nextMatchIdx];
 
                 // Draw connection lines to next round
-                let lineEl = null;
+                let lineEl: React.ReactNode = null;
                 if (nextMatch && roundIdx < activeRounds.length - 1) {
                   const nextY = (totalHeight / (nextRoundMatches.length + 1)) * (nextMatchIdx + 1);
                   const nextX = 20 + (roundIdx + 1) * (roundWidth + 10);
@@ -871,6 +875,130 @@ function TournamentTimeline({ history }: { history: TournamentHistoryEntry[] }) 
           </g>
         );
       })}
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG Donut Chart for Team Overall Rating
+// ============================================================
+function TeamDonutChart({ rating, size = 80 }: { rating: number; size?: number }) {
+  const radius = 32;
+  const stroke = 6;
+  const center = size / 2;
+  const circumference = 2 * Math.PI * radius;
+  const fillPercent = Math.min(rating / 100, 1);
+  const dashArray = `${fillPercent * circumference} ${circumference}`;
+  const color = rating >= 85 ? '#34d399' : rating >= 70 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={center} cy={center} r={radius} fill="none" stroke="#21262d" strokeWidth={stroke} />
+      <circle cx={center} cy={center} r={radius} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={dashArray} strokeDashoffset={0} strokeLinecap="round" />
+      <text x={center} y={center - 4} textAnchor="middle" fill={color} fontSize={18} fontWeight="700">{rating}</text>
+      <text x={center} y={center + 10} textAnchor="middle" fill="#8b949e" fontSize={7}>OVR</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG Points Progression Line Chart
+// ============================================================
+function PointsProgressionChart({ pointsPerDay, width = 280, height = 90 }: { pointsPerDay: number[]; width?: number; height?: number }) {
+  if (pointsPerDay.length < 2) {
+    return (
+      <div className="flex items-center justify-center text-[10px] text-[#484f58] h-[90px]">
+        Not enough matchday data
+      </div>
+    );
+  }
+
+  const padding = { top: 14, bottom: 20, left: 28, right: 10 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+  const maxVal = Math.max(...pointsPerDay, 1);
+  const minVal = 0;
+  const range = maxVal - minVal || 1;
+
+  const pts = pointsPerDay.map((v, i) => ({
+    x: padding.left + (i / Math.max(pointsPerDay.length - 1, 1)) * chartW,
+    y: padding.top + chartH - ((v - minVal) / range) * chartH,
+  }));
+
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = `${linePath} L${pts[pts.length - 1].x},${padding.top + chartH} L${pts[0].x},${padding.top + chartH} Z`;
+
+  const gridValues = Array.from({ length: 4 }, (_, i) => Math.round(minVal + (range / 3) * i));
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ maxHeight: height }}>
+      {gridValues.map(val => {
+        const y = padding.top + chartH - ((val - minVal) / range) * chartH;
+        return (
+          <g key={val}>
+            <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#21262d" strokeWidth={0.5} />
+            <text x={padding.left - 4} y={y + 3} textAnchor="end" fill="#484f58" fontSize={7}>{val}</text>
+          </g>
+        );
+      })}
+      <path d={areaPath} fill="#34d399" fillOpacity={0.12} />
+      <path d={linePath} fill="none" stroke="#34d399" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r={2.5} fill="#0d1117" stroke="#34d399" strokeWidth={1.5} />
+          <text x={p.x} y={p.y - 6} textAnchor="middle" fill="#8b949e" fontSize={6}>{pointsPerDay[i]}</text>
+        </g>
+      ))}
+      {/* Matchday labels */}
+      {pts.map((p, i) => (
+        <text key={`md-${i}`} x={p.x} y={height - 4} textAnchor="middle" fill="#484f58" fontSize={6}>MD{i + 1}</text>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG Goal Difference Trend Chart
+// ============================================================
+function GdTrendChart({ gdPerDay, width = 280, height = 80 }: { gdPerDay: number[]; width?: number; height?: number }) {
+  if (gdPerDay.length < 2) {
+    return (
+      <div className="flex items-center justify-center text-[10px] text-[#484f58] h-20">
+        Not enough matchday data
+      </div>
+    );
+  }
+
+  const padding = { top: 10, bottom: 20, left: 28, right: 10 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+  const maxVal = Math.max(...gdPerDay, 0) + 1;
+  const minVal = Math.min(...gdPerDay, 0) - 1;
+  const range = maxVal - minVal || 1;
+
+  const pts = gdPerDay.map((v, i) => ({
+    x: padding.left + (i / Math.max(gdPerDay.length - 1, 1)) * chartW,
+    y: padding.top + chartH - ((v - minVal) / range) * chartH,
+  }));
+
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const zeroY = padding.top + chartH - ((0 - minVal) / range) * chartH;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ maxHeight: height }}>
+      {/* Zero line */}
+      <line x1={padding.left} y1={zeroY} x2={width - padding.right} y2={zeroY} stroke="#30363d" strokeWidth={0.8} strokeDasharray="3,2" />
+      <text x={padding.left - 4} y={zeroY + 3} textAnchor="end" fill="#8b949e" fontSize={6}>0</text>
+      <path d={linePath} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r={2.5} fill="#0d1117" stroke={gdPerDay[i] >= 0 ? '#34d399' : '#ef4444'} strokeWidth={1.5} />
+          <text x={p.x} y={p.y - 5} textAnchor="middle" fill={gdPerDay[i] >= 0 ? '#34d399' : '#ef4444'} fontSize={6}>{gdPerDay[i] > 0 ? `+${gdPerDay[i]}` : gdPerDay[i]}</text>
+        </g>
+      ))}
+      {pts.map((p, i) => (
+        <text key={`md-${i}`} x={p.x} y={height - 4} textAnchor="middle" fill="#484f58" fontSize={6}>MD{i + 1}</text>
+      ))}
     </svg>
   );
 }
@@ -1437,7 +1565,7 @@ function RoadToQualification({ caps, nationName, season }: { caps: number; natio
           </div>
           <div>
             <span className="text-[10px] text-[#484f58] block">Max Possible</span>
-            <span className="text-sm font-bold text-[#8b949e]">{data.groupTeams[0]?.played * 3 ?? 0}</span>
+            <span className="text-sm font-bold text-[#8b949e]">{(data.groupTeams[0]?.played ?? 0) * 3}</span>
           </div>
           <div>
             <span className="text-[10px] text-[#484f58] block">Matches Left</span>
@@ -1445,6 +1573,608 @@ function RoadToQualification({ caps, nationName, season }: { caps: number; natio
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 10. Squad Depth Chart (~200 lines)
+// ============================================================
+interface DepthSquadPlayer extends SquadPlayer {
+  caps: number;
+  fitness: number;
+}
+
+function SquadDepthChart({ squad, seed }: { squad: SquadPlayer[]; seed: number }) {
+  const enrichedSquad: DepthSquadPlayer[] = useMemo(() => {
+    return squad.map((p, i) => ({
+      ...p,
+      caps: p.role === 'starter' ? 15 + Math.floor(seededRandom(seed + i * 3) * 60) : Math.floor(seededRandom(seed + i * 7) * 30),
+      fitness: 60 + Math.floor(seededRandom(seed + i * 11) * 40),
+    }));
+  }, [squad, seed]);
+
+  const gkPlayers = enrichedSquad.filter(p => p.position === 'GK');
+  const defPlayers = enrichedSquad.filter(p => ['CB', 'LB', 'RB'].includes(p.position));
+  const midPlayers = enrichedSquad.filter(p => ['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(p.position));
+  const fwdPlayers = enrichedSquad.filter(p => ['LW', 'RW', 'ST', 'CF'].includes(p.position));
+
+  const starters = enrichedSquad.filter(p => p.role === 'starter');
+  const substitutes = enrichedSquad.filter(p => p.role === 'substitute');
+  const teamAvg = starters.length > 0 ? Math.round(starters.reduce((s, p) => s + p.ovr, 0) / starters.length) : 0;
+
+  const positionGroups = [
+    { label: 'GK', icon: <Lock className="h-3 w-3" />, players: gkPlayers, color: '#f59e0b' },
+    { label: 'DEF', icon: <Shield className="h-3 w-3" />, players: defPlayers, color: '#34d399' },
+    { label: 'MID', icon: <Activity className="h-3 w-3" />, players: midPlayers, color: '#22d3ee' },
+    { label: 'FWD', icon: <Target className="h-3 w-3" />, players: fwdPlayers, color: '#ef4444' },
+  ];
+
+  const getFormationCompatibility = (): { formation: string; score: number } => {
+    const formations = ['4-3-3', '4-4-2', '3-5-2', '4-2-3-1'];
+    const formationsCount: Record<string, number> = { '4-3-3': 0, '4-4-2': 0, '3-5-2': 0, '4-2-3-1': 0 };
+    formationsCount['4-3-3'] = defPlayers.length >= 4 && fwdPlayers.length >= 3 && midPlayers.length >= 3 ? 3 : 1;
+    formationsCount['4-4-2'] = defPlayers.length >= 4 && midPlayers.length >= 4 && fwdPlayers.length >= 2 ? 3 : 1;
+    formationsCount['3-5-2'] = defPlayers.length >= 3 && midPlayers.length >= 5 && fwdPlayers.length >= 2 ? 3 : 0;
+    formationsCount['4-2-3-1'] = defPlayers.length >= 4 && midPlayers.length >= 5 && fwdPlayers.length >= 1 ? 3 : 1;
+    const best = Object.entries(formationsCount).sort((a, b) => b[1] - a[1])[0];
+    return { formation: best[0], score: Math.min(best[1] / 3 * 100, 100) };
+  };
+
+  const compat = getFormationCompatibility();
+
+  const renderPlayerRow = (p: DepthSquadPlayer) => (
+    <div
+      key={p.name + p.position}
+      className={`flex items-center gap-1.5 px-2 py-1.5 text-[10px] ${p.isPlayer ? 'bg-emerald-500/10 border border-emerald-500/20 rounded-lg' : ''}`}
+    >
+      {p.isPlayer && <Star className="h-2.5 w-2.5 text-amber-400 flex-shrink-0" />}
+      {!p.isPlayer && <div className="w-2.5 flex-shrink-0" />}
+      <Badge className={`${p.role === 'starter' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-[#21262d] text-[#8b949e]'} border-0 text-[8px] px-1 h-4 flex-shrink-0`}>
+        {p.position}
+      </Badge>
+      <span className={`font-medium flex-1 truncate ${p.isPlayer ? 'text-emerald-400' : TEXT_PRIMARY}`}>
+        {p.name}
+      </span>
+      <span className="text-[#484f58] truncate max-w-[55px] hidden sm:inline">{p.club}</span>
+      <span className="text-[#484f58] w-6 text-center">{p.caps}</span>
+      <span className={`font-bold w-5 text-center flex-shrink-0 ${p.ovr >= 85 ? 'text-emerald-400' : p.ovr >= 78 ? 'text-amber-400' : TEXT_SECONDARY}`}>
+        {p.ovr}
+      </span>
+      <div className="w-10 h-1.5 bg-[#21262d] rounded-sm overflow-hidden flex-shrink-0">
+        <div
+          className="h-full rounded-sm"
+          style={{
+            width: `${p.fitness}%`,
+            backgroundColor: p.fitness >= 85 ? '#34d399' : p.fitness >= 65 ? '#f59e0b' : '#ef4444',
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+          <Users className="h-4 w-4 text-[#8b949e]" />
+          Squad Depth Chart
+        </h3>
+        <Badge className="bg-[#21262d] text-[#8b949e] border-0 text-[10px]">{squad.length} Players</Badge>
+      </div>
+
+      {/* Team OVR donut + summary */}
+      <div className="flex items-center gap-4">
+        <TeamDonutChart rating={teamAvg} size={76} />
+        <div className="flex-1 space-y-1.5">
+          <div className="text-[10px] text-[#484f58]">Starting XI Average</div>
+          <div className="text-xs font-semibold text-[#c9d1d9]">{teamAvg} OVR</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-[#484f58]">Best Fit:</span>
+            <Badge className="bg-emerald-500/15 text-emerald-400 border-0 text-[10px]">{compat.formation}</Badge>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-[#484f58]">Compatibility:</span>
+            <span className={`text-[10px] font-bold ${compat.score >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{Math.round(compat.score)}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Position column headers */}
+      <div className="flex items-center gap-1.5 px-2 text-[8px] text-[#484f58] uppercase tracking-wide">
+        <div className="w-2.5" /><div className="w-7" />Pos<div className="flex-1" /><div className="w-[55px] hidden sm:block" />Caps<div className="w-5 text-center" />OVR<div className="w-10 text-center">Fit</div>
+      </div>
+
+      {/* Position groups */}
+      {positionGroups.map(group => (
+        <div key={group.label}>
+          <div className="flex items-center gap-1.5 mb-1 px-2">
+            <span style={{ color: group.color }}>{group.icon}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: group.color }}>
+              {group.label} ({group.players.length})
+            </span>
+          </div>
+          <div className="space-y-0.5">
+            {group.players.map(renderPlayerRow)}
+          </div>
+        </div>
+      ))}
+
+      {/* Role legend */}
+      <div className="border-t border-[#30363d] pt-2 flex items-center gap-3 text-[9px] text-[#484f58]">
+        <span className="flex items-center gap-1"><Badge className="bg-emerald-500/15 text-emerald-400 border-0 text-[8px] px-1 h-3">XI</Badge> Starting</span>
+        <span className="flex items-center gap-1"><Badge className="bg-[#21262d] text-[#8b949e] border-0 text-[8px] px-1 h-3">SUB</Badge> Substitute</span>
+        <span className="flex items-center gap-1"><Star className="h-2.5 w-2.5 text-amber-400" /> You</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 11. Group Stage Analysis (~200 lines)
+// ============================================================
+function GroupAnalysis({
+  teams,
+  playerNation,
+  seed,
+  groupLetter,
+}: {
+  teams: TournamentTeam[];
+  playerNation: string;
+  seed: number;
+  groupLetter: string;
+}) {
+  const matches = generateGroupMatches(teams, seed);
+  const standings = calculateGroupStandings(teams, matches, playerNation);
+
+  // Generate points progression per matchday
+  const pointsProgression = useMemo(() => {
+    const playerStanding = standings.find(s => s.isPlayerTeam);
+    if (!playerStanding) return [0];
+
+    // Simulate matchday-by-matchday accumulation
+    const playerMatches = matches.filter(m => m.home === playerNation || m.away === playerNation);
+    const pts: number[] = [0];
+    for (const m of playerMatches) {
+      const prev = pts[pts.length - 1] ?? 0;
+      if (m.home === playerNation) {
+        if (m.homeScore > m.awayScore) pts.push(prev + 3);
+        else if (m.homeScore === m.awayScore) pts.push(prev + 1);
+        else pts.push(prev);
+      } else {
+        if (m.awayScore > m.homeScore) pts.push(prev + 3);
+        else if (m.awayScore === m.homeScore) pts.push(prev + 1);
+        else pts.push(prev);
+      }
+    }
+    return pts;
+  }, [standings, matches, playerNation]);
+
+  // GD trend per matchday
+  const gdProgression = useMemo(() => {
+    const playerMatches = matches.filter(m => m.home === playerNation || m.away === playerNation);
+    const gd: number[] = [0];
+    for (const m of playerMatches) {
+      const prev = gd[gd.length - 1] ?? 0;
+      if (m.home === playerNation) {
+        gd.push(prev + m.homeScore - m.awayScore);
+      } else {
+        gd.push(prev + m.awayScore - m.homeScore);
+      }
+    }
+    return gd;
+  }, [matches, playerNation]);
+
+  // Head-to-head against each opponent
+  const h2hRecords = useMemo(() => {
+    const opponents = teams.filter(t => t.name !== playerNation);
+    return opponents.map(opp => {
+      const h2hMatches = matches.filter(m =>
+        (m.home === playerNation && m.away === opp.name) || (m.home === opp.name && m.away === playerNation)
+      );
+      let wins = 0;
+      let draws = 0;
+      let losses = 0;
+      let gf = 0;
+      let ga = 0;
+      for (const m of h2hMatches) {
+        const isHome = m.home === playerNation;
+        const myGoals = isHome ? m.homeScore : m.awayScore;
+        const theirGoals = isHome ? m.awayScore : m.homeScore;
+        gf += myGoals;
+        ga += theirGoals;
+        if (myGoals > theirGoals) wins++;
+        else if (myGoals === theirGoals) draws++;
+        else losses++;
+      }
+      return { name: opp.name, flag: opp.flag, wins, draws, losses, gf, ga };
+    });
+  }, [teams, matches, playerNation]);
+
+  // Strength of schedule
+  const avgOpponentRating = teams
+    .filter(t => t.name !== playerNation)
+    .reduce((s, t) => s + t.quality, 0) / Math.max(teams.filter(t => t.name !== playerNation).length, 1);
+
+  const qualificationZone = (idx: number): string => {
+    if (idx < 1) return 'qualified';
+    if (idx === 1) return 'playoff';
+    return 'eliminated';
+  };
+
+  return (
+    <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-[#8b949e]" />
+        Group {groupLetter} Analysis
+      </h3>
+
+      {/* Standings with zone color coding */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[10px]">
+          <thead>
+            <tr className="text-[#484f58]">
+              <th className="text-left py-1 px-1">#</th>
+              <th className="text-left py-1 px-1">Team</th>
+              <th className="text-center py-1 px-0.5">P</th>
+              <th className="text-center py-1 px-0.5">W</th>
+              <th className="text-center py-1 px-0.5">D</th>
+              <th className="text-center py-1 px-0.5">L</th>
+              <th className="text-center py-1 px-0.5">GD</th>
+              <th className="text-center py-1 px-0.5">Pts</th>
+              <th className="text-center py-1 px-0.5">Zone</th>
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((s, idx) => {
+              const gd = s.goalsFor - s.goalsAgainst;
+              const zone = qualificationZone(idx);
+              const zoneColor = zone === 'qualified' ? '#34d399' : zone === 'playoff' ? '#f59e0b' : '#ef4444';
+              const zoneLabel = zone === 'qualified' ? '●' : zone === 'playoff' ? '◐' : '○';
+              return (
+                <tr key={s.team} className={`border-t border-[#21262d] ${s.isPlayerTeam ? 'bg-emerald-500/5' : ''}`}>
+                  <td className="py-1.5 px-1 text-[#484f58]">{idx + 1}</td>
+                  <td className={`py-1.5 px-1 font-medium ${s.isPlayerTeam ? 'text-emerald-400' : TEXT_PRIMARY}`}>
+                    {s.flag} {s.team.length > 12 ? s.team.slice(0, 12) + '...' : s.team}
+                  </td>
+                  <td className="text-center py-1.5 px-0.5 text-[#8b949e]">{s.played}</td>
+                  <td className="text-center py-1.5 px-0.5 text-emerald-400">{s.won}</td>
+                  <td className="text-center py-1.5 px-0.5 text-amber-400">{s.drawn}</td>
+                  <td className="text-center py-1.5 px-0.5 text-red-400">{s.lost}</td>
+                  <td className="text-center py-1.5 px-0.5">{gd > 0 ? <span className="text-emerald-400">+{gd}</span> : <span className="text-red-400">{gd}</span>}</td>
+                  <td className="text-center py-1.5 px-0.5 font-bold text-[#c9d1d9]">{s.points}</td>
+                  <td className="text-center py-1.5 px-0.5" style={{ color: zoneColor }}>{zoneLabel}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Zone legend */}
+      <div className="flex items-center gap-3 text-[9px] text-[#484f58]">
+        <span className="flex items-center gap-1"><span style={{ color: '#34d399' }}>●</span> Qualified</span>
+        <span className="flex items-center gap-1"><span style={{ color: '#f59e0b' }}>◐</span> Playoff</span>
+        <span className="flex items-center gap-1"><span style={{ color: '#ef4444' }}>○</span> Eliminated</span>
+      </div>
+
+      {/* Points Progression Chart */}
+      <div>
+        <span className="text-[10px] text-[#484f58] block mb-1">Points Progression</span>
+        <PointsProgressionChart pointsPerDay={pointsProgression} />
+      </div>
+
+      {/* GD Trend */}
+      <div>
+        <span className="text-[10px] text-[#484f58] block mb-1">Goal Difference Trend</span>
+        <GdTrendChart gdPerDay={gdProgression} />
+      </div>
+
+      {/* Head-to-Head Records */}
+      <div>
+        <span className="text-[10px] text-[#484f58] block mb-1.5">Head-to-Head Records</span>
+        <div className="space-y-1">
+          {h2hRecords.map(h => (
+            <div key={h.name} className="flex items-center gap-2 bg-[#21262d] rounded-lg px-3 py-2 text-[10px]">
+              <span className="text-sm">{h.flag}</span>
+              <span className={`flex-1 font-medium ${TEXT_PRIMARY}`}>{h.name}</span>
+              <span className="text-emerald-400 font-bold">{h.wins}W</span>
+              <span className="text-amber-400 font-bold">{h.draws}D</span>
+              <span className="text-red-400 font-bold">{h.losses}L</span>
+              <span className="text-[#484f58]">{h.gf}-{h.ga}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Strength of Schedule */}
+      <div className="bg-[#21262d] rounded-lg p-3 flex items-center justify-between">
+        <div>
+          <span className="text-[10px] text-[#484f58] block">Strength of Schedule</span>
+          <span className="text-xs font-semibold text-[#c9d1d9]">Avg Opponent Rating</span>
+        </div>
+        <div className="text-right">
+          <span className={`text-sm font-bold ${avgOpponentRating >= 85 ? 'text-red-400' : avgOpponentRating >= 75 ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {avgOpponentRating.toFixed(1)}
+          </span>
+          <span className="text-[9px] text-[#484f58] block">{avgOpponentRating >= 85 ? 'Very Hard' : avgOpponentRating >= 75 ? 'Moderate' : 'Favorable'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 12. Tournament Progress Dashboard (~150 lines)
+// ============================================================
+function TournamentProgress({
+  caps,
+  goals,
+  assists,
+  nationName,
+  knockoutMatches,
+  history,
+}: {
+  caps: number;
+  goals: number;
+  assists: number;
+  nationName: string;
+  knockoutMatches: KnockoutMatch[];
+  history: TournamentHistoryEntry[];
+}) {
+  const totalGoalsScored = 2 + Math.floor(seededRandom(hashCode(nationName + 'gs')) * (caps + goals));
+  const totalGoalsConceded = 1 + Math.floor(seededRandom(hashCode(nationName + 'gc')) * (caps + 2));
+  const cleanSheets = Math.floor(seededRandom(hashCode(nationName + 'cs')) * caps * 0.3);
+  const avgPossession = 45 + Math.floor(seededRandom(hashCode(nationName + 'pos')) * 15);
+  const passAccuracy = 75 + Math.floor(seededRandom(hashCode(nationName + 'pa')) * 18);
+
+  const playerMatches = knockoutMatches.filter(m => m.homeIsPlayer || m.awayIsPlayer);
+  const furthestRound = playerMatches.length > 0 ? playerMatches[playerMatches.length - 1].round : 'N/A';
+
+  const topScorer = useMemo(() => {
+    const names = ['Marcus Silva', 'Lukas Weber', 'Antonio Rossi'];
+    const name = names[Math.abs(hashCode(nationName + 'topscorer')) % names.length];
+    const tournamentGoals = 2 + Math.floor(seededRandom(hashCode(nationName + 'topscorer')) * 5);
+    return { name, goals: tournamentGoals };
+  }, [nationName]);
+
+  const topAssists = useMemo(() => {
+    const names = ['Erik Johansson', 'Carlos Garcia', 'David Laurent'];
+    const name = names[Math.abs(hashCode(nationName + 'topassists')) % names.length];
+    const tournamentAssists = 1 + Math.floor(seededRandom(hashCode(nationName + 'topassists')) * 4);
+    return { name, assists: tournamentAssists };
+  }, [nationName]);
+
+  const bestRating = useMemo(() => {
+    const names = ['Felix Dubois', 'Stefan Berger', 'Julian Hoffman'];
+    const name = names[Math.abs(hashCode(nationName + 'bestrating')) % names.length];
+    const rating = +(7.0 + seededRandom(hashCode(nationName + 'bestrating')) * 2.0).toFixed(1);
+    return { name, rating };
+  }, [nationName]);
+
+  const capsMilestones = [
+    { target: 50, label: '50 Caps', current: caps },
+    { target: 75, label: '75 Caps', current: caps },
+    { target: 100, label: '100 Caps', current: caps },
+  ];
+
+  const tournamentGoalMilestones = [
+    { target: 5, label: '5 Goals', current: goals },
+    { target: 10, label: '10 Goals', current: goals },
+    { target: 20, label: '20 Goals', current: goals },
+  ];
+
+  return (
+    <div className="space-y-3">
+      {/* Route to final */}
+      <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-amber-400" />
+          Tournament Progress
+        </h3>
+
+        <TournamentBracketSVG matches={knockoutMatches} playerNation={nationName} />
+
+        <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+          <span className="text-[10px] text-[#484f58] block">Furthest Round</span>
+          <span className="text-xs font-semibold text-emerald-400">{furthestRound}</span>
+        </div>
+      </div>
+
+      {/* Statistics Dashboard */}
+      <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-[#8b949e]" />
+          Tournament Statistics
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'Goals Scored', value: totalGoalsScored, color: '#34d399' },
+            { label: 'Goals Conceded', value: totalGoalsConceded, color: '#ef4444' },
+            { label: 'Clean Sheets', value: cleanSheets, color: '#22d3ee' },
+            { label: 'Avg Possession', value: `${avgPossession}%`, color: '#f59e0b' },
+            { label: 'Pass Accuracy', value: `${passAccuracy}%`, color: '#34d399' },
+            { label: 'Total Caps', value: caps, color: '#c9d1d9' },
+          ].map(stat => (
+            <div key={stat.label} className="bg-[#21262d] rounded-lg p-2.5 border border-[#21262d]">
+              <span className="text-[9px] text-[#484f58] block">{stat.label}</span>
+              <span className="text-sm font-bold" style={{ color: stat.color }}>{stat.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Key Performers */}
+      <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+          <Flame className="h-4 w-4 text-orange-400" />
+          Key Performers
+        </h3>
+        <div className="space-y-1.5">
+          {[
+            { label: 'Top Scorer', name: topScorer.name, value: `${topScorer.goals} goals`, icon: <Target className="h-3 w-3 text-emerald-400" /> },
+            { label: 'Most Assists', name: topAssists.name, value: `${topAssists.assists} assists`, icon: <TrendingUp className="h-3 w-3 text-cyan-400" /> },
+            { label: 'Best Rating', name: bestRating.name, value: bestRating.rating.toFixed(1), icon: <Star className="h-3 w-3 text-amber-400" /> },
+          ].map(performer => (
+            <div key={performer.label} className="flex items-center gap-2 bg-[#21262d] rounded-lg px-3 py-2">
+              {performer.icon}
+              <div className="flex-1 min-w-0">
+                <span className="text-[9px] text-[#484f58] block">{performer.label}</span>
+                <span className="text-xs text-[#c9d1d9] truncate block">{performer.name}</span>
+              </div>
+              <span className="text-xs font-bold text-[#c9d1d9]">{performer.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Milestone Tracker */}
+      <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+          <Award className="h-4 w-4 text-amber-400" />
+          Milestone Tracker
+        </h3>
+        <div className="space-y-2">
+          {[...capsMilestones, ...tournamentGoalMilestones].map(m => {
+            const achieved = m.current >= m.target;
+            const progress = Math.min(m.current / m.target * 100, 100);
+            return (
+              <div key={m.label} className="flex items-center gap-2">
+                <span className={`text-[10px] font-medium w-20 ${achieved ? 'text-emerald-400' : TEXT_SECONDARY}`}>{m.label}</span>
+                <div className="flex-1 h-1.5 bg-[#21262d] rounded-sm overflow-hidden">
+                  <div
+                    className="h-full rounded-sm"
+                    style={{
+                      width: `${progress}%`,
+                      backgroundColor: achieved ? '#34d399' : '#30363d',
+                    }}
+                  />
+                </div>
+                <span className={`text-[9px] w-8 text-right ${achieved ? 'text-emerald-400' : TEXT_SECONDARY}`}>{m.current}/{m.target}</span>
+                {achieved && <Heart className="h-3 w-3 text-emerald-400" />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 13. Rival Nations Panel (~100 lines)
+// ============================================================
+interface RivalRecord {
+  name: string;
+  flag: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  gf: number;
+  ga: number;
+  memorableMatch: string;
+}
+
+function RivalNations({ nationName, seed }: { nationName: string; seed: number }) {
+  const rivals: RivalRecord[] = useMemo(() => {
+    const rivalPool = WORLD_CUP_TEAMS.filter(t => t.name !== nationName);
+    const selected = rivalPool.slice(0, 6);
+    const memorableMatches = [
+      'World Cup 2022 QF: 2-1 after extra time, late winner in 118th minute',
+      'Euro 2020 Group: 3-3 thriller, hat-trick cancelled out by late equalizer',
+      'WC Qualifier 2018: 1-0, defensive masterclass with 10 men for 60 minutes',
+    ];
+    return selected.map((r, i) => {
+      const played = 5 + Math.floor(seededRandom(seed + i * 13) * 15);
+      const wins = Math.floor(seededRandom(seed + i * 7) * (played * 0.5));
+      const draws = Math.floor(seededRandom(seed + i * 11) * (played * 0.3));
+      const losses = played - wins - draws;
+      const gf = wins * 2 + draws + Math.floor(seededRandom(seed + i * 17) * draws);
+      const ga = losses * 2 + draws + Math.floor(seededRandom(seed + i * 19) * draws);
+      const memorable = memorableMatches[i % memorableMatches.length];
+      return { name: r.name, flag: r.flag, played, wins, draws, losses, gf, ga, memorableMatch: memorable };
+    }).sort((a, b) => b.played - a.played).slice(0, 3);
+  }, [nationName, seed]);
+
+  const upcomingOpponent = WORLD_CUP_TEAMS.filter(t => t.name !== nationName)[Math.abs(hashCode(nationName + 'upcoming')) % 5];
+
+  return (
+    <div className="space-y-3">
+      {/* Top Rivals */}
+      <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-[#c9d1d9] flex items-center gap-2">
+          <Swords className="h-4 w-4 text-red-400" />
+          Rival Nations
+        </h3>
+
+        {rivals.map((rival, idx) => {
+          const nationQuality = getTeamQuality(nationName);
+          const rivalQuality = getTeamQuality(rival.name);
+          const isFavoured = nationQuality > rivalQuality;
+          return (
+            <div key={rival.name} className="bg-[#21262d] rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{rival.flag}</span>
+                  <span className="text-xs font-semibold text-[#c9d1d9]">{rival.name}</span>
+                  <Badge className="bg-[#30363d] text-[#8b949e] border-0 text-[8px]">
+                    #{getFifaRanking(rival.name)}
+                  </Badge>
+                </div>
+                <span className="text-[9px] text-[#484f58]">{rival.played} meetings</span>
+              </div>
+
+              {/* H2H record */}
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 text-[10px]">
+                  <span className="text-emerald-400 font-bold">{rival.wins}W</span>
+                  <span className="text-amber-400 font-bold">{rival.draws}D</span>
+                  <span className="text-red-400 font-bold">{rival.losses}L</span>
+                </div>
+                <span className="text-[9px] text-[#484f58] mx-1">|</span>
+                <span className="text-[10px] text-[#8b949e]">Goals: {rival.gf}-{rival.ga}</span>
+              </div>
+
+              {/* Comparison */}
+              <div className="flex items-center gap-2 text-[9px] text-[#484f58]">
+                <span className={isFavoured ? 'text-emerald-400 font-medium' : TEXT_SECONDARY}>You {nationQuality}</span>
+                <span>vs</span>
+                <span className={!isFavoured ? 'text-red-400 font-medium' : TEXT_SECONDARY}>{rival.name} {rivalQuality}</span>
+              </div>
+
+              {/* Memorable match */}
+              {idx < 2 && (
+                <div className="border-l-2 border-emerald-500/30 pl-2">
+                  <span className="text-[9px] text-[#8b949e] block">{rival.memorableMatch}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Upcoming Fixture */}
+      {upcomingOpponent && (
+        <div className="border border-[#30363d] rounded-lg bg-[#161b22] p-4">
+          <h3 className="text-xs font-semibold text-[#c9d1d9] flex items-center gap-2 mb-2">
+            <Calendar className="h-3.5 w-3.5 text-[#8b949e]" />
+            Upcoming Fixture
+          </h3>
+          <div className="bg-[#21262d] rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">&#127482;&#127480;</span>
+              <span className="text-xs font-medium text-emerald-400">{nationName}</span>
+            </div>
+            <span className="text-[10px] text-[#484f58] font-bold">VS</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-[#c9d1d9]">{upcomingOpponent.name}</span>
+              <span className="text-sm">{upcomingOpponent.flag}</span>
+            </div>
+          </div>
+          <div className="mt-2 text-[9px] text-[#484f58] text-center">Friendly — Next International Break</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1602,6 +2332,15 @@ export default function InternationalTournament() {
           <TabsTrigger value="match" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
             Match
           </TabsTrigger>
+          <TabsTrigger value="analysis" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
+            Analysis
+          </TabsTrigger>
+          <TabsTrigger value="progress" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
+            Progress
+          </TabsTrigger>
+          <TabsTrigger value="rivals" className="text-xs flex-1 data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400">
+            Rivals
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -1720,6 +2459,54 @@ export default function InternationalTournament() {
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
             <PlayerTournamentStats caps={tournamentData.caps} goals={tournamentData.goals} assists={tournamentData.assists} />
+          </motion.div>
+        </TabsContent>
+
+        {/* Analysis Tab */}
+        <TabsContent value="analysis" className="mt-4 space-y-4">
+          {playerEuroGroup && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <GroupAnalysis
+                teams={playerEuroGroup.teams}
+                playerNation={nationInfo.name}
+                seed={tournamentData.seed + hashCode(playerEuroGroup.letter)}
+                groupLetter={playerEuroGroup.letter}
+              />
+            </motion.div>
+          )}
+          {playerWCGroup && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+              <GroupAnalysis
+                teams={playerWCGroup.teams}
+                playerNation={nationInfo.name}
+                seed={tournamentData.seed + hashCode(playerWCGroup.letter + 'wc')}
+                groupLetter={playerWCGroup.letter}
+              />
+            </motion.div>
+          )}
+        </TabsContent>
+
+        {/* Progress Tab */}
+        <TabsContent value="progress" className="mt-4 space-y-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <TournamentProgress
+              caps={tournamentData.caps}
+              goals={tournamentData.goals}
+              assists={tournamentData.assists}
+              nationName={nationInfo.name}
+              knockoutMatches={tournamentData.euroBracket}
+              history={tournamentData.history}
+            />
+          </motion.div>
+        </TabsContent>
+
+        {/* Rivals Tab */}
+        <TabsContent value="rivals" className="mt-4 space-y-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <RivalNations nationName={nationInfo.name} seed={tournamentData.seed} />
+          </motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+            <SquadDepthChart squad={tournamentData.squad} seed={tournamentData.seed + 300} />
           </motion.div>
         </TabsContent>
       </Tabs>

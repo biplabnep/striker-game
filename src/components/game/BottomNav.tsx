@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -49,6 +49,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'pre_season_camp', icon: <Tent className="h-5 w-5" />, label: 'Pre-Season' },
       { screen: 'kit_customization', icon: <Shirt className="h-5 w-5" />, label: 'Kit' },
       { screen: 'squad_rotation', icon: <RotateCcw className="h-5 w-5" />, label: 'Rotation' },
+      { screen: 'match_engine_simulation', icon: <Cpu className="h-5 w-5" />, label: 'Engine' },
     ],
   },
   {
@@ -79,6 +80,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'career_events', icon: <CalendarClock className="h-5 w-5" />, label: 'Events' },
       { screen: 'badge_collection', icon: <Award className="h-5 w-5" />, label: 'Badges' },
       { screen: 'career_stats_deep_dive', icon: <BarChart3 className="h-5 w-5" />, label: 'Deep Dive' },
+      { screen: 'career_mode_selector', icon: <Compass className="h-5 w-5" />, label: 'Mode Select' },
       { screen: 'coach_career', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach' },
       { screen: 'fantasy_draft', icon: <UsersRound className="h-5 w-5" />, label: 'Draft' },
     ],

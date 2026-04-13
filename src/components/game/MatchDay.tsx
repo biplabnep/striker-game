@@ -197,6 +197,41 @@ function calculateWinProbability(ourQuality: number, theirQuality: number, isHom
 }
 
 // -----------------------------------------------------------
+// Deterministic pseudo-random from seed
+// -----------------------------------------------------------
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// -----------------------------------------------------------
+// Formation layout helper for tactical board
+// -----------------------------------------------------------
+function getFormationLayout(
+  formation: string,
+  startY: number,
+  endY: number,
+  pitchWidth: number
+): Array<{ x: number; y: number }> {
+  const lines = formation.split('-').map(Number);
+  const positions: Array<{ x: number; y: number }> = [];
+  positions.push({ x: pitchWidth / 2, y: startY });
+  const totalLines = lines.length;
+  const lineSpacing = totalLines > 0 ? (endY - startY) / (totalLines + 1) : 0;
+  for (let i = 0; i < totalLines; i++) {
+    const y = startY + (i + 1) * lineSpacing;
+    const count = lines[i];
+    const padding = pitchWidth * 0.12;
+    const availableWidth = pitchWidth - 2 * padding;
+    for (let j = 0; j < count; j++) {
+      const x = count === 1 ? pitchWidth / 2 : padding + (j / (count - 1)) * availableWidth;
+      positions.push({ x, y });
+    }
+  }
+  return positions;
+}
+
+// -----------------------------------------------------------
 // Timeline Event Component (used in result screen)
 // -----------------------------------------------------------
 function TimelineEvent({
@@ -454,6 +489,81 @@ export default function MatchDay() {
     }
     return { home, away };
   }, [visibleSimEvents]);
+
+  // Momentum data for the match tracker (computed once from result)
+  const momentumData = useMemo(() => {
+    if (!lastResult) return [];
+    const data: number[] = [];
+    let runningMomentum = 0;
+    for (let min = 0; min <= 90; min++) {
+      for (const e of significantEvents) {
+        if (e.minute === min) {
+          if (e.type === 'goal' && e.team === 'home') runningMomentum += 15;
+          if (e.type === 'goal' && e.team === 'away') runningMomentum -= 15;
+          if (e.type === 'own_goal' && e.team === 'home') runningMomentum -= 15;
+          if (e.type === 'own_goal' && e.team === 'away') runningMomentum += 15;
+          if (e.type === 'red_card' && e.team === 'home') runningMomentum -= 18;
+          if (e.type === 'red_card' && e.team === 'away') runningMomentum += 18;
+          if (e.type === 'second_yellow' && e.team === 'home') runningMomentum -= 18;
+          if (e.type === 'second_yellow' && e.team === 'away') runningMomentum += 18;
+          if (e.type === 'yellow_card' && e.team === 'home') runningMomentum -= 4;
+          if (e.type === 'yellow_card' && e.team === 'away') runningMomentum += 4;
+          if (e.type === 'injury' && e.team === 'home') runningMomentum -= 6;
+          if (e.type === 'injury' && e.team === 'away') runningMomentum += 6;
+        }
+      }
+      const base = (lastResult.homeClub.squadQuality - lastResult.awayClub.squadQuality) * 0.3 + 8;
+      runningMomentum = runningMomentum * 0.92 + base * 0.08;
+      const noise = seededRandom(min * 17 + lastResult.week * 31 + lastResult.homeScore * 7 + lastResult.awayScore * 13) * 20 - 10;
+      const val = Math.max(-50, Math.min(50, runningMomentum + noise));
+      data.push(val);
+    }
+    return data;
+  }, [lastResult, significantEvents]);
+
+  // Half-time score summary
+  const halfTimeScore = useMemo(() => {
+    if (!lastResult) return null;
+    let home = 0;
+    let away = 0;
+    for (const e of significantEvents) {
+      if (e.minute > 45) break;
+      if (e.type === 'goal') {
+        if (e.team === 'home') home++;
+        else if (e.team === 'away') away++;
+      } else if (e.type === 'own_goal') {
+        if (e.team === 'home') away++;
+        else if (e.team === 'away') home++;
+      }
+    }
+    return { home, away };
+  }, [lastResult, significantEvents]);
+
+  // Post-match media reaction quotes
+  const postMatchQuotes = useMemo(() => {
+    if (!lastResult) return [];
+    const seed = lastResult.week * 100 + lastResult.homeScore * 10 + lastResult.awayScore * 7;
+    const allQuotes: { source: string; text: string }[] = [
+      { source: 'Sky Sports', text: 'A commanding performance that showcased their title credentials.' },
+      { source: 'BBC Sport', text: 'The tactical battle was fascinating throughout the ninety minutes.' },
+      { source: 'The Guardian', text: 'An entertaining encounter with plenty of goalmouth action.' },
+      { source: 'ESPN FC', text: 'The midfield dominance was the key difference between the two sides.' },
+      { source: 'Goal.com', text: 'A result that could have significant implications for the table.' },
+      { source: 'The Athletic', text: 'Both managers will have plenty to discuss after this one.' },
+      { source: 'Marca', text: 'The atmosphere inside the stadium was electric from the first whistle.' },
+      { source: 'L\'Equipe', text: 'Individual brilliance made the difference in a tightly contested affair.' },
+    ];
+    const result: typeof allQuotes = [];
+    const usedIndices = new Set<number>();
+    for (let i = 0; i < 3 && result.length < 3; i++) {
+      const idx = Math.floor(seededRandom(seed + i * 7) * allQuotes.length);
+      if (!usedIndices.has(idx)) {
+        usedIndices.add(idx);
+        result.push(allQuotes[idx]);
+      }
+    }
+    return result;
+  }, [lastResult]);
 
   // Previous score (for goal flash detection)
   const prevScoreRef = useRef({ home: 0, away: 0 });
@@ -785,6 +895,118 @@ export default function MatchDay() {
             </AnimatePresence>
           </div>
         </div>
+
+        {/* In-Match Tactical Board Mini */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1, duration: 0.2 }}
+        >
+          <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <span className="text-[10px] text-[#8b949e] font-semibold flex items-center gap-1.5">
+                <Footprints className="w-3 h-3" /> Tactical Board
+              </span>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e] h-5">
+                  {simMinute <= 45 ? '1ST HALF' : simMinute < 90 ? '2ND HALF' : 'FULL TIME'}
+                </Badge>
+                <span className="text-[10px] font-mono font-bold text-emerald-400">
+                  {simMinute}&apos;{simComplete ? ' FT' : ''}
+                </span>
+              </div>
+            </div>
+            <div className="px-3 pb-3 relative">
+              <svg viewBox="0 0 300 200" className="w-full rounded-lg border border-[#1a3320]">
+                {/* Pitch background */}
+                <rect x="0" y="0" width="300" height="200" fill="#0d2818" rx="4" />
+                {/* Pitch markings */}
+                <rect x="5" y="5" width="290" height="190" fill="none" stroke="#1a5c32" strokeWidth="0.7" rx="2" />
+                <line x1="5" y1="100" x2="295" y2="100" stroke="#1a5c32" strokeWidth="0.5" />
+                <circle cx="150" cy="100" r="22" fill="none" stroke="#1a5c32" strokeWidth="0.5" />
+                <circle cx="150" cy="100" r="2" fill="#1a5c32" />
+                {/* Penalty areas */}
+                <rect x="5" y="5" width="55" height="45" fill="none" stroke="#1a5c32" strokeWidth="0.5" rx="1" />
+                <rect x="5" y="150" width="55" height="45" fill="none" stroke="#1a5c32" strokeWidth="0.5" rx="1" />
+                <rect x="5" y="20" width="18" height="16" fill="none" stroke="#1a5c32" strokeWidth="0.5" rx="1" />
+                <rect x="5" y="164" width="18" height="16" fill="none" stroke="#1a5c32" strokeWidth="0.5" rx="1" />
+                {/* Penalty arcs */}
+                <path d="M 60 30 A 25 25 0 0 1 60 50" fill="none" stroke="#1a5c32" strokeWidth="0.5" />
+                <path d="M 60 150 A 25 25 0 0 0 60 170" fill="none" stroke="#1a5c32" strokeWidth="0.5" />
+                {/* Corner arcs */}
+                <path d="M 5 10 A 5 5 0 0 1 10 5" fill="none" stroke="#1a5c32" strokeWidth="0.5" />
+                <path d="M 290 5 A 5 5 0 0 1 295 10" fill="none" stroke="#1a5c32" strokeWidth="0.5" />
+                <path d="M 5 190 A 5 5 0 0 0 10 195" fill="none" stroke="#1a5c32" strokeWidth="0.5" />
+                <path d="M 290 195 A 5 5 0 0 0 295 190" fill="none" stroke="#1a5c32" strokeWidth="0.5" />
+                {/* Away team positions (top half) */}
+                {(() => {
+                  const awayPositions = getFormationLayout(lastResult.awayClub.formation || '4-4-2', 18, 80, 300);
+                  return awayPositions.map((pos, i) => (
+                    <g key={`away-${i}`}>
+                      <circle
+                        cx={pos.x}
+                        cy={pos.y}
+                        r="8"
+                        fill="#f59e0b"
+                        fillOpacity="0.75"
+                        stroke="#161b22"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={pos.x}
+                        y={pos.y + 3}
+                        textAnchor="middle"
+                        fill="#161b22"
+                        fontSize="7"
+                        fontWeight="bold"
+                        fontFamily="monospace"
+                      >
+                        {i + 1}
+                      </text>
+                    </g>
+                  ));
+                })()}
+                {/* Home team positions (bottom half) */}
+                {(() => {
+                  const homePositions = getFormationLayout(lastResult.homeClub.formation || '4-3-3', 182, 120, 300);
+                  return homePositions.map((pos, i) => (
+                    <g key={`home-${i}`}>
+                      <circle
+                        cx={pos.x}
+                        cy={pos.y}
+                        r="8"
+                        fill="#34d399"
+                        fillOpacity="0.75"
+                        stroke="#161b22"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={pos.x}
+                        y={pos.y + 3}
+                        textAnchor="middle"
+                        fill="#161b22"
+                        fontSize="7"
+                        fontWeight="bold"
+                        fontFamily="monospace"
+                      >
+                        {i + 1}
+                      </text>
+                    </g>
+                  ));
+                })()}
+              </svg>
+              {/* Score overlay */}
+              <div className="absolute top-2 right-4 bg-black/75 px-2.5 py-1 rounded-lg border border-[#30363d]">
+                <span className="text-sm font-black text-white tracking-wider">{liveScore.home} - {liveScore.away}</span>
+              </div>
+              {/* Team labels */}
+              <div className="flex justify-between mt-1.5 px-1">
+                <span className="text-[9px] font-semibold text-amber-400">{awayName}</span>
+                <span className="text-[9px] font-semibold text-emerald-400">{homeName}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Simulation Controls */}
         <div className="flex items-center gap-2">
@@ -1131,6 +1353,114 @@ export default function MatchDay() {
           </motion.div>
         )}
 
+        {/* Match Momentum Tracker */}
+        {momentumData.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55, duration: 0.2 }}
+          >
+            <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
+              <div className="px-4 pt-3 pb-2 border-b border-[#30363d] flex items-center justify-between">
+                <span className="text-[10px] text-[#8b949e] font-semibold flex items-center gap-1.5">
+                  <TrendingUp className="w-3 h-3" /> Match Momentum
+                </span>
+                <div className="flex items-center gap-2 text-[9px]">
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <span className="w-2 h-2 rounded-sm bg-emerald-400 inline-block" /> {homeName}
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-400">
+                    <span className="w-2 h-2 rounded-sm bg-amber-400 inline-block" /> {awayName}
+                  </span>
+                </div>
+              </div>
+              <div className="px-3 pt-2 pb-1">
+                <svg viewBox="0 0 920 120" className="w-full" style={{ height: '120px' }}>
+                  {/* Background */}
+                  <rect x="10" y="5" width="900" height="110" fill="#0d1117" rx="4" />
+                  {/* Neutral line */}
+                  <line x1="10" y1="60" x2="910" y2="60" stroke="#21262d" strokeWidth="0.5" />
+                  {/* Half-time marker */}
+                  <line x1="460" y1="8" x2="460" y2="112" stroke="#21262d" strokeWidth="0.5" strokeDasharray="3,3" />
+                  {/* Minute labels */}
+                  <text x="14" y="118" fill="#484f58" fontSize="7" fontFamily="monospace">0&apos;</text>
+                  <text x="452" y="118" fill="#484f58" fontSize="7" fontFamily="monospace">45&apos;</text>
+                  <text x="895" y="118" fill="#484f58" fontSize="7" fontFamily="monospace">90&apos;</text>
+                  {/* HOME / AWAY labels */}
+                  <text x="912" y="14" fill="#34d399" fontSize="6" fontWeight="bold" fontFamily="monospace">H</text>
+                  <text x="912" y="108" fill="#f59e0b" fontSize="6" fontWeight="bold" fontFamily="monospace">A</text>
+                  {/* Momentum filled area */}
+                  <defs>
+                    <clipPath id="clip-top"><rect x="10" y="5" width="900" height="55" /></clipPath>
+                    <clipPath id="clip-bottom"><rect x="10" y="60" width="900" height="55" /></clipPath>
+                  </defs>
+                  <path
+                    d={momentumData.map((v, i) => `${i === 0 ? 'M' : 'L'} ${10 + i * 10} ${60 - v}`).join(' ') + ' L 910 60 L 10 60 Z'}
+                    fill="#34d399"
+                    fillOpacity="0.12"
+                    clipPath="url(#clip-top)"
+                  />
+                  <path
+                    d={momentumData.map((v, i) => `${i === 0 ? 'M' : 'L'} ${10 + i * 10} ${60 - v}`).join(' ') + ' L 910 60 L 10 60 Z'}
+                    fill="#f59e0b"
+                    fillOpacity="0.12"
+                    clipPath="url(#clip-bottom)"
+                  />
+                  {/* Momentum line */}
+                  <path
+                    d={momentumData.map((v, i) => `${i === 0 ? 'M' : 'L'} ${10 + i * 10} ${60 - v}`).join(' ')}
+                    fill="none"
+                    stroke="#34d399"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  {/* Key event markers on timeline */}
+                  {significantEvents.filter(e => ['goal', 'own_goal', 'red_card', 'second_yellow'].includes(e.type)).map((e, i) => {
+                    const x = 10 + Math.min(e.minute, 90) * 10;
+                    const y = 60 - (momentumData[Math.min(e.minute, 90)] ?? 0);
+                    const dotColor = e.type === 'goal' || e.type === 'own_goal' ? '#34d399' : '#ef4444';
+                    return (
+                      <circle key={`momentum-evt-${i}`} cx={x} cy={Math.max(10, Math.min(110, y))} r="4" fill={dotColor} stroke="#0d1117" strokeWidth="1.5" />
+                    );
+                  })}
+                </svg>
+              </div>
+              {/* Half-time score summary */}
+              {halfTimeScore && (halfTimeScore.home > 0 || halfTimeScore.away > 0) && (
+                <div className="px-4 py-2 border-t border-[#30363d]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-[#8b949e] flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Half Time
+                    </span>
+                    <span className="text-xs font-bold text-white">
+                      {halfTimeScore.home} - {halfTimeScore.away}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* Key moments list */}
+              <div className="px-4 pb-3 space-y-1.5">
+                {significantEvents.filter(e => ['goal', 'own_goal', 'red_card', 'second_yellow', 'yellow_card', 'penalty_won', 'penalty_missed'].includes(e.type)).map((e, i) => {
+                  const icon = getEventIcon(e.type);
+                  const color = getEventColor(e.type);
+                  const teamLabel = e.team === 'home' ? homeName : e.team === 'away' ? awayName : '';
+                  return (
+                    <div key={`key-moment-${i}`} className="flex items-center gap-2 text-[10px]">
+                      <span className="font-mono text-[#484f58] w-6 text-right shrink-0">{e.minute}&apos;</span>
+                      <span className="text-sm leading-none">{icon}</span>
+                      <span className={`font-semibold ${color}`}>{getEventLabel(e.type)}</span>
+                      <span className="text-[#8b949e] truncate">{e.playerName ? e.playerName : teamLabel}{e.detail ? ` — ${e.detail}` : ''}</span>
+                    </div>
+                  );
+                })}
+                {significantEvents.filter(e => ['goal', 'own_goal', 'red_card', 'second_yellow', 'yellow_card', 'penalty_won', 'penalty_missed'].includes(e.type)).length === 0 && (
+                  <p className="text-[10px] text-[#484f58] text-center py-1">No key moments recorded</p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Season Stats After Match */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -1172,6 +1502,109 @@ export default function MatchDay() {
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Post-Match Reaction Section */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.65, duration: 0.2 }}
+        >
+          <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
+            <div className="px-4 pt-3 pb-2 border-b border-[#30363d]">
+              <span className="text-[10px] text-[#8b949e] font-semibold flex items-center gap-1.5">
+                <Radio className="w-3 h-3" /> Post-Match Reactions
+              </span>
+            </div>
+            <div className="px-4 py-3 space-y-3">
+              {/* Star rating display */}
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center border-2 ${ratingBgColor}`}>
+                    <span className="text-xl font-black leading-none" style={{ color: ratingColor }}>
+                      {lastResult.playerRating.toFixed(1)}
+                    </span>
+                    <span className={`text-[9px] font-bold ${matchGrade.color}`}>{matchGrade.grade}</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] text-[#8b949e] mb-1">Your Match Rating</p>
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-3 h-3 ${i < Math.floor(lastResult.playerRating) ? 'text-amber-400 fill-amber-400' : i < lastResult.playerRating ? 'text-amber-400' : 'text-[#30363d]'}`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-[#484f58] mt-1">{getMatchRatingLabel(lastResult.playerRating)}</p>
+                </div>
+              </div>
+
+              {/* Key match stats compact row */}
+              {matchStats && (
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[
+                    { label: 'Poss.', home: `${matchStats.homePossession}%`, away: `${100 - matchStats.homePossession}%` },
+                    { label: 'Shots', home: String(matchStats.homeShots), away: String(matchStats.awayShots) },
+                    { label: 'Passes', home: String(matchStats.homePasses), away: String(matchStats.awayPasses) },
+                    { label: 'Tackles', home: String(matchStats.homeTackles), away: String(matchStats.awayTackles) },
+                    { label: 'Fouls', home: String(matchStats.homeFouls), away: String(matchStats.awayFouls) },
+                  ].map((stat) => (
+                    <div key={stat.label} className="bg-[#21262d] rounded-lg p-1.5 text-center">
+                      <p className="text-[8px] text-[#484f58] mb-0.5">{stat.label}</p>
+                      <p className="text-[10px] font-bold text-white leading-tight">
+                        <span className={stat.home > stat.away ? 'text-emerald-400' : ''}>{stat.home}</span>
+                      </p>
+                      <p className="text-[10px] font-bold text-white leading-tight">
+                        <span className={stat.away > stat.home ? 'text-amber-400' : ''}>{stat.away}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Media reaction quotes */}
+              {postMatchQuotes.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-[#8b949e] mb-1.5 flex items-center gap-1">
+                    <BarChart3 className="w-3 h-3" /> Media Reaction
+                  </p>
+                  <div className="space-y-1.5">
+                    {postMatchQuotes.map((quote, i) => (
+                      <div key={i} className="bg-[#21262d] rounded-lg px-3 py-2 border-l-2 border-[#484f58]">
+                        <p className="text-[10px] text-[#c9d1d9] italic leading-relaxed">&ldquo;{quote.text}&rdquo;</p>
+                        <p className="text-[9px] text-[#484f58] mt-1">— {quote.source}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Man of the Match highlight card */}
+              <div className={`rounded-lg p-3 border ${isMotm ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#21262d] border-[#30363d]'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isMotm ? 'bg-amber-500/20' : 'bg-[#30363d]'}`}>
+                    <Crown className={`w-5 h-5 ${isMotm ? 'text-amber-400' : 'text-[#484f58]'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-[#c9d1d9]">
+                      {isMotm ? player.name : `${lastResult.homeClub.shortName || lastResult.homeClub.name} Player`}
+                    </p>
+                    <p className="text-[10px] text-[#8b949e]">
+                      {isMotm ? 'Your performance earned you Man of the Match!' : 'Star performer for the match.'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-lg font-black ${isMotm ? 'text-amber-400' : 'text-[#8b949e]'}`}>
+                      {isMotm ? lastResult.playerRating.toFixed(1) : (7.5 + seededRandom(lastResult.week * 37) * 2).toFixed(1)}
+                    </p>
+                    <p className="text-[9px] text-[#484f58]">Rating</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Post-Match Actions - Horizontal Row */}
@@ -1558,6 +1991,175 @@ export default function MatchDay() {
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Pre-Match Buildup Panel */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.32, duration: 0.2 }}
+          >
+            <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
+              <div className="px-4 pt-3 pb-2 border-b border-[#30363d]">
+                <span className="text-[10px] text-[#8b949e] font-semibold flex items-center gap-1.5">
+                  <Flame className="w-3 h-3" /> Pre-Match Buildup
+                </span>
+              </div>
+              <div className="px-4 py-3 space-y-3">
+                {/* Pre-match stats comparison bars */}
+                {(() => {
+                  const recentMatches = gameState.recentResults.slice(0, 5);
+                  const homeClubResults = recentMatches.filter(r =>
+                    r.homeClub.id === currentClub.id || r.awayClub.id === currentClub.id
+                  );
+                  const opponentResults = recentMatches.filter(r =>
+                    r.homeClub.id === opponent.id || r.awayClub.id === opponent.id
+                  );
+                  const homeGoalsScored = homeClubResults.length > 0
+                    ? homeClubResults.reduce((sum, r) => sum + (r.homeClub.id === currentClub.id ? r.homeScore : r.awayScore), 0) / homeClubResults.length
+                    : 1.2;
+                  const oppGoalsScored = opponentResults.length > 0
+                    ? opponentResults.reduce((sum, r) => sum + (r.homeClub.id === opponent.id ? r.homeScore : r.awayScore), 0) / opponentResults.length
+                    : 1.0;
+                  const homeWins = homeClubResults.filter(r => {
+                    const myGoals = r.homeClub.id === currentClub.id ? r.homeScore : r.awayScore;
+                    const theirGoals = r.homeClub.id === currentClub.id ? r.awayScore : r.homeScore;
+                    return myGoals > theirGoals;
+                  }).length;
+                  const homeForm = homeClubResults.length > 0 ? (homeWins / homeClubResults.length) * 10 : 5;
+                  const oppWins = opponentResults.filter(r => {
+                    const myGoals = r.homeClub.id === opponent.id ? r.homeScore : r.awayScore;
+                    const theirGoals = r.homeClub.id === opponent.id ? r.awayScore : r.homeScore;
+                    return myGoals > theirGoals;
+                  }).length;
+                  const oppForm = opponentResults.length > 0 ? (oppWins / opponentResults.length) * 10 : 5;
+
+                  const stats = [
+                    { label: 'Goals/Match', home: homeGoalsScored.toFixed(1), away: oppGoalsScored.toFixed(1), homeNum: homeGoalsScored, awayNum: oppGoalsScored },
+                    { label: 'Form', home: homeForm.toFixed(1), away: oppForm.toFixed(1), homeNum: homeForm, awayNum: oppForm },
+                    { label: 'Squad OVR', home: String(currentClub.squadQuality), away: String(opponent.squadQuality), homeNum: currentClub.squadQuality, awayNum: opponent.squadQuality },
+                    { label: 'Reputation', home: String(currentClub.reputation), away: String(opponent.reputation), homeNum: currentClub.reputation, awayNum: opponent.reputation },
+                  ];
+
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[10px] text-[#484f58]">
+                        <span className="font-semibold text-emerald-400">{currentClub.shortName}</span>
+                        <span className="uppercase tracking-wider text-[8px]">Season Averages</span>
+                        <span className="font-semibold text-rose-400">{opponent.shortName}</span>
+                      </div>
+                      {stats.map((stat) => {
+                        const total = stat.homeNum + stat.awayNum;
+                        const homePercent = total > 0 ? (stat.homeNum / total) * 100 : 50;
+                        return (
+                          <div key={stat.label}>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] font-bold w-10 text-right ${stat.homeNum >= stat.awayNum ? 'text-white' : 'text-[#8b949e]'}`}>{stat.home}</span>
+                              <div className="flex-1 flex h-1.5 rounded-lg overflow-hidden bg-[#21262d]">
+                                <div className="bg-emerald-500/60 h-full" style={{ width: `${homePercent}%` }} />
+                                <div className="bg-rose-500/60 h-full flex-1" />
+                              </div>
+                              <span className={`text-[10px] font-bold w-10 ${stat.awayNum > stat.homeNum ? 'text-white' : 'text-[#8b949e]'}`}>{stat.away}</span>
+                            </div>
+                            <p className="text-[8px] text-[#484f58] text-center mt-0.5">{stat.label}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                <div className="border-t border-[#30363d]" />
+
+                {/* Stadium atmosphere indicator */}
+                {(() => {
+                  const atmosSeed = gameState.currentSeason * 100 + currentWeek * 7 + currentClub.reputation;
+                  const atmosScore = Math.max(0, Math.min(4, Math.floor(seededRandom(atmosSeed) * 5)));
+                  const atmosLevels: { label: string; color: string; bgColor: string; barColor: string }[] = [
+                    { label: 'Quiet', color: 'text-[#484f58]', bgColor: 'bg-[#21262d]', barColor: 'border-[#30363d] bg-[#161b22]' },
+                    { label: 'Calm', color: 'text-sky-400', bgColor: 'bg-sky-500/20', barColor: 'border-sky-500/30 bg-sky-500/10' },
+                    { label: 'Passionate', color: 'text-amber-400', bgColor: 'bg-amber-500/20', barColor: 'border-amber-500/30 bg-amber-500/10' },
+                    { label: 'Loud', color: 'text-orange-400', bgColor: 'bg-orange-500/20', barColor: 'border-orange-500/30 bg-orange-500/10' },
+                    { label: 'Electric', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20', barColor: 'border-emerald-500/30 bg-emerald-500/10' },
+                  ];
+                  const currentAtmos = atmosLevels[atmosScore];
+                  return (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🏟️</span>
+                        <div>
+                          <p className="text-[10px] text-[#8b949e]">Stadium Atmosphere</p>
+                          <p className={`text-xs font-bold ${currentAtmos.color}`}>{currentAtmos.label}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        {atmosLevels.map((level, i) => (
+                          <div
+                            key={level.label}
+                            className={`w-7 h-3 rounded-sm ${i <= atmosScore ? `${level.bgColor} border ${level.barColor.split(' ')[0]}` : 'bg-[#161b22] border border-[#21262d]'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Referee info card */}
+                {(() => {
+                  const refereeNames = ['M. Oliver', 'A. Taylor', 'C. Pawson', 'A. Marriner', 'M. Dean', 'P. Tierney', 'R. Jones', 'J. Moss', 'K. Friend', 'D. Coote', 'A. Madley', 'T. Robinson', 'S. Attwell', 'R. Bankes'];
+                  const refSeed = gameState.currentSeason * 50 + currentWeek * 3;
+                  const refIndex = Math.floor(seededRandom(refSeed) * refereeNames.length);
+                  const refName = refereeNames[refIndex];
+                  const refStrictness = 1 + Math.floor(seededRandom(refSeed + 1) * 5);
+                  const refCardsPerGame = (2.5 + seededRandom(refSeed + 2) * 3).toFixed(1);
+                  const strictnessEmojis = ['😊', '🙂', '😐', '😤', '🤬'];
+                  return (
+                    <div className="bg-[#21262d] rounded-lg p-3 flex items-center gap-3">
+                      <div className="text-xl">👨‍⚖️</div>
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-[#c9d1d9]">{refName}</p>
+                        <p className="text-[10px] text-[#8b949e]">Referee</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-[#c9d1d9]">{strictnessEmojis[refStrictness - 1]} {refStrictness}/5</p>
+                        <p className="text-[10px] text-[#8b949e]">{refCardsPerGame} cards/game</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Weather condition card with stat modifiers */}
+                {currentWeather && (
+                  <div className="bg-[#21262d] rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-base">
+                        {currentWeather.type === 'rainy' ? '🌧️' : currentWeather.type === 'snowy' ? '❄️' : currentWeather.type === 'stormy' ? '⛈️' : currentWeather.type === 'windy' ? '💨' : currentWeather.type === 'foggy' ? '🌫️' : currentWeather.type === 'hot' ? '🌡️' : currentWeather.type === 'cloudy' ? '☁️' : '☀️'}
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-[#c9d1d9]">{currentWeather.name}</p>
+                        <p className="text-[10px] text-[#8b949e]">Severity: <span className={currentWeather.severity === 'none' ? 'text-[#484f58]' : currentWeather.severity === 'mild' ? 'text-sky-400' : currentWeather.severity === 'moderate' ? 'text-amber-400' : 'text-red-400'}>{currentWeather.severity}</span></p>
+                      </div>
+                    </div>
+                    {currentWeather.modifiers.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {currentWeather.modifiers.map((mod, i) => {
+                          const isNeg = mod.modifier < 0;
+                          const colorClass = isNeg ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+                          return (
+                            <div key={i} className={`px-2 py-0.5 rounded-lg text-[9px] font-semibold border ${colorClass}`}>
+                              {mod.label} {mod.modifier > 0 ? '+' : ''}{mod.modifier}%
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {currentWeather.modifiers.length === 0 && (
+                      <p className="text-[10px] text-[#484f58]">No stat impact expected.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </motion.div>
 
           {/* Head-to-Head History */}
