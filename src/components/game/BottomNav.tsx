@@ -37,6 +37,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'skill_challenges', icon: <Target className="h-5 w-5" />, label: 'Challenges' },
       { screen: 'player_of_the_month', icon: <Star className="h-5 w-5" />, label: 'PotM' },
       { screen: 'player_traits', icon: <Zap className="h-5 w-5" />, label: 'Traits' },
+      { screen: 'dream_transfer', icon: <Star className="h-5 w-5" />, label: 'Dream' },
       { screen: 'match_highlights', icon: <Film className="h-5 w-5" />, label: 'Highlights' },
       { screen: 'pre_match_scout', icon: <Search className="h-5 w-5" />, label: 'Scout' },
     ],

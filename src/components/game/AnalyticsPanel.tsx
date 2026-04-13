@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { PlayerAttributes } from '@/lib/game/types';
+import { PlayerAttributes, CoreAttribute } from '@/lib/game/types';
 import { getAttributeCategory, getOverallColor } from '@/lib/game/gameUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,17 +34,17 @@ const ATTR_KEYS: (keyof PlayerAttributes)[] = [
   'pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical',
 ];
 
-const ATTR_LABELS: Record<keyof PlayerAttributes, string> = {
+const ATTR_LABELS: Record<CoreAttribute, string> = {
   pace: 'PAC', shooting: 'SHO', passing: 'PAS',
   dribbling: 'DRI', defending: 'DEF', physical: 'PHY',
 };
 
-const ATTR_FULL_LABELS: Record<keyof PlayerAttributes, string> = {
+const ATTR_FULL_LABELS: Record<CoreAttribute, string> = {
   pace: 'Pace', shooting: 'Shooting', passing: 'Passing',
   dribbling: 'Dribbling', defending: 'Defending', physical: 'Physical',
 };
 
-const ATTR_ICONS: Record<keyof PlayerAttributes, React.ReactNode> = {
+const ATTR_ICONS: Record<CoreAttribute, React.ReactNode> = {
   pace: <Wind className="h-3 w-3" />,
   shooting: <Target className="h-3 w-3" />,
   passing: <Swords className="h-3 w-3" />,
@@ -55,7 +55,7 @@ const ATTR_ICONS: Record<keyof PlayerAttributes, React.ReactNode> = {
 
 type AttrCategory = 'Attacking' | 'Defensive' | 'Physical' | 'Technical';
 
-const ATTR_CATEGORIES: Record<keyof PlayerAttributes, AttrCategory> = {
+const ATTR_CATEGORIES: Record<CoreAttribute, AttrCategory> = {
   pace: 'Physical',
   shooting: 'Attacking',
   passing: 'Technical',
@@ -178,7 +178,7 @@ export default function AnalyticsPanel() {
   // ---- Computed values (before early return) ----
   const attrValues = useMemo(() => {
     if (!gameState) return [] as number[];
-    return ATTR_KEYS.map(k => gameState.player.attributes[k]);
+    return ATTR_KEYS.map(k => gameState.player.attributes[k] ?? 0);
   }, [gameState]);
 
   const potentialValues = useMemo(() => {
@@ -186,11 +186,7 @@ export default function AnalyticsPanel() {
     const p = gameState.player;
     // Estimate potential per attribute based on overall → potential ratio
     const gap = p.potential - p.overall;
-    return ATTR_KEYS.map(k => {
-      const current = p.attributes[k];
-      // Distribute gap across attributes with some variance
-      return Math.min(99, current + Math.max(0, gap));
-    });
+    return ATTR_KEYS.map(k => (gameState.player.attributes[k] ?? 0) + Math.max(0, Math.floor(gap / 6)));
   }, [gameState]);
 
   const recentRatings = useMemo(() => {
@@ -451,7 +447,7 @@ export default function AnalyticsPanel() {
 
               {/* Attribute dots + labels */}
               {ATTR_KEYS.map((key, i) => {
-                const val = player.attributes[key];
+                const val = player.attributes[key] ?? 0;
                 const pt = getPoint(i, val);
                 const labelPt = getPoint(i, 125);
                 const cat = getAttributeCategory(val);
@@ -500,7 +496,7 @@ export default function AnalyticsPanel() {
           <div className="px-4 pb-3 flex flex-wrap gap-2 justify-center">
             {(['Attacking', 'Technical', 'Defensive', 'Physical'] as AttrCategory[]).map(cat => {
               const attrs = ATTR_KEYS.filter(k => ATTR_CATEGORIES[k] === cat);
-              const avg = attrs.reduce((sum, k) => sum + player.attributes[k], 0) / attrs.length;
+              const avg = attrs.reduce((sum, k) => sum + (player.attributes[k] ?? 0), 0) / attrs.length;
               return (
                 <Badge
                   key={cat}
@@ -531,7 +527,7 @@ export default function AnalyticsPanel() {
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-3">
             {ATTR_KEYS.map((attr, idx) => {
-              const val = player.attributes[attr];
+              const val = player.attributes[attr] ?? 0;
               const cat = getAttributeCategory(val);
               const category = ATTR_CATEGORIES[attr];
               return (

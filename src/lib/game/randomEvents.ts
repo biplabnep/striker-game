@@ -889,7 +889,7 @@ export function resolveEventChoice(
     for (const [key, value] of Object.entries(effects.attributes)) {
       if (value !== undefined) {
         newAttrs[key as keyof import('./types').PlayerAttributes] = clampValue(
-          newAttrs[key as keyof import('./types').PlayerAttributes] + value,
+          (newAttrs[key as keyof import('./types').PlayerAttributes] ?? 0) + value,
           1,
           99
         );

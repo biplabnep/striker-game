@@ -12,6 +12,10 @@ export const POSITION_GROUPS: Record<string, Position[]> = {
   Attack: ['LW', 'RW', 'ST', 'CF'],
 };
 
+// --- Core attribute helpers (6 outfield attributes, excluding optional GK ones) ---
+export type CoreAttribute = 'pace' | 'shooting' | 'passing' | 'dribbling' | 'defending' | 'physical';
+export type CoreAttributes = Pick<PlayerAttributes, CoreAttribute>;
+
 // --- Player Attributes (0-100 scale) ---
 export interface PlayerAttributes {
   pace: number;
@@ -606,7 +610,8 @@ export type GameScreen =
   | 'hall_of_fame'
   | 'player_traits'
   | 'match_highlights'
-  | 'pre_match_scout';
+  | 'pre_match_scout'
+  | 'dream_transfer';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

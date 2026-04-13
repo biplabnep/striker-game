@@ -466,7 +466,7 @@ export function applyYouthWeeklyProgression(
   for (const [key, value] of Object.entries(attrUpdates)) {
     if (value !== undefined) {
       newAttrs[key as keyof PlayerAttributes] = clamp(
-        Math.round((newAttrs[key as keyof PlayerAttributes] + value) * 10) / 10,
+        Math.round(((newAttrs[key as keyof PlayerAttributes] ?? 0) + value) * 10) / 10,
         1, 85 // youth cap at 85 before promotion
       );
     }
@@ -525,7 +525,7 @@ export function promoteYouthPlayerToFirstTeam(player: YouthPlayer): {
   // Boost attributes slightly on promotion (first-team coaching benefits)
   const promotedAttrs: PlayerAttributes = { ...player.attributes };
   for (const key of Object.keys(promotedAttrs) as (keyof PlayerAttributes)[]) {
-    promotedAttrs[key] = clamp(promotedAttrs[key] + randomBetween(2, 5), 1, 99);
+    promotedAttrs[key] = clamp((promotedAttrs[key] ?? 0) + randomBetween(2, 5), 1, 99);
   }
 
   return {

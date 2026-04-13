@@ -53,23 +53,26 @@ const POSITION_ATTRIBUTE_WEIGHTS: Record<Position, Partial<Record<keyof PlayerAt
   CAM: { passing: 0.3, dribbling: 0.25, shooting: 0.2, pace: 0.1, physical: 0.1, defending: 0.05 },
   LW:  { pace: 0.25, dribbling: 0.25, shooting: 0.2, passing: 0.15, physical: 0.1, defending: 0.05 },
   RW:  { pace: 0.25, dribbling: 0.25, shooting: 0.2, passing: 0.15, physical: 0.1, defending: 0.05 },
+  LM:  { pace: 0.2, passing: 0.25, dribbling: 0.2, shooting: 0.1, physical: 0.15, defending: 0.1 },
+  RM:  { pace: 0.2, passing: 0.25, dribbling: 0.2, shooting: 0.1, physical: 0.15, defending: 0.1 },
+  CF:  { shooting: 0.3, passing: 0.2, dribbling: 0.2, pace: 0.1, physical: 0.1, defending: 0.1 },
   ST:  { shooting: 0.35, pace: 0.2, dribbling: 0.2, physical: 0.15, passing: 0.05, defending: 0.05 },
 };
 
 // --- Player's contribution weight by position ---
 const POSITION_GOAL_PROB: Record<Position, number> = {
   GK: 0.0, CB: 0.03, LB: 0.04, RB: 0.04,
-  CDM: 0.05, CM: 0.1, CAM: 0.15, LW: 0.18, RW: 0.18, ST: 0.3,
+  CDM: 0.05, CM: 0.1, CAM: 0.15, LM: 0.12, RM: 0.12, LW: 0.18, RW: 0.18, CF: 0.25, ST: 0.3,
 };
 
 const POSITION_ASSIST_PROB: Record<Position, number> = {
   GK: 0.0, CB: 0.03, LB: 0.06, RB: 0.06,
-  CDM: 0.08, CM: 0.15, CAM: 0.2, LW: 0.15, RW: 0.15, ST: 0.08,
+  CDM: 0.08, CM: 0.15, CAM: 0.2, LM: 0.15, RM: 0.15, LW: 0.15, RW: 0.15, CF: 0.1, ST: 0.08,
 };
 
 const POSITION_CLEAN_SHEET_PROB: Record<Position, number> = {
   GK: 0.4, CB: 0.35, LB: 0.3, RB: 0.3,
-  CDM: 0.2, CM: 0.1, CAM: 0.05, LW: 0.02, RW: 0.02, ST: 0.01,
+  CDM: 0.2, CM: 0.1, CAM: 0.05, LM: 0.08, RM: 0.08, LW: 0.02, RW: 0.02, CF: 0.01, ST: 0.01,
 };
 
 // --- Squad Selection ---
@@ -156,7 +159,7 @@ function playerContribution(player: Player): number {
 
   for (const [attr, weight] of Object.entries(weights)) {
     const w = weight as number;
-    weightedSum += player.attributes[attr as keyof PlayerAttributes] * w;
+    weightedSum += (player.attributes[attr as keyof PlayerAttributes] ?? 0) * w;
     totalWeight += w;
   }
 

@@ -63,6 +63,13 @@ const severityConfig: Record<InjuryType, { label: string; color: string; bg: str
     border: 'border-red-600/40',
     icon: <AlertOctagon className="h-4 w-4" />,
   },
+  concussion: {
+    label: 'Concussion',
+    color: '#a855f7',
+    bg: '#a855f715',
+    border: 'border-purple-500/30',
+    icon: <Brain className="h-4 w-4" />,
+  },
 };
 
 const categoryConfig: Record<InjuryCategory, { icon: React.ReactNode; color: string }> = {

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { YouthPlayer, YouthCategory, YouthLeagueStanding, PlayerAttributes, Position } from '@/lib/game/types';
+import { YouthPlayer, YouthCategory, YouthLeagueStanding, PlayerAttributes, Position, CoreAttribute } from '@/lib/game/types';
 import { getPotentialRange, getPotentialStars } from '@/lib/game/youthAcademy';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,7 +26,7 @@ const POSITION_GROUPS: Record<string, { positions: Position[]; icon: React.React
   Attack: { positions: ['LW', 'RW', 'ST'], icon: <Swords className="h-3.5 w-3.5" />, color: 'text-red-400' },
 };
 
-const ATTR_LABELS: Record<keyof PlayerAttributes, { label: string; short: string; icon: React.ReactNode }> = {
+const ATTR_LABELS: Record<CoreAttribute, { label: string; short: string; icon: React.ReactNode }> = {
   pace: { label: 'Pace', short: 'PAC', icon: <Wind className="h-3 w-3" /> },
   shooting: { label: 'Shooting', short: 'SHO', icon: <Target className="h-3 w-3" /> },
   passing: { label: 'Passing', short: 'PAS', icon: <TrendingUp className="h-3 w-3" /> },
@@ -144,8 +144,9 @@ function YouthPlayerCard({
               {/* Attributes */}
               <div className="grid grid-cols-3 gap-2">
                 {(Object.keys(player.attributes) as (keyof PlayerAttributes)[]).map((key) => {
-                  const val = Math.round(player.attributes[key]);
-                  const attrInfo = ATTR_LABELS[key];
+                  const rawVal = player.attributes[key];
+                  const val = rawVal !== undefined ? Math.round(rawVal) : 0;
+                  const attrInfo = ATTR_LABELS[key as CoreAttribute];
                   const isFocus = player.trainingFocus === key;
                   return (
                     <div

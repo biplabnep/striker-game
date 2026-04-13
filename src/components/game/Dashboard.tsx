@@ -143,7 +143,7 @@ export default function Dashboard() {
 
       if (prevAttrs) {
         for (const key of Object.keys(gameState.player.attributes) as (keyof PlayerAttributes)[]) {
-          const diff = gameState.player.attributes[key] - prevAttrs[key];
+          const diff = (gameState.player.attributes[key] ?? 0) - (prevAttrs[key] ?? 0);
           if (Math.abs(diff) > 0.3) {
             attrChanges[key] = Math.round(diff * 10) / 10;
           }

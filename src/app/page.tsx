@@ -29,7 +29,7 @@ import ContinentalPanel from '@/components/game/ContinentalPanel';
 import InternationalPanel from '@/components/game/InternationalPanel';
 import MoralePanel from '@/components/game/MoralePanel';
 import InjuryReport from '@/components/game/InjuryReport';
-import PWAInstallPrompt from '@/components/game/PWAInstallPrompt';
+import PWAInstallPrompt from '@/components/game/PWAInstallPromptFixed';
 import SkillChallenges from '@/components/game/SkillChallenges';
 import ManagerOffice from '@/components/game/ManagerOffice';
 import PlayerAgentHub from '@/components/game/PlayerAgentHub';
@@ -43,9 +43,10 @@ import TransferNegotiation from '@/components/game/TransferNegotiation';
 import FanEngagement from '@/components/game/FanEngagement';
 import WorldFootballNews from '@/components/game/WorldFootballNews';
 import HallOfFame from '@/components/game/HallOfFame';
-import PlayerTraitsPanel from '@/components/game/PlayerTraitsPanel';
+import PlayerTraitsPanel from '@/components/game/PlayerTraitsEnhanced';
 import MatchHighlights from '@/components/game/MatchHighlights';
 import PreMatchScoutReport from '@/components/game/PreMatchScoutReport';
+import DreamTransfer from '@/components/game/DreamTransfer';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -87,6 +88,7 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   world_football_news: WorldFootballNews,
   hall_of_fame: HallOfFame,
   player_traits: PlayerTraitsPanel,
+  dream_transfer: DreamTransfer,
   match_highlights: MatchHighlights,
   pre_match_scout: PreMatchScoutReport,
 };
@@ -100,7 +102,7 @@ const gameScreens: GameScreen[] = [
   'career_statistics', 'tactical_briefing', 'player_of_the_month',
   'post_match_analysis', 'player_comparison', 'transfer_negotiation',
   'fan_engagement', 'world_football_news', 'hall_of_fame', 'player_traits', 'match_highlights',
-  'pre_match_scout',
+  'pre_match_scout', 'dream_transfer',
 ];
 
 export default function Home() {

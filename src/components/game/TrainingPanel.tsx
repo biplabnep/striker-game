@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
-import { TrainingType, PlayerAttributes, SeasonTrainingFocusArea } from '@/lib/game/types';
+import { TrainingType, PlayerAttributes, SeasonTrainingFocusArea, CoreAttribute } from '@/lib/game/types';
 import { FOCUS_AREA_ATTRIBUTES } from '@/lib/game/progressionEngine';
 import SeasonTrainingFocusModal from './SeasonTrainingFocusModal';
 import { Card, CardContent } from '@/components/ui/card';
@@ -106,7 +106,7 @@ const intensities: {
   { value: 90, label: 'High', color: '#ef4444', fatigueCost: 22, gainMultiplier: 2.0 },
 ];
 
-const attrLabels: Record<keyof PlayerAttributes, string> = {
+const attrLabels: Record<CoreAttribute, string> = {
   pace: 'Pace',
   shooting: 'SHO',
   passing: 'PAS',
@@ -115,7 +115,7 @@ const attrLabels: Record<keyof PlayerAttributes, string> = {
   physical: 'PHY',
 };
 
-const attrFullLabels: Record<keyof PlayerAttributes, string> = {
+const attrFullLabels: Record<CoreAttribute, string> = {
   pace: 'Pace',
   shooting: 'Shooting',
   passing: 'Passing',
@@ -124,7 +124,7 @@ const attrFullLabels: Record<keyof PlayerAttributes, string> = {
   physical: 'Physical',
 };
 
-const attrIcons: Record<keyof PlayerAttributes, React.ReactNode> = {
+const attrIcons: Record<CoreAttribute, React.ReactNode> = {
   pace: <Zap className="h-3 w-3" />,
   shooting: <Sword className="h-3 w-3" />,
   passing: <Brain className="h-3 w-3" />,
@@ -922,7 +922,7 @@ export default function TrainingPanel() {
               return (
                 <div key={attr} className="flex items-center gap-2.5">
                   <span
-                    style={{ color: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
+                    style={{ color: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr] ?? 0) }}
                   >
                     {attrIcons[attr]}
                   </span>
@@ -935,9 +935,9 @@ export default function TrainingPanel() {
                     <motion.div
                       className="h-full rounded-md"
                       initial={{ width: 0 }}
-                      animate={{ width: `${player.attributes[attr]}%` }}
+                      animate={{ width: `${player.attributes[attr] ?? 0}%` }}
                       transition={{ duration: 0.5, ease: 'easeOut', delay: idx * 0.04 }}
-                      style={{ backgroundColor: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr]) }}
+                      style={{ backgroundColor: isSeasonFocus ? '#10b981' : getAttrBarColor(player.attributes[attr] ?? 0) }}
                     />
                   </div>
                   <div className="flex items-center gap-1">

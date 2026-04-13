@@ -7,10 +7,11 @@
 import {
   Player,
   PlayerAttributes,
+  CoreAttribute,
   SquadStatus,
   TrainingSession,
   SeasonPlayerStats,
-  Club,
+ Club,
   Position,
   SeasonTrainingFocus,
   SeasonTrainingFocusArea,
@@ -183,7 +184,7 @@ export function applyWeeklyProgression(
     for (const [key, value] of Object.entries(attrUpdates)) {
       if (value !== undefined) {
         newAttrs[key as keyof PlayerAttributes] = clamp(
-          Math.round((newAttrs[key as keyof PlayerAttributes] + value) * 10) / 10,
+          Math.round(((newAttrs[key as keyof PlayerAttributes] ?? 0) + value) * 10) / 10,
           1,
           99
         );
@@ -253,7 +254,7 @@ function applyTrainingBoost(
 
 // --- Calculate Overall Rating ---
 export function calculateOverall(attributes: PlayerAttributes, position: Position): number {
-  const weights: Record<Position, Record<keyof PlayerAttributes, number>> = {
+  const weights: Record<Position, Record<CoreAttribute, number>> = {
     GK:  { pace: 0.1, shooting: 0.02, passing: 0.1, dribbling: 0.03, defending: 0.4, physical: 0.35 },
     CB:  { pace: 0.12, shooting: 0.03, passing: 0.1, dribbling: 0.05, defending: 0.4, physical: 0.3 },
     LB:  { pace: 0.22, shooting: 0.04, passing: 0.15, dribbling: 0.1, defending: 0.29, physical: 0.2 },
@@ -263,13 +264,16 @@ export function calculateOverall(attributes: PlayerAttributes, position: Positio
     CAM: { pace: 0.1, shooting: 0.2, passing: 0.28, dribbling: 0.22, defending: 0.05, physical: 0.15 },
     LW:  { pace: 0.25, shooting: 0.2, passing: 0.12, dribbling: 0.23, defending: 0.03, physical: 0.17 },
     RW:  { pace: 0.25, shooting: 0.2, passing: 0.12, dribbling: 0.23, defending: 0.03, physical: 0.17 },
+    LM:  { pace: 0.18, shooting: 0.08, passing: 0.25, dribbling: 0.18, defending: 0.11, physical: 0.2 },
+    RM:  { pace: 0.18, shooting: 0.08, passing: 0.25, dribbling: 0.18, defending: 0.11, physical: 0.2 },
+    CF:  { pace: 0.15, shooting: 0.25, passing: 0.22, dribbling: 0.2, defending: 0.03, physical: 0.15 },
     ST:  { pace: 0.18, shooting: 0.35, passing: 0.07, dribbling: 0.2, defending: 0.02, physical: 0.18 },
   };
 
   const posWeights = weights[position];
   let overall = 0;
   for (const [attr, weight] of Object.entries(posWeights)) {
-    overall += attributes[attr as keyof PlayerAttributes] * weight;
+    overall += (attributes[attr as keyof PlayerAttributes] ?? 0) * weight;
   }
 
   return clamp(Math.round(overall), 1, 99);
@@ -327,7 +331,7 @@ export function applySeasonProgression(
   for (const [key, value] of Object.entries(attrUpdates)) {
     if (value !== undefined) {
       newAttrs[key as keyof PlayerAttributes] = clamp(
-        Math.round((newAttrs[key as keyof PlayerAttributes] + value) * 10) / 10,
+        Math.round(((newAttrs[key as keyof PlayerAttributes] ?? 0) + value) * 10) / 10,
         1,
         99
       );
@@ -546,7 +550,7 @@ export function calculateBirthdayEffects(
     for (const [key, value] of Object.entries(decline)) {
       if (value !== undefined) {
         newAttrs[key as keyof PlayerAttributes] = clamp(
-          Math.round((newAttrs[key as keyof PlayerAttributes] + value) * 10) / 10,
+          Math.round(((newAttrs[key as keyof PlayerAttributes] ?? 0) + value) * 10) / 10,
           1,
           99
         );

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { PlayerAttributes, MatchResult } from '@/lib/game/types';
+import { PlayerAttributes, CoreAttribute, MatchResult } from '@/lib/game/types';
 import {
   getAttributeCategory,
   getOverallColor,
@@ -29,7 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // -----------------------------------------------------------
 // Attribute key to label/icon mapping
 // -----------------------------------------------------------
-const ATTR_META: Record<keyof PlayerAttributes, { label: string; icon: React.ReactNode; shortLabel: string }> = {
+const ATTR_META: Record<CoreAttribute, { label: string; icon: React.ReactNode; shortLabel: string }> = {
   pace:      { label: 'Pace',      icon: <Footprints className="h-4 w-4" />,  shortLabel: 'PAC' },
   shooting:  { label: 'Shooting',  icon: <Crosshair className="h-4 w-4" />,   shortLabel: 'SHO' },
   passing:   { label: 'Passing',   icon: <Target className="h-4 w-4" />,      shortLabel: 'PAS' },
@@ -38,7 +38,7 @@ const ATTR_META: Record<keyof PlayerAttributes, { label: string; icon: React.Rea
   physical:  { label: 'Physical',  icon: <Dumbbell className="h-4 w-4" />,    shortLabel: 'PHY' },
 };
 
-const ATTR_KEYS: (keyof PlayerAttributes)[] = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
+const ATTR_KEYS: CoreAttribute[] = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
 
 // -----------------------------------------------------------
 // Radar chart helpers
@@ -77,7 +77,7 @@ function getSquadStatusColor(status: string): string {
 // -----------------------------------------------------------
 // Simulated position averages for comparison
 // -----------------------------------------------------------
-function getPositionAverages(position: string): Record<keyof PlayerAttributes, number> {
+function getPositionAverages(position: string): Record<CoreAttribute, number> {
   const cat = getPositionCategory(position);
   switch (cat) {
     case 'attack':
@@ -258,7 +258,7 @@ function simulateMarketValueHistory(
 export default function PlayerProfile() {
   const gameState = useGameStore(state => state.gameState);
   const setScreen = useGameStore(state => state.setScreen);
-  const [expandedAttr, setExpandedAttr] = useState<keyof PlayerAttributes | null>(null);
+  const [expandedAttr, setExpandedAttr] = useState<CoreAttribute | null>(null);
 
   // Computed values
   const nationInfo = useMemo(() => {
@@ -579,7 +579,7 @@ export default function PlayerProfile() {
                 const growthRoom = Math.max(0, player.potential - player.overall);
                 // Distribute growth room across attributes based on position weights
                 const posKey = getPositionCategory(player.position);
-                const weights: Record<string, Record<keyof PlayerAttributes, number>> = {
+                const weights: Record<string, Record<CoreAttribute, number>> = {
                   attack: { pace: 0.2, shooting: 0.35, passing: 0.1, dribbling: 0.2, defending: 0.02, physical: 0.13 },
                   midfield: { pace: 0.1, shooting: 0.12, passing: 0.3, dribbling: 0.2, defending: 0.13, physical: 0.15 },
                   defence: { pace: 0.12, shooting: 0.02, passing: 0.1, dribbling: 0.05, defending: 0.4, physical: 0.31 },
@@ -636,7 +636,7 @@ export default function PlayerProfile() {
           const percentileLabel = diffFromAvg >= 15 ? 'Top 5%' : diffFromAvg >= 8 ? 'Top 15%' : diffFromAvg >= 3 ? 'Above Avg' : diffFromAvg >= -3 ? 'Average' : diffFromAvg >= -8 ? 'Below Avg' : 'Bottom 15%';
 
           // Training focus recommendation
-          const weights: Record<string, Record<keyof PlayerAttributes, number>> = {
+          const weights: Record<string, Record<CoreAttribute, number>> = {
             attack: { pace: 0.2, shooting: 0.35, passing: 0.1, dribbling: 0.2, defending: 0.02, physical: 0.13 },
             midfield: { pace: 0.1, shooting: 0.12, passing: 0.3, dribbling: 0.2, defending: 0.13, physical: 0.15 },
             defence: { pace: 0.12, shooting: 0.02, passing: 0.1, dribbling: 0.05, defending: 0.4, physical: 0.31 },
