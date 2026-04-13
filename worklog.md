@@ -2755,3 +2755,112 @@ Priority Recommendations for Next Phase:
 6. Accessibility audit: ARIA labels, keyboard navigation, screen reader support
 7. Sound effects integration for match simulation
 8. Group BottomNav More items into categories (Playing, Career, Social, Management)
+---
+Task ID: cron-09-27
+Agent: main (cron review)
+Task: QA testing, bug fixes, styling improvements, new features
+
+Current Project Status:
+- 47 game components (~42,000+ lines total), all using framer-motion opacity-only animations
+- 36 registered game screens in GameScreen type (1 new this cycle: pre_match_scout)
+- 18 root-owned component files that cannot be modified
+- Lint passes clean with zero errors
+- Full Uncodixify compliance: zero y/x/scale transforms, zero gradients, zero glassmorphism, zero backdrop-blur, zero rounded-full on >24px
+- Server compiles and returns HTTP 200
+
+Work Log:
+
+- QA Testing:
+  - Dev server initially returned 500 due to missing `Soccer` export from lucide-react in MatchHighlights.tsx
+  - Fixed by replacing `Soccer` with `CircleDot` (3 occurrences)
+  - After fix, server returns 200 clean
+  - agent-browser verified main menu renders correctly
+  - Full Uncodixify audit across all 47 files: zero violations
+
+- Bug Fixes (1 critical):
+  1. MatchHighlights.tsx:10 — `Soccer` icon not found in lucide-react
+     - Fix: Replaced all 3 `Soccer` imports/usages with `CircleDot`
+  2. PreMatchScoutReport.tsx:587 — `gameState` defined multiple times (name collision between outer const and useMemo return)
+     - Fix: Removed `gameState` from useMemo return object and destructuring; outer `gameState` already accessible via closure
+
+- Styling Improvements (Uncodixify Audit):
+  - Complete audit of all 47 game component files
+  - Rule 1 (No y/x/scale transforms): PASS - zero violations
+  - Rule 2 (No rounded-full on >24px): PASS - all instances on small elements
+  - Rule 3 (No gradients/glassmorphism): PASS - zero violations
+  - Rule 4 (No height:0→auto): PASS - zero violations
+  - No fixes needed - codebase fully compliant
+
+- New Feature 1: PreMatchScoutReport.tsx (~1061 lines):
+  - Next Match Header with opponent club, competition badge, venue indicator
+  - Opponent Analysis: league position, form guide, goals for/against, top scorer
+  - Head-to-Head Record: W/D/L summary, percentage bar, last meeting
+  - Tactical Analysis: formation, playing style, key player, weakness, danger areas
+  - Match Predictions: win/draw/loss probability bars, predicted score, confidence level
+  - Preparation Recommendations: training focus, rest, tactical approach, morale tip
+  - Registered in types.ts (GameScreen), page.tsx (screenComponents), BottomNav.tsx (Playing category)
+
+- Enhanced Feature 2: InjuryReport.tsx (rewritten to 917 lines):
+  - Current Injury Card: type icon, severity badge, days remaining, rehab progress, return date
+  - Injury History Timeline: season/career injuries with color-coded severity
+  - Injury Prevention Tips: dynamic tips based on fitness, age, consecutive matches
+  - Fitness Monitoring Panel: fitness bar, 5-week trend chart, risk assessment
+  - Medical Staff Section: physio rating, 3 treatment options with recovery bonuses
+  - Injury Statistics: total injuries, days injured, common type, susceptibility rating
+
+- Enhanced Feature 3: LeagueTable.tsx (557→886 lines):
+  - Three-tab navigation: League Table / Top Scorers / Top Assists
+  - Player's club highlight with emerald border and "YOU" badge
+  - Form guide column with colored dots + form string (WWDLW)
+  - Position change indicators (up/down arrows)
+  - Qualification zone colored left borders (CL/Europa/Relegation)
+  - Top Scorers tab: synthetic player data from league stats
+  - Top Assists tab: similar structure
+  - Zone legend above table
+  - Staggered row entrance animations
+
+- Enhanced Feature 4: MoralePanel.tsx (447→875 lines):
+  - Circular SVG arc gauge with color-coded fill
+  - Morale level labels (World-Class/Excellent/Moderate/Low)
+  - Unified Morale Factors Breakdown sorted by impact
+  - Morale History Sparkline (10-week SVG chart with area fill)
+  - Morale Actions: Rest Day, Team Bonding, Media Appearance with effects/costs
+  - Status Effects Panel: Confidence Boost, Lack of Confidence, Depression Risk
+
+- Enhanced Feature 5: SaveLoad.tsx (198→690 lines):
+  - Save slot cards with player/club/season/week details
+  - Save Details Panel: player info, career stats, club info, financial info
+  - Action Buttons: Load, Overwrite, Export, Delete with confirmation
+  - Auto-Save System: toggle on/off, frequency selector, timestamp
+  - Import/Export Panel: JSON file transfer with status feedback
+
+- BottomNav Registration:
+  - Added `Search` icon import
+  - Added `pre_match_scout` to Playing category with Search icon and "Scout" label
+
+Stage Summary:
+- 1 critical bug fixed (Soccer import → CircleDot)
+- 1 compilation error fixed (gameState name collision in PreMatchScoutReport)
+- Full Uncodixify compliance verified (0 violations)
+- 1 major new feature created (PreMatchScoutReport)
+- 4 existing features significantly enhanced (InjuryReport, LeagueTable, MoralePanel, SaveLoad)
+- Total: 5,743 lines written/modified across 7 files
+- All lint checks pass clean
+- Server compiles and returns 200
+
+Unresolved Issues:
+- 18 component files owned by root: SkillChallenges, ManagerOffice, PlayerAgentHub, DailyRoutineHub, TacticalBriefing, CareerStatistics, PlayerOfTheMonth, PlayerComparison, PostMatchAnalysis, MatchStatsPopup, PlayerTraitsPanel, HallOfFame, MatchHighlights, FanEngagement, WorldFootballNews, WeatherSystem, TransferNegotiation, TacticalSetup
+- Turbopack instability: server crashes after extended idle or high request volume
+- agent-browser motion.button click workaround: framer-motion wrapped buttons don't respond to dispatched click events in headless browser; use `agent-browser click @ref=eN` after snapshot or pointer event simulation
+- 10 TypeScript errors in root-owned files (cannot fix without sudo)
+- BottomNav More panel has 35+ items across 8 categories
+
+Priority Recommendations for Next Phase:
+1. Obtain sudo/root access to fix TS errors in 18 root-owned components
+2. Enhance TransferHub with richer club detail cards and negotiation flow
+3. Add Stadium/Atmosphere system affecting home advantage in matches
+4. Performance optimization: code-split Dashboard (~1700 lines) and MatchDay (~1800+ lines)
+5. Add player personality system affecting morale/events/interactions
+6. PWA improvements: service worker caching strategy, offline mode
+7. Accessibility audit: ARIA labels, keyboard navigation, screen reader support
+8. Add pre-season training camp modal before season starts

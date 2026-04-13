@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, ChevronRight, Shield, Zap, UsersRound, Film } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, ChevronRight, Shield, Zap, UsersRound, Film, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -38,6 +38,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'player_of_the_month', icon: <Star className="h-5 w-5" />, label: 'PotM' },
       { screen: 'player_traits', icon: <Zap className="h-5 w-5" />, label: 'Traits' },
       { screen: 'match_highlights', icon: <Film className="h-5 w-5" />, label: 'Highlights' },
+      { screen: 'pre_match_scout', icon: <Search className="h-5 w-5" />, label: 'Scout' },
     ],
   },
   {

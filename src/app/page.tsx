@@ -45,6 +45,7 @@ import WorldFootballNews from '@/components/game/WorldFootballNews';
 import HallOfFame from '@/components/game/HallOfFame';
 import PlayerTraitsPanel from '@/components/game/PlayerTraitsPanel';
 import MatchHighlights from '@/components/game/MatchHighlights';
+import PreMatchScoutReport from '@/components/game/PreMatchScoutReport';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -87,6 +88,7 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   hall_of_fame: HallOfFame,
   player_traits: PlayerTraitsPanel,
   match_highlights: MatchHighlights,
+  pre_match_scout: PreMatchScoutReport,
 };
 
 const gameScreens: GameScreen[] = [
@@ -98,6 +100,7 @@ const gameScreens: GameScreen[] = [
   'career_statistics', 'tactical_briefing', 'player_of_the_month',
   'post_match_analysis', 'player_comparison', 'transfer_negotiation',
   'fan_engagement', 'world_football_news', 'hall_of_fame', 'player_traits', 'match_highlights',
+  'pre_match_scout',
 ];
 
 export default function Home() {

@@ -600,7 +600,8 @@ export type GameScreen =
   | 'world_football_news'
   | 'hall_of_fame'
   | 'player_traits'
-  | 'match_highlights';
+  | 'match_highlights'
+  | 'pre_match_scout';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

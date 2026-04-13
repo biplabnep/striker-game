@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import {
   Film,
-  Soccer,
+  CircleDot,
   Zap,
   Target,
   TrendingUp,
@@ -640,13 +640,13 @@ export default function MatchHighlights() {
       {/* ═══════════════════════════════════════════════════ */}
       <Section
         title="Goals Reel"
-        icon={<Soccer className="h-3.5 w-3.5" />}
+        icon={<CircleDot className="h-3.5 w-3.5" />}
         badge={`${allGoals.length} goal${allGoals.length !== 1 ? 's' : ''}`}
         delay={nextSectionDelay()}
       >
         {allGoals.length === 0 ? (
           <div className="text-center py-4">
-            <Soccer className="w-8 h-8 text-[#30363d] mx-auto mb-2" />
+            <CircleDot className="w-8 h-8 text-[#30363d] mx-auto mb-2" />
             <p className="text-sm text-[#8b949e]">No goals scored yet. Get on the scoreboard!</p>
           </div>
         ) : (
