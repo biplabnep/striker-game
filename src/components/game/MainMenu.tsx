@@ -427,7 +427,7 @@ export default function MainMenu() {
                     <span className="text-[10px] font-bold">{stat.label.slice(0, 2).toUpperCase()}</span>
                   </div>
                   <span className={`${stat.color} text-xl font-black leading-none tabular-nums`}>
-                    {stat.isFloat ? counterValues[i].toFixed(1) : counterValues[i]}
+                    {'isFloat' in stat && stat.isFloat ? counterValues[i].toFixed(1) : counterValues[i]}
                   </span>
                   <span className="text-[#484f58] text-[10px] font-medium text-center">
                     {stat.label}

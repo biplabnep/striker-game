@@ -361,7 +361,7 @@ export default function CareerHub() {
                   <span className="text-[9px] text-[#8b949e]">Best Season</span>
                 </div>
                 <p className="text-sm font-bold text-amber-400">
-                  {records?.bestRating.value > 0 ? records.bestRating.value.toFixed(1) : '-'}
+                  {records?.bestRating?.value != null && records.bestRating.value > 0 ? records.bestRating.value.toFixed(1) : '-'}
                 </p>
                 <p className="text-[8px] text-[#484f58]">Avg Rating</p>
               </motion.div>

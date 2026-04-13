@@ -137,7 +137,8 @@ export default function AchievementsSystem() {
   const computed = useMemo<ComputedAchievement[]>(() => {
     if (!gameState) return ALL_DEFINITIONS.map(d => ({ ...d, unlocked: false, progress: 0, currentLabel: '0' }));
 
-    const { player, recentResults, seasons, careerStats: cs } = gameState;
+    const { player, recentResults, seasons } = gameState;
+    const cs = player?.careerStats;
     const totalGoals = cs?.totalGoals ?? 0;
     const totalApps = cs?.totalAppearances ?? 0;
     const trophies = cs?.trophies ?? [];
