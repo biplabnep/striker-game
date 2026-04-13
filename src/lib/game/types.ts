@@ -627,7 +627,8 @@ export type GameScreen =
   | 'dynamic_difficulty'
   | 'career_legacy_profile'
   | 'pre_season_camp'
-  | 'kit_customization';
+  | 'kit_customization'
+  | 'transfer_market';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

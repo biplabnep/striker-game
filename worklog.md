@@ -1,7 +1,7 @@
 ---
-Task ID: 18
+Task ID: 19
 Agent: main (cron review)
-Task: Full dev cycle — QA 46 screens, 3 styling enhancements (International, Continental, Relationships), 1 new feature (KitCustomization), all via parallel Task agents
+Task: Full dev cycle — QA 61 screens, 2 styling enhancements (CupBracket bracket tree, PlayerComparison radar chart), 1 new feature (TransferMarket), all via parallel Task agents
 
 ## Current Project Status Assessment
 - **Project:** Elite Striker — 100% client-side football career simulation SPA
@@ -9,109 +9,114 @@ Task: Full dev cycle — QA 46 screens, 3 styling enhancements (International, C
 - **Lint:** 0 errors (4 warnings — unused eslint-disable directives in MatchDayLive.tsx, non-blocking)
 - **TypeScript (src/):** Clean (0 errors)
 - **Uncodixify Compliance:** 100% (verified — no transforms, no rounded-full >24px, no gradients, no height:0→auto)
-- **Total Screens:** 57+ game screens accessible via BottomNav (8 categories)
-- **New Components This Session:** KitCustomization.tsx
-- **Enhanced Components:** InternationalPanel.tsx, ContinentalPanel.tsx, RelationshipsPanel.tsx
+- **Total Screens:** 58+ game screens accessible via BottomNav (8 categories)
+- **New Components This Session:** TransferMarket.tsx
+- **Enhanced Components:** CupBracket.tsx (1,045→1,748 lines), PlayerComparison.tsx (774→enhanced with radar)
 - **Bugs Fixed:** None (stable codebase from prior sessions)
 
 Work Log:
 
 ### Phase 1: Assessment & Server Setup
-- Reviewed worklog.md (Task 17) — all prior work confirmed complete (56+ screens)
-- Killed stale next-server process (PID 21373) on port 3000
-- Cleaned .next cache, restarted dev server with keepalive loop
+- Reviewed worklog.md (Task 18) — all prior work confirmed complete (57+ screens)
 - TS: 0 errors in src/, Lint: 0 errors (4 cosmetic warnings)
+- Dev server running on port 3000, confirmed 200 response
 
-### Phase 2: QA Testing (agent-browser) — 46 screens tested
+### Phase 2: QA Testing (agent-browser) — 61 screens tested
 - Connected to existing career save (ST, Arsenal, "Cron17b", Season 1 Week 1)
-- **Batch tested ALL 46 registered screens** via rapid JS store navigation
-- **Tested 46 screens total — all PASS, 0 runtime errors, 0 console errors:**
-  - Batch 1: dashboard, training, match_day, league_table, player_profile, tactical_setup, team_selection, pre_match_scout, youth_academy, morale_panel
-  - Batch 2: injury_report, career_hub, career_journal, career_milestones, career_statistics, career_legacy, season_awards, rival_system, transfer_hub, dream_transfer
-  - Batch 3: pre_season_camp, daily_routine, season_objectives, hall_of_fame, achievements, fan_engagement, international, continental, press_conference, social_feed
-  - Batch 4: events_panel, world_news, analytics, weather, player_agent, manager_office, settings, match_day_live, match_highlights, player_traits, potential_journey, season_preview, player_of_the_month, weekly_summary, post_match, cup_bracket, match_stats_popup, player_comparison, skill_challenges, contract_negotiation, season_end_summary, dynamic_difficulty, press_conf_enhanced, match_highlights_enhanced, player_traits_enhanced, save_load, transfer_negotiation
-- Visual spot-check screenshots taken for: Dashboard, Training, Social Feed, MatchDayLive
+- **Batch tested ALL 61 registered screens** via rapid JS store navigation (4 batches)
+- **Tested 61 screens total — all PASS, 0 runtime errors, 0 console errors**
+- After dev server restart, created new career (ST, Arsenal, "QAPlayer") and re-verified 22 key screens
 
-### Phase 3: Codebase Audit (Explore Agent)
-- Comprehensive audit of all 67 game component files
-- Categorized screens by styling quality: Rich (18), Moderate (11), Smaller (28)
-- Identified `agent_hub` maps to Dashboard (alias, not dedicated screen)
-- Identified `season_stats` maps to AnalyticsPanel (alias)
-- Confirmed Playing category is overloaded (16 items), recommended split
-- Generated detailed screen inventory with line counts and nav categories
+### Phase 3: Codebase Styling Audit (Explore Agent)
+- Audited 10 target components (SaveLoad, EventsPanel, WeatherSystem, CareerMilestones, CupBracket, FanEngagement, SeasonObjectivesPanel, PlayerAgentHub, MatchDay, PlayerComparison)
+- Identified top improvement opportunities by impact:
+  - 🔴 HIGH: CupBracket (bracket tree diagram), PlayerComparison (radar chart), MatchDay (formation display)
+  - 🟡 MED: CareerMilestones (career arc chart), FanEngagement (SVG charts), WeatherSystem (animated effects)
+  - 🟢 LOW: EventsPanel (timeline grouping), PlayerAgentHub (real data), SaveLoad (thumbnails)
 
-### Phase 4: Parallel Development — 4 Task Agents Simultaneous
+### Phase 4: Parallel Development — 3 Task Agents Simultaneous
 
-#### Agent 1: InternationalPanel.tsx Styling Enhancement
-- **Enhanced Header:** Larger flag with pulsing emerald border when called up (opacity animation), caps milestone badges (Bronze 10/Silver 25/Gold 50/Diamond 100), call-up streak indicator with Flame icon
-- **Enhanced National Team Status Card:** Mini SVG progress rings around Caps/Goals/Assists/Win Rate stats, Win Rate color-coded (green >50%, amber >30%, red below), last 5 results W/D/L mini timeline
-- **Enhanced Eligibility Section:** Visual check/cross icons per requirement, X/4 progress bar (green=4, amber=3, red<=2), dynamic card border color based on eligibility
-- **Enhanced Fixtures Cards:** "vs" Badge for unplayed matches, H/A venue indicator, score color coding by result, expandable mini match events timeline (goals, subs)
-- **NEW International Career Timeline:** Vertical timeline with milestone markers — debut, first goal, first assist, cap milestones (10th/25th/50th/100th), themed icons per milestone type
+#### Agent 1: CupBracket.tsx — SVG Bracket Tree Enhancement (1,045→1,748 lines)
+- **SVG Bracket Tree Diagram (NEW):**
+  - Full horizontal elimination bracket as inline SVG
+  - Rounds as columns: R1 → Quarter-Finals → Semi-Finals → Final
+  - Match boxes with abbreviated team names and scores
+  - Connector lines linking winners to next round
+  - Player's club highlighted with emerald border/background
+  - Trophy icon at end when player wins
+  - TBD placeholders for unreached rounds
+  - Horizontally scrollable on mobile
+- **Enhanced Cup Header:** Custom SVG TrophyIcon (golden trophy with star), status badges (ACTIVE=emerald, ELIMINATED=red, WINNER=amber), winner progress completion bar
+- **Enhanced Match Cards:** Form indicators (last 3 W/D/L dots), Home/Away badge (H=amber, A=sky), aggregate scores for two-legged ties, "Key Moment" badge (⚡KEY) for player goal/assist matches, match date display, player rating per match (color-coded)
+- **Enhanced Cup Statistics:** Top Performers grid (Goals/Assists/MOTM), Best Rating card, Historical Performance section with career cup trophies and individual trophy badges
 
-#### Agent 2: ContinentalPanel.tsx Styling Enhancement
-- **Enhanced "Not Qualified" State:** Mini league table showing top 6 with CL/EL zone indicators, "Points to Qualify" cards with gap to 4th and 6th, contextual motivational tips
-- **Enhanced Header:** Competition logo badge (2xl emoji), horizontal stage stepper (Groups→R16→QF→SF→Final) with connecting lines, completed=emerald, current=pulsing amber, upcoming=gray
-- **Enhanced Group Tables:** Form dots (last 3 W/D/L) per team, qualification zone shading (emerald left border top 2, red bottom), zone legend, club logo emoji, scrollable on mobile
-- **Enhanced Knockout Stage:** Visual bracket tree by stage, player's path highlighted, pulsing "Your Match" badge (opacity), aggregate scores, W/D/L result badges
-- **Enhanced Overview Tab:** Mini stats dashboard (W/D/L, GF/GA, Clean Sheets), Top Performers section (continental goals/assists/rating), next match timeline
+#### Agent 2: PlayerComparison.tsx — SVG Radar Chart Enhancement
+- **SVG Radar Chart (NEW):**
+  - Hexagonal radar with 6 axes: PAC, SHO, PAS, DRI, DEF, PHY
+  - Two overlapping polygons: player (emerald) vs comparison target (cyan/amber)
+  - Grid lines at 25/50/75/100 levels with subtle colors
+  - Axis labels at each vertex with smart text-anchor
+  - Legend showing color→label mapping
+  - Responsive viewBox (~300px), opacity animation on mount
+- **Mini Radar Preview:** 44×44px tiny hex radar in Player Summary Card
+- **Enhanced Player Summary:** Squad ranking (#3 in squad), comparison summary text ("Elite shooting, needs work on defending")
+- **Enhanced "vs Potential" Tab:** Radar chart (emerald vs amber), "Room to Grow" percentage, ghost/dashed outline bars for potential, per-attribute growth deltas
+- **Enhanced "vs Teammate" Tab:** Side-by-side stat cards, radar chart (emerald vs cyan), "Who wins" green checkmarks per attribute, overall verdict ("You win 4-2")
+- **Enhanced "League Avg" Tab:** Radar chart (emerald vs amber), Above/Below Average counts, "Elite" badges for ≥90th percentile
 
-#### Agent 3: KitCustomization.tsx — NEW Feature
-- **NEW FILE:** `/home/z/my-project/src/components/game/KitCustomization.tsx`
-- **Player Card Preview:** OVR (large), player name, position, club, nationality flag, jersey number (prominent), 6-stat mini-bars (PAC/SHO/PAS/DRI/DEF/PHY)
-- **Jersey Number Selection:** Grid of 1-99 (5 columns), emerald highlight for selected, position legend badges (GK 1/DEF 2-5/MID 6-8/FWD 9-11), "Retired" badges for club legends, "Taken" badges for teammates (7 random), "Current" badge
-- **Number Legends/Trivia:** Famous players who wore each number (14 numbers covered), traditional role descriptions
-- **Kit Customization:** SVG jersey preview with live color updates, primary + secondary color pickers (6 swatches each), club defaults pre-selected
-- **Number History:** Previous seasons' numbers with season, club, games played (1-2 entries based on season number)
-- **Confirm Button:** Shows notification "Jersey number changed to X!"
-- Registered as `'kit_customization'` in types.ts, page.tsx, BottomNav (Playing → Kit)
-
-#### Agent 4: RelationshipsPanel.tsx Styling Enhancement
-- **Enhanced Team Dynamics:** SVG hexagonal radar chart (6 axes: Morale, Cohesion, Influence, Leadership, Communication, Trust), team mood face indicator (happy/neutral/sad SVG), squad size + average age stats
-- **Enhanced Relationship Cards:** Colored left border by type (blue=teammate, green=coach, red=rival, amber=mentor, purple=agent), last interaction timestamp, relationship trend indicator (+2/-1/neutral), trait compatibility badge
-- **Enhanced Filter Section:** Relationship summary bar with colored dots + counts, "Strongest Bond" highlight card (emerald border), "Biggest Rivalry" highlight card (red border)
-- **NEW Key Relationships Section:** Top 3 strongest relationships as featured cards with rank badge, colored avatar initials, type/level badges, large affinity bar, "Spend Time" quick action
-- **NEW Relationship Tips Section:** Contextual tips — rivalry motivation, coach trust starts, teammate chemistry, mentor development, hostile repair warnings, legendary bond celebrations
+#### Agent 3: TransferMarket.tsx — NEW Feature (~1,250 lines)
+- **NEW FILE:** `/home/z/my-project/src/components/game/TransferMarket.tsx`
+- **Header:** "Transfer Market" with live search input + clear button
+- **Market Overview Bar:** 4-column grid — Available count (18), Transfer budget (50M), Window status (Open/Closed), Average market price
+- **3-Tab Layout:** Market | Shortlist (0) | Recent
+- **Filter Section (collapsible):** Position (All/GK/DEF/MID/FWD), League (All + 5 European leagues), Price (Any/Under 10M/25M/50M/100M), Sort (Rating↓/Price↓/Age↑/Name A-Z), Reset button
+- **Player Grid (2-column):** 18 deterministically generated players per season/week. Each card: club logo+name, player name+position badge, OVR (colored), age+flag, 3 key stats, price, interest level bar (Low/Medium/High), View + Bid + shortlist buttons
+- **Player Detail Modal:** Full profile (OVR, name, club, nationality, age, position, contract), 6+ attribute bars (StatBar), Strengths (top 3 green), Weaknesses (bottom 2 red), SVG sparkline value trend, "Make Bid" + "Add to Shortlist" buttons
+- **Bid Panel:** Suggested bid range (±20%), 3 preset buttons (Low 85%/Medium 100%/High 115%), Submit button → result notification (success/too-low)
+- **Shortlist Tab:** Bookmarked players with View/Bid/Remove buttons
+- **Recent Transfers Tab:** 5 seeded completed transfers (Player, From→To, Fee, Date)
+- **Data:** Seeded RNG, real clubs from `getClubsByLeague()`, realistic attribute generation from `POSITION_WEIGHTS`, deterministic pricing
+- Registered as `'transfer_market'` in types.ts, page.tsx, BottomNav (Career → Market)
 
 ### Phase 5: Registration & Integration
-- Added `kit_customization` to GameScreen union type in types.ts
+- Added `transfer_market` to GameScreen union type in types.ts
 - Added import, screenComponents entry, and gameScreens entry in page.tsx
-- Added `Shirt` icon import and "Kit" nav item in BottomNav (Playing category)
+- Added `Store` icon import and "Market" nav item in BottomNav (Career category, between Transfers and Negotiate)
 - Verified TS: 0 errors in src/, Lint: 0 errors, Uncodixify: 100% compliant
 
 ### Phase 6: Post-Development QA
-- Restarted browser session, re-tested all 6 modified/new screens
-- All screens navigate without errors: kit_customization ✅, international ✅, continental ✅, relationships ✅, season_awards ✅, rival_system ✅
-- Visual spot-checks confirmed: KitCustomization shows player card + number grid, InternationalPanel shows enhanced header with milestone badges, ContinentalPanel shows mini league table + qualification gaps, RelationshipsPanel shows SVG radar chart + team mood face
+- After dev server restart (rm -rf .next), re-compiled and verified
+- Tested all 3 modified/new screens: transfer_market ✅, cup_bracket ✅, player_comparison ✅
+- Visual verification: PlayerComparison shows SVG radar chart, CupBracket shows SVG bracket tree with round labels
+- Re-tested 22 total screens — all PASS, 0 runtime errors
 
 Stage Summary:
-- **1 new feature** (KitCustomization — jersey number picker, kit colors, player card preview, number trivia, number history)
-- **3 styling enhancements** (InternationalPanel — 5 upgrades with career timeline; ContinentalPanel — 5 upgrades with bracket tree; RelationshipsPanel — 5 upgrades with radar chart + tips)
-- **4 parallel Task agents** executed simultaneously for maximum efficiency
-- **1 new screen registered** (kit_customization) — 57+ total screens
-- **46 screens QA-tested** — all PASS, 0 runtime errors
+- **1 new feature** (TransferMarket — full transfer browsing with 18 players, filters, player detail modal, bid system, shortlist, recent transfers)
+- **2 styling enhancements** (CupBracket — SVG bracket tree + enhanced match cards + cup statistics; PlayerComparison — SVG radar chart + mini radar + enhanced all 4 tabs)
+- **3 parallel Task agents** executed simultaneously
+- **1 new screen registered** (transfer_market) — 58+ total screens
+- **61 screens QA-tested** — all PASS, 0 runtime errors
 - **100% Uncodixify compliant** (all new/modified code verified)
 - **TS: clean (0 errors in src/), Lint: clean (0 errors)**
 
 ## Current Goals / Completed Modifications / Verification Results
-- KitCustomization provides immersive jersey number selection experience with player card preview, 1-99 number grid with position legends/retired/taken badges, famous player trivia, SVG jersey color customization, and number history
-- InternationalPanel enhanced with caps milestone badges, call-up streak indicator, SVG progress rings, win rate stat, W/D/L mini timeline, eligibility progress bar, match events timeline, and international career milestone timeline
-- ContinentalPanel enhanced with mini league table + qualification gap cards, horizontal stage stepper, group form dots + zone shading, knockout bracket tree + aggregate scores, stats dashboard + top performers
-- RelationshipsPanel enhanced with SVG hexagonal radar chart, team mood face, squad/age stats, colored left borders, trend indicators, trait compatibility, strongest bond/rivalry highlights, top 3 key relationships, contextual tips
+- TransferMarket provides immersive transfer browsing experience with 18 generated players from 5 leagues, position/league/price/sort filters, 2-column player cards with key stats, player detail modal with attribute bars + sparkline + strengths/weaknesses, bid system with preset amounts and result notifications, shortlist management, and recent transfer feed
+- CupBracket transformed from round lists to a proper SVG horizontal elimination bracket tree with connected match boxes, team highlighting, form indicators, home/away badges, aggregate scores, key moment badges, enhanced cup statistics with top performers and historical performance
+- PlayerComparison enhanced with a central SVG hexagonal radar chart visible across all 4 tabs, mini radar preview in the summary card, squad ranking, comparison summary text, "Room to Grow" percentage for potential tab, "Who wins" per-attribute indicators for teammate tab, and "Elite" percentile badges for league average tab
 - All modified/new screens passed QA with 0 runtime errors
 
 ## Unresolved Issues or Risks
 - Dev server process stability: processes die between tool calls; requires keepalive loop or chained commands
 - MatchDay Live lint: 4 unused eslint-disable directive warnings (non-blocking)
 - Settings Quick Links may point to wrong screen (career_milestones instead of career_journal)
-- More panel may need scrolling to see screens near bottom of categories (now 17 items in Playing, 13 in Career)
+- More panel may need scrolling to see screens near bottom of categories (now 17 in Playing, 14 in Career)
 - Next.js Turbopack cache sometimes requires `rm -rf .next` to pick up new imports
 - Playing category is overloaded (17 items) — consider splitting into "Training & Fitness" vs "Match Day"
 
 ## Priority Recommendations for Next Phase
-1. **New features** — Injury rehabilitation mini-game, loan system with loanee tracking, post-match press conference stat effects, pre-match tactical briefing influencing match outcomes
-2. **Gameplay depth** — Match engine events feeding MatchDayLive, dynamic difficulty affecting calculations, pre-season camp gains persisting to game state, kit number affecting fan engagement
-3. **Styling** — Dashboard mini-refresh, MatchDay visual polish, SettingsPanel visual upgrade, SaveLoad design overhaul, AnalyticsPanel chart enhancement
+1. **New features** — Injury rehabilitation mini-game, loan system with loanee tracking, post-match press conference stat effects, pre-match tactical formation display
+2. **Gameplay depth** — Match engine events feeding MatchDayLive, dynamic difficulty affecting calculations, pre-season camp gains persisting, kit number affecting fan engagement, transfer market bids affecting game state
+3. **Styling** — Dashboard mini-refresh, MatchDay visual polish, SettingsPanel visual upgrade, SaveLoad design overhaul, AnalyticsPanel chart enhancement, CareerMilestones career arc line chart
 4. **UX fixes** — Settings Quick Links correction, More panel scroll behavior, Playing category split, screen favorites/pinning
 5. **Content** — More commentary templates for MatchDayLive, varied news articles, deeper tactical options, richer social media interactions
 6. **Performance** — Lazy loading for rarely-used screens, code splitting for large components (MatchDayLive 1,434+ lines, Dashboard 1,807 lines)

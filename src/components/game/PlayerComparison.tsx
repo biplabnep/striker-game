@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, Footprints, Crosshair, Target,
   Zap, Shield, Dumbbell, Users, BarChart3, ClipboardList,
-  ChevronRight, Crown, AlertTriangle, Clock,
+  ChevronRight, Crown, AlertTriangle, Clock, Check, Star,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -48,6 +48,241 @@ const LEAGUE_AVG: Record<string, Record<CoreAttribute, number>> = {
 };
 
 const LEAGUE_STD_DEV = 12;
+
+// -----------------------------------------------------------
+// Radar Chart Geometry Helpers
+// -----------------------------------------------------------
+const NUM_AXES = 6;
+const ANGLE_STEP = (Math.PI * 2) / NUM_AXES;
+const START_ANGLE = -Math.PI / 2; // Start from top
+
+function getAxisPoint(index: number, radius: number, cx: number, cy: number): { x: number; y: number } {
+  const angle = START_ANGLE + index * ANGLE_STEP;
+  return {
+    x: cx + radius * Math.cos(angle),
+    y: cy + radius * Math.sin(angle),
+  };
+}
+
+function getPolygonPoints(values: number[], maxRadius: number, cx: number, cy: number): string {
+  return values.map((val, i) => {
+    const r = (val / 100) * maxRadius;
+    const pt = getAxisPoint(i, r, cx, cy);
+    return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+  }).join(' ');
+}
+
+function getLabelPosition(index: number, radius: number, cx: number, cy: number): { x: number; y: number; anchor: 'start' | 'middle' | 'end' } {
+  const pt = getAxisPoint(index, radius, cx, cy);
+  // Determine text anchor based on position
+  const angle = START_ANGLE + index * ANGLE_STEP;
+  const cosA = Math.cos(angle);
+  let anchor: 'start' | 'middle' | 'end' = 'middle';
+  if (cosA > 0.3) anchor = 'start';
+  else if (cosA < -0.3) anchor = 'end';
+  // Offset slightly outward
+  const offset = 14;
+  const ox = cx + (radius + offset) * cosA;
+  const oy = cy + (radius + offset) * Math.sin(angle);
+  return { x: ox, y: oy + 4, anchor };
+}
+
+// -----------------------------------------------------------
+// Radar Chart Component
+// -----------------------------------------------------------
+interface RadarChartProps {
+  playerValues: number[];
+  comparisonValues: number[];
+  playerLabel?: string;
+  comparisonLabel?: string;
+  size?: number;
+  showLegend?: boolean;
+  playerColor?: string;
+  comparisonColor?: string;
+}
+
+function RadarChart({
+  playerValues,
+  comparisonValues,
+  playerLabel = 'Player',
+  comparisonLabel = 'Comparison',
+  size = 300,
+  showLegend = true,
+  playerColor = '#34d399',
+  comparisonColor = '#22d3ee',
+}: RadarChartProps) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = size / 2 - 36;
+
+  const gridLevels = [25, 50, 75, 100];
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        width={size}
+        height={size}
+        className="max-w-full"
+        style={{ width: size, height: size }}
+      >
+        {/* Grid hexagons */}
+        {gridLevels.map(level => {
+          const pts = getPolygonPoints(
+            ATTR_KEYS.map(() => level),
+            maxR, cx, cy
+          );
+          return (
+            <polygon
+              key={level}
+              points={pts}
+              fill="none"
+              stroke={level === 100 ? '#30363d' : '#21262d'}
+              strokeWidth={level === 100 ? 1.5 : 0.75}
+            />
+          );
+        })}
+
+        {/* Axis lines */}
+        {ATTR_KEYS.map((_, i) => {
+          const pt = getAxisPoint(i, maxR, cx, cy);
+          return (
+            <line
+              key={i}
+              x1={cx}
+              y1={cy}
+              x2={pt.x}
+              y2={pt.y}
+              stroke="#30363d"
+              strokeWidth={0.5}
+            />
+          );
+        })}
+
+        {/* Comparison polygon (rendered first so it's behind) */}
+        {comparisonValues.length > 0 && (
+          <motion.polygon
+            points={getPolygonPoints(comparisonValues, maxR, cx, cy)}
+            fill={comparisonColor}
+            fillOpacity={0}
+            stroke={comparisonColor}
+            strokeWidth={1.5}
+            strokeOpacity={0.6}
+            animate={{ fillOpacity: 0.12 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          />
+        )}
+
+        {/* Player polygon */}
+        <motion.polygon
+          points={getPolygonPoints(playerValues, maxR, cx, cy)}
+          fill={playerColor}
+          fillOpacity={0}
+          stroke={playerColor}
+          strokeWidth={2}
+          animate={{ fillOpacity: 0.18 }}
+          transition={{ duration: 0.5 }}
+        />
+
+        {/* Data points for player */}
+        {playerValues.map((val, i) => {
+          const pt = getAxisPoint(i, (val / 100) * maxR, cx, cy);
+          return (
+            <circle
+              key={`p-${i}`}
+              cx={pt.x}
+              cy={pt.y}
+              r={3}
+              fill={playerColor}
+            />
+          );
+        })}
+
+        {/* Data points for comparison */}
+        {comparisonValues.map((val, i) => {
+          const pt = getAxisPoint(i, (val / 100) * maxR, cx, cy);
+          return (
+            <circle
+              key={`c-${i}`}
+              cx={pt.x}
+              cy={pt.y}
+              r={2.5}
+              fill={comparisonColor}
+            />
+          );
+        })}
+
+        {/* Axis labels */}
+        {ATTR_KEYS.map((key, i) => {
+          const { x, y, anchor } = getLabelPosition(i, maxR, cx, cy);
+          const meta = ATTR_META[key];
+          return (
+            <text
+              key={key}
+              x={x}
+              y={y}
+              textAnchor={anchor}
+              fill="#c9d1d9"
+              fontSize={11}
+              fontWeight={700}
+              fontFamily="monospace"
+            >
+              {meta.short}
+            </text>
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      {showLegend && (
+        <div className="flex items-center gap-4 mt-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: playerColor }} />
+            <span className="text-[10px] text-[#8b949e]">{playerLabel}</span>
+          </div>
+          {comparisonValues.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: comparisonColor }} />
+              <span className="text-[10px] text-[#8b949e]">{comparisonLabel}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------
+// Mini Radar Preview (for summary card)
+// -----------------------------------------------------------
+function MiniRadar({ values }: { values: number[] }) {
+  const size = 44;
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = size / 2 - 5;
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="shrink-0">
+      {/* Background hexagon */}
+      <polygon
+        points={getPolygonPoints(ATTR_KEYS.map(() => 100), maxR, cx, cy)}
+        fill="none"
+        stroke="#30363d"
+        strokeWidth={0.75}
+      />
+      {/* Value polygon */}
+      <motion.polygon
+        points={getPolygonPoints(values, maxR, cx, cy)}
+        fill="#34d399"
+        fillOpacity={0}
+        stroke="#34d399"
+        strokeWidth={1}
+        animate={{ fillOpacity: 0.25 }}
+        transition={{ duration: 0.4 }}
+      />
+    </svg>
+  );
+}
 
 // -----------------------------------------------------------
 // NPC teammate generation (seeded pseudo-random from club name)
@@ -138,6 +373,52 @@ function estimatePotentialAttrs(
 }
 
 // -----------------------------------------------------------
+// Helper: get player values array
+// -----------------------------------------------------------
+function getAttrValues(attrs: PlayerAttributes): number[] {
+  return ATTR_KEYS.map(k => attrs[k]);
+}
+
+// -----------------------------------------------------------
+// Helper: generate comparison summary text
+// -----------------------------------------------------------
+function generateComparisonSummary(attrs: PlayerAttributes): string {
+  const pairs: [CoreAttribute, CoreAttribute][] = [
+    ['shooting', 'defending'],
+    ['pace', 'passing'],
+    ['dribbling', 'physical'],
+  ];
+  const descriptors: string[] = [];
+
+  for (const [a, b] of pairs) {
+    if (attrs[a] >= 80) {
+      descriptors.push(`elite ${ATTR_META[a].label.toLowerCase()}`);
+    } else if (attrs[a] >= 70) {
+      descriptors.push(`strong ${ATTR_META[a].label.toLowerCase()}`);
+    } else if (attrs[a] <= 50) {
+      descriptors.push(`weak ${ATTR_META[a].label.toLowerCase()}`);
+    } else {
+      descriptors.push(`average ${ATTR_META[a].label.toLowerCase()}`);
+    }
+  }
+
+  // Pick the best and worst
+  const sorted = ATTR_KEYS
+    .map(k => ({ key: k, val: attrs[k] }))
+    .sort((a, b) => b.val - a.val);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  if (best.val >= 85 && worst.val <= 45) {
+    return `Elite ${ATTR_META[best.key].label.toLowerCase()}, needs work on ${ATTR_META[worst.key].label.toLowerCase()}`;
+  }
+  if (best.val >= 80) {
+    return `Elite ${ATTR_META[best.key].label.toLowerCase()}, average ${ATTR_META[worst.key].label.toLowerCase()}`;
+  }
+  return `${ATTR_META[best.key].label} specialist, developing ${ATTR_META[worst.key].label.toLowerCase()}`;
+}
+
+// -----------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------
 export default function PlayerComparison() {
@@ -163,6 +444,27 @@ export default function PlayerComparison() {
     [teammates, selectedTeammate]
   );
 
+  // Best teammate (highest OVR) for radar comparison
+  const bestTeammate = useMemo(
+    () => [...teammates].sort((a, b) => b.overall - a.overall)[0] ?? null,
+    [teammates]
+  );
+
+  // Squad ranking
+  const squadRank = useMemo(() => {
+    if (!gameState) return null;
+    const allPlayers = [...teammates, { overall: gameState.player.overall, name: gameState.player.name }];
+    const sorted = [...allPlayers].sort((a, b) => b.overall - a.overall);
+    const rank = sorted.findIndex(p => p.name === gameState.player.name) + 1;
+    return rank;
+  }, [gameState, teammates]);
+
+  // Comparison summary text
+  const comparisonSummary = useMemo(() => {
+    if (!gameState) return '';
+    return generateComparisonSummary(gameState.player.attributes);
+  }, [gameState]);
+
   // League comparison with percentile calculation
   const leagueComparison = useMemo(() => {
     if (!gameState) return null;
@@ -172,7 +474,6 @@ export default function PlayerComparison() {
     return ATTR_KEYS.map(key => {
       const val = gameState.player.attributes[key];
       const mean = avg[key];
-      // Approximate percentile using normal distribution
       const z = (val - mean) / LEAGUE_STD_DEV;
       const percentile = Math.max(1, Math.min(99, Math.round(50 + z * 20)));
       const diff = val - mean;
@@ -195,7 +496,6 @@ export default function PlayerComparison() {
         const target = Math.min(99, val + Math.round(growthRoom * (weights[key] ?? 0.1)));
         const gap = target - val;
         const priority = weights[key] ?? 0.1;
-        // Weakness score: low value + high positional weight
         const weakness = (99 - val) * priority + (avg[key] - val) * 0.5;
         const weeksEstimate = gap > 0 ? Math.max(1, Math.ceil(gap / 0.8)) : 0;
         return {
@@ -215,13 +515,12 @@ export default function PlayerComparison() {
       .sort((a, b) => b.weakness - a.weakness);
   }, [gameState]);
 
-  // Auto-select first teammate
-  // (chosenTeammate already falls back to teammates[0] when selectedTeammate is null)
-
   if (!gameState) return null;
 
   const { player, currentClub } = gameState;
   const growthRoom = Math.max(0, player.potential - player.overall);
+
+  const playerValues = getAttrValues(player.attributes);
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
@@ -241,8 +540,14 @@ export default function PlayerComparison() {
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-[#21262d] flex items-center justify-center">
-                <span className="text-lg font-black text-emerald-400">{player.overall}</span>
+              {/* Mini radar + OVR */}
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <MiniRadar values={playerValues} />
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-[#21262d] flex items-center justify-center">
+                  <span className="text-lg font-black text-emerald-400">{player.overall}</span>
+                </div>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-white truncate">{player.name}</h3>
@@ -253,12 +558,23 @@ export default function PlayerComparison() {
                   <span className="text-xs text-[#8b949e]">Age {player.age}</span>
                   <span className="text-xs text-[#8b949e]">{currentClub.name}</span>
                 </div>
+                {/* Squad ranking */}
+                {squadRank && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <Star className="h-3 w-3 text-amber-400" />
+                    <span className="text-[10px] text-[#8b949e]">#{squadRank} in squad</span>
+                  </div>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <div className="text-xs text-[#8b949e]">POT</div>
                 <div className="text-lg font-bold text-emerald-400">{player.potential}</div>
                 <div className="text-[10px] text-emerald-400/70">+{growthRoom} room</div>
               </div>
+            </div>
+            {/* Comparison Summary */}
+            <div className="mt-2.5 pt-2.5 border-t border-[#30363d]">
+              <p className="text-[11px] text-[#8b949e] italic">{comparisonSummary}</p>
             </div>
           </CardContent>
         </Card>
@@ -302,7 +618,7 @@ export default function PlayerComparison() {
                     <TrendingUp className="h-3.5 w-3.5" /> Current vs Potential
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-4 space-y-3">
+                <CardContent className="px-4 pb-4 space-y-4">
                   {/* Overall comparison */}
                   <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-3">
                     <div className="text-center">
@@ -320,7 +636,37 @@ export default function PlayerComparison() {
                     </div>
                   </div>
 
-                  {/* Attribute bars */}
+                  {/* Room to Grow */}
+                  <div className="bg-[#21262d] rounded-lg p-3 text-center">
+                    <div className="text-[10px] text-[#8b949e] mb-1">Room to Grow</div>
+                    <div className="text-2xl font-black text-amber-400">
+                      {growthRoom > 0
+                        ? `${Math.round((growthRoom / (99 - player.overall + growthRoom)) * 100)}%`
+                        : 'Maxed out'
+                      }
+                    </div>
+                    <div className="text-[10px] text-[#8b949e] mt-1">
+                      {growthRoom > 0
+                        ? `${growthRoom} OVR points to unlock`
+                        : 'You have reached your ceiling'
+                      }
+                    </div>
+                  </div>
+
+                  {/* Radar Chart */}
+                  <div className="flex justify-center">
+                    <RadarChart
+                      playerValues={playerValues}
+                      comparisonValues={getAttrValues(potentialAttrs)}
+                      playerLabel="Current"
+                      comparisonLabel="Potential"
+                      size={260}
+                      playerColor="#34d399"
+                      comparisonColor="#fbbf24"
+                    />
+                  </div>
+
+                  {/* Attribute bars with ghost potential */}
                   {ATTR_KEYS.map((key, i) => {
                     const current = player.attributes[key];
                     const potential = potentialAttrs[key];
@@ -337,19 +683,28 @@ export default function PlayerComparison() {
                             <span className="text-[#c9d1d9]">{current}</span>
                             <span className="text-[#8b949e]">→</span>
                             <span className="text-emerald-400 font-bold">{potential}</span>
-                            {gap > 0 && <span className="text-emerald-400/60 text-[10px]">+{gap}</span>}
+                            {gap > 0 && (
+                              <span className="text-emerald-400/60 text-[10px]">+{gap}</span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex h-2.5 bg-[#21262d] rounded-full overflow-hidden">
+                        <div className="relative">
+                          {/* Ghost bar for potential */}
+                          <div
+                            className="absolute top-0 left-0 h-2.5 border border-dashed border-[#484f58] rounded-lg"
+                            style={{ width: `${potential}%` }}
+                          />
+                          {/* Current filled bar */}
                           <motion.div
-                            className="h-full bg-slate-500 rounded-l-full"
+                            className="h-2.5 bg-slate-500 rounded-lg relative z-[1]"
                             initial={{ width: 0 }}
                             animate={{ width: `${current}%` }}
                             transition={{ delay: i * 0.05, duration: 0.2 }}
                           />
+                          {/* Growth portion */}
                           {gap > 0 && (
                             <motion.div
-                              className="h-full bg-emerald-500/40 rounded-r-full"
+                              className="h-2.5 bg-emerald-500/40 rounded-lg relative z-[1]"
                               initial={{ width: 0 }}
                               animate={{ width: `${gap}%` }}
                               transition={{ delay: 0.3 + i * 0.05, duration: 0.2 }}
@@ -454,65 +809,122 @@ export default function PlayerComparison() {
                       <BarChart3 className="h-3.5 w-3.5" /> {player.name} vs {chosenTeammate.name}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="px-4 pb-4 space-y-3">
-                    {/* OVR comparison */}
-                    <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-3">
-                      <div className="text-center">
-                        <div className="text-[10px] text-[#8b949e]">{player.name.split(' ')[0]}</div>
-                        <div className={`text-xl font-black ${player.overall >= chosenTeammate.overall ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <CardContent className="px-4 pb-4 space-y-4">
+                    {/* Side-by-side stat cards */}
+                    <div className="flex gap-2">
+                      <div className={`flex-1 rounded-lg p-3 text-center border ${
+                        player.overall >= chosenTeammate.overall
+                          ? 'bg-emerald-500/5 border-emerald-500/30'
+                          : 'bg-[#21262d] border-[#30363d]'
+                      }`}>
+                        <div className="text-[10px] text-[#8b949e] mb-0.5">{player.name.split(' ')[0]}</div>
+                        <div className={`text-xl font-black ${
+                          player.overall >= chosenTeammate.overall ? 'text-emerald-400' : 'text-[#c9d1d9]'
+                        }`}>
                           {player.overall}
                         </div>
+                        <div className="flex items-center justify-center gap-1 mt-1">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] font-bold px-1"
+                            style={{ color: getPositionColor(player.position), borderColor: getPositionColor(player.position) }}
+                          >
+                            {player.position}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="text-xs text-[#8b949e] font-medium">OVR</div>
-                      <div className="text-center">
-                        <div className="text-[10px] text-[#8b949e]">{chosenTeammate.name.split(' ')[0]}</div>
-                        <div className={`text-xl font-black ${chosenTeammate.overall >= player.overall ? 'text-emerald-400' : 'text-red-400'}`}>
+
+                      <div className="flex items-center">
+                        <span className="text-xs text-[#484f58] font-bold">VS</span>
+                      </div>
+
+                      <div className={`flex-1 rounded-lg p-3 text-center border ${
+                        chosenTeammate.overall >= player.overall
+                          ? 'bg-cyan-500/5 border-cyan-500/30'
+                          : 'bg-[#21262d] border-[#30363d]'
+                      }`}>
+                        <div className="text-[10px] text-[#8b949e] mb-0.5">{chosenTeammate.name.split(' ')[0]}</div>
+                        <div className={`text-xl font-black ${
+                          chosenTeammate.overall >= player.overall ? 'text-cyan-400' : 'text-[#c9d1d9]'
+                        }`}>
                           {chosenTeammate.overall}
+                        </div>
+                        <div className="flex items-center justify-center gap-1 mt-1">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] font-bold px-1"
+                            style={{ color: getPositionColor(chosenTeammate.position), borderColor: getPositionColor(chosenTeammate.position) }}
+                          >
+                            {chosenTeammate.position}
+                          </Badge>
                         </div>
                       </div>
                     </div>
 
-                    {/* Attribute side-by-side bars */}
+                    {/* Radar Chart */}
+                    <div className="flex justify-center">
+                      <RadarChart
+                        playerValues={playerValues}
+                        comparisonValues={getAttrValues(chosenTeammate.attributes)}
+                        playerLabel={player.name.split(' ')[0]}
+                        comparisonLabel={chosenTeammate.name.split(' ')[0]}
+                        size={260}
+                        playerColor="#34d399"
+                        comparisonColor="#22d3ee"
+                      />
+                    </div>
+
+                    {/* Attribute side-by-side with who-wins indicators */}
                     {ATTR_KEYS.map((key, i) => {
                       const pVal = player.attributes[key];
                       const tVal = chosenTeammate.attributes[key];
                       const diff = pVal - tVal;
                       const meta = ATTR_META[key];
-                      const color = diff > 0 ? 'emerald' : diff < 0 ? 'red' : 'slate';
+                      const playerWins = diff > 0;
+                      const tie = diff === 0;
                       return (
                         <div key={key} className="space-y-1">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
                               {meta.icon}
                               <span className="text-xs text-[#c9d1d9]">{meta.label}</span>
+                              {/* Who wins indicator */}
+                              {playerWins && (
+                                <Check className="h-3 w-3 text-emerald-400" />
+                              )}
+                              {!tie && !playerWins && (
+                                <div className="w-3 h-3 rounded-sm bg-[#21262d] flex items-center justify-center">
+                                  <div className="w-1.5 h-0.5 bg-red-400 rounded-full" />
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 text-xs font-mono">
-                              <span className={color === 'emerald' ? 'text-emerald-400' : color === 'red' ? 'text-red-400' : 'text-[#c9d1d9]'}>
+                              <span className={playerWins ? 'text-emerald-400 font-bold' : 'text-[#c9d1d9]'}>
                                 {pVal}
                               </span>
                               <span className="text-[#484f58]">vs</span>
-                              <span className={color === 'red' ? 'text-emerald-400' : color === 'emerald' ? 'text-red-400' : 'text-[#c9d1d9]'}>
+                              <span className={!tie && !playerWins ? 'text-cyan-400 font-bold' : 'text-[#c9d1d9]'}>
                                 {tVal}
                               </span>
                               {diff !== 0 && (
-                                <span className={`text-[10px] font-bold ${diff > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                <span className={`text-[10px] font-bold ${diff > 0 ? 'text-emerald-400' : 'text-cyan-400'}`}>
                                   {diff > 0 ? '+' : ''}{diff}
                                 </span>
                               )}
                             </div>
                           </div>
                           <div className="flex gap-1 h-2">
-                            <div className="flex-1 bg-[#21262d] rounded-full overflow-hidden flex justify-end">
+                            <div className="flex-1 bg-[#21262d] rounded-lg overflow-hidden flex justify-end">
                               <motion.div
-                                className={`h-full rounded-full ${diff >= 0 ? 'bg-emerald-500/60' : 'bg-slate-600/60'}`}
+                                className={`h-full rounded-lg ${diff >= 0 ? 'bg-emerald-500/60' : 'bg-slate-600/60'}`}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pVal}%` }}
                                 transition={{ delay: i * 0.05, duration: 0.2 }}
                               />
                             </div>
-                            <div className="flex-1 bg-[#21262d] rounded-full overflow-hidden">
+                            <div className="flex-1 bg-[#21262d] rounded-lg overflow-hidden">
                               <motion.div
-                                className={`h-full rounded-full ${diff <= 0 ? 'bg-emerald-500/60' : 'bg-slate-600/60'}`}
+                                className={`h-full rounded-lg ${diff <= 0 ? 'bg-cyan-500/60' : 'bg-slate-600/60'}`}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${tVal}%` }}
                                 transition={{ delay: i * 0.05 + 0.1, duration: 0.2 }}
@@ -523,28 +935,42 @@ export default function PlayerComparison() {
                       );
                     })}
 
-                    {/* Summary */}
+                    {/* Overall verdict */}
                     {(() => {
-                      const wins = ATTR_KEYS.filter(k => player.attributes[k] > chosenTeammate.attributes[k]).length;
-                      const losses = ATTR_KEYS.filter(k => player.attributes[k] < chosenTeammate.attributes[k]).length;
-                      const draws = 6 - wins - losses;
+                      const wins = ATTR_KEYS.filter(k => player.attributes[k] > chosenTeammate.attributes[k]);
+                      const losses = ATTR_KEYS.filter(k => player.attributes[k] < chosenTeammate.attributes[k]);
+                      const draws = 6 - wins.length - losses.length;
+
+                      // Determine which areas each player wins
+                      const playerWinLabels = wins.map(k => ATTR_META[k].short);
+                      const teammateWinLabels = losses.map(k => ATTR_META[k].short);
+
                       return (
                         <div className={`rounded-lg p-3 text-center ${
-                          wins > losses ? 'bg-emerald-500/10 border border-emerald-500/30' :
-                          wins < losses ? 'bg-red-500/10 border border-red-500/30' :
+                          wins.length > losses.length ? 'bg-emerald-500/10 border border-emerald-500/30' :
+                          wins.length < losses.length ? 'bg-cyan-500/10 border border-cyan-500/30' :
                           'bg-[#21262d]'
                         }`}>
                           <div className="text-xs font-bold text-[#c9d1d9]">
-                            {wins > losses ? (
-                              <span className="text-emerald-400">You win {wins}-{losses}!</span>
-                            ) : wins < losses ? (
-                              <span className="text-red-400">{chosenTeammate.name.split(' ')[0]} wins {losses}-{wins}</span>
+                            {wins.length > losses.length ? (
+                              <span className="text-emerald-400">You win {wins.length}-{losses.length}!</span>
+                            ) : wins.length < losses.length ? (
+                              <span className="text-cyan-400">{chosenTeammate.name.split(' ')[0]} wins {losses.length}-{wins.length}</span>
                             ) : (
-                              <span className="text-[#8b949e]">Dead even! {wins} each</span>
+                              <span className="text-[#8b949e]">Dead even! {wins.length} each</span>
                             )}
                           </div>
                           <div className="text-[10px] text-[#8b949e] mt-1">
-                            {wins} better · {draws} equal · {losses} worse
+                            {wins.length} better · {draws} equal · {losses.length} worse
+                          </div>
+                          {/* Verdict text */}
+                          <div className="text-[10px] text-[#8b949e] mt-1.5 pt-1.5 border-t border-[#30363d]">
+                            {wins.length > losses.length
+                              ? `You're stronger in ${playerWinLabels.join(', ')}`
+                              : wins.length < losses.length
+                                ? `They're stronger in ${teammateWinLabels.join(', ')}`
+                                : 'Evenly matched across all areas'
+                            }
                           </div>
                         </div>
                       );
@@ -564,7 +990,7 @@ export default function PlayerComparison() {
                     <BarChart3 className="h-3.5 w-3.5" /> vs {player.position} League Average
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-4 space-y-3">
+                <CardContent className="px-4 pb-4 space-y-4">
                   {/* Overall percentile */}
                   {(() => {
                     const cat = getPositionCategory(player.position);
@@ -589,10 +1015,49 @@ export default function PlayerComparison() {
                     );
                   })()}
 
+                  {/* Radar Chart: Player vs League Average */}
+                  <div className="flex justify-center">
+                    <RadarChart
+                      playerValues={playerValues}
+                      comparisonValues={ATTR_KEYS.map(k => LEAGUE_AVG[getPositionCategory(player.position)][k])}
+                      playerLabel="You"
+                      comparisonLabel="League Avg"
+                      size={260}
+                      playerColor="#34d399"
+                      comparisonColor="#fbbf24"
+                    />
+                  </div>
+
+                  {/* Summary stats */}
+                  {(() => {
+                    const aboveAvg = leagueComparison.filter(item => item.diff >= 0).length;
+                    const belowAvg = leagueComparison.filter(item => item.diff < 0).length;
+                    const eliteCount = leagueComparison.filter(item => item.percentile >= 90).length;
+                    return (
+                      <div className="flex gap-2">
+                        <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-center">
+                          <div className="text-lg font-black text-emerald-400">{aboveAvg}</div>
+                          <div className="text-[10px] text-[#8b949e]">Above Avg</div>
+                        </div>
+                        <div className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg p-2.5 text-center">
+                          <div className="text-lg font-black text-red-400">{belowAvg}</div>
+                          <div className="text-[10px] text-[#8b949e]">Below Avg</div>
+                        </div>
+                        {eliteCount > 0 && (
+                          <div className="flex-1 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-center">
+                            <div className="text-lg font-black text-amber-400">{eliteCount}</div>
+                            <div className="text-[10px] text-[#8b949e]">Elite</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Per-attribute percentile */}
                   {leagueComparison.map((item, i) => {
                     const { key, val, mean, percentile, diff } = item;
                     const meta = ATTR_META[key];
+                    const isElite = percentile >= 90;
                     const color = diff >= 8 ? 'emerald' : diff >= 0 ? 'amber' : 'red';
                     const percentileLabel =
                       percentile >= 90 ? 'Elite' :
@@ -605,6 +1070,11 @@ export default function PlayerComparison() {
                           <div className="flex items-center gap-1.5">
                             {meta.icon}
                             <span className="text-xs text-[#c9d1d9]">{meta.label}</span>
+                            {isElite && (
+                              <Badge className="text-[8px] font-bold border-0 bg-amber-500/20 text-amber-400 px-1">
+                                Elite
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge
@@ -620,14 +1090,14 @@ export default function PlayerComparison() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden relative">
+                          <div className="flex-1 h-2 bg-[#21262d] rounded-lg overflow-hidden relative">
                             {/* League average marker */}
                             <div
                               className="absolute top-0 h-full w-0.5 bg-[#8b949e]/40 z-10"
                               style={{ left: `${mean}%` }}
                             />
                             <motion.div
-                              className={`h-full rounded-full ${color === 'emerald' ? 'bg-emerald-500/60' : color === 'amber' ? 'bg-amber-500/60' : 'bg-red-500/60'}`}
+                              className={`h-full rounded-lg ${color === 'emerald' ? 'bg-emerald-500/60' : color === 'amber' ? 'bg-amber-500/60' : 'bg-red-500/60'}`}
                               initial={{ width: 0 }}
                               animate={{ width: `${val}%` }}
                               transition={{ delay: i * 0.05, duration: 0.2 }}
@@ -706,17 +1176,17 @@ export default function PlayerComparison() {
                           </div>
 
                           {/* Progress bar showing current vs target */}
-                          <div className="h-1.5 bg-[#0d1117] rounded-full overflow-hidden mb-1.5">
+                          <div className="h-1.5 bg-[#0d1117] rounded-lg overflow-hidden mb-1.5">
                             <div className="flex h-full">
                               <motion.div
-                                className={`h-full rounded-l-full ${barColor}`}
+                                className={`h-full rounded-l-lg ${barColor}`}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${item.current}%` }}
                                 transition={{ delay: 0.2 + i * 0.05, duration: 0.2 }}
                               />
                               {item.gap > 0 && (
                                 <motion.div
-                                  className="h-full bg-emerald-500/20 rounded-r-full"
+                                  className="h-full bg-emerald-500/20 rounded-r-lg"
                                   initial={{ width: 0 }}
                                   animate={{ width: `${item.gap}%` }}
                                   transition={{ delay: 0.4 + i * 0.05, duration: 0.2 }}

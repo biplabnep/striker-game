@@ -63,6 +63,7 @@ import DynamicDifficultyPanel from '@/components/game/DynamicDifficultyPanel';
 import CareerLegacyProfile from '@/components/game/CareerLegacyProfile';
 import PreSeasonTrainingCamp from '@/components/game/PreSeasonTrainingCamp';
 import KitCustomization from '@/components/game/KitCustomization';
+import TransferMarket from '@/components/game/TransferMarket';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -123,6 +124,7 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   career_legacy_profile: CareerLegacyProfile,
   pre_season_camp: PreSeasonTrainingCamp,
   kit_customization: KitCustomization,
+  transfer_market: TransferMarket,
 };
 
 const gameScreens: GameScreen[] = [
@@ -150,6 +152,7 @@ const gameScreens: GameScreen[] = [
   'career_legacy_profile',
   'pre_season_camp',
   'kit_customization',
+  'transfer_market',
 ];
 
 export default function Home() {
