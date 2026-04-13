@@ -58,6 +58,7 @@ import SeasonAwards from '@/components/game/SeasonAwards';
 import RivalSystem from '@/components/game/RivalSystem';
 import TacticalSubstitutions from '@/components/game/TacticalSubstitutions';
 import PotentialJourney from '@/components/game/PotentialJourney';
+import MatchDayLive from '@/components/game/MatchDayLive';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -113,6 +114,7 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   rival_system: RivalSystem,
   tactical_substitutions: TacticalSubstitutions,
   potential_journey: PotentialJourney,
+  match_day_live: MatchDayLive,
 };
 
 const gameScreens: GameScreen[] = [
@@ -135,6 +137,7 @@ const gameScreens: GameScreen[] = [
   'rival_system',
   'tactical_substitutions',
   'potential_journey',
+  'match_day_live',
 ];
 
 export default function Home() {

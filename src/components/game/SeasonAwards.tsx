@@ -347,16 +347,17 @@ export default function SeasonAwards() {
   const [revealedIndex, setRevealedIndex] = useState(-1);
 
   const awards = useMemo(() => {
-    if (!gameState) return [];
+    if (!gameState || !gameState.player?.seasonStats) return [];
     const { player, currentClub, currentSeason, leagueTable } = gameState;
+    const ss = player.seasonStats;
     return generateSeasonAwards(
       player.name,
       player.age,
       player.overall,
-      player.seasonStats.goals,
-      player.seasonStats.assists,
-      player.seasonStats.appearances,
-      player.seasonStats.averageRating,
+      ss.goals,
+      ss.assists,
+      ss.appearances,
+      ss.averageRating,
       currentClub.id,
       currentClub.name,
       currentSeason,
@@ -660,10 +661,10 @@ export default function SeasonAwards() {
             {/* Season stats mini summary */}
             <div className="flex items-center justify-between text-xs text-[#8b949e] px-1">
               <span>
-                {player.seasonStats.goals} Goals &middot; {player.seasonStats.assists} Assists
+                {player.seasonStats?.goals ?? 0} Goals &middot; {player.seasonStats?.assists ?? 0} Assists
               </span>
               <span>
-                {player.seasonStats.appearances} Apps &middot; {player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'} Avg
+                {player.seasonStats?.appearances ?? 0} Apps &middot; {(player.seasonStats?.averageRating ?? 0) > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'} Avg
               </span>
             </div>
 

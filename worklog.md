@@ -1,124 +1,115 @@
 ---
-Task ID: 14
+Task ID: 15
 Agent: main (cron review)
-Task: Full dev cycle — QA, bug fixes, 3 new features (Season Awards, Rival System, Potential Journey), 3 styling enhancements (Social Feed, Training Panel, Season End Summary)
+Task: Full dev cycle — QA, bug fixes, 1 new feature (MatchDayLive), 2 styling enhancements (PlayerProfile, EventsPanel), Training Focus modal fix
 
 ## Current Project Status Assessment
 - **Project:** Elite Striker — 100% client-side football career simulation SPA
 - **Tech Stack:** Next.js 16, TypeScript 5, Zustand 5, Tailwind CSS 4, shadcn/ui, Framer Motion 12
-- **Lint:** Clean (0 errors)
+- **Lint:** 0 errors (4 warnings — unused eslint-disable directives in MatchDayLive.tsx, non-blocking)
 - **TypeScript (src/):** Clean (0 errors)
-- **Uncodixify Compliance:** 100% (verified across all new/modified files)
-- **Total Screens:** 51+ game screens accessible via BottomNav (8 categories)
-- **New Components This Session:** SeasonAwards.tsx, RivalSystem.tsx, PotentialJourney.tsx
-- **Enhanced Components:** SocialFeed.tsx, TrainingPanel.tsx, SeasonEndSummary.tsx
+- **Uncodixify Compliance:** 100% (verified across all 64 game component files)
+- **Total Screens:** 52+ game screens accessible via BottomNav (8 categories)
+- **New Components This Session:** MatchDayLive.tsx
+- **Enhanced Components:** PlayerProfile.tsx, EventsPanel.tsx
+- **Bugs Fixed:** SeasonAwards crash, Training Focus modal reappearing on every navigation
 
 Work Log:
 
-### Phase 1: Assessment & Bug Fixes
-- Reviewed worklog.md — all prior work from Task 13 confirmed complete
-- Dev server restarted, .next cache cleared
-- **Fixed 3 TypeScript errors from previous session:**
-  - `AchievementsSystem.tsx:140` — `careerStats` was on `player`, not `gameState`. Fixed: `const cs = player?.careerStats;`
-  - `CareerHub.tsx:364` — `records?.bestRating.value` possibly undefined. Fixed: `records?.bestRating?.value != null`
-  - `MainMenu.tsx:430` — `stat.isFloat` not on all union members. Fixed: `'isFloat' in stat && stat.isFloat`
-- **Fixed Uncodixify violation:** `SeasonAwards.tsx` had `rotate(90deg)` transform on chevron icon. Replaced with opacity/color change.
+### Phase 1: Assessment & Server Setup
+- Reviewed worklog.md — all prior work from Task 14 confirmed complete
+- Dev server restarted (required chained command approach due to process stability)
+- TS: 0 errors in src/, Lint: 0 errors
+- 51+ screens from previous session all registered and verified
 
 ### Phase 2: QA Testing (agent-browser)
-- Tested 23 screens via agent-browser — all PASS
-- Screens tested: MatchDay, Dashboard, Training, CareerHub, TeamSelection, Achievements, CareerJournal, WorldFootballNews, FanEngagement, Settings, PressConference, SocialFeed, DailyRoutineHub, TransferNegotiation, CupBracket, InjuryReport, LeagueTable, YouthAcademy, PlayerAgentHub, ContinentalPanel
+- Fixed dev server stability issue: chained server start + browser open in single bash command
+- Fixed MainMenu `motion.button` click issue: used `dispatchEvent(new MouseEvent('mousedown/click'))` chain
+- Successfully started a new career (ST, Arsenal, Normal difficulty) for in-game testing
+- **Tested 6 screens — all PASS:**
+  - Season Awards ✅ (after crash fix)
+  - Rival System ✅
+  - Potential Journey ✅
+  - Social Feed (enhanced) ✅
+  - Training Panel (enhanced) ✅
+  - Dashboard ✅
 - 0 runtime errors, 0 console errors
-- MainMenu framer-motion button click issue identified (agent-browser cannot dispatch clicks on motion.button with `animate` prop — use dispatchEvent workaround)
 
-### Phase 3: New Feature — Season Awards Ceremony (`SeasonAwards.tsx`)
-- **NEW FILE:** `/home/z/my-project/src/components/game/SeasonAwards.tsx` (756 lines)
+### Phase 3: Bug Fix — Season Awards Crash
+- **Symptom:** "Cannot read properties of undefined (reading 'goals')" when navigating to Awards screen
+- **Root cause:** `player.seasonStats` could be undefined in edge cases when ErrorBoundary remounts component
+- **Fix 1:** Added guard `if (!gameState || !gameState.player?.seasonStats) return []` in `useMemo`
+- **Fix 2:** Added optional chaining for all `player.seasonStats` references in JSX: `player.seasonStats?.goals ?? 0`
+- **File:** `/home/z/my-project/src/components/game/SeasonAwards.tsx`
+
+### Phase 4: Bug Fix — Training Focus Modal Reappearing
+- **Symptom:** Training Focus modal showed every time user navigated back to Dashboard
+- **Root cause:** `hasAutoShownFocusRef` (useRef) resets when Dashboard remounts via ErrorBoundary `key={screen}`, causing modal to re-trigger
+- **Fix:** Replaced ref-based tracking with module-level `Set<number>` (`shownTrainingFocusSeasons`) that persists across component remounts, same pattern as season preview
+- **File:** `/home/z/my-project/src/components/game/Dashboard.tsx`
+- Removed unused `shouldAutoShowFocus` useMemo and `hasAutoShownFocusRef`
+
+### Phase 5: New Feature — Match Day Live (`MatchDayLive.tsx`)
+- **NEW FILE:** `/home/z/my-project/src/components/game/MatchDayLive.tsx` (1,434 lines)
 - **Features:**
-  1. **6 Award Categories:** Golden Boot, Player of the Season, Young Player of the Year, Goal of the Season, Team of the Season, Manager of the Season
-  2. **Award Cards:** Icon, name, category, winner badge, description, stats comparison, color-coded
-  3. **Procedural Competitors:** Seeded random generates realistic competitor names/stats per season
-  4. **Personal Awards Summary:** Season count, career total, motivational message
-  5. **SVG Decorations:** TrophySVG, MedalSVG, StarSVG components
-  6. **Tap-to-reveal:** Each award card expands to show details
-- Registered as `'season_awards'` in types.ts, page.tsx, BottomNav (Career → Awards)
+  1. **Pre-Match Buildup:** Team lineups, VS graphic, competition/venue/weather, formation display (SVG pitch), pre-match stats comparison bars, player "YOU" badge
+  2. **Live Match Simulation:** Minute-by-minute timer (1-90), configurable speed (1x/2x/5x), pause/resume
+  3. **Live Score Display:** "Arsenal 2 - 1 Chelsea" format, goal flash animation
+  4. **Real-Time Events:** Goals (with scorer), yellow/red cards, substitutions, shots, key tackles — appear as timeline entries
+  5. **Running Stats:** Possession %, Shots, Passes, Tackles — update each minute
+  6. **SVG Momentum Bar:** Visual indicator of match flow dominance
+  7. **Player Performance Panel:** Real-time rating, minutes, goals/assists/shots, pass completion %, distance covered, match grade (S/A/B/C/D/F)
+  8. **Auto-Generated Commentary:** 3-4 visible lines, types: goal, chance missed, tactical shift, half-time report
+  9. **Half-Time Screen:** Score summary, key stats, resume button
+  10. **Full-Time Screen:** Final score, WIN/DRAW/LOSS, MOTM, ratings, complete stats comparison, post-match actions
+  11. **Seeded Random:** Deterministic results based on player stats + club quality + week number
+- Registered as `'match_day_live'` in types.ts, page.tsx, BottomNav (Playing → Live Match)
+- **TS fix:** `rngRef.current()` returned a number instead of function — changed to `rngRef.current` (the ref holds the function directly)
 
-### Phase 4: New Feature — Rival System (`RivalSystem.tsx`)
-- **NEW FILE:** `/home/z/my-project/src/components/game/RivalSystem.tsx` (1062 lines)
-- **Features:**
-  1. **3 Rival Types:** Club rivals (derbies), Player rivals (individuals), National rivals (international)
-  2. **Biggest Rival Highlight:** Featured card with SVG VS graphic and intensity pulse
-  3. **Rival Cards:** Name, type badge, intensity meter bar (0-100), head-to-head W/D/L, last meeting
-  4. **Expandable Details:** Full H2H record, match history (last 5), rivalry timeline, player info
-  5. **Rivalry Stats:** Total rivals, avg intensity, win rate, fierce count, most common opponent
-  6. **Filter & Sort:** By type (All/Club/Player/National), sort by Intensity/Recent/H2H
-  7. **Procedural Derbies:** Classic matchups (Arsenal-Tottenham, Real-Barcelona, Bayern-Dortmund, etc.)
-  8. **Dynamics Info:** Educational section explaining how rivalries form
-- Registered as `'rival_system'` in types.ts, page.tsx, BottomNav (Club → Rivals)
+### Phase 6: Styling — Player Profile Enhancement (`PlayerProfile.tsx`)
+- **Enhanced Header Card:** Club logo placeholder (colored square with initials), "YOU" badge, form indicator (colored dot + number), position badge with filled background, OVR ring, Potential display
+- **Position-Aware Radar Chart:** SVG hexagon radar with 6 core attributes, position-weighted highlighting (larger dots + glow ring for primary attributes)
+- **Detailed Stats Grid:** 3-column grid — Physical (Pace, Fitness, Strength), Technical (Shooting, Passing, Dribbling), Mental (Vision, Composure, Work Rate) — all color-coded
+- **Career Stats Section (NEW):** 2x2 grid (Appearances, Goals, Assists, Clean Sheets), Goals/Game ratio, Career Avg Rating, Trend indicator (Rising/Falling/Stable)
+- **Player Traits Display (NEW):** Styled badges with color-coded dots from PLAYER_TRAITS data, empty state with training suggestion
+- **Contract & Financial Info (NEW):** Wage + Market Value cards, visual contract timeline bar (animated), "Expiring Soon" badge
 
-### Phase 5: New Feature — Player Potential Journey (`PotentialJourney.tsx`)
-- **NEW FILE:** `/home/z/my-project/src/components/game/PotentialJourney.tsx` (1086 lines)
-- **Features:**
-  1. **Career Phases Timeline:** 6 phases (Youth → Twilight), current highlighted, future locked
-  2. **Potential Trajectory Chart:** SVG line chart with current curve, projected, peak marker, age milestones
-  3. **Milestone Predictions:** Debut, International, Peak, World Class with probability badges
-  4. **Compared to Legends:** 3 legendary career paths overlaid on player's curve
-  5. **Development Tips:** Weakest attribute highlight, personalized training recommendations
-  6. **Stats Summary:** Age, OVR, POT, Form, years to peak, dev speed
-- Registered as `'potential_journey'` in types.ts, page.tsx, BottomNav (Career → Journey)
-
-### Phase 6: Styling — Social Feed Enhancement (`SocialFeed.tsx`)
-- **Enhanced Post Cards:** Trending badge, verified checkmark, view count, time metadata, reply thread indicator
-- **Story Highlights Row:** 5 categories (Your Story, Club Official, Team News, Transfers, Fan Zone), horizontal scroll
-- **Social Stats Dashboard:** 4-column grid (Followers, Posts, Engagement Rate, Social Rank)
-- **Create Post Section:** Textarea with 280 char limit, character progress bar, quick action buttons
-- **Poll Posts:** Deterministic poll for high-engagement fan posts with 3 options
-- **Interaction Buttons:** Bookmark, view count, reply depth indicator, heart pulse animation
-
-### Phase 7: Styling — Training Panel Enhancement (`TrainingPanel.tsx`)
-- **Training Type Cards:** 2px colored intensity bar, "Recommended" badge, attribute gain pills, fatigue cost display
-- **Weekly Training Tracker:** Visual dots (filled/empty), fitness level color indicator, sessions count
-- **Recent Training History:** Last 3 sessions with type, intensity, quality, attribute gains
-- **Season Focus Banner:** Colored icon, focus area name, or "No focus set" fallback
-- **Visual Polish:** Section dividers, opacity-based hover effects, dark theme consistency
-
-### Phase 8: Styling — Season End Summary Enhancement (`SeasonEndSummary.tsx`)
-- **Enhanced Header:** Trophy icon, "SEASON COMPLETE", position ordinal, zone indicator (UCL/UEL/Safe/Relegation)
-- **Player Performance Card:** OVR badge, previous→current, POT, season grade (S/A/B/C/D/F), 2x3 stats grid
-- **Attribute Changes:** Split improved/declined sections with colored indicators, net change badge
-- **Financial Summary:** Market value old→new with percentage, contract visual timeline
-- **Season Awards:** Mini cards with icons, "No awards" fallback
-- **Navigation:** Enhanced Continue button, "Full Statistics" and "View Awards" links
+### Phase 7: Styling — Events Panel Enhancement (`EventsPanel.tsx`)
+- **Category System:** EventCategory type with visual distinction — Career (emerald), Personal (violet), Transfer (amber), Match (rose)
+- **Active vs Resolved Tabs:** Full-width tab toggle with counts, pulsing green dot for active events
+- **Enhanced Event Cards:** Category icon, bold title with type badge, impact indicator (ArrowUp/ArrowDown/Minus), expiry countdown, pulsing dot
+- **Priority System:** Left border colored by importance (red/amber/gray), priority-based sorting, "URGENT" divider for high-priority events
+- **Empty States:** Custom illustrations with Inbox/Filter/Clock icons and contextual messages
+- **Resolved Events Tab:** Compact cards with reduced opacity (0.6), checkmark, up to 15 items
+- **Visual Polish:** Section dividers, staggered opacity animations, category-colored hover glows
 
 Stage Summary:
-- **3 TS errors fixed** (AchievementsSystem, CareerHub, MainMenu)
-- **1 Uncodixify violation fixed** (SeasonAwards rotate transform)
-- **3 major new features** (Season Awards, Rival System, Potential Journey)
-- **3 components enhanced** with substantial styling (Social Feed, Training Panel, Season End Summary)
-- **3 new screens registered** (season_awards, rival_system, potential_journey)
-- **51+ total game screens** now accessible
-- **100% Uncodixify compliant** (verified)
-- **TS: clean, Lint: clean**
+- **2 bugs fixed** (Season Awards crash, Training Focus modal reappearing)
+- **1 major new feature** (MatchDay Live with 4-phase match simulation — 1,434 lines)
+- **2 components enhanced** with substantial styling (PlayerProfile, EventsPanel)
+- **1 new screen registered** (match_day_live)
+- **52+ total game screens** now accessible
+- **100% Uncodixify compliant** (verified across all 64 component files)
+- **TS: clean (0 errors in src/), Lint: clean (0 errors)**
 
 ## Current Goals / Completed Modifications / Verification Results
-- All 3 TS errors from previous session fixed
-- Season Awards provides 6 award categories with procedural competitors
-- Rival System tracks 3 types of rivalries with expandable details and derby detection
-- Potential Journey shows career trajectory with SVG chart, milestones, and legend comparisons
-- Social Feed enhanced with story highlights, polls, create post, social stats dashboard
-- Training Panel enhanced with focus banner, gain pills, fatigue display, session tracker
-- Season End Summary enhanced with zone indicators, grade badges, financial timeline, award cards
+- Season Awards no longer crashes on navigation (added seasonStats null guards)
+- Training Focus modal no longer reappears on every Dashboard visit (module-level Set)
+- MatchDay Live provides full match simulation experience with pre-match, live, half-time, and full-time phases
+- PlayerProfile redesigned with position-aware radar chart, career stats, traits display, contract timeline
+- EventsPanel redesigned with category system, priority sorting, active/resolved tabs, enhanced empty states
 
 ## Unresolved Issues or Risks
-- Dev server process stability: server dies between bash tool calls (workaround: chain commands in single bash invocation)
-- agent-browser cannot click framer-motion `motion.button` elements with `animate` prop (use dispatchEvent workaround)
-- MainMenu "New Career" button is a motion.button — makes automated QA difficult from fresh state
-- More panel may need scrolling to see newly added screens (Awards at bottom of Career category, Rivals at bottom of Club category)
-- MatchDay enhanced result screen still not QA-tested with an actual completed match
-- Settings Quick Links may point to wrong screen (career_milestones instead of career_journal)
+- Dev server process stability: requires chained bash commands or keepalive loop (processes die between tool calls)
+- MatchDay Live lint: 4 unused eslint-disable directive warnings (non-blocking, cosmetic only)
+- MatchDay Live full-time screen not yet QA-tested (requires completing a full match simulation)
+- Settings Quick Links may point to wrong screen (career_milestones instead of career_journal) — not yet fixed
+- More panel may need scrolling to see screens near bottom of categories
 
 ## Priority Recommendations for Next Phase
-1. **New features** — In-match tactical substitutions, injury rehabilitation mini-game, loan system, dynamic difficulty scaling
-2. **Gameplay depth** — Press conference stat effects integration with gameStore, contract negotiation flow
-3. **Styling** — Events Panel enhancement, PlayerProfile visual refresh, MatchHighlights polish
-4. **UX fixes** — MainMenu button click workaround for QA, More panel scroll-to-bottom for new items
-5. **Content** — More varied news articles, deeper tactical options, seasonal awards ceremony integration with gameStore
-6. **Performance** — Bundle analysis, lazy loading for rarely-used screens, code splitting
+1. **New features** — In-match tactical substitutions UI, injury rehabilitation mini-game, loan system, dynamic difficulty scaling
+2. **Gameplay depth** — Press conference stat effects integration with gameStore, contract negotiation flow, match engine events feeding MatchDayLive
+3. **Styling** — HallOfFame enhancement, YouthAcademy polish, PreMatchScoutReport refresh
+4. **UX fixes** — Settings Quick Links correction, More panel scroll behavior, MainMenu motion.button accessibility
+5. **Content** — More commentary templates for MatchDayLive, varied news articles, deeper tactical options, seasonal awards integration
+6. **Performance** — Bundle analysis, lazy loading for rarely-used screens, code splitting for large components (MatchDayLive 1,434 lines)

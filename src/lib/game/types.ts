@@ -622,7 +622,8 @@ export type GameScreen =
   | 'season_awards'
   | 'rival_system'
   | 'tactical_substitutions'
-  | 'potential_journey';
+  | 'potential_journey'
+  | 'match_day_live';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

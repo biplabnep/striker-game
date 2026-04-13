@@ -12,7 +12,7 @@ import {
   getSquadStatusLabel,
 } from '@/lib/game/gameUtils';
 import { getSeasonMatchdays } from '@/lib/game/clubsData';
-import { NATIONALITIES } from '@/lib/game/playerData';
+import { NATIONALITIES, PLAYER_TRAITS } from '@/lib/game/playerData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,10 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft, TrendingUp, TrendingDown, Minus, Star, Trophy, Target,
-  Footprints, Crosshair, Shield, Dumbbell, Zap, ChevronDown, ChevronUp,
+  Footprints, Crosshair, Shield, Dumbbell, Zap,
   Award, Clock, Briefcase, DollarSign, ArrowUpRight, ArrowDownRight,
   MinusCircle, User, Goal, CircleDot, ShieldCheck, Calendar, Activity,
+  Eye, Heart, Timer, HeartPulse, FileText, Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -91,6 +92,31 @@ function getPositionAverages(position: string): Record<CoreAttribute, number> {
     default:
       return { pace: 60, shooting: 55, passing: 60, dribbling: 55, defending: 55, physical: 65 };
   }
+}
+
+// -----------------------------------------------------------
+// Stat color coding: green (70+), amber (50-69), red (<50)
+// -----------------------------------------------------------
+function getStatColor(value: number): string {
+  if (value >= 70) return '#22c55e';
+  if (value >= 50) return '#f59e0b';
+  return '#ef4444';
+}
+
+// -----------------------------------------------------------
+// Form color: green (7+), amber (5-6), red (<5)
+// -----------------------------------------------------------
+function getFormColor(form: number): string {
+  if (form >= 7) return '#22c55e';
+  if (form >= 5) return '#f59e0b';
+  return '#ef4444';
+}
+
+// -----------------------------------------------------------
+// Club initials for logo placeholder
+// -----------------------------------------------------------
+function getClubInitials(name: string): string {
+  return name.split(/[\s-]+/).map(w => w[0]).join('').toUpperCase().slice(0, 3);
 }
 
 // -----------------------------------------------------------
@@ -258,7 +284,6 @@ function simulateMarketValueHistory(
 export default function PlayerProfile() {
   const gameState = useGameStore(state => state.gameState);
   const setScreen = useGameStore(state => state.setScreen);
-  const [expandedAttr, setExpandedAttr] = useState<CoreAttribute | null>(null);
 
   // Computed values
   const nationInfo = useMemo(() => {
@@ -343,6 +368,63 @@ export default function PlayerProfile() {
     return Math.round((gameState.player.seasonStats.minutesPlayed / totalPossible) * 100);
   }, [gameState]);
 
+  // Form color
+  const formColor = useMemo(() => {
+    if (!gameState) return '#ef4444';
+    return getFormColor(gameState.player.form);
+  }, [gameState]);
+
+  // Club initials
+  const clubInitials = useMemo(() => {
+    if (!gameState) return '';
+    return getClubInitials(gameState.currentClub.name);
+  }, [gameState]);
+
+  // Career trend
+  const careerTrend = useMemo<'improving' | 'declining' | 'stable'>(() => {
+    if (!gameState || gameState.seasons.length < 1) return 'stable';
+    const { player, seasons } = gameState;
+    const prevSeason = seasons[seasons.length - 1];
+    const currentAvg = player.seasonStats.averageRating;
+    const prevAvg = prevSeason.playerStats.averageRating;
+    if (currentAvg > prevAvg + 0.2) return 'improving';
+    if (currentAvg < prevAvg - 0.2) return 'declining';
+    return 'stable';
+  }, [gameState]);
+
+  // Position key attributes for radar highlighting
+  const positionKeyAttrs = useMemo(() => {
+    if (!gameState) return new Set<string>();
+    const posKey = getPositionCategory(gameState.player.position);
+    const weights: Record<string, Record<CoreAttribute, number>> = {
+      attack: { pace: 0.2, shooting: 0.35, passing: 0.1, dribbling: 0.2, defending: 0.02, physical: 0.13 },
+      midfield: { pace: 0.1, shooting: 0.12, passing: 0.3, dribbling: 0.2, defending: 0.13, physical: 0.15 },
+      defence: { pace: 0.12, shooting: 0.02, passing: 0.1, dribbling: 0.05, defending: 0.4, physical: 0.31 },
+      goalkeeping: { pace: 0.05, shooting: 0.0, passing: 0.1, dribbling: 0.0, defending: 0.15, physical: 0.2 },
+    };
+    const w = weights[posKey] || {};
+    return new Set(ATTR_KEYS.filter(k => (w[k] ?? 0) > 0.15));
+  }, [gameState]);
+
+  // Career average rating
+  const careerAvgRating = useMemo(() => {
+    if (!gameState) return 0;
+    const { player, seasons } = gameState;
+    let total = 0;
+    let count = 0;
+    if (player.seasonStats.averageRating > 0 && player.seasonStats.appearances > 0) {
+      total += player.seasonStats.averageRating;
+      count++;
+    }
+    for (const s of seasons) {
+      if (s.playerStats.averageRating > 0) {
+        total += s.playerStats.averageRating;
+        count++;
+      }
+    }
+    return count > 0 ? total / count : 0;
+  }, [gameState]);
+
   if (!gameState) return null;
 
   const { player, currentClub, currentSeason, currentWeek, seasons } = gameState;
@@ -372,78 +454,96 @@ export default function PlayerProfile() {
           <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundColor: currentClub.primaryColor }} />
 
           <CardContent className="p-5 relative">
+            {/* Top row: Club logo + Player info + YOU badge */}
             <div className="flex items-start gap-4">
-              {/* Overall Rating Circle with animated ring */}
-              <div className="flex flex-col items-center shrink-0">
-                <div className="relative">
-                  <svg width="80" height="80" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="36" fill="none" stroke="#1e293b" strokeWidth="3" />
-                    <motion.circle
-                      cx="40" cy="40" r="36"
-                      fill="none"
-                      stroke={overallColor}
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 36}`}
-                      strokeDashoffset={2 * Math.PI * 36}
-                      animate={{ strokeDashoffset: 2 * Math.PI * 36 * (1 - player.overall / 99) }}
-                      transition={{ duration: 0.2, ease: 'easeOut', delay: 0.3 }}
-                      transform="rotate(-90 40 40)"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-black text-2xl" style={{ color: overallColor }}>{player.overall}</span>
-                  </div>
-                </div>
-                <span className="text-[10px] text-[#8b949e] mt-1 ">Overall</span>
+              {/* Club logo placeholder */}
+              <div
+                className="shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-white font-black text-sm tracking-wider"
+                style={{ backgroundColor: currentClub.primaryColor }}
+              >
+                {clubInitials}
               </div>
 
               {/* Player Info */}
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-xl text-white truncate">{player.name}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-xl text-white truncate">{player.name}</h3>
+                  <Badge className="text-[10px] font-black border-0 bg-white text-[#0d1117] px-2 py-0 tracking-wider">
+                    YOU
+                  </Badge>
+                </div>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {nationInfo && <span className="text-lg">{nationInfo.flag}</span>}
-                  <Badge variant="outline" className="text-xs font-bold px-2" style={{ color: posColor, borderColor: posColor }}>
+                  {nationInfo && <span className="text-lg leading-none">{nationInfo.flag}</span>}
+                  <Badge
+                    className="text-xs font-bold px-2.5 border-0 text-white"
+                    style={{ backgroundColor: posColor }}
+                  >
                     {player.position}
                   </Badge>
                   <span className="text-xs text-[#8b949e]">Age {player.age}</span>
-                </div>
-
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xl">{currentClub.logo}</span>
-                  <span className="text-sm text-[#c9d1d9] font-medium">{currentClub.name}</span>
-                </div>
-
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  {/* Squad Status Badge */}
                   <Badge
                     className="text-[10px] font-bold border-0 capitalize"
                     style={{ backgroundColor: `${squadColor}20`, color: squadColor }}
                   >
                     {getSquadStatusLabel(player.squadStatus)}
                   </Badge>
-                  {/* Preferred Foot */}
-                  <Badge variant="outline" className="text-[10px] border-slate-600 text-[#8b949e] capitalize">
-                    {player.preferredFoot} foot
-                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-sm text-[#c9d1d9] font-medium">{currentClub.name}</span>
+                  <span className="text-[#30363d]">|</span>
+                  <span className="text-xs text-[#8b949e] capitalize">{player.preferredFoot} foot</span>
                 </div>
               </div>
+            </div>
 
-              {/* Potential with growth arrow */}
-              <div className="flex flex-col items-center shrink-0">
-                <div className="relative w-16 h-16 rounded-3xl flex items-center justify-center border-2 border-slate-600">
-                  <span className="font-bold text-lg text-[#8b949e]">{player.potential}</span>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.6, duration: 0.2 }}
-                    className="absolute -bottom-1 -right-1"
-                  >
-                    <TrendingUp className="h-4 w-4 text-emerald-400" />
-                  </motion.div>
+            {/* Bottom row: OVR + Form + Potential */}
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {/* Overall Rating */}
+              <div className="bg-[#0d1117] rounded-lg p-3 text-center border border-[#30363d]">
+                <div className="relative inline-block">
+                  <svg width="56" height="56" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="24" fill="none" stroke="#21262d" strokeWidth="2.5" />
+                    <motion.circle
+                      cx="28" cy="28" r="24"
+                      fill="none"
+                      stroke={overallColor}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 24}`}
+                      strokeDashoffset={2 * Math.PI * 24}
+                      animate={{ strokeDashoffset: 2 * Math.PI * 24 * (1 - player.overall / 99) }}
+                      transition={{ duration: 0.2, ease: 'easeOut', delay: 0.3 }}
+                      transform="rotate(-90 28 28)"
+                    />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center font-black text-xl" style={{ color: overallColor }}>
+                    {player.overall}
+                  </span>
                 </div>
-                <span className="text-[10px] text-[#8b949e] mt-1 ">Potential</span>
-                <span className="text-[10px] text-emerald-400 font-semibold">+{player.potential - player.overall} growth</span>
+                <p className="text-[10px] text-[#8b949e] mt-1 font-semibold tracking-wider">OVERALL</p>
+              </div>
+
+              {/* Form Indicator */}
+              <div className="bg-[#0d1117] rounded-lg p-3 text-center border border-[#30363d]">
+                <div className="flex items-center justify-center gap-2 h-[56px]">
+                  <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: formColor }} />
+                  <span className="font-black text-2xl" style={{ color: formColor }}>
+                    {player.form > 0 ? player.form.toFixed(1) : '\u2014'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#8b949e] mt-1 font-semibold tracking-wider">FORM</p>
+              </div>
+
+              {/* Potential */}
+              <div className="bg-[#0d1117] rounded-lg p-3 text-center border border-[#30363d]">
+                <div className="flex items-center justify-center h-[56px]">
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-black text-2xl text-[#8b949e]">{player.potential}</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-emerald-400 mt-1 font-semibold tracking-wider">
+                  +{player.potential - player.overall} POTENTIAL
+                </p>
               </div>
             </div>
           </CardContent>
@@ -517,24 +617,32 @@ export default function PlayerProfile() {
               {radarData.labels.map((lbl, i) => {
                 const val = player.attributes[ATTR_KEYS[i]];
                 const cat = getAttributeCategory(val);
+                const isKey = positionKeyAttrs.has(ATTR_KEYS[i]);
+                const dotR = isKey ? 5 : 3;
+                const pt = polarToCartesian(120, 120, (val / 100) * 95, ANGLES[i]);
                 return (
                   <g key={i}>
+                    {/* Glow ring for position-key attributes */}
+                    {isKey && (
+                      <circle cx={pt.x} cy={pt.y} r="9" fill={`${overallColor}20`} />
+                    )}
                     <motion.circle
-                      cx={polarToCartesian(120, 120, (val / 100) * 95, ANGLES[i]).x}
-                      cy={polarToCartesian(120, 120, (val / 100) * 95, ANGLES[i]).y}
-                      r="3"
+                      cx={pt.x}
+                      cy={pt.y}
                       fill={overallColor}
-                      initial={{ r: 0 }}
-                      animate={{ r: 3 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       transition={{ delay: 0.6 + i * 0.08, duration: 0.2 }}
-                    />
+                    >
+                      <animate attributeName="r" from="0" to={dotR} dur="0.2s" begin={`${0.6 + i * 0.08}s`} fill="freeze" />
+                    </motion.circle>
                     <text
                       x={lbl.x}
                       y={lbl.y - 2}
                       textAnchor="middle"
-                      fill={cat.color}
-                      fontSize="10"
-                      fontWeight="bold"
+                      fill={isKey ? overallColor : cat.color}
+                      fontSize={isKey ? "11" : "10"}
+                      fontWeight={isKey ? "900" : "bold"}
                     >
                       {lbl.value}
                     </text>
@@ -542,9 +650,9 @@ export default function PlayerProfile() {
                       x={lbl.x}
                       y={lbl.y + 10}
                       textAnchor="middle"
-                      fill="#64748b"
+                      fill={isKey ? '#e2e8f0' : '#64748b'}
                       fontSize="8"
-                      fontWeight="600"
+                      fontWeight={isKey ? "700" : "600"}
                     >
                       {lbl.label}
                     </text>
@@ -556,204 +664,168 @@ export default function PlayerProfile() {
         </Card>
       </motion.div>
 
-      {/* ===== 3. DETAILED ATTRIBUTE CARDS ===== */}
+      {/* ===== 3. DETAILED STATS GRID ===== */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, delay: 0.2 }}
-        className="space-y-2"
+        className="space-y-3"
       >
-        <h3 className="text-xs text-[#8b949e]  font-semibold px-1">Detailed Attributes</h3>
-        {/* Growth Potential Overview - compact inline card */}
         <Card className="bg-[#161b22] border-[#30363d]">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-[#8b949e]  font-medium flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-emerald-400" /> Growth Potential
-              </span>
-              <span className="text-[10px] text-emerald-400 font-bold">+{player.potential - player.overall} OVR room</span>
-            </div>
-            <div className="space-y-1.5">
-              {ATTR_KEYS.map((attr, i) => {
-                const current = player.attributes[attr];
-                const growthRoom = Math.max(0, player.potential - player.overall);
-                // Distribute growth room across attributes based on position weights
-                const posKey = getPositionCategory(player.position);
-                const weights: Record<string, Record<CoreAttribute, number>> = {
-                  attack: { pace: 0.2, shooting: 0.35, passing: 0.1, dribbling: 0.2, defending: 0.02, physical: 0.13 },
-                  midfield: { pace: 0.1, shooting: 0.12, passing: 0.3, dribbling: 0.2, defending: 0.13, physical: 0.15 },
-                  defence: { pace: 0.12, shooting: 0.02, passing: 0.1, dribbling: 0.05, defending: 0.4, physical: 0.31 },
-                  goalkeeping: { pace: 0.05, shooting: 0.0, passing: 0.1, dribbling: 0.0, defending: 0.15, physical: 0.2 },
-                };
-                const weight = weights[posKey]?.[attr] ?? 0.1;
-                const estimatedGrowth = Math.round(growthRoom * weight * (0.8 + Math.random() * 0.4));
-                const potentialVal = Math.min(99, current + estimatedGrowth);
-                const meta = ATTR_META[attr];
-
-                return (
-                  <div key={attr} className="flex items-center gap-2">
-                    <span className="text-[9px] text-[#8b949e] w-8 font-mono">{meta.shortLabel}</span>
-                    <div className="flex-1 h-3 bg-[#21262d] rounded-full overflow-hidden relative">
-                      {/* Current value */}
-                      <motion.div
-                        className="h-full rounded-full bg-slate-600"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${current}%` }}
-                        transition={{ delay: i * 0.05, duration: 0.2 }}
-                      />
-                      {/* Potential growth overlay */}
-                      <motion.div
-                        className="absolute top-0 h-full rounded-full bg-emerald-500/30"
-                        initial={{ left: 0, width: 0 }}
-                        animate={{ left: `${current}%`, width: `${Math.max(0, potentialVal - current)}%` }}
-                        transition={{ delay: 0.5 + i * 0.05, duration: 0.2 }}
-                      />
-                    </div>
-                    <span className="text-[9px] text-[#8b949e] w-6 text-right font-mono">{current}</span>
-                    <span className="text-[9px] text-emerald-400/60">→</span>
-                    <span className="text-[9px] text-emerald-400 w-6 text-right font-mono font-bold">{potentialVal}</span>
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Dumbbell className="h-3.5 w-3.5" /> Player Stats
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            {/* Physical */}
+            <div>
+              <span className="text-[10px] text-[#484f58] font-semibold uppercase tracking-wider">Physical</span>
+              <div className="grid grid-cols-3 gap-2 mt-1.5">
+                {[
+                  { label: 'Pace', value: player.attributes.pace, Icon: Footprints },
+                  { label: 'Fitness', value: player.fitness, Icon: Heart },
+                  { label: 'Strength', value: player.attributes.physical, Icon: Dumbbell },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                    <stat.Icon className="h-3.5 w-3.5 mx-auto mb-1" style={{ color: getStatColor(stat.value) }} />
+                    <p className="text-sm font-bold" style={{ color: getStatColor(stat.value) }}>{stat.value}</p>
+                    <p className="text-[9px] text-[#8b949e]">{stat.label}</p>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-            <p className="text-[8px] text-[#484f58] mt-2 text-center">Estimated potential based on position & growth room</p>
+
+            {/* Technical */}
+            <div>
+              <span className="text-[10px] text-[#484f58] font-semibold uppercase tracking-wider">Technical</span>
+              <div className="grid grid-cols-3 gap-2 mt-1.5">
+                {[
+                  { label: 'Shooting', value: player.attributes.shooting, Icon: Crosshair },
+                  { label: 'Passing', value: player.attributes.passing, Icon: Target },
+                  { label: 'Dribbling', value: player.attributes.dribbling, Icon: Zap },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                    <stat.Icon className="h-3.5 w-3.5 mx-auto mb-1" style={{ color: getStatColor(stat.value) }} />
+                    <p className="text-sm font-bold" style={{ color: getStatColor(stat.value) }}>{stat.value}</p>
+                    <p className="text-[9px] text-[#8b949e]">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mental */}
+            <div>
+              <span className="text-[10px] text-[#484f58] font-semibold uppercase tracking-wider">Mental</span>
+              <div className="grid grid-cols-3 gap-2 mt-1.5">
+                {[
+                  { label: 'Vision', value: Math.round(player.attributes.passing * 0.6 + player.attributes.dribbling * 0.3 + player.overall * 0.1), Icon: Eye },
+                  { label: 'Composure', value: Math.round(player.morale * 0.7 + Math.max(0, (100 - Math.abs(player.form - 7) * 10)) * 0.3), Icon: HeartPulse },
+                  { label: 'Work Rate', value: Math.min(99, Math.round(player.form * 8 + player.morale * 0.15)), Icon: Timer },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                    <stat.Icon className="h-3.5 w-3.5 mx-auto mb-1" style={{ color: getStatColor(stat.value) }} />
+                    <p className="text-sm font-bold" style={{ color: getStatColor(stat.value) }}>{stat.value}</p>
+                    <p className="text-[9px] text-[#8b949e]">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
-        {ATTR_KEYS.map((attr, i) => {
-          const val = player.attributes[attr];
-          const cat = getAttributeCategory(val);
-          const meta = ATTR_META[attr];
-          const isExpanded = expandedAttr === attr;
 
-          // Simulated growth this season
-          const seasonGrowth = seasons.length > 0
-            ? Math.round(((player.potential - player.overall) * 0.05 + Math.random() * 0.5) * 10) / 10
-            : 0;
+        {/* ===== CAREER STATS ===== */}
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Trophy className="h-3.5 w-3.5" /> Career Stats
+              {careerTrend === 'improving' && <TrendingUp className="h-3 w-3 text-emerald-400" />}
+              {careerTrend === 'declining' && <TrendingDown className="h-3 w-3 text-red-400" />}
+              {careerTrend === 'stable' && <Minus className="h-3 w-3 text-amber-400" />}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-[#c9d1d9]">{player.careerStats.totalAppearances}</p>
+                <p className="text-[9px] text-[#8b949e]">Appearances</p>
+              </div>
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-emerald-400">{player.careerStats.totalGoals}</p>
+                <p className="text-[9px] text-[#8b949e]">Goals</p>
+              </div>
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-blue-400">{player.careerStats.totalAssists}</p>
+                <p className="text-[9px] text-[#8b949e]">Assists</p>
+              </div>
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-lg font-bold text-cyan-400">{player.careerStats.totalCleanSheets}</p>
+                <p className="text-[9px] text-[#8b949e]">Clean Sheets</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-[#0d1117] rounded-lg p-2 text-center border border-[#30363d]">
+                <p className="text-sm font-bold text-amber-400">
+                  {player.careerStats.totalAppearances > 0
+                    ? (player.careerStats.totalGoals / player.careerStats.totalAppearances).toFixed(2)
+                    : '—'}
+                </p>
+                <p className="text-[9px] text-[#8b949e]">Goals/Game</p>
+              </div>
+              <div className="bg-[#0d1117] rounded-lg p-2 text-center border border-[#30363d]">
+                <p className="text-sm font-bold text-[#c9d1d9]">
+                  {careerAvgRating > 0 ? careerAvgRating.toFixed(1) : '—'}
+                </p>
+                <p className="text-[9px] text-[#8b949e]">Avg Rating</p>
+              </div>
+              <div className="bg-[#0d1117] rounded-lg p-2 text-center border border-[#30363d]">
+                <div className="flex items-center justify-center gap-1">
+                  {careerTrend === 'improving' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
+                  {careerTrend === 'declining' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
+                  {careerTrend === 'stable' && <Minus className="h-3.5 w-3.5 text-amber-400" />}
+                </div>
+                <p className="text-[9px] text-[#8b949e]">
+                  {careerTrend === 'improving' ? 'Rising' : careerTrend === 'declining' ? 'Falling' : 'Stable'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          // Position average comparison
-          const posAvg = getPositionAverages(player.position)[attr];
-          const diffFromAvg = val - posAvg;
-          const percentileLabel = diffFromAvg >= 15 ? 'Top 5%' : diffFromAvg >= 8 ? 'Top 15%' : diffFromAvg >= 3 ? 'Above Avg' : diffFromAvg >= -3 ? 'Average' : diffFromAvg >= -8 ? 'Below Avg' : 'Bottom 15%';
-
-          // Training focus recommendation
-          const weights: Record<string, Record<CoreAttribute, number>> = {
-            attack: { pace: 0.2, shooting: 0.35, passing: 0.1, dribbling: 0.2, defending: 0.02, physical: 0.13 },
-            midfield: { pace: 0.1, shooting: 0.12, passing: 0.3, dribbling: 0.2, defending: 0.13, physical: 0.15 },
-            defence: { pace: 0.12, shooting: 0.02, passing: 0.1, dribbling: 0.05, defending: 0.4, physical: 0.31 },
-            goalkeeping: { pace: 0.05, shooting: 0.0, passing: 0.1, dribbling: 0.0, defending: 0.15, physical: 0.2 },
-          };
-          const catKey = getPositionCategory(player.position);
-          const weight = weights[catKey]?.[attr] ?? 0.1;
-          const isLowForPosition = weight > 0.15 && val < 65;
-
-          return (
-            <motion.div
-              key={attr}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 + i * 0.06, duration: 0.2 }}
-            >
-              <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
-                {/* Header Row */}
-                <button
-                  onClick={() => setExpandedAttr(isExpanded ? null : attr)}
-                  className="w-full text-left"
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="shrink-0" style={{ color: cat.color }}>{meta.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-[#c9d1d9]">{meta.label}</span>
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              className="text-[9px] font-bold border-0"
-                              style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
-                            >
-                              {cat.label}
-                            </Badge>
-                            <span className="text-lg font-black" style={{ color: cat.color }}>{val}</span>
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4 text-[#8b949e]" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-[#8b949e]" />
-                            )}
-                          </div>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="mt-1.5 h-2 bg-[#21262d] rounded-full overflow-hidden">
-                          <motion.div
-                            className="h-full rounded-full"
-                            style={{
-                              backgroundColor: cat.color,
-                            }}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${val}%` }}
-                            transition={{ delay: 0.4 + i * 0.06, duration: 0.2, ease: 'easeOut' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </button>
-
-                {/* Expanded Details */}
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
+        {/* ===== PLAYER TRAITS ===== */}
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5" /> Player Traits
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            {player.traits.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {player.traits.map((traitId) => {
+                  const trait = PLAYER_TRAITS.find(t => t.id === traitId);
+                  if (!trait) return null;
+                  const typeColor = trait.type === 'positive' ? '#22c55e' : trait.type === 'negative' ? '#ef4444' : '#94a3b8';
+                  return (
+                    <div
+                      key={traitId}
+                      className="flex items-center gap-1.5 bg-[#21262d] rounded-lg px-2.5 py-1.5 border border-[#30363d]"
                     >
-                      <div className="px-4 pb-3 pt-0 border-t border-[#30363d]">
-                        <div className="grid grid-cols-3 gap-3 mt-3">
-                          {/* Growth this season */}
-                          <div className="bg-[#21262d] rounded-lg p-2 text-center">
-                            {seasonGrowth > 0 ? (
-                              <TrendingUp className="h-3.5 w-3.5 text-emerald-400 mx-auto mb-1" />
-                            ) : (
-                              <Minus className="h-3.5 w-3.5 text-[#8b949e] mx-auto mb-1" />
-                            )}
-                            <p className={`text-sm font-bold ${seasonGrowth > 0 ? 'text-emerald-400' : 'text-[#8b949e]'}`}>
-                              {seasonGrowth > 0 ? `+${seasonGrowth}` : '—'}
-                            </p>
-                            <p className="text-[9px] text-[#8b949e]">This Season</p>
-                          </div>
-
-                          {/* Position comparison */}
-                          <div className="bg-[#21262d] rounded-lg p-2 text-center">
-                            <Target className="h-3.5 w-3.5 text-blue-400 mx-auto mb-1" />
-                            <p className="text-sm font-bold text-blue-400">{percentileLabel}</p>
-                            <p className="text-[9px] text-[#8b949e]">For {player.position}</p>
-                          </div>
-
-                          {/* Training recommendation */}
-                          <div className="bg-[#21262d] rounded-lg p-2 text-center">
-                            {isLowForPosition ? (
-                              <>
-                                <Dumbbell className="h-3.5 w-3.5 text-amber-400 mx-auto mb-1" />
-                                <p className="text-[10px] font-bold text-amber-400">Focus</p>
-                                <p className="text-[9px] text-[#8b949e]">Recommended</p>
-                              </>
-                            ) : (
-                              <>
-                                <Star className="h-3.5 w-3.5 text-[#8b949e] mx-auto mb-1" />
-                                <p className="text-[10px] font-bold text-[#8b949e]">On Track</p>
-                                <p className="text-[9px] text-[#8b949e]">No focus needed</p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Card>
-            </motion.div>
-          );
-        })}
+                      <span className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ backgroundColor: typeColor }} />
+                      <span className="text-xs font-semibold text-[#c9d1d9]">{trait.name}</span>
+                      <span className="text-[10px] text-[#8b949e]">— {trait.description}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-3">
+                <Sparkles className="h-5 w-5 text-[#30363d] mx-auto mb-1" />
+                <p className="text-xs text-[#484f58]">No traits yet — develop through training</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* ===== 4. SEASON PERFORMANCE SUMMARY ===== */}
@@ -938,7 +1010,70 @@ export default function PlayerProfile() {
         </Card>
       </motion.div>
 
-      {/* ===== 6. MARKET VALUE HISTORY ===== */}
+      {/* ===== 6. CONTRACT & FINANCIAL INFO ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.55 }}
+      >
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <FileText className="h-3.5 w-3.5" /> Contract & Finance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-sm font-bold text-emerald-400">
+                  {formatCurrency(player.contract.weeklyWage, 'K')}
+                </p>
+                <p className="text-[9px] text-[#8b949e]">Weekly Wage</p>
+              </div>
+              <div className="bg-[#21262d] rounded-lg p-2.5 text-center">
+                <p className="text-sm font-bold text-[#c9d1d9]">
+                  {formatCurrency(player.marketValue, 'M')}
+                </p>
+                <p className="text-[9px] text-[#8b949e]">Market Value</p>
+              </div>
+            </div>
+
+            {/* Contract Timeline */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] text-[#8b949e]">Contract: {player.contract.yearsRemaining} year{player.contract.yearsRemaining !== 1 ? 's' : ''} remaining</span>
+                {player.contract.yearsRemaining <= 1 && (
+                  <Badge className="text-[9px] font-bold border-0 bg-red-500/20 text-red-400">
+                    Expiring Soon
+                  </Badge>
+                )}
+              </div>
+              <div className="relative h-3 bg-[#21262d] rounded-sm overflow-hidden">
+                <motion.div
+                  className="h-full rounded-sm bg-blue-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, (player.contract.yearsRemaining / 5) * 100)}%` }}
+                  transition={{ delay: 0.6, duration: 0.2 }}
+                />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[9px] text-[#484f58]">Now</span>
+                <span className="text-[9px] text-[#484f58]">+5 years</span>
+              </div>
+            </div>
+
+            {/* Release clause */}
+            {player.contract.releaseClause && player.contract.releaseClause > 0 && (
+              <div className="mt-3 pt-3 border-t border-[#30363d] flex items-center justify-between">
+                <span className="text-[10px] text-[#8b949e]">Release Clause</span>
+                <span className="text-xs font-bold text-amber-400">{formatCurrency(player.contract.releaseClause, 'M')}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== 7. MARKET VALUE HISTORY ===== */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

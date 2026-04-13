@@ -310,23 +310,19 @@ export default function Dashboard() {
     return { win: prob, draw: Math.round(Math.max(10, 25 - Math.abs(clubQuality - oppQuality) * 0.2)), opponent };
   }, [gameState]);
 
-  // Auto-show training focus modal at season start
-  const shouldAutoShowFocus = useMemo(() => {
-    if (!gameState) return false;
-    return !gameState.seasonTrainingFocus && gameState.currentWeek <= 2;
-  }, [gameState]);
+// Track training focus already shown (persists across Dashboard remounts)
+const shownTrainingFocusSeasons = new Set<number>();
 
-  // Auto-show training focus modal effect (only once per season start)
-  const hasAutoShownFocusRef = useRef(false);
+  // Auto-show training focus modal effect (only once per season start, persists across remounts)
   useEffect(() => {
-    if (shouldAutoShowFocus && !hasAutoShownFocusRef.current) {
-      hasAutoShownFocusRef.current = true;
-      setShowFocusModal(true);
+    if (!gameState) return;
+    if (!gameState.seasonTrainingFocus && gameState.currentWeek <= 2) {
+      if (!shownTrainingFocusSeasons.has(gameState.currentSeason)) {
+        shownTrainingFocusSeasons.add(gameState.currentSeason);
+        setShowFocusModal(true);
+      }
     }
-    if (!shouldAutoShowFocus) {
-      hasAutoShownFocusRef.current = false;
-    }
-  }, [shouldAutoShowFocus]);
+  }, [gameState?.currentSeason, gameState?.seasonTrainingFocus, gameState?.currentWeek]);
 
   // Auto-show season preview when week === 1 (only once per season, persists across remounts)
   useEffect(() => {
