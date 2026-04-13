@@ -618,7 +618,11 @@ export type GameScreen =
   | 'press_conference'
   | 'achievements_system'
   | 'team_selection'
-  | 'career_journal';
+  | 'career_journal'
+  | 'season_awards'
+  | 'rival_system'
+  | 'tactical_substitutions'
+  | 'potential_journey';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

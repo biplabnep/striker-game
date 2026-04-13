@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/game/gameUtils';
 import {
   X, Trophy, Swords, Dumbbell, Bell, TrendingUp, TrendingDown,
   Minus, Zap, ArrowUp, ArrowDown, BarChart3, Activity, Heart,
-  Target, Star, Medal
+  Target, Star, Medal, Calendar, Wallet, Coins, Lightbulb, ArrowRight, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,66 @@ function getOrdinalSuffix(pos: number): string {
 // Helper: format league position with ordinal
 function formatPosition(pos: number): string {
   return `${pos}${getOrdinalSuffix(pos)}`;
+}
+
+// Performance Ring SVG Component
+function PerformanceRing({ score, size = 120, strokeWidth = 8 }: { score: number; size?: number; strokeWidth?: number }) {
+  const radius = (size - strokeWidth) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const bgPath = `M ${cx} ${cy - radius} A ${radius} ${radius} 0 1 1 ${cx} ${cy + radius} A ${radius} ${radius} 0 1 1 ${cx} ${cy - radius}`;
+
+  const pct = Math.min(100, Math.max(0, score)) / 100;
+  const angle = pct * 360;
+  const endRad = ((angle - 90) * Math.PI) / 180;
+  const endX = cx + radius * Math.cos(endRad);
+  const endY = cy + radius * Math.sin(endRad);
+  const largeArc = angle > 180 ? 1 : 0;
+  const fgPath = angle > 0
+    ? `M ${cx} ${cy - radius} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`
+    : '';
+
+  const color = score >= 75 ? '#34d399' : score >= 50 ? '#fbbf24' : score >= 25 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+        <path d={bgPath} fill="none" stroke="#21262d" strokeWidth={strokeWidth} />
+        {fgPath && (
+          <motion.path
+            d={fgPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+          />
+        )}
+        <text
+          x={cx} y={cy - 4}
+          textAnchor="middle" dominantBaseline="central"
+          className="fill-white" fontSize="22" fontWeight="bold"
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+        >
+          {score}
+        </text>
+        <text
+          x={cx} y={cy + 14}
+          textAnchor="middle" dominantBaseline="central"
+          className="fill-[#8b949e]" fontSize="9"
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+        >
+          WEEK SCORE
+        </text>
+      </svg>
+      <span className="text-[10px] font-semibold" style={{ color }}>
+        {score >= 75 ? 'Excellent Week' : score >= 50 ? 'Good Week' : score >= 25 ? 'Average Week' : 'Tough Week'}
+      </span>
+    </div>
+  );
 }
 
 export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
@@ -153,6 +213,69 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
     // Form icon based on current form
     const formIcon = player.form >= 7 ? 'trending-up' : player.form >= 5 ? 'minus' : 'trending-down';
 
+    // Performance Score (0-100)
+    const performanceScore = latestMatch
+      ? Math.round(Math.min(100,
+          (latestMatch.playerRating / 10) * 40 +
+          (player.form / 10) * 30 +
+          (player.fitness / 100) * 15 +
+          Math.min(15, (latestMatch.playerGoals * 3 + latestMatch.playerAssists * 2))
+        ))
+      : Math.round(Math.min(100, (player.form / 10) * 40 + (player.fitness / 100) * 30 + 20));
+
+    // Attribute changes from training
+    const attributeChanges: { attribute: string; change: number }[] = [];
+    if (lastTraining && lastTraining.focusAttribute) {
+      const baseGain = 0.5 + (lastTraining.intensity / 100) * 1.0;
+      attributeChanges.push({ attribute: lastTraining.focusAttribute, change: +baseGain.toFixed(1) });
+    }
+    if (latestMatch && latestMatch.playerMinutesPlayed > 60 && latestMatch.playerRating >= 7.5) {
+      const matchGain = +((latestMatch.playerRating - 7.0) * 0.5).toFixed(1);
+      if (matchGain > 0) {
+        attributeChanges.push({ attribute: 'Composure', change: matchGain });
+      }
+    }
+
+    // Financial summary
+    const weeklyWage = ((player.contract as any)?.weeklyWage ?? 15000) / 1000;
+    const matchBonus = latestMatch
+      ? ((playerWon ? 5000 : playerDrew ? 2000 : 0) + (latestMatch.playerGoals * 2500) + (latestMatch.playerAssists * 1500)) / 1000
+      : 0;
+    const weeklyExpenses = 1.8;
+
+    // Week highlights
+    const weekHighlights: { icon: string; label: string; value: string; colorClass: string }[] = [];
+    if (latestMatch) {
+      weekHighlights.push({
+        icon: playerWon ? '\u{1F3C6}' : playerDrew ? '\u{1F91D}' : '\u{1F624}',
+        label: 'Match Result',
+        value: `${resultLabel} ${latestMatch.homeScore}-${latestMatch.awayScore}`,
+        colorClass: playerWon ? 'border-emerald-500/20 bg-emerald-500/5' : playerDrew ? 'border-amber-500/20 bg-amber-500/5' : 'border-red-500/20 bg-red-500/5',
+      });
+    }
+    if (lastTraining) {
+      weekHighlights.push({
+        icon: trainingTypeIcons[lastTraining.type] || '\u{1F3CB}',
+        label: 'Training',
+        value: `${trainingTypeLabels[lastTraining.type] || lastTraining.type} (${intensityLabel})`,
+        colorClass: 'border-sky-500/20 bg-sky-500/5',
+      });
+    }
+    if (attributeChanges.length > 0) {
+      weekHighlights.push({
+        icon: '\u{1F4C8}',
+        label: 'Attributes',
+        value: `+${attributeChanges.length} improvement${attributeChanges.length > 1 ? 's' : ''}`,
+        colorClass: 'border-emerald-500/20 bg-emerald-500/5',
+      });
+    }
+    weekHighlights.push({
+      icon: '\u{1F4B0}',
+      label: 'Income',
+      value: formatCurrency(weeklyWage + matchBonus, 'K'),
+      colorClass: 'border-sky-500/20 bg-sky-500/5',
+    });
+
     return {
       player, currentClub, latestMatch, previousMatch,
       playerWon, playerDrew, playerLost,
@@ -166,6 +289,7 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
       weekNotifications, formIcon,
       currentWeek, currentSeason,
       recentResults,
+      performanceScore, attributeChanges, weeklyWage, matchBonus, weeklyExpenses, weekHighlights,
     };
   }, [gameState, notifications]);
 
@@ -181,6 +305,7 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
     intensityLabel, intensityColor,
     formIcon,
     currentWeek, currentSeason,
+    performanceScore, attributeChanges, weeklyWage, matchBonus, weeklyExpenses, weekHighlights,
   } = computed;
 
   // Trend indicator component
@@ -244,14 +369,19 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="relative px-5 py-4 border-b border-[#30363d] bg-[#161b22]">
-            <div className="absolute inset-0 opacity-5 bg-emerald-600/20" />
-            <div className="flex items-center justify-between relative">
-              <div>
-                <h2 className="text-lg font-bold text-white">Weekly Summary</h2>
-                <p className="text-xs text-[#8b949e]">
-                  Season {currentSeason} &bull; Week {currentWeek - 1} &rarr; {currentWeek}
-                </p>
+          <div className="px-5 py-4 border-b border-[#30363d] bg-[#161b22]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-emerald-400" />
+                  <div className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/25 rounded-md">
+                    <span className="text-xs font-bold text-emerald-400">WK {currentWeek}</span>
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Weekly Report</h2>
+                  <p className="text-xs text-[#8b949e]">Season {currentSeason}</p>
+                </div>
               </div>
               <button
                 onClick={onClose}
@@ -264,6 +394,34 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
 
           {/* Content */}
           <div className="overflow-y-auto max-h-[calc(85vh-120px)] p-5 space-y-4">
+
+            {/* ── Performance Score + Week Highlights ── */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.05 }}
+              className="flex gap-4 items-start"
+            >
+              <PerformanceRing score={performanceScore} size={110} strokeWidth={7} />
+              <div className="flex-1 space-y-1.5 min-w-0">
+                <div className="flex items-center gap-1.5 text-xs text-[#8b949e] font-semibold">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  <span>Week Highlights</span>
+                </div>
+                {weekHighlights.map((h, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border ${h.colorClass}`}
+                  >
+                    <span className="text-sm shrink-0">{h.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] text-[#8b949e] block">{h.label}</span>
+                      <span className="text-xs font-medium text-[#c9d1d9] truncate block">{h.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
 
             {/* ── Match Result Card ── */}
             {latestMatch ? (
@@ -544,6 +702,77 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
               )}
             </motion.div>
 
+            {/* ── Attribute Changes This Week ── */}
+            {attributeChanges.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.22 }}
+                className="space-y-2"
+              >
+                <div className="flex items-center gap-2 text-xs text-[#8b949e] font-semibold">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  <span>Attribute Changes</span>
+                </div>
+                <div className="space-y-1.5">
+                  {attributeChanges.map((ac, i) => (
+                    <div key={i} className="flex items-center justify-between bg-[#21262d] rounded-lg px-3 py-2.5 border border-emerald-500/10">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                        <span className="text-sm text-[#c9d1d9]">{ac.attribute}</span>
+                      </div>
+                      <span className="text-sm font-bold text-emerald-400">+{ac.change}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── Financial Summary ── */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.27 }}
+              className="space-y-2"
+            >
+              <div className="flex items-center gap-2 text-xs text-[#8b949e] font-semibold">
+                <Wallet className="h-3.5 w-3.5" />
+                <span>Financial Summary</span>
+              </div>
+              <div className="bg-[#21262d] rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-3.5 w-3.5 text-sky-400" />
+                    <span className="text-xs text-[#8b949e]">Weekly Wage</span>
+                  </div>
+                  <span className="text-sm font-bold text-sky-400">{formatCurrency(weeklyWage, 'K')}</span>
+                </div>
+                <div className="h-px bg-[#30363d]" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-xs text-[#8b949e]">Match Bonus</span>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-400">{formatCurrency(matchBonus, 'K')}</span>
+                </div>
+                <div className="h-px bg-[#30363d]" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ArrowDown className="h-3.5 w-3.5 text-red-400" />
+                    <span className="text-xs text-[#8b949e]">Expenses</span>
+                  </div>
+                  <span className="text-sm font-bold text-red-400">-{formatCurrency(weeklyExpenses, 'K')}</span>
+                </div>
+                <div className="h-px bg-[#30363d]" />
+                <div className="flex items-center justify-between pt-0.5">
+                  <span className="text-xs font-semibold text-[#c9d1d9]">Net Income</span>
+                  <span className={`text-sm font-bold ${weeklyWage + matchBonus - weeklyExpenses >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {formatCurrency(weeklyWage + matchBonus - weeklyExpenses, 'K')}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+
             {/* ── Active Events ── */}
             {gameState.activeEvents.length > 0 && (
               <motion.div
@@ -587,6 +816,45 @@ export default function WeeklySummary({ onClose }: WeeklySummaryProps) {
               <span className="text-sm font-bold text-emerald-400">
                 {formatCurrency(player.marketValue, 'M')}
               </span>
+            </motion.div>
+
+            {/* ── Next Week Preview ── */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.32 }}
+              className="space-y-2"
+            >
+              <div className="flex items-center gap-2 text-xs text-[#8b949e] font-semibold">
+                <ArrowRight className="h-3.5 w-3.5" />
+                <span>Next Week Preview</span>
+              </div>
+              <div className="bg-[#21262d] rounded-lg p-3 space-y-2.5">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Swords className="h-3.5 w-3.5 text-sky-400" />
+                    <span className="text-xs text-[#8b949e]">Upcoming Match</span>
+                  </div>
+                  <p className="text-sm text-[#c9d1d9] font-medium pl-5">
+                    {currentClub.shortName || currentClub.name} vs TBD — Week {currentWeek + 1}
+                  </p>
+                </div>
+                <div className="h-px bg-[#30363d]" />
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Dumbbell className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-xs text-[#8b949e]">Training Recommendation</span>
+                  </div>
+                  <p className="text-sm text-[#c9d1d9] pl-5">
+                    {player.fitness < 50
+                      ? 'Focus on recovery sessions to rebuild fitness'
+                      : player.form < 6
+                        ? 'Technical drills recommended to improve form'
+                        : 'High-intensity tactical training available'
+                    }
+                  </p>
+                </div>
+              </div>
             </motion.div>
 
             {/* ── Quick Action Buttons ── */}

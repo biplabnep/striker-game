@@ -28,66 +28,80 @@ const trainingTypes: {
   focusAttrs: (keyof PlayerAttributes)[];
   expectedGainRange: [number, number];
   shortLabel: string;
+  intensityLevel: 1 | 2 | 3; // 1=low, 2=medium, 3=high difficulty
+  fatigueImpact: number; // fatigue cost at medium intensity
 }[] = [
   {
     type: 'attacking',
     icon: <Sword className="h-4 w-4" />,
     label: 'Attacking',
-    description: 'Shooting & dribbling',
+    description: 'Shooting & dribbling drills',
     color: '#ef4444',
     focusAttrs: ['shooting', 'dribbling'],
     expectedGainRange: [1, 3],
     shortLabel: 'SHO +2, DRI +1',
+    intensityLevel: 3,
+    fatigueImpact: 15,
   },
   {
     type: 'defensive',
     icon: <Shield className="h-4 w-4" />,
     label: 'Defensive',
-    description: 'Defending & positioning',
+    description: 'Tackling & positioning',
     color: '#3b82f6',
     focusAttrs: ['defending'],
     expectedGainRange: [1, 3],
     shortLabel: 'DEF +2',
+    intensityLevel: 2,
+    fatigueImpact: 12,
   },
   {
     type: 'physical',
     icon: <Zap className="h-4 w-4" />,
     label: 'Physical',
-    description: 'Pace & strength',
+    description: 'Sprint & conditioning',
     color: '#f59e0b',
     focusAttrs: ['pace', 'physical'],
     expectedGainRange: [1, 3],
     shortLabel: 'PAC +1, PHY +2',
+    intensityLevel: 3,
+    fatigueImpact: 18,
   },
   {
     type: 'technical',
     icon: <Dumbbell className="h-4 w-4" />,
     label: 'Technical',
-    description: 'Passing & ball control',
+    description: 'Passing & first touch',
     color: '#10b981',
     focusAttrs: ['passing', 'dribbling'],
     expectedGainRange: [1, 3],
     shortLabel: 'PAS +2, DRI +1',
+    intensityLevel: 2,
+    fatigueImpact: 10,
   },
   {
     type: 'tactical',
     icon: <Brain className="h-4 w-4" />,
     label: 'Tactical',
-    description: 'Game awareness',
+    description: 'Match analysis & positioning',
     color: '#8b5cf6',
     focusAttrs: ['passing', 'defending'],
     expectedGainRange: [1, 2],
     shortLabel: 'PAS +1, DEF +1',
+    intensityLevel: 1,
+    fatigueImpact: 6,
   },
   {
     type: 'recovery',
     icon: <Heart className="h-4 w-4" />,
     label: 'Recovery',
-    description: 'Rest & recuperation',
+    description: 'Rest & regeneration',
     color: '#ec4899',
     focusAttrs: [],
     expectedGainRange: [0, 0],
     shortLabel: 'Rest',
+    intensityLevel: 1,
+    fatigueImpact: -10,
   },
 ];
 
@@ -132,6 +146,58 @@ const attrIcons: Record<CoreAttribute, React.ReactNode> = {
   defending: <Shield className="h-3 w-3" />,
   physical: <Flame className="h-3 w-3" />,
 };
+
+// ============================================================
+// Radar chart helper
+// ============================================================
+const coreAttrKeys: CoreAttribute[] = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
+
+function getIntensityBarColor(level: 1 | 2 | 3): string {
+  switch (level) {
+    case 1: return '#10b981';
+    case 2: return '#f59e0b';
+    case 3: return '#ef4444';
+  }
+}
+
+function getIntensityBarLabel(level: 1 | 2 | 3): string {
+  switch (level) {
+    case 1: return 'Easy';
+    case 2: return 'Medium';
+    case 3: return 'Hard';
+  }
+}
+
+function buildRadarPoints(attrs: PlayerAttributes | Record<string, number>, cx: number, cy: number, r: number): string {
+  const n = coreAttrKeys.length;
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2; // Start from top
+  return coreAttrKeys
+    .map((key, i) => {
+      const angle = startAngle + i * angleStep;
+      const val = (attrs[key] ?? 0) / 100;
+      const x = cx + r * val * Math.cos(angle);
+      const y = cy + r * val * Math.sin(angle);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+function buildRadarLabels(cx: number, cy: number, r: number): { x: number; y: number; label: string; key: CoreAttribute }[] {
+  const n = coreAttrKeys.length;
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
+  return coreAttrKeys.map((key, i) => {
+    const angle = startAngle + i * angleStep;
+    const labelR = r + 14;
+    return {
+      x: cx + labelR * Math.cos(angle),
+      y: cy + labelR * Math.sin(angle),
+      label: attrLabels[key],
+      key,
+    };
+  });
+}
 
 // ============================================================
 // Main Component
@@ -223,6 +289,40 @@ export default function TrainingPanel() {
     return deltas;
   }, [gameState]);
 
+  // Recommended training type based on season focus
+  const recommendedTrainingType = useMemo((): TrainingType | null => {
+    if (!gameState?.seasonTrainingFocus) return null;
+    return gameState.seasonTrainingFocus.area;
+  }, [gameState]);
+
+  // Compute simulated gains for history sessions
+  const historyGains = useMemo(() => {
+    if (!gameState) return new Map<number, { total: number; attrs: string[]; quality: 'good' | 'average' | 'none' }>();
+    const map = new Map<number, { total: number; attrs: string[]; quality: 'good' | 'average' | 'none' }>();
+    for (const session of gameState.trainingHistory) {
+      const conf = trainingTypes.find(t => t.type === session.type);
+      if (!conf) continue;
+      const intConf = intensities.find(i => i.value === session.intensity) ?? intensities[0];
+      let total = 0;
+      const attrs: string[] = [];
+      for (const attr of conf.focusAttrs) {
+        const [minB, maxB] = conf.expectedGainRange;
+        const isFocused = session.focusAttribute === attr;
+        const boost = isFocused ? 1.5 : 1.0;
+        const maxGain = Math.round(maxB * intConf.gainMultiplier * boost);
+        if (maxGain > 0) {
+          total += maxGain;
+          attrs.push(attrLabels[attr as CoreAttribute]);
+        }
+      }
+      let quality: 'good' | 'average' | 'none' = 'none';
+      if (total >= 4) quality = 'good';
+      else if (total >= 2) quality = 'average';
+      map.set(session.completedAt, { total, attrs, quality });
+    }
+    return map;
+  }, [gameState]);
+
   // Auto-schedule training when type, intensity, or focus attribute changes
   useEffect(() => {
     if (!selectedType || !gameState) return;
@@ -286,15 +386,24 @@ export default function TrainingPanel() {
   return (
     <div className="p-4 max-w-lg mx-auto space-y-3">
 
-      {/* Season Training Focus Banner */}
+      {/* Season Training Focus Banner — with colored type icon */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-3">
           {gameState.seasonTrainingFocus ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-emerald-400 shrink-0" />
+                {/* Colored type icon matching focus area */}
+                <div
+                  className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor: `${trainingTypes.find(t => t.type === gameState.seasonTrainingFocus!.area)?.color ?? '#10b981'}18`,
+                    color: trainingTypes.find(t => t.type === gameState.seasonTrainingFocus!.area)?.color ?? '#10b981',
+                  }}
+                >
+                  {trainingTypes.find(t => t.type === gameState.seasonTrainingFocus!.area)?.icon ?? <Target className="h-3.5 w-3.5" />}
+                </div>
                 <span className="text-sm font-semibold text-[#c9d1d9]">
-                  {seasonFocusAreaLabel} Focus
+                  Season Focus: {seasonFocusAreaLabel}
                 </span>
                 <Badge className="h-5 px-1.5 text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border-emerald-500/30 rounded-md">
                   {gameState.seasonTrainingFocus.bonusMultiplier}x
@@ -331,7 +440,7 @@ export default function TrainingPanel() {
               </div>
               <div className="flex-1">
                 <p className="text-sm text-amber-300 font-medium">
-                  No training focus set
+                  No focus set — Select one below
                 </p>
                 <p className="text-xs text-[#8b949e]">
                   Set focus to get 1.5x–2.0x growth bonus
@@ -350,26 +459,72 @@ export default function TrainingPanel() {
         </CardContent>
       </Card>
 
+      {/* Section Divider */}
+      <div className="border-t border-[#21262d]" />
+
       {/* Header with session count & progress dots */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-emerald-400" />
           <h2 className="text-lg font-bold text-[#c9d1d9]">Training</h2>
         </div>
-        <div className="flex items-center gap-2.5">
-          <div className="flex gap-1">
-            {weeklyProgress.map((done, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-md ${done ? 'bg-emerald-400' : 'bg-[#30363d]'}`}
-              />
-            ))}
-          </div>
-          <Badge variant="outline" className="border-[#30363d] text-[#8b949e] text-[11px] h-5">
-            {trainingAvailable} left
-          </Badge>
-        </div>
+        {/* Quick Train button */}
+        {recommendedTrainingType && trainingAvailable > 0 && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => handleTypeSelect(recommendedTrainingType)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors"
+          >
+            <Zap className="h-3 w-3" />
+            Quick Train
+          </motion.button>
+        )}
       </div>
+
+      {/* Weekly Training Load — dots + fatigue level */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] text-[#8b949e] uppercase tracking-wide font-medium">Weekly Training Load</span>
+            <span className="text-[11px] font-semibold" style={{ color: player.fitness > 60 ? '#10b981' : player.fitness > 30 ? '#f59e0b' : '#ef4444' }}>
+              {3 - trainingAvailable}/3 Sessions
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Visual session dots */}
+            <div className="flex items-center gap-1.5">
+              {weeklyProgress.map((used, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: i * 0.06 }}
+                  className={`w-2.5 h-2.5 rounded-full border ${
+                    used
+                      ? 'bg-emerald-500 border-emerald-500'
+                      : 'bg-transparent border-[#30363d]'
+                  }`}
+                />
+              ))}
+            </div>
+            {/* Fitness level color indicator */}
+            <div className="flex items-center gap-1.5">
+              <div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: player.fitness > 60 ? '#10b981' : player.fitness > 30 ? '#f59e0b' : '#ef4444' }}
+              />
+              <span
+                className="text-[10px] font-medium"
+                style={{ color: player.fitness > 60 ? '#10b981' : player.fitness > 30 ? '#f59e0b' : '#ef4444' }}
+              >
+                Fitness {player.fitness}%
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Fatigue Warning */}
       <AnimatePresence>
@@ -446,11 +601,15 @@ export default function TrainingPanel() {
         </CardContent>
       </Card>
 
-      {/* Training Type Selection — single column list with horizontal card layout */}
+      {/* Section Divider */}
+      <div className="border-t border-[#21262d]" />
+
+      {/* Training Type Selection — enhanced cards with intensity indicators */}
       <div className="space-y-1.5">
         {trainingTypes.map((t, idx) => {
           const isSelected = selectedType === t.type;
           const isSeasonFocusType = gameState.seasonTrainingFocus?.area === t.type;
+          const isRecommended = recommendedTrainingType === t.type;
           return (
             <motion.div
               key={t.type}
@@ -458,10 +617,10 @@ export default function TrainingPanel() {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTypeSelect(t.type); } }}
-              className={`relative flex items-center w-full text-left rounded-md transition-all overflow-hidden cursor-pointer ${
+              className={`relative flex flex-col w-full text-left rounded-md overflow-hidden cursor-pointer transition-opacity ${
                 isSelected
                   ? 'bg-[#21262d]'
-                  : 'bg-[#161b22] hover:bg-[#1c2129]'
+                  : 'bg-[#161b22] hover:opacity-90'
               }`}
               style={{
                 borderLeft: isSelected ? `3px solid ${t.color}` : '3px solid transparent',
@@ -470,41 +629,86 @@ export default function TrainingPanel() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15, delay: idx * 0.03 }}
             >
-              <div className="flex items-center gap-3 p-2.5 flex-1 min-w-0">
-                {/* Icon */}
+              {/* 2px colored bar at top — colored by training type */}
+              <div
+                className="h-0.5 w-full"
+                style={{ backgroundColor: `${t.color}20` }}
+              >
                 <div
-                  className="p-1.5 rounded-md shrink-0"
+                  className="h-full"
                   style={{
-                    backgroundColor: `${t.color}15`,
+                    width: `${t.intensityLevel * 33.33}%`,
+                    backgroundColor: t.color,
+                    opacity: isSelected ? 1 : 0.6,
+                  }}
+                />
+              </div>
+
+              <div className="flex items-center gap-3 p-2.5 flex-1 min-w-0">
+                {/* Icon with colored circle */}
+                <div
+                  className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center"
+                  style={{
+                    backgroundColor: `${t.color}18`,
                     color: isSelected ? t.color : '#8b949e',
                   }}
                 >
                   {t.icon}
                 </div>
 
-                {/* Label + description */}
+                {/* Label + description + badges */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className={`text-sm font-medium ${isSelected ? 'text-[#c9d1d9]' : 'text-[#8b949e]'}`}>
                       {t.label}
                     </span>
-                    {/* Season focus dot indicator */}
-                    {isSeasonFocusType && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Season Focus" />
+                    {/* Recommended badge */}
+                    {isRecommended && t.focusAttrs.length > 0 && (
+                      <Badge className="h-4 px-1.5 text-[8px] font-bold bg-emerald-500/15 text-emerald-300 border-emerald-500/30 rounded-md">
+                        ★ REC
+                      </Badge>
+                    )}
+                    {/* Recovery badge */}
+                    {t.type === 'recovery' && (
+                      <Badge className="h-4 px-1.5 text-[8px] font-bold bg-pink-500/15 text-pink-300 border-pink-500/30 rounded-md">
+                        REST
+                      </Badge>
                     )}
                   </div>
                   <p className="text-[11px] text-[#484f58] truncate">{t.description}</p>
                 </div>
 
-                {/* Gain indicator on right */}
-                <div className="shrink-0 text-right">
+                {/* Stats on right — gain pills + fatigue */}
+                <div className="shrink-0 text-right space-y-1">
                   {t.focusAttrs.length > 0 ? (
-                    <span
-                      className="text-[11px] font-medium"
-                      style={{ color: isSelected ? t.color : '#484f58' }}
-                    >
-                      {t.shortLabel}
-                    </span>
+                    <>
+                      {/* Expected gains as pill badges */}
+                      <div className="flex flex-col items-end gap-0.5">
+                        {t.focusAttrs.map(attr => (
+                          <span
+                            key={attr}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-semibold border"
+                            style={{
+                              backgroundColor: isSelected ? `${t.color}12` : '#21262d',
+                              color: isSelected ? t.color : '#484f58',
+                              borderColor: isSelected ? `${t.color}25` : '#30363d',
+                            }}
+                          >
+                            +{t.expectedGainRange[0]}-{t.expectedGainRange[1]} {attrLabels[attr]}
+                          </span>
+                        ))}
+                      </div>
+                      {/* Fatigue cost pill */}
+                      <div className="flex items-center gap-0.5 justify-end">
+                        <Heart className="h-2.5 w-2.5" style={{ color: t.fatigueImpact > 0 ? '#f59e0b99' : '#10b98199' }} />
+                        <span
+                          className="text-[9px] font-medium"
+                          style={{ color: t.fatigueImpact > 0 ? '#f59e0b99' : '#10b98199' }}
+                        >
+                          Fatigue: {t.fatigueImpact > 0 ? `-${t.fatigueImpact}%` : `+${Math.abs(t.fatigueImpact)}%`}
+                        </span>
+                      </div>
+                    </>
                   ) : (
                     <span className="text-[11px] text-pink-400/60">Rest</span>
                   )}
@@ -513,7 +717,7 @@ export default function TrainingPanel() {
 
               {/* Focus attribute pills — merged into type card when selected */}
               {isSelected && t.focusAttrs.length > 0 && (
-                <div className="flex items-center gap-1 pr-2.5">
+                <div className="flex items-center gap-1 px-2.5 pb-2">
                   {t.focusAttrs.map(attr => {
                     const isSeasonFocus = seasonFocusAttrs.has(attr);
                     const isFocus = focusAttr === attr;
@@ -660,7 +864,14 @@ export default function TrainingPanel() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-emerald-300">Training Set</p>
-                    <span className="text-[10px] text-emerald-500/50">Applied on advance</span>
+                    <motion.span
+                      className="text-[10px] text-emerald-500/50"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      Applied on advance
+                    </motion.span>
                   </div>
 
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -720,6 +931,135 @@ export default function TrainingPanel() {
           </CardContent>
         </Card>
       )}
+
+      {/* Attribute Radar Chart */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-3.5 w-3.5 text-[#8b949e]" />
+              <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Attribute Radar</span>
+            </div>
+            {selectedTrainingConfig && selectedTrainingConfig.focusAttrs.length > 0 && (
+              <Badge className="h-4 px-1.5 text-[8px] font-medium border-0 rounded-md"
+                style={{
+                  backgroundColor: `${selectedTrainingConfig.color}15`,
+                  color: selectedTrainingConfig.color,
+                }}
+              >
+                {selectedTrainingConfig.label}
+              </Badge>
+            )}
+          </div>
+          <div className="flex justify-center">
+            <svg width="180" height="180" viewBox="0 0 180 180">
+              {/* Grid hexagons */}
+              {[25, 50, 75, 100].map(val => {
+                const fakeAttrs: Record<string, number> = {};
+                coreAttrKeys.forEach(k => { fakeAttrs[k] = val; });
+                return (
+                  <polygon
+                    key={val}
+                    points={buildRadarPoints(fakeAttrs, 90, 90, 70)}
+                    fill="none"
+                    stroke="#30363d"
+                    strokeWidth={val === 100 ? 1 : 0.5}
+                    opacity={val === 100 ? 0.8 : 0.4}
+                  />
+                );
+              })}
+              {/* Axis lines */}
+              {coreAttrKeys.map((_, i) => {
+                const angle = -Math.PI / 2 + i * (2 * Math.PI / 6);
+                return (
+                  <line
+                    key={i}
+                    x1={90} y1={90}
+                    x2={90 + 70 * Math.cos(angle)}
+                    y2={90 + 70 * Math.sin(angle)}
+                    stroke="#30363d"
+                    strokeWidth={0.5}
+                    opacity={0.4}
+                  />
+                );
+              })}
+              {/* Potential gain area (shown when training selected) */}
+              {selectedTrainingConfig && selectedTrainingConfig.focusAttrs.length > 0 && (() => {
+                const potentialAttrs: Record<string, number> = {};
+                coreAttrKeys.forEach(k => {
+                  const isTrained = selectedTrainingConfig.focusAttrs.includes(k);
+                  potentialAttrs[k] = isTrained
+                    ? Math.min(100, (player.attributes[k] ?? 0) + (expectedGains?.[k]?.max ?? 0))
+                    : (player.attributes[k] ?? 0);
+                });
+                return (
+                  <polygon
+                    points={buildRadarPoints(potentialAttrs, 90, 90, 70)}
+                    fill={`${selectedTrainingConfig.color}15`}
+                    stroke={selectedTrainingConfig.color}
+                    strokeWidth={1}
+                    opacity={0.5}
+                  />
+                );
+              })()}
+              {/* Current attribute polygon */}
+              <motion.polygon
+                points={buildRadarPoints(player.attributes, 90, 90, 70)}
+                fill="#10b98115"
+                stroke="#10b981"
+                strokeWidth={1.5}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6 }}
+              />
+              {/* Attribute dots on vertices */}
+              {coreAttrKeys.map((key, i) => {
+                const angle = -Math.PI / 2 + i * (2 * Math.PI / 6);
+                const val = (player.attributes[key] ?? 0) / 100;
+                const isTrained = selectedTrainingConfig?.focusAttrs.includes(key);
+                return (
+                  <circle
+                    key={key}
+                    cx={90 + 70 * val * Math.cos(angle)}
+                    cy={90 + 70 * val * Math.sin(angle)}
+                    r={isTrained ? 3.5 : 2.5}
+                    fill={isTrained ? (selectedTrainingConfig?.color ?? '#10b981') : '#10b981'}
+                    opacity={isTrained ? 1 : 0.7}
+                  />
+                );
+              })}
+              {/* Labels */}
+              {buildRadarLabels(90, 90, 70).map(l => (
+                <text
+                  key={l.key}
+                  x={l.x}
+                  y={l.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  className="text-[8px] font-bold"
+                  fill={selectedTrainingConfig?.focusAttrs.includes(l.key) ? (selectedTrainingConfig.color ?? '#8b949e') : '#8b949e'}
+                  opacity={selectedTrainingConfig?.focusAttrs.includes(l.key) ? 1 : 0.6}
+                >
+                  {l.label}
+                </text>
+              ))}
+              {/* Center attribute value for highlighted */}
+              {selectedTrainingConfig && selectedTrainingConfig.focusAttrs.length > 0 && (
+                <text
+                  x={90} y={90}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  className="text-[8px] font-bold"
+                  fill="#c9d1d9"
+                  opacity={0.5}
+                >
+                  {Math.round(coreAttrKeys.reduce((sum, k) => sum + (player.attributes[k] ?? 0), 0) / 6)}
+                </text>
+              )}
+            </svg>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Attribute Preview — shown when a type is selected */}
       <AnimatePresence mode="wait">
@@ -841,21 +1181,33 @@ export default function TrainingPanel() {
         )}
       </AnimatePresence>
 
-      {/* Training History */}
-      {recentTrainingHistory.length > 0 && (
-        <Card className="bg-[#161b22] border-[#30363d]">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2.5">
-              <History className="h-3.5 w-3.5 text-[#8b949e]" />
-              <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Recent</span>
-            </div>
-            <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
-              {recentTrainingHistory.map((session, idx) => {
+      {/* Section Divider */}
+      <div className="border-t border-[#21262d]" />
+
+      {/* Training History — last 3 sessions with gains */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-2.5">
+            <History className="h-3.5 w-3.5 text-[#8b949e]" />
+            <span className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Recent Training</span>
+            {recentTrainingHistory.length > 0 && (
+              <span className="text-[10px] text-[#484f58] ml-auto">Last {Math.min(recentTrainingHistory.length, 3)} sessions</span>
+            )}
+          </div>
+          {recentTrainingHistory.length > 0 ? (
+            <div className="space-y-1.5">
+              {recentTrainingHistory.slice(0, 3).map((session, idx) => {
                 const config = trainingTypes.find(t => t.type === session.type);
                 const intensityConf = intensities.find(i => i.value === session.intensity);
+                const gains = historyGains.get(session.completedAt);
                 const timeAgo = session.completedAt
                   ? getTimeAgo(session.completedAt)
                   : 'Unknown';
+                const qualityColor = gains?.quality === 'good'
+                  ? '#10b981'
+                  : gains?.quality === 'average'
+                  ? '#f59e0b'
+                  : '#484f58';
 
                 return (
                   <motion.div
@@ -865,15 +1217,28 @@ export default function TrainingPanel() {
                     transition={{ duration: 0.15, delay: idx * 0.04 }}
                     className="flex items-center gap-2.5 p-2 rounded-md bg-[#21262d] border border-[#30363d]"
                   >
-                    <div
-                      className="p-1 rounded-md shrink-0"
-                      style={{
-                        backgroundColor: config ? `${config.color}15` : '#21262d',
-                        color: config?.color ?? '#64748b',
-                      }}
-                    >
-                      {config?.icon ?? <Dumbbell className="h-3.5 w-3.5" />}
+                    {/* Type icon with checkmark for completion */}
+                    <div className="relative shrink-0">
+                      <div
+                        className="p-1 rounded-md"
+                        style={{
+                          backgroundColor: config ? `${config.color}15` : '#21262d',
+                          color: config?.color ?? '#64748b',
+                        }}
+                      >
+                        {config?.icon ?? <Dumbbell className="h-3.5 w-3.5" />}
+                      </div>
+                      {/* Completion checkmark overlay */}
+                      <motion.div
+                        className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 flex items-center justify-center"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2, delay: idx * 0.04 + 0.1 }}
+                      >
+                        <Check className="h-1.5 w-1.5 text-white" />
+                      </motion.div>
                     </div>
+                    {/* Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-medium text-[#c9d1d9]">
@@ -890,13 +1255,42 @@ export default function TrainingPanel() {
                         >
                           {intensityConf?.label ?? `${session.intensity}%`}
                         </Badge>
+                        {/* Quality indicator */}
+                        {gains && gains.quality !== 'none' && (
+                          <div
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: qualityColor }}
+                          />
+                        )}
                       </div>
-                      {session.focusAttribute && (
+                      {/* Attribute gains row */}
+                      {gains && gains.attrs.length > 0 ? (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {gains.attrs.map((attr, aIdx) => (
+                            <span
+                              key={aIdx}
+                              className="px-1 py-px rounded text-[8px] font-medium"
+                              style={{
+                                backgroundColor: config ? `${config.color}12` : '#21262d',
+                                color: qualityColor,
+                              }}
+                            >
+                              +{attr}
+                            </span>
+                          ))}
+                          {session.focusAttribute && (
+                            <span className="text-[8px] text-emerald-400/50">
+                              ★ {attrLabels[session.focusAttribute]}
+                            </span>
+                          )}
+                        </div>
+                      ) : session.focusAttribute ? (
                         <span className="text-[10px] text-emerald-400/60">
                           {attrFullLabels[session.focusAttribute]}
                         </span>
-                      )}
+                      ) : null}
                     </div>
+                    {/* Time ago */}
                     <span className="text-[10px] text-[#484f58] shrink-0">
                       {timeAgo}
                     </span>
@@ -904,9 +1298,17 @@ export default function TrainingPanel() {
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <div className="w-8 h-8 rounded-lg bg-[#21262d] flex items-center justify-center">
+                <History className="h-4 w-4 text-[#484f58]" />
+              </div>
+              <p className="text-xs text-[#484f58]">No training sessions yet</p>
+              <p className="text-[10px] text-[#30363d]">Select a training type above to get started</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Current Attributes Overview — with delta indicators */}
       <Card className="bg-[#161b22] border-[#30363d]">

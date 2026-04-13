@@ -10,7 +10,7 @@ import {
   Minus, Activity, Smile, Meh, Frown, Flame, Target,
   Sword, Scale, ShieldCheck, ArrowUp, ArrowDown,
   Bed, Users, Mic, AlertTriangle, Sparkles, Trophy,
-  Ban, Clock, Star, Info,
+  Ban, Clock, Star, Info, Gift, Coffee,
 } from 'lucide-react';
 
 // ============================================================
@@ -75,30 +75,26 @@ const MINDSET_CONFIG: Record<PlayerMindset, {
 // ============================================================
 
 const MORALE_THRESHOLDS = [
-  { min: 80, max: 100, label: 'World-Class', color: '#fbbf24', strokeClass: 'text-amber-400', bgClass: 'bg-amber-400' },
-  { min: 60, max: 79, label: 'Excellent', color: '#34d399', strokeClass: 'text-emerald-400', bgClass: 'bg-emerald-400' },
-  { min: 30, max: 59, label: 'Moderate', color: '#fbbf24', strokeClass: 'text-amber-400', bgClass: 'bg-amber-400' },
-  { min: 0, max: 29, label: 'Low', color: '#f87171', strokeClass: 'text-red-400', bgClass: 'bg-red-400' },
+  { min: 80, max: 100, label: 'Happy', color: '#34d399', strokeClass: 'text-emerald-400', bgClass: 'bg-emerald-400' },
+  { min: 50, max: 79, label: 'Neutral', color: '#fbbf24', strokeClass: 'text-amber-400', bgClass: 'bg-amber-400' },
+  { min: 0, max: 49, label: 'Low', color: '#f87171', strokeClass: 'text-red-400', bgClass: 'bg-red-400' },
 ] as const;
 
-function getMoraleLevel(morale: number): { label: string; icon: React.ReactNode; color: string } {
-  if (morale >= 80) return { label: 'World-Class', icon: <Smile className="h-5 w-5" />, color: 'text-amber-400' };
-  if (morale >= 60) return { label: 'Excellent', icon: <Smile className="h-5 w-5" />, color: 'text-emerald-400' };
-  if (morale >= 30) return { label: 'Moderate', icon: <Meh className="h-5 w-5" />, color: 'text-amber-400' };
-  return { label: 'Low', icon: <Frown className="h-5 w-5" />, color: 'text-red-400' };
+function getMoraleLevel(morale: number): { label: string; icon: React.ReactNode; color: string; bgColor: string; borderColor: string; message: string } {
+  if (morale >= 80) return { label: 'Happy', icon: <Smile className="h-5 w-5" />, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/25', message: 'You\'re feeling great! High morale boosts your match performance.' };
+  if (morale >= 50) return { label: 'Neutral', icon: <Meh className="h-5 w-5" />, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/25', message: 'Steady mindset. Keep performing well to push into the green zone.' };
+  return { label: 'Low', icon: <Frown className="h-5 w-5" />, color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/25', message: 'Morale is low. Consider rest or team bonding to recover.' };
 }
 
 function getMoraleGaugeColor(morale: number): string {
-  if (morale >= 80) return '#fbbf24'; // gold
-  if (morale >= 60) return '#34d399'; // emerald
-  if (morale >= 30) return '#fbbf24'; // amber
+  if (morale >= 80) return '#34d399'; // emerald
+  if (morale >= 50) return '#fbbf24'; // amber
   return '#f87171'; // red
 }
 
 function getMoraleBarColor(morale: number): string {
-  if (morale >= 80) return 'bg-amber-500';
-  if (morale >= 60) return 'bg-emerald-500';
-  if (morale >= 30) return 'bg-amber-500';
+  if (morale >= 80) return 'bg-emerald-500';
+  if (morale >= 50) return 'bg-amber-500';
   return 'bg-red-500';
 }
 
@@ -278,6 +274,26 @@ function MoraleGauge({ morale }: { morale: number }) {
           strokeWidth={strokeWidth}
           strokeLinecap="round"
         />
+        {/* Zone markers at 50 and 80 */}
+        {[50, 80].map(zone => {
+          const zoneAngle = startAngle + (zone / 100) * totalArc;
+          const innerR = radius - strokeWidth / 2 - 4;
+          const outerR = radius - strokeWidth / 2 - 9;
+          const rad = (zoneAngle * Math.PI) / 180;
+          return (
+            <line
+              key={zone}
+              x1={cx + outerR * Math.cos(rad)}
+              y1={cy + outerR * Math.sin(rad)}
+              x2={cx + innerR * Math.cos(rad)}
+              y2={cy + innerR * Math.sin(rad)}
+              stroke={zone === 80 ? '#34d399' : '#fbbf24'}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              opacity="0.5"
+            />
+          );
+        })}
         {/* Filled arc - animated via framer-motion */}
         <motion.path
           d={fgPath}
@@ -350,8 +366,12 @@ function MoraleSparkline({ history }: { history: number[] }) {
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block w-full">
+      {/* Zone backgrounds */}
+      <rect x={padding.left} y={padding.top + chartH * 0.51} width={chartW} height={chartH * 0.49} fill="#f87171" opacity="0.04" />
+      <rect x={padding.left} y={padding.top + chartH * 0.21} width={chartW} height={chartH * 0.30} fill="#fbbf24" opacity="0.04" />
+      <rect x={padding.left} y={padding.top} width={chartW} height={chartH * 0.21} fill="#34d399" opacity="0.04" />
       {/* Grid lines */}
-      {[25, 50, 75].map(v => {
+      {[50, 80].map(v => {
         const y = padding.top + chartH - ((v - minVal) / (maxVal - minVal)) * chartH;
         return (
           <line
@@ -550,6 +570,28 @@ export default function MoralePanel() {
       color: 'text-purple-400',
       borderColor: 'border-purple-500/30',
     },
+    {
+      id: 'trainer',
+      label: 'Personal Trainer',
+      description: 'Hire a specialist for a focused morale session',
+      icon: <Gift className="h-4 w-4" />,
+      effect: '+4 Morale, +1 Fitness',
+      cost: '£2,000',
+      color: 'text-amber-400',
+      borderColor: 'border-amber-500/30',
+    },
+    {
+      id: 'coffee',
+      label: 'Coffee with Teammate',
+      description: 'Build relationships off the pitch',
+      icon: <Coffee className="h-4 w-4" />,
+      effect: '+2 Morale',
+      cost: 'Free',
+      color: 'text-sky-400',
+      borderColor: 'border-sky-500/30',
+      disabled: (actionsUsed['coffee'] ?? 0) > 1,
+      disabledReason: (actionsUsed['coffee'] ?? 0) > 1 ? 'Max 2 per week' : undefined,
+    },
   ], [playerFitness, actionsUsed]);
 
   if (!gameState || !player || !currentClub) return null;
@@ -609,6 +651,24 @@ export default function MoralePanel() {
             {totalImpact > 0 ? '+' : ''}{totalImpact}
           </div>
         </div>
+
+        {/* Color-Coded Status Banner */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.15 }}
+          className={`mt-3 p-3 rounded-lg border ${moraleLevel.bgColor} ${moraleLevel.borderColor}`}
+        >
+          <div className="flex items-start gap-2">
+            <span className={moraleLevel.color}>{moraleLevel.icon}</span>
+            <div>
+              <span className={`text-xs font-semibold ${moraleLevel.color} block mb-0.5`}>
+                {moraleLevel.label} — {player.morale}/100
+              </span>
+              <span className="text-[10px] text-[#8b949e]">{moraleLevel.message}</span>
+            </div>
+          </div>
+        </motion.div>
       </motion.div>
 
       {/* ── Section 2: Status Effects ── */}
@@ -640,10 +700,9 @@ export default function MoralePanel() {
         <MoraleSparkline history={moraleHistory} />
         <div className="flex items-center justify-between mt-2 text-[10px] text-[#484f58]">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-red-400" /> Low</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-amber-400" /> Moderate</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-emerald-400" /> High</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-amber-400" /> Elite</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-red-400" /> Low (0-49)</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-amber-400" /> Neutral (50-79)</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-emerald-400" /> Happy (80+)</span>
           </div>
         </div>
       </motion.div>
@@ -848,25 +907,34 @@ export default function MoralePanel() {
           How Morale Works
         </h3>
         <div className="space-y-2 text-xs text-[#8b949e]">
-          <div className="flex items-start gap-2">
-            <span className="text-emerald-400 mt-0.5">+</span>
-            <span>Win matches and perform well to boost morale</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-block w-2 h-2 rounded-sm bg-emerald-500" />
+            <span className="text-emerald-400 font-medium">Happy (80+):</span>
+            <span>+0.3 match rating boost</span>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="text-emerald-400 mt-0.5">+</span>
-            <span>Starting XI role and good form lift your spirits</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-block w-2 h-2 rounded-sm bg-amber-500" />
+            <span className="text-amber-400 font-medium">Neutral (50-79):</span>
+            <span>No rating modifier</span>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="text-red-400 mt-0.5">-</span>
-            <span>Losses, injuries, and bench roles decrease morale</span>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-block w-2 h-2 rounded-sm bg-red-500" />
+            <span className="text-red-400 font-medium">Low (0-49):</span>
+            <span>-0.5 match rating penalty</span>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="text-amber-400 mt-0.5">*</span>
-            <span>Low morale affects match rating (-0.5 at &lt;30)</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-amber-400 mt-0.5">*</span>
-            <span>High morale boosts match rating (+0.3 at &gt;80)</span>
+          <div className="border-t border-[#30363d] pt-2 space-y-1.5">
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 mt-0.5 shrink-0">+</span>
+              <span>Win matches, perform well, and start games to boost morale</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-red-400 mt-0.5 shrink-0">-</span>
+              <span>Losses, injuries, bench roles, and expiring contracts decrease morale</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-sky-400 mt-0.5 shrink-0">*</span>
+              <span>Use morale actions wisely — some have limited uses per week</span>
+            </div>
           </div>
         </div>
       </motion.div>

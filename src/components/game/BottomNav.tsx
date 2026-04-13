@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -59,6 +59,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'career_milestones', icon: <Trophy className="h-5 w-5" />, label: 'Milestones' },
       { screen: 'achievements_system', icon: <Award className="h-5 w-5" />, label: 'Achievements' },
       { screen: 'career_journal', icon: <BookOpen className="h-5 w-5" />, label: 'Journal' },
+      { screen: 'season_awards', icon: <Sparkles className="h-5 w-5" />, label: 'Awards' },
+      { screen: 'potential_journey', icon: <Route className="h-5 w-5" />, label: 'Journey' },
     ],
   },
   {
@@ -70,6 +72,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'daily_routine_hub', icon: <Calendar className="h-5 w-5" />, label: 'Routine' },
       { screen: 'season_objectives', icon: <Target className="h-5 w-5" />, label: 'Objectives' },
       { screen: 'fan_engagement', icon: <HeartHandshake className="h-5 w-5" />, label: 'Fans' },
+      { screen: 'rival_system', icon: <Crosshair className="h-5 w-5" />, label: 'Rivals' },
     ],
   },
   {

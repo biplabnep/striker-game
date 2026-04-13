@@ -54,6 +54,10 @@ import PressConferenceEnhanced from '@/components/game/PressConferenceEnhanced';
 import AchievementsSystem from '@/components/game/AchievementsSystem';
 import CareerJournal from '@/components/game/CareerJournal';
 import TeamSelection from '@/components/game/TeamSelection';
+import SeasonAwards from '@/components/game/SeasonAwards';
+import RivalSystem from '@/components/game/RivalSystem';
+import TacticalSubstitutions from '@/components/game/TacticalSubstitutions';
+import PotentialJourney from '@/components/game/PotentialJourney';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -105,6 +109,10 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   achievements_system: AchievementsSystem,
   team_selection: TeamSelection,
   career_journal: CareerJournal,
+  season_awards: SeasonAwards,
+  rival_system: RivalSystem,
+  tactical_substitutions: TacticalSubstitutions,
+  potential_journey: PotentialJourney,
 };
 
 const gameScreens: GameScreen[] = [
@@ -123,6 +131,10 @@ const gameScreens: GameScreen[] = [
   'achievements_system',
   'team_selection',
   'career_journal',
+  'season_awards',
+  'rival_system',
+  'tactical_substitutions',
+  'potential_journey',
 ];
 
 export default function Home() {
