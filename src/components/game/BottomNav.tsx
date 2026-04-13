@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail, UserCog, ShieldAlert, CloudSun } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail, UserCog, ShieldAlert, CloudSun, AlarmClock, FileSignature, Music, Warehouse } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -93,6 +93,10 @@ const moreCategories: NavCategory[] = [
       { screen: 'season_review_documentary', icon: <Clapperboard className="h-5 w-5" />, label: 'Season Review' },
       { screen: 'create_a_club', icon: <Palette className="h-5 w-5" />, label: 'Create Club' },
       { screen: 'multiplayer_league', icon: <Swords className="h-5 w-5" />, label: 'MP League' },
+      { screen: 'transfer_deadline_day', icon: <AlarmClock className="h-5 w-5" />, label: 'Deadline' },
+      { screen: 'player_agent_contract', icon: <FileSignature className="h-5 w-5" />, label: 'Agent Deal' },
+      { screen: 'fan_chants', icon: <Music className="h-5 w-5" />, label: 'Fan Chants' },
+      { screen: 'virtual_trophy_room', icon: <Warehouse className="h-5 w-5" />, label: 'Trophy Room' },
     ],
   },
   {

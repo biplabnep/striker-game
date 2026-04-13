@@ -512,12 +512,15 @@ function DrillCard({
 }) {
   const SVGComponent = DRILL_SVG_MAP[drill.id];
   return (
-    <motion.button
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
       onClick={onSelect}
-      className={`relative flex flex-col gap-2 p-3 rounded-xl border text-left transition-all w-full ${
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(); }}
+      className={`relative flex flex-col gap-2 p-3 rounded-xl border text-left transition-all w-full cursor-pointer ${
         isActive
           ? 'bg-[#21262d] border-emerald-500/40 shadow-lg shadow-emerald-500/5'
           : 'bg-[#161b22] border-[#30363d] hover:border-[#484f58]'
@@ -572,7 +575,7 @@ function DrillCard({
           </span>
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 

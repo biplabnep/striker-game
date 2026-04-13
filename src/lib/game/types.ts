@@ -666,7 +666,11 @@ export type GameScreen =
   | 'manager_career'
   | 'tactical_set_pieces'
   | 'referee_system'
-  | 'match_weather_effects';
+  | 'match_weather_effects'
+  | 'transfer_deadline_day'
+  | 'player_agent_contract'
+  | 'fan_chants'
+  | 'virtual_trophy_room';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

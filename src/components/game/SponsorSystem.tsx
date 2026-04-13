@@ -527,6 +527,135 @@ export default function SponsorSystem() {
     [baseSeed]
   );
 
+  // ============================================================
+  // Section data: Brand Value Timeline
+  // ============================================================
+  const brandTimeline = useMemo(() => {
+    const baseIncome = totalAnnualIncome;
+    const seasons = [
+      Math.round(baseIncome * seededRange(baseSeed + 600, 0.35, 0.55)),
+      Math.round(baseIncome * seededRange(baseSeed + 601, 0.55, 0.75)),
+      Math.round(baseIncome * seededRange(baseSeed + 602, 0.75, 0.95)),
+      baseIncome,
+    ];
+    const growthPct = seasons[0] > 0
+      ? Math.round(((seasons[3] - seasons[0]) / seasons[0]) * 100)
+      : 0;
+    const brandColors = activeSponsors.map(s => s.color);
+    const barColor = brandColors.length > 0
+      ? brandColors[currentSeason % brandColors.length] || '#10b981'
+      : '#10b981';
+    return { seasons, growthPct, barColor };
+  }, [baseSeed, totalAnnualIncome, activeSponsors, currentSeason]);
+
+  // ============================================================
+  // Section data: Sponsorship Tier Pyramid
+  // ============================================================
+  const tierPyramid = useMemo(() => {
+    const tiers: SponsorTier[] = ['Platinum', 'Gold', 'Silver', 'Bronze'];
+    const tierValues: Record<SponsorTier, { deals: number; totalValue: number }> = {
+      Platinum: { deals: 0, totalValue: 0 },
+      Gold:     { deals: 0, totalValue: 0 },
+      Silver:   { deals: 0, totalValue: 0 },
+      Bronze:   { deals: 0, totalValue: 0 },
+    };
+
+    activeSponsors.forEach(s => {
+      tierValues[s.tier].deals += 1;
+      tierValues[s.tier].totalValue += s.annualValue;
+    });
+
+    // Determine current tier level
+    let currentTier: SponsorTier = 'Bronze';
+    if (tierValues.Platinum.deals > 0) currentTier = 'Platinum';
+    else if (tierValues.Gold.deals > 0) currentTier = 'Gold';
+    else if (tierValues.Silver.deals > 0) currentTier = 'Silver';
+
+    const tierOrder: SponsorTier[] = ['Platinum', 'Gold', 'Silver', 'Bronze'];
+    const currentIdx = tierOrder.indexOf(currentTier);
+    const nextTier: SponsorTier | null = currentIdx > 0 ? tierOrder[currentIdx - 1] : null;
+    const nextTierReq = nextTier
+      ? `Need 1 ${nextTier} deal to advance`
+      : null;
+
+    return { tiers, tierValues, currentTier, nextTier, nextTierReq };
+  }, [activeSponsors]);
+
+  // ============================================================
+  // Section data: Sponsor Relationship Matrix
+  // ============================================================
+  const relationshipMatrix = useMemo(() => {
+    const categories: SponsorCategory[] = [
+      'Sportswear', 'Energy Drink', 'Watch', 'Tech', 'Automotive', 'Food & Beverage',
+    ];
+    type Strength = 'Low' | 'Medium' | 'High' | 'Exclusive';
+
+    const matrix = categories.map(cat => {
+      const activeInCat = activeSponsors.filter(s => s.category === cat);
+      const offersInCat = availableOffers.filter(o => o.category === cat);
+      const hasActive = activeInCat.length > 0;
+      const isExclusive = activeInCat.some(s => s.tier === 'Platinum');
+
+      let strength: Strength = 'Low';
+      if (isExclusive) strength = 'Exclusive';
+      else if (activeInCat.some(s => s.tier === 'Gold')) strength = 'High';
+      else if (hasActive) strength = 'Medium';
+
+      return {
+        category: cat,
+        strength,
+        activeBrands: activeInCat.map(s => s.brand),
+        availableBrands: offersInCat.map(o => o.brand),
+        hasActive,
+      };
+    });
+
+    // Portfolio health score (0-100)
+    const activeCategories = matrix.filter(m => m.hasActive).length;
+    const highOrExcl = matrix.filter(m => m.strength === 'High' || m.strength === 'Exclusive').length;
+    const healthScore = Math.min(100, Math.round(
+      (activeCategories / 6) * 50 + (highOrExcl / 6) * 30 + (activeSponsors.length / 6) * 20
+    ));
+
+    return { matrix, healthScore };
+  }, [activeSponsors, availableOffers]);
+
+  // ============================================================
+  // Section data: Market Comparison Dashboard
+  // ============================================================
+  const marketComparison = useMemo(() => {
+    const peerNames = ['M. Santos', 'L. Fernandez', 'K. Okafor', 'You'];
+    const peerIncomes = [
+      Math.round(seededRange(baseSeed + 700, 3000000, 8000000)),
+      Math.round(seededRange(baseSeed + 701, 1500000, 5000000)),
+      Math.round(seededRange(baseSeed + 702, 2000000, 6000000)),
+      totalAnnualIncome,
+    ];
+    const peerDeals = [
+      seededInt(baseSeed + 710, 2, 6),
+      seededInt(baseSeed + 711, 1, 5),
+      seededInt(baseSeed + 712, 2, 5),
+      activeSponsors.length,
+    ];
+    const peerRatings = ['A', 'B+', 'B', sponsorRating];
+
+    const maxIncome = Math.max(...peerIncomes);
+    const sortedIncomes = [...peerIncomes].sort((a, b) => b - a);
+    const yourRank = sortedIncomes.indexOf(totalAnnualIncome) + 1;
+    const percentile = Math.max(5, Math.round((1 - (yourRank - 1) / 4) * 100));
+
+    const peers = peerNames.map((name, i) => ({
+      name,
+      income: peerIncomes[i],
+      deals: peerDeals[i],
+      rating: peerRatings[i],
+      isYou: i === 3,
+      barPct: maxIncome > 0 ? (peerIncomes[i] / maxIncome) * 100 : 0,
+    }));
+
+    return { peers, percentile, yourRank };
+  }, [baseSeed, totalAnnualIncome, activeSponsors.length, sponsorRating]);
+
   if (!gameState || !player) return null;
 
   // Tab configuration
@@ -744,6 +873,357 @@ export default function SponsorSystem() {
               );
             })
           )}
+
+          {/* =========================================
+              Section A: Brand Value Timeline
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-emerald-950/50 border border-emerald-800/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Brand Value Timeline</h3>
+              </div>
+              <div className="flex items-center gap-1">
+                <svg className="h-2.5 w-2.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+                <span className="text-[9px] font-bold text-emerald-400">+{brandTimeline.growthPct}%</span>
+              </div>
+            </div>
+
+            {/* SVG bar chart */}
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {/* Y-axis labels */}
+              <text x="2" y="14" fill="#484f58" fontSize="8" fontFamily="sans-serif">
+                {fmtCurrencyShort(Math.max(...brandTimeline.seasons))}
+              </text>
+              <text x="2" y="68" fill="#484f58" fontSize="8" fontFamily="sans-serif">
+                {fmtCurrencyShort(Math.max(...brandTimeline.seasons) / 2)}
+              </text>
+              <text x="2" y="114" fill="#484f58" fontSize="8" fontFamily="sans-serif">€0</text>
+
+              {/* Horizontal grid lines */}
+              <line x1="52" y1="10" x2="310" y2="10" stroke="#21262d" strokeWidth="0.5" />
+              <line x1="52" y1="64" x2="310" y2="64" stroke="#21262d" strokeWidth="0.5" />
+              <line x1="52" y1="110" x2="310" y2="110" stroke="#30363d" strokeWidth="0.5" />
+
+              {/* Bars */}
+              {brandTimeline.seasons.map((val, i) => {
+                const maxVal = Math.max(...brandTimeline.seasons);
+                const barHeight = maxVal > 0 ? (val / maxVal) * 95 : 0;
+                const barX = 70 + i * 62;
+                const barY = 110 - barHeight;
+                const isCurrentSeason = (i + 1) === currentSeason;
+                const width = 38;
+
+                return (
+                  <g key={i}>
+                    {/* Current season indicator line */}
+                    {isCurrentSeason && (
+                      <line
+                        x1={barX - 6}
+                        y1={barY - 6}
+                        x2={barX - 6}
+                        y2={110}
+                        stroke="#10b981"
+                        strokeWidth="1"
+                        strokeDasharray="3 2"
+                      />
+                    )}
+                    {/* Bar */}
+                    <rect
+                      x={barX}
+                      y={barY}
+                      width={width}
+                      height={Math.max(barHeight, 2)}
+                      rx="3"
+                      fill={isCurrentSeason ? '#10b981' : brandTimeline.barColor}
+                      opacity={isCurrentSeason ? 1 : 0.45}
+                    />
+                    {/* Value label on bar */}
+                    <text
+                      x={barX + width / 2}
+                      y={barY - 4}
+                      fill={isCurrentSeason ? '#10b981' : '#8b949e'}
+                      fontSize="7"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                      fontFamily="sans-serif"
+                    >
+                      {fmtCurrencyShort(val)}
+                    </text>
+                    {/* X-axis label */}
+                    <text
+                      x={barX + width / 2}
+                      y={120}
+                      fill={isCurrentSeason ? '#10b981' : '#484f58'}
+                      fontSize="7"
+                      textAnchor="middle"
+                      fontWeight={isCurrentSeason ? 'bold' : 'normal'}
+                      fontFamily="sans-serif"
+                    >
+                      S{i + 1}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section B: Sponsorship Tier Pyramid
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-md bg-purple-950/50 border border-purple-800/30 flex items-center justify-center">
+                <svg className="h-3 w-3 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </div>
+              <h3 className="text-xs font-bold text-[#c9d1d9]">Sponsorship Tier Pyramid</h3>
+            </div>
+
+            {/* Pyramid levels — top to bottom */}
+            <div className="space-y-1.5">
+              {tierPyramid.tiers.map((tier, idx) => {
+                const tierConf = TIER_COLORS[tier];
+                const tv = tierPyramid.tierValues[tier];
+                const isCurrent = tier === tierPyramid.currentTier;
+                // Pyramid widths: narrower at top, wider at bottom
+                const widths = ['w-1/2', 'w-2/3', 'w-5/6', 'w-full'];
+
+                return (
+                  <div key={tier} className="flex justify-center">
+                    <div
+                      className={`${widths[idx]} ${isCurrent ? `border-2 ${tierConf.border}` : 'border border-[#30363d]'} rounded-lg p-2.5 ${isCurrent ? `${tierConf.bg}` : 'bg-[#21262d]'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-sm ${tierConf.dot}`} />
+                          <span className={`text-[10px] font-bold ${isCurrent ? tierConf.text : 'text-[#8b949e]'}`}>
+                            {tier}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[7px] px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+                              CURRENT
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[9px] ${isCurrent ? 'text-[#c9d1d9]' : 'text-[#484f58]'}`}>
+                            {tv.deals} deal{tv.deals !== 1 ? 's' : ''}
+                          </span>
+                          <span className="text-[8px] text-[#30363d]">|</span>
+                          <span className={`text-[9px] font-medium ${isCurrent ? 'text-emerald-400' : 'text-[#484f58]'}`}>
+                            {tv.deals > 0 ? fmtCurrencyShort(tv.totalValue) : '—'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Next tier requirement */}
+            {tierPyramid.nextTierReq && (
+              <div className="flex items-center gap-2 mt-3 bg-emerald-950/15 rounded-lg px-3 py-2 border border-emerald-800/20">
+                <svg className="h-3 w-3 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="13 17 18 12 13 7" />
+                  <polyline points="6 17 11 12 6 7" />
+                </svg>
+                <span className="text-[9px] text-emerald-300">{tierPyramid.nextTierReq}</span>
+              </div>
+            )}
+            {!tierPyramid.nextTierReq && (
+              <div className="flex items-center gap-2 mt-3 bg-amber-950/15 rounded-lg px-3 py-2 border border-amber-800/20">
+                <svg className="h-3 w-3 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <span className="text-[9px] text-amber-300">Maximum tier achieved — Platinum status</span>
+              </div>
+            )}
+          </motion.div>
+
+          {/* =========================================
+              Section C: Sponsor Relationship Matrix
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-cyan-950/50 border border-cyan-800/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Relationship Matrix</h3>
+              </div>
+              {/* Health score badge */}
+              <div className="flex items-center gap-1">
+                <span className="text-[8px] text-[#484f58]">Health</span>
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold ${
+                  relationshipMatrix.healthScore >= 70
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    : relationshipMatrix.healthScore >= 40
+                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                      : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                }`}>
+                  {relationshipMatrix.healthScore}
+                </div>
+              </div>
+            </div>
+
+            {/* Grid of 6 categories */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {relationshipMatrix.matrix.map((item) => {
+                const strengthColors: Record<string, { bg: string; text: string; dot: string }> = {
+                  'Exclusive': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+                  'High':      { bg: 'bg-cyan-500/15',    text: 'text-cyan-400',    dot: 'bg-cyan-400' },
+                  'Medium':    { bg: 'bg-amber-500/15',   text: 'text-amber-400',   dot: 'bg-amber-400' },
+                  'Low':       { bg: 'bg-[#21262d]',       text: 'text-[#484f58]',   dot: 'bg-[#30363d]' },
+                };
+                const sc = strengthColors[item.strength];
+
+                return (
+                  <div
+                    key={item.category}
+                    className={`rounded-lg p-2.5 border ${item.hasActive ? `${sc.bg} border-[#30363d]` : 'bg-[#21262d] border-[#21262d]'}`}
+                  >
+                    {/* Category icon + name */}
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="w-4 h-4 flex items-center justify-center text-[#8b949e]">
+                        {getCategoryIcon(item.category, 'w-3.5 h-3.5')}
+                      </div>
+                      <span className="text-[8px] font-medium text-[#c9d1d9] truncate">{item.category}</span>
+                    </div>
+                    {/* Strength indicator */}
+                    <div className="flex items-center gap-1 mb-1">
+                      <div className={`w-1.5 h-1.5 rounded-sm ${sc.dot}`} />
+                      <span className={`text-[8px] font-bold ${sc.text}`}>{item.strength}</span>
+                    </div>
+                    {/* Brand names */}
+                    {item.activeBrands.length > 0 && (
+                      <p className="text-[7px] text-emerald-400 truncate">
+                        {item.activeBrands.join(', ')}
+                      </p>
+                    )}
+                    {item.activeBrands.length === 0 && item.availableBrands.length > 0 && (
+                      <p className="text-[7px] text-[#484f58] truncate">
+                        {item.availableBrands.slice(0, 2).join(', ')}
+                      </p>
+                    )}
+                    {item.activeBrands.length === 0 && item.availableBrands.length === 0 && (
+                      <p className="text-[7px] text-[#30363d]">No brands</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* =========================================
+              Section D: Market Comparison Dashboard
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.65 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-amber-950/50 border border-amber-800/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Market Comparison</h3>
+              </div>
+              {/* Rank badge */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[8px] text-[#484f58]">Your Position</span>
+                <div className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                  marketComparison.percentile >= 75
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    : marketComparison.percentile >= 50
+                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                      : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                }`}>
+                  Top {marketComparison.percentile}%
+                </div>
+              </div>
+            </div>
+
+            {/* Peer comparison bars */}
+            <div className="space-y-2">
+              {marketComparison.peers.map((peer, idx) => (
+                <div key={idx} className="flex items-center gap-2.5">
+                  {/* Player name + rating */}
+                  <div className="w-20 flex-shrink-0">
+                    <p className={`text-[9px] font-bold truncate ${peer.isYou ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
+                      {peer.name}
+                    </p>
+                    <p className="text-[7px] text-[#484f58]">
+                      {peer.deals} deals · {peer.rating}
+                    </p>
+                  </div>
+                  {/* Bar background */}
+                  <div className="flex-1 h-4 bg-[#21262d] rounded-md overflow-hidden relative">
+                    {/* Bar fill */}
+                    <div
+                      className="h-full rounded-md"
+                      style={{
+                        width: `${peer.barPct}%`,
+                        backgroundColor: peer.isYou ? '#10b981' : '#30363d',
+                        opacity: peer.isYou ? 1 : 0.7,
+                      }}
+                    />
+                    {/* Income label inside bar */}
+                    <span className={`absolute inset-0 flex items-center px-2 text-[8px] font-bold ${
+                      peer.isYou ? 'text-white' : 'text-[#8b949e]'
+                    }`}>
+                      {fmtCurrencyShort(peer.income)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary line */}
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#21262d]">
+              <span className="text-[8px] text-[#484f58]">
+                Rank {marketComparison.yourRank} of 4 players
+              </span>
+              <span className="text-[8px] text-[#484f58]">
+                Based on annual sponsorship income
+              </span>
+            </div>
+          </motion.div>
+
         </motion.div>
       )}
 

@@ -17,6 +17,11 @@ import {
   Briefcase,
   ArrowRight,
   Flag,
+  Activity,
+  AlertTriangle,
+  Award,
+  Heart,
+  Zap,
 } from 'lucide-react';
 import { useGameStore } from '@/store/gameStore';
 import { Position } from '@/lib/game/types';
@@ -419,6 +424,70 @@ function getFormationStrength(formation: FormationKey, avgOvr: number): string {
 }
 
 // ============================================================
+// New section helpers (chemistry, fitness, opponent)
+// ============================================================
+
+function getChemistryColor(value: number): string {
+  if (value >= 75) return '#34d399'; // emerald-400
+  if (value >= 50) return '#fbbf24'; // amber-400
+  return '#f87171'; // red-400
+}
+
+function getChemistryColorClass(value: number): string {
+  if (value >= 75) return 'text-emerald-400';
+  if (value >= 50) return 'text-amber-400';
+  return 'text-red-400';
+}
+
+function getChemistryBgClass(value: number): string {
+  if (value >= 75) return 'bg-emerald-500/15';
+  if (value >= 50) return 'bg-amber-500/15';
+  return 'bg-red-500/15';
+}
+
+function generateFitness(playerId: string, seed: number): number {
+  const rng = createSeededRandom(hashString(playerId + 'fitness') + seed);
+  return Math.round(48 + rng() * 52); // 48-100
+}
+
+function getFitnessColor(fitness: number): string {
+  if (fitness > 85) return 'bg-emerald-500';
+  if (fitness >= 60) return 'bg-amber-500';
+  return 'bg-red-500';
+}
+
+function getFitnessTextColor(fitness: number): string {
+  if (fitness > 85) return 'text-emerald-400';
+  if (fitness >= 60) return 'text-amber-400';
+  return 'text-red-400';
+}
+
+function getFatigueLevel(fitness: number): string {
+  if (fitness > 85) return 'Low';
+  if (fitness >= 60) return 'Medium';
+  return 'High';
+}
+
+function getFatigueColor(fatigue: string): string {
+  if (fatigue === 'Low') return 'text-emerald-400';
+  if (fatigue === 'Medium') return 'text-amber-400';
+  return 'text-red-400';
+}
+
+function getDifficultyInfo(teamOvr: number, opponentOvr: number): {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+} {
+  const diff = opponentOvr - teamOvr;
+  if (diff <= -8) return { label: 'Easy', color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30' };
+  if (diff <= -3) return { label: 'Medium', color: 'text-amber-400', bg: 'bg-amber-500/15', border: 'border-amber-500/30' };
+  if (diff <= 3) return { label: 'Hard', color: 'text-orange-400', bg: 'bg-orange-500/15', border: 'border-orange-500/30' };
+  return { label: 'Extreme', color: 'text-red-400', bg: 'bg-red-500/15', border: 'border-red-500/30' };
+}
+
+// ============================================================
 // Sub-components
 // ============================================================
 
@@ -569,6 +638,7 @@ export default function TeamSelection() {
   const [sortBy, setSortBy] = useState<SortOption>('By Position');
   const [strategy, setStrategy] = useState<MatchStrategy>('Balanced');
   const [captainId, setCaptainId] = useState<string>('user');
+  const [setPieceOffsets, setSetPieceOffsets] = useState<Record<string, number>>({});
 
   // Generate team data deterministically
   const teamData = useMemo(() => {
@@ -619,6 +689,149 @@ export default function TeamSelection() {
     return { avgOvr, avgAge, bestPlayer, bestForm, formationStrength: Number(formationStr) };
   }, [teamData, formation]);
 
+  // Team Chemistry data (Section A)
+  const chemistryData = useMemo(() => {
+    if (!teamData || !teamStats) return null;
+    const starters = teamData.starters;
+    const seed = hashString(starters.map(p => p.id).join('') + 'chem');
+
+    // Understanding: based on average age (veteran teams gel better)
+    const avgAge = starters.reduce((s, p) => s + p.age, 0) / starters.length;
+    const understanding = Math.min(100, Math.max(30, Math.round(avgAge * 2.4 + 25)));
+
+    // Communication: based on nationality diversity
+    const nationalities = new Set(starters.map(p => p.nationality.name));
+    const natCount = nationalities.size;
+    const communication = natCount <= 3 ? 88 : natCount <= 5 ? 74 : natCount <= 7 ? 60 : 44;
+
+    // Formation Fit: based on OVR spread and average form
+    const ovrStd = Math.sqrt(
+      starters.reduce((s, p) => s + Math.pow(p.ovr - teamStats.avgOvr, 2), 0) / starters.length
+    );
+    const formationFit = Math.min(100, Math.max(35, Math.round(85 - ovrStd * 1.8 + (teamStats.bestForm.form - 5) * 2)));
+
+    // Morale: based on average form
+    const avgForm = starters.reduce((s, p) => s + p.form, 0) / starters.length;
+    const morale = Math.round(avgForm * 10.5);
+
+    // Experience: based on average age
+    const experience = Math.min(100, Math.max(30, Math.round(avgAge * 2.6 + 22)));
+
+    const overall = Math.round((understanding + communication + formationFit + morale + experience) / 5);
+
+    return {
+      factors: [
+        { name: 'Understanding', value: understanding },
+        { name: 'Communication', value: communication },
+        { name: 'Formation Fit', value: formationFit },
+        { name: 'Morale', value: morale },
+        { name: 'Experience', value: experience },
+      ],
+      overall: Math.min(100, Math.max(0, overall)),
+    };
+  }, [teamData, teamStats]);
+
+  // Opponent data (Section B)
+  const opponentData = useMemo(() => {
+    if (!gameState || !teamStats) return null;
+    const seed = hashString(gameState.currentClub.name + 'opponent_v2');
+    const rng = createSeededRandom(seed);
+
+    const opponentNames = [
+      'FC Dynamo', 'Athletic United', 'Red Star FC', 'Sporting Club',
+      'City Rangers', 'Blue Wolves', 'Golden Eagles', 'Phoenix FC',
+      'Royal Madrid', 'Inter Milan', 'Bayern Nord', 'Ajax Town',
+    ];
+    const opponentName = opponentNames[Math.floor(rng() * opponentNames.length)];
+
+    const formations: FormationKey[] = ['4-3-3', '4-4-2', '4-2-3-1', '3-5-2', '4-5-1'];
+    const oppFormation = formations[Math.floor(rng() * formations.length)];
+    const oppPositions = FORMATION_POSITIONS[oppFormation];
+
+    const oppPlayers = oppPositions.map((pos) => {
+      const firstName = FIRST_NAMES[Math.floor(rng() * FIRST_NAMES.length)];
+      const lastName = LAST_NAMES[Math.floor(rng() * LAST_NAMES.length)];
+      const ovr = Math.round(teamStats.avgOvr + (rng() - 0.4) * 18);
+      return {
+        name: `${firstName} ${lastName}`,
+        position: pos.pos,
+        ovr: Math.max(55, Math.min(93, ovr)),
+        x: pos.x,
+        y: pos.y,
+      };
+    });
+
+    const avgOvr = Math.round(oppPlayers.reduce((s, p) => s + p.ovr, 0) / oppPlayers.length);
+    const playStyles = ['Possession', 'Counter', 'High Press', 'Direct', 'Balanced'];
+    const playStyle = playStyles[Math.floor(rng() * playStyles.length)];
+    const avgForm = Math.round((5 + rng() * 4.5) * 10) / 10;
+    const dangerPlayers = [...oppPlayers].sort((a, b) => b.ovr - a.ovr).slice(0, 3);
+
+    return {
+      name: opponentName,
+      formation: oppFormation,
+      players: oppPlayers,
+      avgOvr,
+      avgForm,
+      playStyle,
+      dangerPlayers,
+    };
+  }, [gameState, teamStats]);
+
+  // Fitness data (Section C)
+  const fitnessData = useMemo(() => {
+    if (!teamData || !gameState) return null;
+    const seed = hashString(gameState.currentClub.name + gameState.player.name + 'fitness_v2');
+
+    return teamData.starters.map((player) => {
+      const fitness = generateFitness(player.id, seed);
+      return {
+        id: player.id,
+        name: player.name,
+        nameShort: player.name.split(' ').pop() || player.name,
+        position: player.position,
+        ovr: player.ovr,
+        isUser: player.isUser,
+        fitness,
+        fatigue: getFatigueLevel(fitness),
+        isRisk: fitness < 65,
+      };
+    });
+  }, [teamData, gameState]);
+
+  // Set piece data (Section D)
+  const setPieceData = useMemo(() => {
+    if (!teamData) return null;
+    const starters = teamData.starters;
+
+    // Corner Taker: wingers and attacking mids, sorted by OVR
+    const cornerEligible = starters
+      .filter(p => ['LW', 'RW', 'LM', 'RM', 'CAM'].includes(p.position))
+      .sort((a, b) => b.ovr - a.ovr);
+
+    // Free Kick Taker: attacking players sorted by OVR
+    const freeKickEligible = starters
+      .filter(p => ['LW', 'RW', 'ST', 'CAM', 'CM', 'CF'].includes(p.position))
+      .sort((a, b) => b.ovr - a.ovr);
+
+    // Penalty Taker: forwards sorted by OVR
+    const penaltyEligible = starters
+      .filter(p => ['ST', 'CF', 'CAM', 'LW', 'RW'].includes(p.position))
+      .sort((a, b) => b.ovr - a.ovr);
+
+    // Captain: from current captainId
+    const captainPlayer = starters.find(p => p.id === captainId) || starters[0];
+
+    return {
+      roles: [
+        { id: 'corner', label: 'Corner Taker', eligible: cornerEligible, attribute: 'Crossing' },
+        { id: 'freekick', label: 'Free Kick Taker', eligible: freeKickEligible, attribute: 'FK Accuracy' },
+        { id: 'penalty', label: 'Penalty Taker', eligible: penaltyEligible, attribute: 'Penalties' },
+        { id: 'captain', label: 'Captain', eligible: [captainPlayer], attribute: 'Leadership' },
+      ],
+    };
+  }, [teamData, captainId]);
+
   const handleCaptainSet = useCallback((playerId: string) => {
     setCaptainId(playerId);
   }, []);
@@ -626,6 +839,13 @@ export default function TeamSelection() {
   const handleViewBriefing = useCallback(() => {
     setScreen('tactical_briefing');
   }, [setScreen]);
+
+  const cycleSetPiece = useCallback((roleId: string, eligibleCount: number) => {
+    setSetPieceOffsets(prev => ({
+      ...prev,
+      [roleId]: ((prev[roleId] || 0) + 1) % eligibleCount,
+    }));
+  }, []);
 
   // No game state fallback
   if (!gameState || !teamData || !teamStats) {
@@ -651,6 +871,11 @@ export default function TeamSelection() {
     ...p,
     isCaptain: p.id === captainId,
   }));
+
+  // Derived values for new sections (after null guard, all useMemo results are non-null)
+  const difficulty = getDifficultyInfo(teamStats.avgOvr, opponentData!.avgOvr);
+  const avgFitness = Math.round(fitnessData!.reduce((s, p) => s + p.fitness, 0) / fitnessData!.length);
+  const riskCount = fitnessData!.filter(p => p.isRisk).length;
 
   return (
     <div className={`${DARK_BG} min-h-screen`}>
@@ -917,6 +1142,387 @@ export default function TeamSelection() {
                   </div>
                 </div>
               </div>
+            </InfoCard>
+          </motion.div>
+
+          {/* ============================================ */}
+          {/* A. Team Chemistry Visualizer                 */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Activity className="size-4 text-emerald-400" />
+                <SectionTitle>Team Chemistry</SectionTitle>
+              </div>
+
+              {/* SVG Circular Chemistry Diagram */}
+              <div className="flex justify-center py-1">
+                <svg viewBox="0 0 200 200" className="w-44 h-44">
+                  {/* Background ring - full segments */}
+                  {chemistryData!.factors.map((_, i) => {
+                    const CIRC = 2 * Math.PI * 70;
+                    const segLen = CIRC / 5;
+                    return (
+                      <circle
+                        key={`bg-${i}`}
+                        cx="100" cy="100" r="70"
+                        fill="none"
+                        stroke="#21262d"
+                        strokeWidth="14"
+                        strokeDasharray={`${segLen - 4} ${CIRC - segLen + 4}`}
+                        strokeDashoffset={CIRC / 4 + i * segLen + 2}
+                      />
+                    );
+                  })}
+
+                  {/* Filled arc segments */}
+                  {chemistryData!.factors.map((factor, i) => {
+                    const CIRC = 2 * Math.PI * 70;
+                    const segLen = CIRC / 5;
+                    const filled = Math.max(1, (factor.value / 100) * (segLen - 8));
+                    return (
+                      <circle
+                        key={`fill-${i}`}
+                        cx="100" cy="100" r="70"
+                        fill="none"
+                        stroke={getChemistryColor(factor.value)}
+                        strokeWidth="14"
+                        strokeLinecap="round"
+                        strokeDasharray={`${filled} ${CIRC - filled}`}
+                        strokeDashoffset={CIRC / 4 + i * segLen + 4}
+                      />
+                    );
+                  })}
+
+                  {/* Center score */}
+                  <circle cx="100" cy="100" r="52" fill="#161b22" />
+                  <text
+                    x="100" y="92"
+                    textAnchor="middle"
+                    fill={getChemistryColor(chemistryData!.overall)}
+                    fontSize="32"
+                    fontWeight="bold"
+                  >
+                    {chemistryData!.overall}
+                  </text>
+                  <text x="100" y="112" textAnchor="middle" fill="#8b949e" fontSize="9" fontWeight="500">
+                    Chemistry
+                  </text>
+                </svg>
+              </div>
+
+              {/* Factor legend */}
+              <div className="grid grid-cols-2 gap-1.5">
+                {chemistryData!.factors.map((factor) => (
+                  <div
+                    key={factor.name}
+                    className="flex items-center justify-between px-2.5 py-2 bg-[#21262d] rounded-md"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="w-2 h-2 rounded-sm shrink-0"
+                        style={{ backgroundColor: getChemistryColor(factor.value) }}
+                      />
+                      <span className={`text-[10px] ${TEXT_SECONDARY}`}>{factor.name}</span>
+                    </div>
+                    <span
+                      className="text-xs font-bold tabular-nums"
+                      style={{ color: getChemistryColor(factor.value) }}
+                    >
+                      {factor.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Description */}
+              <p className={`text-[10px] ${TEXT_SECONDARY} text-center`}>
+                {chemistryData!.overall >= 75
+                  ? 'Excellent team chemistry — players are well-synced and understand each other intuitively.'
+                  : chemistryData!.overall >= 50
+                    ? 'Good chemistry overall. Some areas need work for peak performance on the pitch.'
+                    : 'Team chemistry needs attention. Consider training sessions to build better cohesion.'}
+              </p>
+            </InfoCard>
+          </motion.div>
+
+          {/* ============================================ */}
+          {/* B. Opponent Formation Preview                */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Swords className="size-4 text-emerald-400" />
+                  <SectionTitle>Next Opponent</SectionTitle>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${difficulty.bg} ${difficulty.color} ${difficulty.border}`}>
+                  {difficulty.label}
+                </span>
+              </div>
+
+              {/* Opponent name & formation */}
+              <div className="flex items-center justify-between p-2.5 bg-[#21262d] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-md flex items-center justify-center ${RED_BG} border ${RED_BORDER}`}>
+                    <Shield className="size-3.5 text-red-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">{opponentData!.name}</div>
+                    <div className={`text-[9px] ${TEXT_SECONDARY}`}>Matchday Opponent</div>
+                  </div>
+                </div>
+                <span className={`text-sm font-bold ${TEXT_SECONDARY}`}>{opponentData!.formation}</span>
+              </div>
+
+              {/* Mini pitch with opponent players */}
+              <div className="relative w-full aspect-[3/4] max-w-[180px] mx-auto">
+                <div className="absolute inset-0 bg-[#1a3a2a] rounded-md border border-[#2a5a3a] overflow-hidden">
+                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
+                    {/* Simplified pitch lines */}
+                    <rect x="8" y="8" width="284" height="384" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                    <line x1="8" y1="200" x2="292" y2="200" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                    <circle cx="150" cy="200" r="32" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                    <circle cx="150" cy="200" r="2.5" fill="rgba(255,255,255,0.18)" />
+                    <rect x="65" y="8" width="170" height="50" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                    <rect x="65" y="342" width="170" height="50" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                    <rect x="110" y="8" width="80" height="20" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                    <rect x="110" y="372" width="80" height="20" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                  </svg>
+                  {/* Opponent player dots */}
+                  {opponentData!.players.map((p, i) => (
+                    <div
+                      key={i}
+                      className="absolute flex flex-col items-center"
+                      style={{
+                        left: `${p.x}%`,
+                        top: `${p.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                      }}
+                    >
+                      <div className="w-5 h-5 rounded-md bg-red-500/25 border border-red-500/35 flex items-center justify-center">
+                        <span className="text-[7px] font-bold text-red-300">{p.ovr}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3 key opponent stats */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center p-2 bg-[#21262d] rounded-md">
+                  <div className={`text-[9px] uppercase ${TEXT_SECONDARY}`}>Avg OVR</div>
+                  <div className="text-sm font-bold text-white tabular-nums">{opponentData!.avgOvr}</div>
+                </div>
+                <div className="text-center p-2 bg-[#21262d] rounded-md">
+                  <div className={`text-[9px] uppercase ${TEXT_SECONDARY}`}>Form</div>
+                  <div className="text-sm font-bold text-amber-400 tabular-nums">{opponentData!.avgForm}/10</div>
+                </div>
+                <div className="text-center p-2 bg-[#21262d] rounded-md">
+                  <div className={`text-[9px] uppercase ${TEXT_SECONDARY}`}>Style</div>
+                  <div className="text-[11px] font-bold text-[#c9d1d9]">{opponentData!.playStyle}</div>
+                </div>
+              </div>
+
+              {/* Danger Players */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="size-3 text-amber-400" />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${TEXT_SECONDARY}`}>
+                    Danger Players
+                  </span>
+                </div>
+                {opponentData!.dangerPlayers.map((p, i) => (
+                  <div key={i} className="flex items-center justify-between p-2.5 bg-[#21262d] rounded-md">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold ${
+                        i === 0
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : i === 1
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            : 'bg-[#0d1117] text-[#8b949e] border border-[#30363d]'
+                      }`}>
+                        {i + 1}
+                      </span>
+                      <div>
+                        <span className="text-xs font-semibold text-white">{p.name}</span>
+                        <span className={`text-[9px] ${TEXT_SECONDARY} ml-1.5`}>{p.position}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-red-400 tabular-nums">{p.ovr}</span>
+                  </div>
+                ))}
+              </div>
+            </InfoCard>
+          </motion.div>
+
+          {/* ============================================ */}
+          {/* C. Player Fitness & Fatigue Panel            */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="size-4 text-emerald-400" />
+                  <SectionTitle>Player Fitness</SectionTitle>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#21262d] rounded-md">
+                  <span className={`text-[9px] ${TEXT_SECONDARY}`}>Team Avg</span>
+                  <span className={`text-xs font-bold tabular-nums ${getFitnessTextColor(avgFitness)}`}>
+                    {avgFitness}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Player fitness list */}
+              <div className="space-y-1 max-h-80 overflow-y-auto overscroll-contain pr-1">
+                {fitnessData!.map((player) => (
+                  <div
+                    key={player.id}
+                    className={`p-2.5 rounded-lg space-y-1.5 ${
+                      player.isUser
+                        ? `${EMERALD_BG} border ${EMERALD_BORDER}`
+                        : 'bg-[#21262d] border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`text-[10px] font-bold tabular-nums w-5 text-center shrink-0 ${
+                          player.isUser ? EMERALD : 'text-[#484f58]'
+                        }`}>
+                          {player.ovr}
+                        </span>
+                        <span className={`text-xs font-semibold truncate ${
+                          player.isUser ? 'text-emerald-300' : 'text-white'
+                        }`}>
+                          {player.nameShort}
+                        </span>
+                        <span className={`text-[9px] ${TEXT_SECONDARY} shrink-0`}>{player.position}</span>
+                        {player.isRisk && (
+                          <span className="flex items-center gap-0.5 text-[8px] font-bold text-red-400 shrink-0">
+                            <AlertTriangle className="size-2.5" />
+                            Risk
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[9px] font-medium ${getFatigueColor(player.fatigue)}`}>
+                          {player.fatigue}
+                        </span>
+                        <span className={`text-xs font-bold tabular-nums ${getFitnessTextColor(player.fitness)}`}>
+                          {player.fitness}%
+                        </span>
+                      </div>
+                    </div>
+                    {/* Fitness bar */}
+                    <div className="w-full h-1.5 bg-[#0d1117] rounded overflow-hidden">
+                      <div
+                        className={`h-full rounded ${getFitnessColor(player.fitness)}`}
+                        style={{ width: `${player.fitness}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Rotation recommendation */}
+              <div className={`p-3 rounded-lg border ${
+                riskCount > 0
+                  ? `${AMBER_BG} ${AMBER_BORDER}`
+                  : `${EMERALD_BG} ${EMERALD_BORDER}`
+              }`}>
+                <div className="flex items-start gap-2">
+                  {riskCount > 0 ? (
+                    <AlertTriangle className="size-3.5 text-amber-400 mt-0.5 shrink-0" />
+                  ) : (
+                    <Heart className="size-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                  )}
+                  <p className={`text-[10px] leading-relaxed ${
+                    riskCount > 0 ? 'text-amber-400' : 'text-emerald-400'
+                  }`}>
+                    {riskCount > 2
+                      ? `Warning: ${riskCount} players are at risk of injury. Strong rotation recommended for the next match.`
+                      : riskCount > 0
+                        ? `${riskCount} player${riskCount > 1 ? 's are' : ' is'} at risk of injury. Consider rotating ${riskCount > 1 ? 'them' : 'this player'} to avoid fatigue-related issues.`
+                        : 'All players are in great shape. The squad is ready for the match with no rotation needed.'}
+                  </p>
+                </div>
+              </div>
+            </InfoCard>
+          </motion.div>
+
+          {/* ============================================ */}
+          {/* D. Set Piece Assignments                     */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Award className="size-4 text-emerald-400" />
+                <SectionTitle>Set Piece Assignments</SectionTitle>
+              </div>
+
+              <div className="space-y-2">
+                {setPieceData!.roles.map((role) => {
+                  const idx = setPieceOffsets[role.id] || 0;
+                  const assigned = role.eligible[idx] || role.eligible[0];
+                  if (!assigned) return null;
+                  const isCaptain = role.id === 'captain';
+                  const canChange = !isCaptain && role.eligible.length > 1;
+
+                  return (
+                    <div
+                      key={role.id}
+                      className="flex items-center justify-between p-3 bg-[#21262d] rounded-lg"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${
+                          isCaptain
+                            ? `${AMBER_BG} border ${AMBER_BORDER}`
+                            : `${EMERALD_BG} border ${EMERALD_BORDER}`
+                        }`}>
+                          {isCaptain ? (
+                            <Crown className="size-4 text-amber-400" />
+                          ) : role.id === 'corner' ? (
+                            <Target className="size-4 text-emerald-400" />
+                          ) : role.id === 'freekick' ? (
+                            <Target className="size-4 text-emerald-400" />
+                          ) : (
+                            <Flag className="size-4 text-emerald-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className={`text-[9px] uppercase tracking-wider ${TEXT_SECONDARY}`}>
+                            {role.label}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-semibold text-white truncate`}>
+                              {assigned.name}
+                            </span>
+                            <span className={`text-[9px] ${TEXT_SECONDARY} shrink-0`}>
+                              OVR {assigned.ovr}
+                            </span>
+                            <span className={`text-[8px] px-1.5 py-0.5 rounded ${getChemistryBgClass(assigned.ovr - 50)} ${getChemistryColorClass(assigned.ovr - 50)} shrink-0`}>
+                              {role.attribute}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      {canChange && (
+                        <button
+                          onClick={() => cycleSetPiece(role.id, role.eligible.length)}
+                          className="text-[9px] px-2.5 py-1.5 rounded-md bg-[#0d1117] border border-[#30363d] text-[#8b949e] hover:text-[#c9d1d9] hover:border-[#484f58] transition-colors shrink-0 font-medium"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className={`text-[10px] ${TEXT_SECONDARY}`}>
+                Tap "Change" to cycle through eligible players for each set piece role. Captain is set from the Starting XI panel.
+              </p>
             </InfoCard>
           </motion.div>
 

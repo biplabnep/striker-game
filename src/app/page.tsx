@@ -101,6 +101,10 @@ import PlayerCareerTimeline from '@/components/game/PlayerCareerTimeline';
 import TacticalSetPieces from '@/components/game/TacticalSetPieces';
 import MatchWeatherEffects from '@/components/game/MatchWeatherEffects';
 import RefereeSystem from '@/components/game/RefereeSystem';
+import TransferDeadlineDay from '@/components/game/TransferDeadlineDay';
+import PlayerAgentContract from '@/components/game/PlayerAgentContract';
+import FanChants from '@/components/game/FanChants';
+import VirtualTrophyRoom from '@/components/game/VirtualTrophyRoom';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -199,6 +203,10 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   tactical_set_pieces: TacticalSetPieces,
   referee_system: RefereeSystem,
   match_weather_effects: MatchWeatherEffects,
+  transfer_deadline_day: TransferDeadlineDay,
+  player_agent_contract: PlayerAgentContract,
+  fan_chants: FanChants,
+  virtual_trophy_room: VirtualTrophyRoom,
 };
 
 const gameScreens: GameScreen[] = [
@@ -264,6 +272,10 @@ const gameScreens: GameScreen[] = [
   'tactical_set_pieces',
   'referee_system',
   'match_weather_effects',
+  'transfer_deadline_day',
+  'player_agent_contract',
+  'fan_chants',
+  'virtual_trophy_room',
 ];
 
 export default function Home() {

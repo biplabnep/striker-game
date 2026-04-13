@@ -6,7 +6,7 @@ import { useGameStore } from '@/store/gameStore';
 import {
   BookOpen, Search, Swords, Dumbbell, ArrowRightLeft, Heart,
   Trophy, TrendingUp, Calendar, Star, Activity, Award,
-  ChevronRight, BarChart3, Filter,
+  ChevronRight, BarChart3, Filter, Cloud, Shield, Flag, ClipboardList,
 } from 'lucide-react';
 import type { MatchResult, TrainingSession, Injury, Achievement, GameEvent, SeasonAward } from '@/lib/game/types';
 
@@ -90,6 +90,172 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'personal', label: 'Personal' },
   { key: 'milestone', label: 'Milestones' },
 ];
+
+// ─── Word Cloud Data ─────────────────────────────────────────
+
+const WORD_CLOUD_DATA = [
+  { word: 'Goal', frequency: 14, sentiment: 'positive' as const },
+  { word: 'Assist', frequency: 12, sentiment: 'positive' as const },
+  { word: 'Win', frequency: 11, sentiment: 'positive' as const },
+  { word: 'Training', frequency: 9, sentiment: 'neutral' as const },
+  { word: 'Clean Sheet', frequency: 8, sentiment: 'positive' as const },
+  { word: 'Derby', frequency: 7, sentiment: 'neutral' as const },
+  { word: 'Loss', frequency: 7, sentiment: 'negative' as const },
+  { word: 'Comeback', frequency: 6, sentiment: 'positive' as const },
+  { word: 'Injury', frequency: 6, sentiment: 'negative' as const },
+  { word: 'Final', frequency: 5, sentiment: 'neutral' as const },
+  { word: 'Substitution', frequency: 5, sentiment: 'neutral' as const },
+  { word: 'Hat-trick', frequency: 5, sentiment: 'positive' as const },
+  { word: 'MVP', frequency: 4, sentiment: 'positive' as const },
+  { word: 'Transfer', frequency: 4, sentiment: 'neutral' as const },
+  { word: 'Set Piece', frequency: 4, sentiment: 'neutral' as const },
+  { word: 'Red Card', frequency: 3, sentiment: 'negative' as const },
+  { word: 'Debut', frequency: 3, sentiment: 'positive' as const },
+  { word: 'Contract', frequency: 3, sentiment: 'neutral' as const },
+  { word: 'Press Conference', frequency: 3, sentiment: 'neutral' as const },
+  { word: 'Missed Penalty', frequency: 3, sentiment: 'negative' as const },
+  { word: 'Captain', frequency: 3, sentiment: 'positive' as const },
+  { word: 'Relegation', frequency: 2, sentiment: 'negative' as const },
+  { word: 'Suspension', frequency: 2, sentiment: 'negative' as const },
+  { word: 'Own Goal', frequency: 1, sentiment: 'negative' as const },
+];
+
+// ─── Mood Tracker Data ───────────────────────────────────────
+
+const MOOD_TRACKER_DATA = {
+  weeklyMoods: [
+    { day: 'Mon', mood: 'excellent' as const },
+    { day: 'Tue', mood: 'good' as const },
+    { day: 'Wed', mood: 'good' as const },
+    { day: 'Thu', mood: 'okay' as const },
+    { day: 'Fri', mood: 'good' as const },
+    { day: 'Sat', mood: 'excellent' as const },
+    { day: 'Sun', mood: 'good' as const },
+  ],
+  weeklyAverage: 4.1,
+  monthlyDistribution: [
+    { level: 'Excellent', count: 8, color: '#10b981' },
+    { level: 'Good', count: 12, color: '#0ea5e9' },
+    { level: 'Okay', count: 5, color: '#f59e0b' },
+    { level: 'Bad', count: 3, color: '#f97316' },
+    { level: 'Terrible', count: 2, color: '#ef4444' },
+  ],
+  influences: [
+    { factor: 'Form', impact: 0.7, direction: 'up' as const },
+    { factor: 'Morale', impact: 0.85, direction: 'up' as const },
+    { factor: 'Personal Life', impact: 0.4, direction: 'down' as const },
+  ],
+};
+
+// ─── Journal Templates Data ──────────────────────────────────
+
+const JOURNAL_TEMPLATES = [
+  {
+    id: 'match-recap',
+    name: 'Match Day Recap',
+    description: 'Recap goals, assists, rating, and key moments',
+    icon: Swords,
+    templateText: 'Match Day Recap\n\nOpponent: ...\nResult: ...\nMy Rating: .../10\nKey Moments: ...\nWhat went well: ...\nWhat to improve: ...',
+  },
+  {
+    id: 'training-summary',
+    name: 'Training Summary',
+    description: 'Log session type, intensity, and progress',
+    icon: Dumbbell,
+    templateText: 'Training Summary\n\nType: ...\nIntensity: .../100\nFocus Area: ...\nProgress: ...\nGoals for next session: ...',
+  },
+  {
+    id: 'personal-reflection',
+    name: 'Personal Reflection',
+    description: 'Reflect on personal growth and mindset',
+    icon: Heart,
+    templateText: 'Personal Reflection\n\nCurrent mindset: ...\nProudest moment this week: ...\nBiggest challenge: ...\nWhat I learned: ...\nFocus for next week: ...',
+  },
+  {
+    id: 'goal-celebration',
+    name: 'Goal Celebration',
+    description: 'Document that special goal moment',
+    icon: Star,
+    templateText: 'Goal Celebration\n\nCompetition: ...\nOpponent: ...\nMinute: ...\nType of goal: ...\nHow it felt: ...\nDedication: ...',
+  },
+  {
+    id: 'transfer-rumor',
+    name: 'Transfer Rumor',
+    description: 'Note transfer speculation and feelings',
+    icon: ArrowRightLeft,
+    templateText: 'Transfer Rumor\n\nLinked Club: ...\nSource: ...\nMy thoughts: ...\nAgent update: ...\nDecision: ...',
+  },
+  {
+    id: 'injury-update',
+    name: 'Injury Update',
+    description: 'Track injury recovery and rehab progress',
+    icon: Activity,
+    templateText: 'Injury Update\n\nInjury: ...\nSeverity: ...\nWeeks out: ...\nRehab progress: ...\nTarget return: ...\nHow I feel: ...',
+  },
+];
+
+// ─── Career Milestones Data ──────────────────────────────────
+
+const CAREER_MILESTONES = [
+  {
+    id: 'first-goal',
+    title: 'First Goal',
+    season: 1,
+    week: 3,
+    description: 'Scored the first competitive goal of the career. A moment that will be remembered forever.',
+    icon: 'star' as const,
+    journalEntries: 3,
+  },
+  {
+    id: '100th-appearance',
+    title: '100th Appearance',
+    season: 3,
+    week: 12,
+    description: 'Reached a century of appearances. Consistency and dedication personified.',
+    icon: 'shield' as const,
+    journalEntries: 8,
+  },
+  {
+    id: 'first-hat-trick',
+    title: 'First Hat-trick',
+    season: 2,
+    week: 28,
+    description: 'Scored three goals in a single match. An unforgettable night under the floodlights.',
+    icon: 'trophy' as const,
+    journalEntries: 5,
+  },
+  {
+    id: 'captains-armband',
+    title: "Captain's Armband",
+    season: 4,
+    week: 1,
+    description: 'Given the captaincy for the first time. A proud leadership moment in the career.',
+    icon: 'flag' as const,
+    journalEntries: 4,
+  },
+];
+
+// ─── Journal Statistics Data ─────────────────────────────────
+
+const JOURNAL_STATISTICS = {
+  totalEntries: 147,
+  avgWordsPerEntry: 68,
+  longestStreak: 23,
+  mostCommonTopics: [
+    { topic: 'Match Day', count: 52, color: '#10b981' },
+    { topic: 'Training', count: 34, color: '#0ea5e9' },
+    { topic: 'Personal', count: 28, color: '#a78bfa' },
+    { topic: 'Transfer', count: 19, color: '#f59e0b' },
+    { topic: 'Injury', count: 14, color: '#ef4444' },
+  ],
+  consistencyScore: 78,
+  entriesPerSeason: [
+    { season: 'S1', count: 24 },
+    { season: 'S2', count: 41 },
+    { season: 'S3', count: 38 },
+    { season: 'S4', count: 44 },
+  ],
+};
 
 // ─── Entry Generation ────────────────────────────────────────
 
@@ -564,6 +730,7 @@ export default function CareerJournal() {
   const gameState = useGameStore(state => state.gameState);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   // Generate all entries
   const allEntries = useMemo<JournalEntry[]>(() => {
@@ -900,6 +1067,336 @@ export default function CareerJournal() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* ─── NEW SECTIONS: Word Cloud · Mood · Templates · Milestones · Stats ─── */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+
+      {/* ─── Season Word Cloud ─── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.25 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 mb-4"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Cloud className="h-3.5 w-3.5 text-[#8b949e]" />
+          <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">
+            Season Keywords
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {WORD_CLOUD_DATA.map((kw) => {
+            const sizeClass =
+              kw.frequency >= 12 ? 'text-xl font-bold' :
+              kw.frequency >= 8 ? 'text-lg font-semibold' :
+              kw.frequency >= 5 ? 'text-base font-medium' :
+              kw.frequency >= 3 ? 'text-sm font-medium' :
+              'text-xs';
+            const colorClass =
+              kw.sentiment === 'positive' ? 'text-emerald-400' :
+              kw.sentiment === 'negative' ? 'text-red-400' :
+              'text-slate-400';
+            return (
+              <span
+                key={kw.word}
+                className={`${sizeClass} ${colorClass} px-1.5 py-0.5 bg-[#0d1117] border border-[#21262d] rounded-md inline-block leading-none cursor-default hover:border-[#484f58] transition-colors`}
+              >
+                {kw.word}
+              </span>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-4 mt-3 pt-2 border-t border-[#21262d]">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-sm bg-emerald-500" />
+            <span className="text-[9px] text-[#484f58]">Positive</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-sm bg-slate-400" />
+            <span className="text-[9px] text-[#484f58]">Neutral</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-sm bg-red-500" />
+            <span className="text-[9px] text-[#484f58]">Negative</span>
+          </span>
+        </div>
+      </motion.div>
+
+      {/* ─── Enhanced Mood Tracker ─── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 mb-4"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Activity className="h-3.5 w-3.5 text-[#8b949e]" />
+          <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">
+            Mood Tracker
+          </p>
+        </div>
+
+        {/* 7-day mood strip */}
+        <div className="flex items-center justify-between mb-4 px-1">
+          {MOOD_TRACKER_DATA.weeklyMoods.map((d) => {
+            const colorMap: Record<string, string> = {
+              excellent: 'bg-emerald-500',
+              good: 'bg-sky-500',
+              okay: 'bg-amber-500',
+              bad: 'bg-orange-500',
+              terrible: 'bg-red-500',
+            };
+            return (
+              <div key={d.day} className="flex flex-col items-center gap-1.5">
+                <span className={`w-5 h-5 rounded-md ${colorMap[d.mood]} border border-[#0d1117]`} />
+                <span className="text-[9px] text-[#484f58]">{d.day}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Weekly average mood score */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] text-[#8b949e]">Weekly Average Mood</span>
+            <span className="text-xs font-semibold text-emerald-400">
+              {MOOD_TRACKER_DATA.weeklyAverage.toFixed(1)}/5
+            </span>
+          </div>
+          <div className="w-full h-2 bg-[#0d1117] border border-[#21262d] rounded-md overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-md"
+              style={{ width: `${(MOOD_TRACKER_DATA.weeklyAverage / 5) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Monthly mood distribution bar chart */}
+        <div className="mb-4">
+          <span className="text-[10px] text-[#484f58] uppercase tracking-wide font-medium">
+            Monthly Distribution
+          </span>
+          <div className="mt-2 space-y-1.5">
+            {MOOD_TRACKER_DATA.monthlyDistribution.map((d) => (
+              <div key={d.level} className="flex items-center gap-2">
+                <span className="text-[9px] text-[#8b949e] w-14 text-right">{d.level}</span>
+                <div className="flex-1 h-3 bg-[#0d1117] border border-[#21262d] rounded-sm overflow-hidden">
+                  <div
+                    className="h-full rounded-sm"
+                    style={{ width: `${(d.count / 12) * 100}%`, backgroundColor: d.color }}
+                  />
+                </div>
+                <span className="text-[9px] text-[#484f58] w-4 text-right">{d.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mood influences */}
+        <div className="pt-3 border-t border-[#21262d]">
+          <span className="text-[10px] text-[#484f58] uppercase tracking-wide font-medium">
+            Mood Influences
+          </span>
+          <div className="mt-2 space-y-2">
+            {MOOD_TRACKER_DATA.influences.map((inf) => (
+              <div key={inf.factor} className="flex items-center justify-between">
+                <span className="text-[10px] text-[#8b949e]">{inf.factor}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-20 h-1.5 bg-[#0d1117] border border-[#21262d] rounded-sm overflow-hidden">
+                    <div
+                      className="h-full rounded-sm"
+                      style={{
+                        width: `${inf.impact * 100}%`,
+                        backgroundColor: inf.direction === 'up' ? '#10b981' : '#ef4444',
+                      }}
+                    />
+                  </div>
+                  <span
+                    className={`text-[9px] font-medium w-8 text-right ${
+                      inf.direction === 'up' ? 'text-emerald-400' : 'text-red-400'
+                    }`}
+                  >
+                    {inf.direction === 'up' ? '+' : '-'}{(inf.impact * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── Journal Entry Templates ─── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.35 }}
+        className="mb-4"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <ClipboardList className="h-3.5 w-3.5 text-[#8b949e]" />
+          <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">
+            Quick Templates
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {JOURNAL_TEMPLATES.map((tmpl) => (
+            <TemplateCard
+              key={tmpl.id}
+              template={tmpl}
+              isSelected={selectedTemplate === tmpl.id}
+              onSelect={() => setSelectedTemplate(selectedTemplate === tmpl.id ? null : tmpl.id)}
+            />
+          ))}
+        </div>
+        <AnimatePresence>
+          {selectedTemplate && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mt-3 bg-[#161b22] border border-[#30363d] rounded-lg p-3"
+            >
+              <p className="text-[10px] text-[#484f58] uppercase tracking-wide font-medium mb-2">
+                Template Preview — {JOURNAL_TEMPLATES.find((t) => t.id === selectedTemplate)?.name}
+              </p>
+              <pre className="text-xs text-[#8b949e] whitespace-pre-wrap font-mono bg-[#0d1117] border border-[#21262d] rounded-md p-3 leading-relaxed">
+                {JOURNAL_TEMPLATES.find((t) => t.id === selectedTemplate)?.templateText}
+              </pre>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* ─── Career Milestones in Journal ─── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.4 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 mb-4"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-3.5 w-3.5 text-[#8b949e]" />
+            <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">
+              Career Milestones
+            </p>
+          </div>
+          <button className="text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-0.5">
+            View All <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
+        <div className="space-y-2">
+          {CAREER_MILESTONES.map((ms) => (
+            <MilestoneCard key={ms.id} milestone={ms} />
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ─── Journal Statistics ─── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.45 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 mb-4"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <BarChart3 className="h-3.5 w-3.5 text-[#8b949e]" />
+          <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">
+            Journal Statistics
+          </p>
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <StatsBox label="Total Entries" value={JOURNAL_STATISTICS.totalEntries} />
+          <StatsBox label="Avg Words" value={JOURNAL_STATISTICS.avgWordsPerEntry} />
+          <StatsBox label="Best Streak" value={JOURNAL_STATISTICS.longestStreak} />
+        </div>
+
+        {/* Most common topics bar chart */}
+        <div className="mb-4">
+          <span className="text-[10px] text-[#484f58] uppercase tracking-wide font-medium">
+            Most Common Topics
+          </span>
+          <div className="mt-2 space-y-1.5">
+            {JOURNAL_STATISTICS.mostCommonTopics.map((t) => (
+              <div key={t.topic} className="flex items-center gap-2">
+                <span className="text-[9px] text-[#8b949e] w-16 text-right">{t.topic}</span>
+                <div className="flex-1 h-2.5 bg-[#0d1117] border border-[#21262d] rounded-sm overflow-hidden">
+                  <div
+                    className="h-full rounded-sm"
+                    style={{ width: `${(t.count / 52) * 100}%`, backgroundColor: t.color }}
+                  />
+                </div>
+                <span className="text-[9px] text-[#484f58] w-4 text-right">{t.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Journal Consistency score */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] text-[#8b949e]">Journal Consistency</span>
+            <span className="text-xs font-semibold text-emerald-400">
+              {JOURNAL_STATISTICS.consistencyScore}/100
+            </span>
+          </div>
+          <div className="w-full h-2.5 bg-[#0d1117] border border-[#21262d] rounded-md overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-md"
+              style={{ width: `${JOURNAL_STATISTICS.consistencyScore}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Entries per season SVG bar chart */}
+        <div>
+          <span className="text-[10px] text-[#484f58] uppercase tracking-wide font-medium">
+            Entries per Season
+          </span>
+          <div className="mt-2">
+            <svg viewBox="0 0 200 60" className="w-full h-auto">
+              {JOURNAL_STATISTICS.entriesPerSeason.map((s, i) => {
+                const barHeight = (s.count / 50) * 45;
+                const x = i * 50 + 10;
+                return (
+                  <g key={s.season}>
+                    <rect
+                      x={x}
+                      y={50 - barHeight}
+                      width={30}
+                      height={barHeight}
+                      rx={3}
+                      fill="#10b981"
+                      opacity={0.7}
+                    />
+                    <text
+                      x={x + 15}
+                      y={48 - barHeight}
+                      textAnchor="middle"
+                      fill="#8b949e"
+                      fontSize="8"
+                    >
+                      {s.count}
+                    </text>
+                    <text
+                      x={x + 15}
+                      y={58}
+                      textAnchor="middle"
+                      fill="#484f58"
+                      fontSize="8"
+                    >
+                      {s.season}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -982,5 +1479,84 @@ function JournalEntryCard({ entry, index }: { entry: JournalEntry; index: number
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+// ─── Template Card Sub-Component ─────────────────────────────
+
+function TemplateCard({
+  template,
+  isSelected,
+  onSelect,
+}: {
+  template: {
+    id: string;
+    name: string;
+    description: string;
+    icon: React.ElementType;
+    templateText: string;
+  };
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const IconComponent = template.icon;
+  return (
+    <button
+      onClick={onSelect}
+      className={`bg-[#161b22] border rounded-lg p-3 text-left transition-colors ${
+        isSelected
+          ? 'border-emerald-500/40 bg-emerald-500/5'
+          : 'border-[#30363d] hover:border-[#484f58]'
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <IconComponent className="h-3.5 w-3.5 text-emerald-400" />
+        <span className="text-xs font-semibold text-[#c9d1d9]">{template.name}</span>
+      </div>
+      <p className="text-[10px] text-[#8b949e] leading-relaxed mb-2">{template.description}</p>
+      <span className="text-[9px] text-emerald-400 font-medium">Use Template</span>
+    </button>
+  );
+}
+
+// ─── Milestone Card Sub-Component ─────────────────────────────
+
+function MilestoneCard({
+  milestone,
+}: {
+  milestone: {
+    id: string;
+    title: string;
+    season: number;
+    week: number;
+    description: string;
+    icon: 'star' | 'shield' | 'trophy' | 'flag';
+    journalEntries: number;
+  };
+}) {
+  const iconMap: Record<string, React.ReactNode> = {
+    star: <Star className="h-4 w-4 text-yellow-400" />,
+    shield: <Shield className="h-4 w-4 text-sky-400" />,
+    trophy: <Trophy className="h-4 w-4 text-amber-400" />,
+    flag: <Flag className="h-4 w-4 text-emerald-400" />,
+  };
+  return (
+    <div className="flex items-start gap-3 bg-[#0d1117] border border-[#21262d] rounded-lg p-3">
+      <div className="w-8 h-8 bg-[#161b22] border border-[#30363d] rounded-lg flex items-center justify-center flex-shrink-0">
+        {iconMap[milestone.icon] ?? <Star className="h-4 w-4 text-yellow-400" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <h4 className="text-xs font-semibold text-[#c9d1d9]">{milestone.title}</h4>
+          <span className="text-[9px] text-[#484f58] bg-[#161b22] px-1.5 py-0.5 rounded border border-[#21262d]">
+            S{milestone.season} W{milestone.week}
+          </span>
+        </div>
+        <p className="text-[10px] text-[#8b949e] leading-relaxed">{milestone.description}</p>
+        <span className="text-[9px] text-[#484f58] mt-1 inline-block">
+          {milestone.journalEntries} linked entries
+        </span>
+      </div>
+    </div>
   );
 }

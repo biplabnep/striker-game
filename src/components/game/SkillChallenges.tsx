@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronLeft,
+  ChevronRight,
   Star,
   Trophy,
   Zap,
@@ -20,6 +21,17 @@ import {
   Play,
   Gauge,
   TrendingUp,
+  Users,
+  Crown,
+  Flame,
+  Gift,
+  Shield,
+  Swords,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  Award,
+  Wind,
 } from 'lucide-react';
 import { PlayerAttributes } from '@/lib/game/types';
 
@@ -237,6 +249,51 @@ export default function SkillChallenges() {
               onClick={() => setActiveChallenge('crossing')}
               locked={attemptsLeft.crossing <= 0}
             />
+
+            {/* Challenge Leaderboard */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.15 }}
+            >
+              <ChallengeLeaderboard />
+            </motion.div>
+
+            {/* Challenge Skill Tree */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <ChallengeSkillTree />
+            </motion.div>
+
+            {/* Daily Challenge Streak */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 }}
+            >
+              <DailyChallengeStreak />
+            </motion.div>
+
+            {/* Challenge Difficulty Analytics */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <ChallengeDifficultyAnalytics />
+            </motion.div>
+
+            {/* Reward Showcase */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.35 }}
+            >
+              <RewardShowcase />
+            </motion.div>
           </motion.div>
         )}
 
@@ -1460,5 +1517,694 @@ function CrossingChallenge({
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Challenge Leaderboard
+// ============================================================
+
+const LEADERBOARD_PLAYERS = [
+  { rank: 1, name: 'MarcusFC', badge: 'gold' as const, totalScore: 4820, challengesCompleted: 42, bestChallenge: 'Free Kick — 498pts', isPlayer: false, rankChange: 'stable' as const },
+  { rank: 2, name: 'StrikerKing', badge: 'silver' as const, totalScore: 4510, challengesCompleted: 38, bestChallenge: 'Dribbling — 475pts', isPlayer: false, rankChange: 'up' as const },
+  { rank: 3, name: 'GoalMachine', badge: 'bronze' as const, totalScore: 4285, challengesCompleted: 40, bestChallenge: 'Crossing — 460pts', isPlayer: false, rankChange: 'down' as const },
+  { rank: 4, name: 'xYoux', badge: 'none' as const, totalScore: 3950, challengesCompleted: 35, bestChallenge: 'Free Kick — 420pts', isPlayer: true, rankChange: 'up' as const },
+  { rank: 5, name: 'DefensiveWall', badge: 'none' as const, totalScore: 3720, challengesCompleted: 33, bestChallenge: 'Crossing — 410pts', isPlayer: false, rankChange: 'down' as const },
+  { rank: 6, name: 'Winger99', badge: 'none' as const, totalScore: 3540, challengesCompleted: 30, bestChallenge: 'Dribbling — 395pts', isPlayer: false, rankChange: 'up' as const },
+  { rank: 7, name: 'MidfieldMaestro', badge: 'none' as const, totalScore: 3380, challengesCompleted: 28, bestChallenge: 'Free Kick — 380pts', isPlayer: false, rankChange: 'stable' as const },
+  { rank: 8, name: 'CleanSheet', badge: 'none' as const, totalScore: 3150, challengesCompleted: 26, bestChallenge: 'Crossing — 365pts', isPlayer: false, rankChange: 'stable' as const },
+  { rank: 9, name: 'SpeedDemon', badge: 'none' as const, totalScore: 2900, challengesCompleted: 24, bestChallenge: 'Dribbling — 340pts', isPlayer: false, rankChange: 'down' as const },
+  { rank: 10, name: 'RookieStar', badge: 'none' as const, totalScore: 2650, challengesCompleted: 20, bestChallenge: 'Free Kick — 310pts', isPlayer: false, rankChange: 'up' as const },
+];
+
+function ChallengeLeaderboard() {
+  const [activeTab, setActiveTab] = useState<'global' | 'friends' | 'club'>('global');
+
+  const tabs = [
+    { id: 'global' as const, label: 'Global', icon: <Users className="h-3 w-3" /> },
+    { id: 'friends' as const, label: 'Friends', icon: <Users className="h-3 w-3" /> },
+    { id: 'club' as const, label: 'Club', icon: <Shield className="h-3 w-3" /> },
+  ];
+
+  const badgeStyles: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+    gold: { bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-400', icon: <Crown className="h-3 w-3 text-amber-400" /> },
+    silver: { bg: 'bg-[#8b949e]/10 border-[#8b949e]/20', text: 'text-[#c9d1d9]', icon: <Award className="h-3 w-3 text-[#c9d1d9]" /> },
+    bronze: { bg: 'bg-orange-500/10 border-orange-500/20', text: 'text-orange-400', icon: <Award className="h-3 w-3 text-orange-400" /> },
+    none: { bg: 'bg-[#21262d] border-[#30363d]', text: 'text-[#8b949e]', icon: null },
+  };
+
+  const rankChangeIcon = (change: 'up' | 'down' | 'stable') => {
+    if (change === 'up') return <ArrowUp className="h-3 w-3 text-emerald-400" />;
+    if (change === 'down') return <ArrowDown className="h-3 w-3 text-red-400" />;
+    return <Minus className="h-3 w-3 text-[#8b949e]" />;
+  };
+
+  const displayPlayers = activeTab === 'friends'
+    ? LEADERBOARD_PLAYERS.filter(p => p.rank <= 5 || p.isPlayer)
+    : activeTab === 'club'
+    ? LEADERBOARD_PLAYERS.filter(p => p.rank <= 3 || p.isPlayer)
+    : LEADERBOARD_PLAYERS;
+
+  return (
+    <Card className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-400" />
+            <h3 className="text-sm font-semibold text-[#c9d1d9]">Leaderboard</h3>
+          </div>
+          <span className="text-[10px] text-[#8b949e]">Your rank: #4</span>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-3">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-[#21262d] text-[#8b949e] border border-[#30363d] hover:text-[#c9d1d9]'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Table header */}
+        <div className="grid grid-cols-12 gap-1 px-2 pb-2 border-b border-[#30363d]">
+          <span className="col-span-1 text-[10px] text-[#8b949e] font-medium">#</span>
+          <span className="col-span-4 text-[10px] text-[#8b949e] font-medium">Player</span>
+          <span className="col-span-3 text-[10px] text-[#8b949e] font-medium text-right">Score</span>
+          <span className="col-span-2 text-[10px] text-[#8b949e] font-medium text-center">Done</span>
+          <span className="col-span-2 text-[10px] text-[#8b949e] font-medium text-center">Trend</span>
+        </div>
+
+        {/* Player rows */}
+        <div className="mt-1 space-y-0.5">
+          {displayPlayers.map((player) => {
+            const badge = badgeStyles[player.badge];
+            return (
+              <div
+                key={player.rank}
+                className={`grid grid-cols-12 gap-1 items-center px-2 py-2 rounded-lg ${
+                  player.isPlayer
+                    ? 'bg-emerald-500/8 border border-emerald-500/25'
+                    : 'hover:bg-[#21262d]'
+                } transition-colors`}
+              >
+                <div className="col-span-1 flex items-center justify-center">
+                  {player.badge !== 'none' ? (
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${badge.bg}`}>
+                      {badge.icon}
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-bold text-[#8b949e]">{player.rank}</span>
+                  )}
+                </div>
+                <div className="col-span-4 flex items-center gap-1.5 min-w-0">
+                  <span className={`text-xs font-medium truncate ${player.isPlayer ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
+                    {player.name}
+                  </span>
+                  {player.isPlayer && (
+                    <span className="text-[8px] bg-emerald-500/15 text-emerald-400 px-1 py-0 rounded border border-emerald-500/20">You</span>
+                  )}
+                </div>
+                <span className="col-span-3 text-xs font-semibold text-[#c9d1d9] text-right">{player.totalScore.toLocaleString()}</span>
+                <span className="col-span-2 text-[10px] text-[#8b949e] text-center">{player.challengesCompleted}</span>
+                <div className="col-span-2 flex items-center justify-center">
+                  {rankChangeIcon(player.rankChange)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Friends tab: Challenge button */}
+        {activeTab === 'friends' && (
+          <div className="mt-3 pt-3 border-t border-[#30363d]">
+            <Button className="w-full bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] rounded-lg text-xs h-8">
+              <Swords className="h-3 w-3 mr-1" />
+              Challenge a Friend
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Challenge Skill Tree
+// ============================================================
+
+const SKILL_TREE_NODES = [
+  { id: 'shooting', name: 'Shooting', icon: '🎯', x: 150, y: 30, completion: 85, status: 'completed' as const },
+  { id: 'passing', name: 'Passing', icon: '🎯', x: 50, y: 100, completion: 72, status: 'completed' as const },
+  { id: 'dribbling', name: 'Dribbling', icon: '⚽', x: 250, y: 100, completion: 60, status: 'in_progress' as const },
+  { id: 'defending', name: 'Defending', icon: '🛡️', x: 30, y: 190, completion: 45, status: 'in_progress' as const },
+  { id: 'speed', name: 'Speed', icon: '⚡', x: 150, y: 170, completion: 30, status: 'in_progress' as const },
+  { id: 'strength', name: 'Strength', icon: '💪', x: 270, y: 190, completion: 0, status: 'locked' as const },
+  { id: 'tactical', name: 'Tactical', icon: '🧠', x: 80, y: 270, completion: 0, status: 'locked' as const },
+  { id: 'aerial', name: 'Aerial', icon: '🌀', x: 220, y: 270, completion: 0, status: 'locked' as const },
+];
+
+const SKILL_TREE_PATHS = [
+  { from: 'shooting', to: 'passing' },
+  { from: 'shooting', to: 'dribbling' },
+  { from: 'passing', to: 'defending' },
+  { from: 'passing', to: 'speed' },
+  { from: 'dribbling', to: 'speed' },
+  { from: 'dribbling', to: 'strength' },
+  { from: 'defending', to: 'tactical' },
+  { from: 'speed', to: 'tactical' },
+  { from: 'speed', to: 'aerial' },
+  { from: 'strength', to: 'aerial' },
+];
+
+function ChallengeSkillTree() {
+  const nodeMap = new Map(SKILL_TREE_NODES.map(n => [n.id, n]));
+
+  const nodeColor = (status: string) => {
+    if (status === 'completed') return '#22c55e';
+    if (status === 'in_progress') return '#f59e0b';
+    return '#484f58';
+  };
+
+  const nodeBgColor = (status: string) => {
+    if (status === 'completed') return 'rgba(34,197,94,0.15)';
+    if (status === 'in_progress') return 'rgba(245,158,11,0.1)';
+    return 'rgba(255,255,255,0.03)';
+  };
+
+  const pathColor = (fromId: string, toId: string) => {
+    const from = nodeMap.get(fromId);
+    const to = nodeMap.get(toId);
+    if (from?.status === 'completed' && to?.status === 'completed') return '#22c55e';
+    if (from?.status === 'completed' && to?.status === 'in_progress') return '#f59e0b';
+    return '#30363d';
+  };
+
+  const totalSkillPoints = SKILL_TREE_NODES.reduce((sum, n) => sum + Math.round(n.completion / 10), 0);
+  const completedNodes = SKILL_TREE_NODES.filter(n => n.status === 'completed').length;
+  const nextNode = SKILL_TREE_NODES.find(n => n.status === 'in_progress');
+
+  return (
+    <Card className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-sm font-semibold text-[#c9d1d9]">Skill Tree</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[#8b949e]">{completedNodes}/8 completed</span>
+            <span className="text-xs font-bold text-emerald-400">{totalSkillPoints} pts</span>
+          </div>
+        </div>
+
+        {/* SVG Tree */}
+        <svg viewBox="0 0 300 310" className="w-full mb-3" style={{ maxHeight: 320 }}>
+          {/* Background */}
+          <rect x="0" y="0" width="300" height="310" rx="6" fill="#0d1117" />
+
+          {/* Connecting paths */}
+          {SKILL_TREE_PATHS.map((path, i) => {
+            const from = nodeMap.get(path.from);
+            const to = nodeMap.get(path.to);
+            if (!from || !to) return null;
+            return (
+              <line
+                key={i}
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
+                stroke={pathColor(path.from, path.to)}
+                strokeWidth="1.5"
+                strokeDasharray="4 2"
+              />
+            );
+          })}
+
+          {/* Nodes */}
+          {SKILL_TREE_NODES.map((node) => {
+            const color = nodeColor(node.status);
+            const bgColor = nodeBgColor(node.status);
+            const isNext = node.id === nextNode?.id;
+            return (
+              <g key={node.id}>
+                {/* Current path highlight ring */}
+                {isNext && (
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r="24"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="1"
+                    strokeDasharray="3 3"
+                    opacity="0.6"
+                  />
+                )}
+                {/* Node circle */}
+                <circle
+                  cx={node.x}
+                  cy={node.y}
+                  r="20"
+                  fill={bgColor}
+                  stroke={color}
+                  strokeWidth="1.5"
+                />
+                {/* Icon */}
+                <text
+                  x={node.x}
+                  y={node.y + 1}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize="11"
+                >
+                  {node.icon}
+                </text>
+                {/* Name */}
+                <text
+                  x={node.x}
+                  y={node.y + 32}
+                  textAnchor="middle"
+                  fill={color}
+                  fontSize="8"
+                  fontWeight="600"
+                >
+                  {node.name}
+                </text>
+                {/* Completion % */}
+                {node.completion > 0 && (
+                  <text
+                    x={node.x}
+                    y={node.y + 42}
+                    textAnchor="middle"
+                    fill="#8b949e"
+                    fontSize="7"
+                  >
+                    {node.completion}%
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Next challenge indicator */}
+        {nextNode && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/15">
+            <ChevronRight className="h-3 w-3 text-amber-400" />
+            <span className="text-[10px] text-amber-400 font-medium">
+              Current path: {nextNode.name} — {nextNode.completion}% complete
+            </span>
+          </div>
+        )}
+
+        {/* Legend */}
+        <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-[#8b949e]">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>Completed</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-amber-500" />
+            <span>In Progress</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-[#484f58]" />
+            <span>Locked</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Daily Challenge Streak
+// ============================================================
+
+const STREAK_HISTORY = [
+  { day: 'Mon', completed: true },
+  { day: 'Tue', completed: true },
+  { day: 'Wed', completed: true },
+  { day: 'Thu', completed: true },
+  { day: 'Fri', completed: true },
+  { day: 'Sat', completed: false },
+  { day: 'Sun', completed: false },
+];
+
+const STREAK_MILESTONES = [
+  { days: 3, label: 'Bronze Streak', unlocked: true, reward: '500 coins' },
+  { days: 7, label: 'Silver Streak', unlocked: true, reward: '1,500 coins + XP Boost' },
+  { days: 14, label: 'Gold Streak', unlocked: false, reward: '5,000 coins + Cosmetic' },
+  { days: 30, label: 'Diamond Streak', unlocked: false, reward: 'Legendary Reward' },
+];
+
+function DailyChallengeStreak() {
+  const currentStreak = 5;
+  const bestStreak = 12;
+  const bestStreakDate = 'Dec 15, 2024';
+
+  const motivationalText = currentStreak >= 30
+    ? 'Legendary consistency! You are unstoppable!'
+    : currentStreak >= 14
+    ? 'On fire! Keep the momentum going!'
+    : currentStreak >= 7
+    ? 'Great discipline! A week strong!'
+    : currentStreak >= 3
+    ? 'Nice streak building! Don\'t break it!'
+    : 'Start your streak today!';
+
+  return (
+    <Card className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Flame className="h-4 w-4 text-orange-400" />
+            <h3 className="text-sm font-semibold text-[#c9d1d9]">Daily Streak</h3>
+          </div>
+          <div className="text-[10px] text-[#8b949e]">Best: {bestStreak} days ({bestStreakDate})</div>
+        </div>
+
+        {/* Current streak display */}
+        <div className="text-center mb-4">
+          <p className="text-5xl font-black text-orange-400">{currentStreak}</p>
+          <p className="text-xs text-[#8b949e] mt-1">day streak</p>
+          <p className="text-[10px] text-orange-400/70 mt-1 font-medium italic">{motivationalText}</p>
+        </div>
+
+        {/* 7-day history */}
+        <div className="flex justify-between gap-1 mb-4">
+          {STREAK_HISTORY.map((day, i) => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <div
+                className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
+                  day.completed
+                    ? 'bg-emerald-500/15 border-emerald-500/30'
+                    : 'bg-[#21262d] border-[#30363d]'
+                }`}
+              >
+                {day.completed ? (
+                  <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                ) : (
+                  <Minus className="h-3 w-3 text-[#484f58]" />
+                )}
+              </div>
+              <span className={`text-[9px] ${day.completed ? 'text-emerald-400' : 'text-[#484f58]'}`}>
+                {day.day}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Streak milestones */}
+        <div className="border-t border-[#30363d] pt-3">
+          <p className="text-[10px] text-[#8b949e] font-medium mb-2">Milestones</p>
+          <div className="grid grid-cols-2 gap-2">
+            {STREAK_MILESTONES.map((milestone) => (
+              <div
+                key={milestone.days}
+                className={`flex items-center gap-2 px-2 py-2 rounded-lg border ${
+                  milestone.unlocked
+                    ? 'bg-emerald-500/8 border-emerald-500/20'
+                    : 'bg-[#21262d] border-[#30363d] opacity-50'
+                }`}
+              >
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                  milestone.unlocked ? 'bg-emerald-500/15' : 'bg-[#30363d]'
+                }`}>
+                  {milestone.unlocked ? (
+                    <Star className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <span className="text-[8px] text-[#484f58] font-bold">{milestone.days}d</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-[10px] font-semibold truncate ${
+                    milestone.unlocked ? 'text-emerald-400' : 'text-[#8b949e]'
+                  }`}>
+                    {milestone.label}
+                  </p>
+                  <p className="text-[8px] text-[#484f58] truncate">{milestone.reward}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Challenge Difficulty Analytics
+// ============================================================
+
+const DIFFICULTY_STATS = [
+  { difficulty: 'Easy', completionRate: 92, avgScore: 380, color: '#22c55e' },
+  { difficulty: 'Medium', completionRate: 74, avgScore: 290, color: '#f59e0b' },
+  { difficulty: 'Hard', completionRate: 48, avgScore: 195, color: '#f97316' },
+  { difficulty: 'Expert', completionRate: 21, avgScore: 120, color: '#ef4444' },
+];
+
+const RADAR_DATA = [
+  { label: 'Shooting', value: 85 },
+  { label: 'Passing', value: 72 },
+  { label: 'Dribbling', value: 60 },
+  { label: 'Defending', value: 45 },
+  { label: 'Speed', value: 78 },
+  { label: 'Aerial', value: 35 },
+];
+
+function ChallengeDifficultyAnalytics() {
+  const weakest = RADAR_DATA.reduce((min, d) => d.value < min.value ? d : min);
+  const strongest = RADAR_DATA.reduce((max, d) => d.value > max.value ? d : max);
+
+  const radarSize = 120;
+  const radarCenter = 150;
+  const radarTop = 90;
+  const maxRadius = 80;
+  const numAxes = RADAR_DATA.length;
+
+  const getPoint = (index: number, value: number) => {
+    const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
+    const r = (value / 100) * maxRadius;
+    return {
+      x: radarCenter + r * Math.cos(angle),
+      y: radarTop + r * Math.sin(angle),
+    };
+  };
+
+  const gridPoints = (radiusFraction: number) => {
+    return Array.from({ length: numAxes }, (_, i) => {
+      const pt = getPoint(i, radiusFraction * 100);
+      return `${pt.x},${pt.y}`;
+    }).join(' ');
+  };
+
+  const dataPoints = RADAR_DATA.map((d, i) => getPoint(i, d.value));
+  const dataPolygon = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const axisEndpoints = RADAR_DATA.map((_, i) => getPoint(i, 100));
+
+  return (
+    <Card className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-sm font-semibold text-[#c9d1d9]">Analytics</h3>
+          </div>
+        </div>
+
+        {/* Difficulty completion rates */}
+        <div className="space-y-2 mb-4">
+          {DIFFICULTY_STATS.map((stat) => (
+            <div key={stat.difficulty}>
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-[#8b949e]">{stat.difficulty}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#8b949e]">Avg: {stat.avgScore}</span>
+                  <span className="font-semibold" style={{ color: stat.color }}>{stat.completionRate}%</span>
+                </div>
+              </div>
+              <div className="h-2 bg-[#21262d] rounded-md overflow-hidden">
+                <motion.div
+                  className="h-full rounded-md"
+                  style={{ backgroundColor: stat.color }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stat.completionRate}%` }}
+                  transition={{ duration: 0.6 }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* SVG Radar Chart */}
+        <div className="flex justify-center mb-3">
+          <svg viewBox="0 0 300 240" className="w-full" style={{ maxHeight: 240 }}>
+            {/* Background grid rings */}
+            {[0.25, 0.5, 0.75, 1].map((fraction) => (
+              <polygon
+                key={fraction}
+                points={gridPoints(fraction)}
+                fill="none"
+                stroke="#30363d"
+                strokeWidth="0.5"
+              />
+            ))}
+
+            {/* Axis lines */}
+            {axisEndpoints.map((pt, i) => (
+              <line
+                key={i}
+                x1={radarCenter}
+                y1={radarTop}
+                x2={pt.x}
+                y2={pt.y}
+                stroke="#30363d"
+                strokeWidth="0.5"
+              />
+            ))}
+
+            {/* Data polygon */}
+            <polygon
+              points={dataPolygon}
+              fill="rgba(34,197,94,0.15)"
+              stroke="#22c55e"
+              strokeWidth="1.5"
+            />
+
+            {/* Data points and labels */}
+            {RADAR_DATA.map((d, i) => {
+              const pt = dataPoints[i];
+              return (
+                <g key={i}>
+                  <circle cx={pt.x} cy={pt.y} r="3" fill="#22c55e" />
+                  <circle cx={pt.x} cy={pt.y} r="1.5" fill="#0d1117" />
+                  <text
+                    x={pt.x + (pt.x > radarCenter ? 10 : -10)}
+                    y={pt.y + (pt.y > radarTop ? 14 : -6)}
+                    textAnchor={pt.x > radarCenter ? 'start' : 'end'}
+                    fill="#8b949e"
+                    fontSize="8"
+                    fontWeight="600"
+                  >
+                    {d.label}
+                  </text>
+                  <text
+                    x={pt.x + (pt.x > radarCenter ? 10 : -10)}
+                    y={pt.y + (pt.y > radarTop ? 24 : 4)}
+                    textAnchor={pt.x > radarCenter ? 'start' : 'end'}
+                    fill="#c9d1d9"
+                    fontSize="7"
+                    fontWeight="700"
+                  >
+                    {d.value}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Weakest / Strongest indicators */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/15">
+            <p className="text-[10px] text-red-400 font-medium">Weakest Area</p>
+            <p className="text-xs font-bold text-red-400 mt-0.5">{weakest.label} ({weakest.value})</p>
+            <p className="text-[8px] text-[#8b949e] mt-0.5">Try more {weakest.label.toLowerCase()} challenges to improve</p>
+          </div>
+          <div className="px-3 py-2 rounded-lg bg-emerald-500/8 border border-emerald-500/15">
+            <p className="text-[10px] text-emerald-400 font-medium">Strongest Area</p>
+            <p className="text-xs font-bold text-emerald-400 mt-0.5">{strongest.label} ({strongest.value})</p>
+            <p className="text-[8px] text-[#8b949e] mt-0.5">Your best performing category</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Reward Showcase
+// ============================================================
+
+const REWARD_ITEMS = [
+  { id: 'r1', name: 'XP Boost (2x)', icon: <Zap className="h-5 w-5 text-amber-400" />, rarity: 'Rare' as const, dateEarned: 'Dec 18', equipped: true, value: 500 },
+  { id: 'r2', name: 'Coin Bundle', icon: <Gift className="h-5 w-5 text-emerald-400" />, rarity: 'Common' as const, dateEarned: 'Dec 17', equipped: false, value: 1000 },
+  { id: 'r3', name: 'Elite Boots', icon: <Star className="h-5 w-5 text-purple-400" />, rarity: 'Epic' as const, dateEarned: 'Dec 15', equipped: true, value: 2500 },
+  { id: 'r4', name: 'Training Kit', icon: <Trophy className="h-5 w-5 text-blue-400" />, rarity: 'Rare' as const, dateEarned: 'Dec 12', equipped: false, value: 750 },
+  { id: 'r5', name: 'Streak Shield', icon: <Shield className="h-5 w-5 text-cyan-400" />, rarity: 'Common' as const, dateEarned: 'Dec 10', equipped: false, value: 300 },
+  { id: 'r6', name: 'Golden Ball', icon: <Crown className="h-5 w-5 text-amber-300" />, rarity: 'Epic' as const, dateEarned: 'Dec 5', equipped: true, value: 3000 },
+];
+
+function RewardShowcase() {
+  const totalValue = REWARD_ITEMS.reduce((sum, r) => sum + r.value, 0);
+
+  const rarityStyle: Record<string, { border: string; bg: string; text: string }> = {
+    Common: { border: 'border-[#8b949e]/20', bg: 'bg-[#21262d]', text: 'text-[#8b949e]' },
+    Rare: { border: 'border-blue-500/20', bg: 'bg-blue-500/5', text: 'text-blue-400' },
+    Epic: { border: 'border-purple-500/20', bg: 'bg-purple-500/5', text: 'text-purple-400' },
+  };
+
+  return (
+    <Card className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Gift className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-sm font-semibold text-[#c9d1d9]">Rewards</h3>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-[#8b949e]">Total value:</span>
+            <span className="text-xs font-bold text-emerald-400">{totalValue.toLocaleString()} coins</span>
+          </div>
+        </div>
+
+        {/* Reward grid */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {REWARD_ITEMS.map((reward) => {
+            const rarity = rarityStyle[reward.rarity];
+            return (
+              <div
+                key={reward.id}
+                className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg border ${rarity.border} ${rarity.bg} transition-colors hover:brightness-110`}
+              >
+                <div className="w-10 h-10 rounded-lg bg-[#0d1117] flex items-center justify-center shrink-0">
+                  {reward.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-[#c9d1d9] truncate">{reward.name}</p>
+                  <p className={`text-[9px] ${rarity.text} font-medium`}>{reward.rarity}</p>
+                  <p className="text-[8px] text-[#484f58]">{reward.dateEarned}</p>
+                </div>
+                {reward.equipped && (
+                  <span className="absolute top-1 right-1 text-[7px] bg-emerald-500/15 text-emerald-400 px-1 py-0 rounded border border-emerald-500/20 font-bold">
+                    ON
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Reward shop teaser */}
+        <Button className="w-full bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] rounded-lg text-xs h-8 border border-[#30363d]">
+          <Gift className="h-3 w-3 mr-1" />
+          Open Reward Shop
+          <ChevronRight className="h-3 w-3 ml-1" />
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
