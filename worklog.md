@@ -1,7 +1,7 @@
 ---
-Task ID: 31
+Task ID: 32
 Agent: main (cron review)
-Task: Full dev cycle — QA 81→83 screens, 0 TS/lint fixes needed, 2 styling enhancements (HallOfFame, MatchDayLive), 2 new features (BoardRoom, YouthDevelopment), all via 4 parallel Task agents
+Task: Full dev cycle — QA 83→85 screens, 0 TS/lint fixes, 2 styling (WorldFootballNews, PreSeasonTrainingCamp), 2 new features (CreateAClub, SocialMediaFeed), 4 parallel agents
 
 ## Current Project Status Assessment
 - **Project:** Elite Striker — 100% client-side football career simulation SPA
@@ -9,85 +9,83 @@ Task: Full dev cycle — QA 81→83 screens, 0 TS/lint fixes needed, 2 styling e
 - **Lint:** 0 errors, 0 warnings
 - **TypeScript (src/):** Clean (0 errors)
 - **Uncodixify Compliance:** 100%
-- **Total Screens:** 83 registered GameScreen types (added board_room, youth_development)
-- **New Components:** BoardRoom.tsx (NEW ~1,585 lines), YouthDevelopment.tsx (NEW ~1,681 lines)
-- **Enhanced Components:** HallOfFame.tsx (+545 lines: inductee gallery, records board, legacy score, moments of glory, fan tribute), MatchDayLive.tsx (+682 lines: momentum chart, player live stats, event timeline, set-piece stats, heat map comparison)
+- **Total Screens:** 85 registered GameScreen types (added create_a_club, social_media_feed)
+- **New Components:** CreateAClub.tsx (NEW ~1,659 lines), SocialMediaFeed.tsx (NEW ~1,339 lines)
+- **Enhanced Components:** WorldFootballNews.tsx (+571 lines: featured article, transfer rumors, league roundup, power rankings), PreSeasonTrainingCamp.tsx (+706 lines: camp progress, fitness tracking, drill visualizations, friendlies, team bonding)
 - **Bugs Fixed:** None — clean cycle
 
 Work Log:
 
 ### Phase 1: Assessment & QA
-- Dev server restarted (200 OK), TS: 0 src/ errors, Lint: 0 errors
-- 81 screens batch-tested via JS navigation — all PASS
+- Dev server restarted, TS: 0 src/ errors, Lint: 0 errors
+- 83 screens batch-tested — all PASS
 
 ### Phase 2: Bug Fixes
 None found.
 
 ### Phase 3: Parallel Development — 4 Task Agents
 
-#### Agent 1: HallOfFame.tsx — Styling Enhancement (1,562 → 2,107 lines, +545 lines)
-- **Hall of Fame Inductee Gallery**: Horizontal scrollable 8-card gallery with SVG silhouettes, tier badges (Legend/Icon/Great), career highlights, trophy counts, "Your Journey" qualifier
-- **All-Time Records Board**: 12 club records with progress bars, RECORD HOLDER/CLOSE badges, player rank
-- **Career Legacy Score**: SVG circular gauge (0-100), 6 category progress bars (Goalscoring/Playmaking/Leadership/Trophy/International/Loyalty), tier badge (Club Legend/Fan Favorite/Cult Hero/Squad Player)
-- **Career Moments of Glory**: Vertical timeline of 6 moments (debut goal, first trophy, record performance, derby hero, European night, final whistle) with heart impact ratings
-- **Fan Tribute**: Approval bar, follower count, 4-5 fan quotes, chant/song text
+#### Agent 1: WorldFootballNews.tsx — Styling (1,917 → 2,488 lines, +571 lines)
+- **Featured Article Hero**: SVG image placeholder, headline/subtitle, category badge, author/date/readTime, 4 key takeaways, "Read Full Article" button
+- **Transfer Rumor Mill**: 6 rumor cards (player, from→to, fee, 1-5 star reliability, Done Deal/Likely/Rumor/Unlikely badges, YOUR CLUB highlight)
+- **League Round-Up**: 5 league summary cards with mini table (top 3 + bottom 3), key results, top scorer
+- **Power Rankings**: Top 10 clubs with rank change arrows, rating, form dots (W/D/L), player's club highlighted
 
-#### Agent 2: MatchDayLive.tsx — Styling Enhancement (1,791 → 2,473 lines, +682 lines)
-- **Live Match Momentum Chart**: SVG area chart with dual-colored fills (emerald home, red away), event markers with dashed vertical lines, half-time divider, momentum phase indicator
-- **In-Match Player Stats Panel**: 2x3 grid (Passes/Accuracy/Distance/Sprints/Tackles/Key Passes) with mini sparklines per 15-min interval, season average comparison (green/red), On Fire/Struggling badges
-- **Match Event Timeline**: Vertical timeline with colored minute badges, enriched descriptions (goal type, card reason, sub details, injury severity)
-- **Set-Piece Statistics**: Corners/Free Kicks/Throw-ins with centered comparison bars
-- **Heat Map Comparison**: Side-by-side 4x6 SVG heat maps for both teams, player position zone highlighted amber
+#### Agent 2: PreSeasonTrainingCamp.tsx — Styling (2,707 → 3,413 lines, +706 lines)
+- **Camp Progress Dashboard**: SVG circular progress ring, 3 phase progress bars (Fitness/Tactical/Match Prep), 5-item objectives checklist, difficulty display
+- **Fitness Tracking Panel**: SVG circular gauge, 6 metrics (Stamina/Speed/Strength/Agility/Flexibility/Endurance) with progress bars and change deltas, Peak Fitness badge
+- **Training Drill Visualization**: 4 drill cards with inline SVG (track/dumbbells/pitch/match), duration/intensity/calories, 7-day schedule grid
+- **Pre-Season Friendlies Tracker**: 4 matches with scores/stats, SVG results table, Next Friendly countdown
+- **Team Bonding Activities**: 4 activities with morale impact, squad chemistry before/after comparison
 
-#### Agent 3: BoardRoom.tsx — NEW Feature (~1,585 lines)
-- **Board Room Header**: Club badge, chairman name, 4 SVG board member avatars, Board Confidence bar (0-100%), meeting dates
-- **Contract Negotiation**: Current contract display, wage slider (0-200%), contract length (1-5y), signing bonus, release clause toggle, board counter-offer, side-by-side comparison
-- **Club Expectations**: 4 objectives (League Position/Cup Round/Goals/Rating) with SVG positional bar, progress tracking, On Track/At Risk/Failing badges, satisfaction score
-- **Transfer Budget**: Available/total budget, request signing form (position/budget/priority), 4-item wishlist, 5 recent transfers, player market value
-- **Board Meeting History**: 6 meetings with topics, decisions, rating badges, chairman quotes
-- **Facility Investments**: 4 proposals (Training/Youth/Stadium/Analytics) with cost/benefit/approval chance/investment slider
-- **Player Power**: Influence rating (1-5 stars), fan/media/squad influence bars, Request Captaincy/Demand Transfer buttons
-- **Registered**: board_room, BottomNav Club (Landmark icon)
+#### Agent 3: CreateAClub.tsx — NEW Feature (~1,659 lines)
+- **5-Step Wizard**: Identity → Badge → Kit → Stadium → Budget → Summary
+- **Step 1 Identity**: Name, city (10 European), founded year, motto, stadium name, league (5), rival, color pickers (primary/secondary, 6 each)
+- **Step 2 Badge**: 6 shapes (Shield/Circle/Diamond/Hexagon/Oval/Square), stars (1-5), 12 toggleable elements, SVG preview, Randomize
+- **Step 3 Kit**: 3 kits × 4 zones × 8 colors, 3 styles (Classic/Modern/Retro), 3 fonts, SVG side-by-side preview
+- **Step 4 Stadium**: 4 types, capacity slider (5K-80K), 4 stand sliders, 5 feature toggles, SVG preview
+- **Step 5 Budget**: Budget/wage/transfer sliders, squad quality (1-5), squad size (18-30), 4 manager types, 3 objectives, difficulty rating
+- **Summary**: Full preview with edit buttons, "Start Career" button
+- **Registered**: create_a_club, BottomNav Career (Palette icon)
 
-#### Agent 4: YouthDevelopment.tsx — NEW Feature (~1,681 lines)
-- **Youth Academy Header**: Academy rating (1-5 stars), youth budget, level badge, quick stats, youth coach name + quality
-- **Youth Squad Overview**: 3 tabs (U18/U21/Loaned Out), sortable player table (OVR/POT/Age/Pos/Growth), form indicators, loan details
-- **Youth Player Profile**: Photo placeholder, OVR/POT badges, 6-category attribute bars, SVG growth trajectory (age 16→23), potential analysis (High/Medium/Low), radar chart vs first-team player, personality traits, training recommendations
-- **Youth Training Programs**: 4 programs (Technical/Physical/Tactical/Mental) with assigned counts, duration, progress bars, Assign/Create buttons
-- **Youth Tournament Schedule**: 4 tournaments, SVG mini bracket, past history
-- **Promotion & Integration**: Readiness assessment (OVR/age/position/gap), Ready Now/Needs Time/Loan Recommended badges, 5 notable graduates, success rate
-- **Scouting Network**: 5 scout regions, 4 international youth targets
-- **Registered**: youth_development, BottomNav Club (Baby icon)
+#### Agent 4: SocialMediaFeed.tsx — NEW Feature (~1,339 lines)
+- **Social Feed Header**: 4 stats (Followers/Following/Posts/Engagement), 4 platform badges (FootballerGram/Chirper/FaceGoal/TikTack), notification bell
+- **Create Post Panel**: Text area (280 chars), type selector (Text/Photo/Video/Poll), 8 mood emojis, privacy selector (Public/Team/Close Friends)
+- **Feed Timeline**: 12 posts color-coded by type (match/transfer/announcement/personal), author avatars, platform badges, like/comment/share/bookmark toggles
+- **Trending Topics**: 8 topics with rank, post count, direction arrows, player-related highlighting
+- **Direct Messages**: 3 tabs (Messages 5 DMs / Team Chat 6 messages / Media Requests 3 with accept/decline)
+- **Player Profile Preview**: Cover photo, avatar, verified badge, bio, stats, 3x3 activity grid
+- **Fan Mail**: 5 messages with sentiment badges (Positive/Neutral/Critical)
+- **Registered**: social_media_feed, BottomNav Media & Info (MessageCircle icon)
 
 ### Phase 4: Post-Development QA
-- **83 screens** — all PASS, 0 runtime errors, 0 console errors
+- 85 screens — all PASS, 0 runtime errors, 0 console errors
 - TS: 0 errors in src/, Lint: 0 errors
 
 Stage Summary:
-- **2 new features** (BoardRoom — contract negotiation/club expectations/transfer budget/board meetings/facility investments/player power; YouthDevelopment — U18/U21 squads/player profiles with growth charts/training programs/tournaments/promotion system/scouting)
-- **2 styling enhancements** (HallOfFame — inductee gallery/records board/legacy score gauge/moments timeline/fan tribute; MatchDayLive — momentum area chart/player live stats with sparklines/event timeline/set-piece stats/heat map comparison)
-- **4 parallel Task agents** — all succeeded first attempt
-- **83 total unique GameScreen types** — all QA PASS
+- **2 new features** (CreateAClub — 5-step wizard with identity/badge/kit/stadium/budget customization; SocialMediaFeed — posts/timeline/trending/DMs/fan mail/profile)
+- **2 styling enhancements** (WorldFootballNews — featured article/transfer rumors/league roundup/power rankings; PreSeasonTrainingCamp — camp progress/fitness gauges/drill SVGs/friendlies/bonding)
+- **4 parallel agents** — all succeeded first attempt
+- **85 total unique GameScreen types** — all QA PASS
 - **100% Uncodixify compliant, TS clean, Lint clean**
 
 ## Current Goals / Completed Modifications / Verification Results
-- HallOfFame enhanced with 8-inductee scrollable gallery with tier badges, 12-record board with player rank tracking, SVG circular legacy score gauge with 6 categories, 6-moment glory timeline with impact hearts, and fan tribute section with approval/chant
-- MatchDayLive enhanced with SVG dual-area momentum chart with event markers, 2x3 live player stats grid with per-15-min sparklines and season comparison badges, detailed vertical event timeline, centered set-piece comparison bars, and side-by-side team heat maps with player zone highlight
-- BoardRoom delivers contract negotiation with wage sliders and board counter-offers, 4 club objectives with progress tracking and satisfaction score, transfer budget with signing request form and wishlist, board meeting history with chairman quotes, 4 facility investment proposals, and player power/influence panel
-- YouthDevelopment provides U18/U21/Loaned squad tabs with sortable tables, detailed youth profiles with SVG growth trajectory and radar comparison, 4 training programs with assignable players, tournament schedule with mini bracket, promotion readiness assessment, and international scouting integration
+- WorldFootballNews enhanced with featured article hero card, 6-card transfer rumor mill with reliability ratings, 5-league round-up with mini tables, and top 10 power rankings with form dots
+- PreSeasonTrainingCamp enhanced with SVG camp progress ring, 3-phase progress bars, 6-metric fitness tracking with gauges and deltas, 4 drill cards with inline SVG illustrations, friendly match tracker, and team bonding activities with chemistry impact
+- CreateAClub provides full 5-step club creation wizard: identity with color pickers, badge designer with 6 shapes and 12 elements, 3-kit designer with 4-zone color pickers, stadium configurator with capacity/stands/features, and budget/squad setup with difficulty rating
+- SocialMediaFeed delivers comprehensive social hub with 12-post color-coded timeline, 4-platform integration, 280-char post creator with mood selector, 8 trending topics, 3-tab messaging (DMs/Team Chat/Media Requests), player profile with verified badge, and fan mail section
 
 ## Unresolved Issues or Risks
-- Playing category overloaded (22+ items), Career (28+), Club (now 10+ with Board Room + Youth Dev + Scouting + Store) — all need sub-categorization
-- BottomNav with 83 screens is unwieldy — needs UX overhaul (search, favorites, sub-categories)
-- Most systems still visual-only (board room decisions, youth promotion, contract negotiation, store purchases, scouting, training drills — none connected to game state)
-- Retirement, loan, media interview effects not persisted
-- Stadium upgrades duplicated across InGameStore and FacilitiesUpgrades
-- Large files need code splitting (CupBracket 3,002, ContinentalPanel 2,987, Dashboard 2,762, MatchDayLive 2,473, YouthDev 1,681)
+- 85 screens across 5+ BottomNav categories — critically needs sub-categorization and search
+- Most systems visual-only (create-a-club doesn't start career, social feed not connected to game events, camp drills not affecting fitness, transfer rumors not from actual game state)
+- Stadium upgrades duplicated (InGameStore + FacilitiesUpgrades + CreateAClub)
+- Social.tsx still exists alongside SocialMediaFeed.tsx — may need cleanup
+- Large files: PreSeasonTrainingCamp (3,413), CupBracket (3,002), ContinentalPanel (2,987), Dashboard (2,762), AnalyticsPanel (2,742), MatchDayLive (2,473), CreateAClub (1,659)
 
 ## Priority Recommendations for Next Phase
-1. **Gameplay depth** — CRITICAL: Wire board room→contract state, youth→promotion pipeline, store→currency, scouting→transfers, training→attributes, events→persistence
-2. **UX fixes** — CRITICAL: 83 screens need sub-categories, search, favorites, collapsible sections
-3. **New features** — Create-a-Club, Multiplayer League, Social Feed restore, WorldFootballNews ticker
-4. **Styling** — WorldFootballNews (breaking news), Social (restore), AnalyticsPanel (done recently), PreSeasonTrainingCamp (2,707 lines could use more)
-5. **Content** — More board meeting templates, youth player names pool, contract clause types, facility descriptions
-6. **Performance** — Lazy loading, code splitting for files >2,000 lines
+1. **UX overhaul** — CRITICAL: Implement sub-categories, search, favorites, collapsible sections for 85 screens
+2. **New features** — Multiplayer League, Daily Login Rewards, Achievement Showcase, Player Career Timeline
+3. **Styling** — PlayerComparison (1,768), TacticalBriefing (2,216), TransferNegotiation (1,595), FanEngagement (smaller files to enhance)
+4. **Cleanup** — Merge/remove duplicate Social.tsx, consolidate stadium upgrade systems
+5. **Gameplay** — Wire create-a-club→career start, social→game events, camp→fitness persistence
+6. **Performance** — Code split files >2,000 lines, lazy load rarely-used screens

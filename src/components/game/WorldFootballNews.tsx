@@ -88,6 +88,46 @@ interface SocialReaction {
 
 type FilterTab = 'all' | 'transfer' | 'results' | 'injuries' | 'rumours' | 'international';
 
+interface FeaturedArticle {
+  headline: string;
+  subtitle: string;
+  author: string;
+  date: string;
+  readTime: number;
+  category: 'Transfer' | 'Match' | 'Analysis' | 'Interview' | 'Rumor';
+  keyTakeaways: string[];
+  readCount: string;
+}
+
+interface TransferRumorMillItem {
+  id: string;
+  playerName: string;
+  fromClub: string;
+  toClub: string;
+  fee: string;
+  reliability: number;
+  source: string;
+  status: 'Done Deal' | 'Likely' | 'Rumor' | 'Unlikely';
+}
+
+interface LeagueSummary {
+  leagueName: string;
+  leader: string;
+  keyResult: string;
+  topScorer: string;
+  relegationUpdate: string;
+  topTeams: string[];
+  bottomTeams: string[];
+}
+
+interface PowerRankingEntry {
+  rank: number;
+  clubName: string;
+  prevRank: number;
+  rating: number;
+  form: Array<'W' | 'D' | 'L'>;
+}
+
 // ============================================================
 // Constants
 // ============================================================
@@ -1252,6 +1292,149 @@ function generateSocialReactionsForItem(item: NewsItem, state: GameState): Socia
 }
 
 // ============================================================
+// New Section Generation: Featured Article, Transfer Rumor Mill,
+// League Round-Up, Power Rankings
+// ============================================================
+
+function generateFeaturedArticle(state: GameState): FeaturedArticle {
+  const { player, currentClub } = state;
+  const leagueName = getLeagueName(currentClub.league);
+
+  const articles: FeaturedArticle[] = [
+    {
+      headline: `${player.name}: The Rise of ${currentClub.name}'s Brightest Star`,
+      subtitle: `How a ${player.age}-year-old ${getPositionLabel(player.position)} is rewriting the script at ${currentClub.name} and catching the attention of Europe's elite.`,
+      author: randomFrom(['James Richardson', 'Rafael Honigstein', 'Sid Lowe', 'Fabrizio Romano']),
+      date: randomFrom(['Today', 'Yesterday', '2 days ago']),
+      readTime: randomBetween(4, 7),
+      category: 'Interview',
+      keyTakeaways: [
+        `${player.name} has been pivotal to ${currentClub.name}'s season with ${player.seasonStats.goals} goals and ${player.seasonStats.assists} assists`,
+        `Scouts from ${randomFrom(BIG_CLUBS)} have been monitoring progress`,
+        `Current form rating of ${player.form.toFixed(1)} places among the ${leagueName} elite`,
+        `Club sources say ${player.name} is happy and focused on development`,
+      ],
+      readCount: formatReads(randomBetween(5000, 20000)),
+    },
+    {
+      headline: `${leagueName} Transfer Window: Who's Moving Where?`,
+      subtitle: `A comprehensive breakdown of the biggest deals, potential transfers, and the clubs shaping the market this season.`,
+      author: randomFrom(['David Ornstein', 'Fabrizio Romano', 'Guillem Balague']),
+      date: randomFrom(['Today', 'Yesterday']),
+      readTime: randomBetween(5, 8),
+      category: 'Transfer',
+      keyTakeaways: [
+        `${currentClub.name} are expected to be active in the market`,
+        `${randomFrom(BIG_CLUBS)} leads spending with record investment`,
+        `Loan deals are becoming increasingly popular across Europe`,
+        `Financial fair play rules are impacting transfer strategies`,
+      ],
+      readCount: formatReads(randomBetween(8000, 30000)),
+    },
+    {
+      headline: `Tactical Analysis: How ${currentClub.name} Have Evolved This Season`,
+      subtitle: `An in-depth look at the tactical shifts and system changes that have defined ${currentClub.name}'s campaign under the current manager.`,
+      author: randomFrom(['Michael Cox', 'The Athletic Staff', 'JonAS']),
+      date: randomFrom(['Today', '2 days ago', '3 days ago']),
+      readTime: randomBetween(6, 9),
+      category: 'Analysis',
+      keyTakeaways: [
+        `The ${currentClub.formation} formation has been key to recent improvements`,
+        `${player.name} has adapted to a new role with impressive results`,
+        `Defensive solidity has improved by 15% compared to last season`,
+        `Set-piece routines have yielded ${randomBetween(5, 12)} goals this term`,
+      ],
+      readCount: formatReads(randomBetween(4000, 15000)),
+    },
+  ];
+
+  return articles[player.form >= 7.5 ? 0 : player.overall >= 75 ? 2 : 1];
+}
+
+function generateTransferRumorMill(state: GameState): TransferRumorMillItem[] {
+  const { player, currentClub } = state;
+  const rivals = getRivalClubs(currentClub.name);
+  const shuffled = rivals.sort(() => Math.random() - 0.5).slice(0, 5);
+  const statuses: Array<TransferRumorMillItem['status']> = ['Done Deal', 'Likely', 'Rumor', 'Rumor', 'Unlikely'];
+  const feeMultiplier = player.marketValue > 0 ? player.marketValue / 1000000 : randomBetween(20, 60);
+  const items: TransferRumorMillItem[] = [];
+
+  for (let i = 0; i < Math.min(shuffled.length, 6); i++) {
+    const toClub = shuffled[i];
+    const fromClub = i === 0 ? currentClub.name : randomFrom(BIG_CLUBS.filter(c => c !== toClub));
+    const playerName = i === 0 ? player.name : randomFrom(['Mateo Kovacic', 'Rafael Leao', 'Jamal Musiala', 'Bukayo Saka', 'Pedri', 'Vinicius Jr', 'Florian Wirtz', 'Lamine Yamal']);
+    const fee = Math.round(feeMultiplier * (0.8 + Math.random() * 0.8));
+    const reliability = statuses[i] === 'Done Deal' ? 5 : statuses[i] === 'Likely' ? 4 : statuses[i] === 'Rumor' ? randomBetween(2, 3) : 1;
+
+    items.push({
+      id: generateId(),
+      playerName,
+      fromClub,
+      toClub,
+      fee: `\u20AC${fee}M`,
+      reliability,
+      source: randomFrom(NEWS_SOURCES),
+      status: statuses[i] ?? 'Rumor',
+    });
+  }
+
+  return items;
+}
+
+function generateLeagueRoundUp(state: GameState): LeagueSummary[] {
+  const summaries: LeagueSummary[] = [];
+  const leagues = LEAGUES.slice(0, 5);
+
+  for (let i = 0; i < leagues.length; i++) {
+    const league = leagues[i];
+    const leader = randomFrom(BIG_CLUBS.slice(i * 4, (i + 1) * 4));
+    const second = randomFrom(BIG_CLUBS.filter(c => c !== leader));
+    const third = randomFrom(BIG_CLUBS.filter(c => c !== leader && c !== second));
+    const bottom1 = randomFrom(BIG_CLUBS.slice(i * 2 + 2, (i + 1) * 4 + 2));
+    const bottom2 = randomFrom(BIG_CLUBS.filter(c => c !== bottom1));
+    const bottom3 = randomFrom(BIG_CLUBS.filter(c => c !== bottom1 && c !== bottom2));
+    const homeGoals = randomBetween(1, 4);
+    const awayGoals = randomBetween(0, 3);
+
+    summaries.push({
+      leagueName: league.name,
+      leader,
+      keyResult: `${leader} ${homeGoals}-${awayGoals} ${second}`,
+      topScorer: randomFrom(['Harry Kane', 'Kylian Mbappe', 'Erling Haaland', 'Victor Osimhen', 'Lautaro Martinez', 'Robert Lewandowski']),
+      relegationUpdate: `${bottom1}, ${bottom2}, and ${bottom3} locked in relegation dogfight`,
+      topTeams: [leader, second, third],
+      bottomTeams: [bottom1, bottom2, bottom3],
+    });
+  }
+
+  return summaries;
+}
+
+function generatePowerRankings(state: GameState): PowerRankingEntry[] {
+  const rankings: PowerRankingEntry[] = [];
+  const clubs = [...BIG_CLUBS].sort(() => Math.random() - 0.5).slice(0, 10);
+
+  for (let i = 0; i < clubs.length; i++) {
+    const formEntries: Array<'W' | 'D' | 'L'> = [];
+    const formChars = ['W', 'W', 'W', 'D', 'L', 'W', 'D', 'W', 'L', 'W'];
+    for (let j = 0; j < 5; j++) {
+      formEntries.push(formChars[randomBetween(0, formChars.length - 1)] as 'W' | 'D' | 'L');
+    }
+
+    rankings.push({
+      rank: i + 1,
+      clubName: clubs[i],
+      prevRank: i === 0 ? 1 : Math.max(1, i + 1 + (Math.random() > 0.5 ? 1 : -1)),
+      rating: Math.round((95 - i * 3 + randomBetween(-2, 2)) * 10) / 10,
+      form: formEntries,
+    });
+  }
+
+  rankings.sort((a, b) => a.rank - b.rank);
+  return rankings;
+}
+
+// ============================================================
 // Main News Generator
 // ============================================================
 
@@ -1616,6 +1799,348 @@ function EmptyState() {
 }
 
 // ============================================================
+// Featured Article Hero Component
+// ============================================================
+
+function FeaturedArticleHero({ article }: { article: FeaturedArticle }) {
+  const categoryColors: Record<FeaturedArticle['category'], string> = {
+    Transfer: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+    Match: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+    Analysis: 'bg-sky-500/15 text-sky-400 border border-sky-500/30',
+    Interview: 'bg-violet-500/15 text-violet-400 border border-violet-500/30',
+    Rumor: 'bg-purple-500/15 text-purple-400 border border-purple-500/30',
+  };
+
+  return (
+    <motion.div
+      className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.05 }}
+    >
+      {/* Image placeholder */}
+      <div className="relative h-40 bg-[#21262d] flex items-center justify-center">
+        <svg width="120" height="80" viewBox="0 0 120 80" fill="none" className="opacity-30">
+          <rect x="10" y="15" width="100" height="55" rx="4" fill="#30363d" />
+          <circle cx="40" cy="42" r="12" fill="#8b949e" />
+          <rect x="56" y="30" width="45" height="4" rx="2" fill="#8b949e" />
+          <rect x="56" y="38" width="35" height="3" rx="1.5" fill="#8b949e" />
+          <rect x="56" y="45" width="40" height="3" rx="1.5" fill="#8b949e" />
+          <rect x="56" y="52" width="28" height="3" rx="1.5" fill="#8b949e" />
+        </svg>
+        <div className="absolute top-3 left-3">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${categoryColors[article.category]}`}>
+            {article.category}
+          </span>
+        </div>
+        <div className="absolute bottom-3 right-3 flex items-center gap-1 text-[10px] text-[#8b949e]">
+          <Eye className="h-3 w-3" />
+          {article.readCount}
+        </div>
+      </div>
+
+      <div className="p-4">
+        <h2 className="text-base font-bold text-[#c9d1d9] leading-tight mb-1.5">
+          {article.headline}
+        </h2>
+        <p className="text-xs text-[#8b949e] leading-relaxed mb-3">
+          {article.subtitle}
+        </p>
+
+        {/* Meta row */}
+        <div className="flex items-center gap-3 mb-3 text-[10px] text-[#8b949e]">
+          <span className="font-medium text-[#c9d1d9]">{article.author}</span>
+          <span className="text-[#484f58]">&middot;</span>
+          <span>{article.date}</span>
+          <span className="text-[#484f58]">&middot;</span>
+          <span className="flex items-center gap-0.5">
+            <Clock className="h-2.5 w-2.5" />
+            {article.readTime} min read
+          </span>
+        </div>
+
+        {/* Key Takeaways */}
+        <div className="border-t border-[#30363d] pt-3">
+          <p className="text-[10px] font-semibold text-[#8b949e] uppercase tracking-wider mb-2">Key Takeaways</p>
+          <ul className="space-y-1.5">
+            {article.keyTakeaways.map((point, i) => (
+              <li key={i} className="flex items-start gap-2 text-[11px] text-[#c9d1d9] leading-relaxed">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-sm shrink-0 mt-1" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Read More */}
+        <button className="mt-3 w-full py-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/15 transition-colors">
+          Read Full Article
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Transfer Rumor Mill Component
+// ============================================================
+
+function TransferRumorMillSection({ items, playerClubName }: { items: TransferRumorMillItem[]; playerClubName: string }) {
+  if (items.length === 0) return null;
+
+  const statusConfig: Record<TransferRumorMillItem['status'], { bg: string; text: string }> = {
+    'Done Deal': { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
+    'Likely': { bg: 'bg-sky-500/15', text: 'text-sky-400' },
+    'Rumor': { bg: 'bg-amber-500/15', text: 'text-amber-400' },
+    'Unlikely': { bg: 'bg-red-500/15', text: 'text-red-400' },
+  };
+
+  return (
+    <motion.div
+      className="space-y-2.5"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.1 }}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+          <ArrowUpDown className="h-3.5 w-3.5 text-amber-400" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-[#c9d1d9] leading-tight">Transfer Rumor Mill</h2>
+          <p className="text-[10px] text-[#8b949e]">Latest whispers from the market</p>
+        </div>
+      </div>
+
+      {items.map((item) => {
+        const cfg = statusConfig[item.status];
+        const isPlayerTransfer = item.fromClub === playerClubName;
+
+        return (
+          <div
+            key={item.id}
+            className={`bg-[#161b22] border rounded-lg p-3 ${isPlayerTransfer ? 'border-amber-500/40' : 'border-[#30363d]'}`}
+          >
+            <div className="flex items-start justify-between mb-1.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[13px] font-semibold text-[#c9d1d9] leading-tight truncate">
+                    {item.playerName}
+                  </p>
+                  {isPlayerTransfer && (
+                    <span className="text-[9px] font-bold px-1.5 py-0 rounded bg-amber-500/15 text-amber-400 shrink-0">
+                      YOUR CLUB
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[#8b949e] mt-0.5">
+                  <span className="text-[#c9d1d9]">{item.fromClub}</span>
+                  <span className="mx-1.5 text-[#484f58]">&rarr;</span>
+                  <span className="text-[#c9d1d9]">{item.toClub}</span>
+                </p>
+              </div>
+              <span className="text-sm font-bold text-sky-400 shrink-0 ml-2">{item.fee}</span>
+            </div>
+
+            <div className="flex items-center gap-3 mt-2">
+              {/* Status badge */}
+              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${cfg.bg} ${cfg.text} border border-current/10`}>
+                {item.status}
+              </span>
+
+              {/* Star reliability */}
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, starIdx) => (
+                  <svg
+                    key={starIdx}
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    fill={starIdx < item.reliability ? '#f59e0b' : '#30363d'}
+                  >
+                    <rect x="1" y="1" width="8" height="8" rx="1" />
+                  </svg>
+                ))}
+              </div>
+
+              {/* Source */}
+              <span className="text-[9px] text-[#484f58] ml-auto">{item.source}</span>
+            </div>
+          </div>
+        );
+      })}
+    </motion.div>
+  );
+}
+
+// ============================================================
+// League Round-Up Component
+// ============================================================
+
+function LeagueRoundUpSection({ summaries }: { summaries: LeagueSummary[] }) {
+  if (summaries.length === 0) return null;
+
+  return (
+    <motion.div
+      className="space-y-2.5"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.15 }}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+          <Trophy className="h-3.5 w-3.5 text-emerald-400" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-[#c9d1d9] leading-tight">League Round-Up</h2>
+          <p className="text-[10px] text-[#8b949e]">Across Europe&apos;s top five leagues</p>
+        </div>
+      </div>
+
+      {summaries.map((summary, idx) => (
+        <div key={summary.leagueName} className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+          {/* League name + key result */}
+          <div className="flex items-start justify-between mb-2">
+            <h3 className="text-[12px] font-bold text-[#c9d1d9]">{summary.leagueName}</h3>
+            <span className="text-[10px] text-emerald-400 font-medium shrink-0 ml-2">{summary.keyResult}</span>
+          </div>
+
+          {/* Mini table: top 3 */}
+          <div className="mb-2">
+            <p className="text-[9px] text-[#484f58] font-semibold uppercase tracking-wider mb-1">Top 3</p>
+            <div className="flex gap-1.5">
+              {summary.topTeams.map((team, teamIdx) => (
+                <div key={team} className="flex items-center gap-1">
+                  <span className={`w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded ${
+                    teamIdx === 0 ? 'bg-amber-500/20 text-amber-400' :
+                    teamIdx === 1 ? 'bg-[#30363d] text-[#8b949e]' :
+                    'bg-amber-700/20 text-amber-600'
+                  }`}>
+                    {teamIdx + 1}
+                  </span>
+                  <span className="text-[10px] text-[#c9d1d9] truncate max-w-[80px]">{team}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom 3 */}
+          <div className="mb-2">
+            <p className="text-[9px] text-[#484f58] font-semibold uppercase tracking-wider mb-1">Relegation Zone</p>
+            <div className="flex gap-1.5">
+              {summary.bottomTeams.map((team, teamIdx) => (
+                <div key={team} className="flex items-center gap-1">
+                  <span className="w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded bg-red-500/15 text-red-400">
+                    {idx * 3 + teamIdx + 1}
+                  </span>
+                  <span className="text-[10px] text-[#8b949e] truncate max-w-[80px]">{team}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-2 border-t border-[#21262d]">
+            <span className="text-[10px] text-[#8b949e]">
+              Top Scorer: <span className="text-[#c9d1d9] font-medium">{summary.topScorer}</span>
+            </span>
+          </div>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
+// ============================================================
+// Power Rankings Component
+// ============================================================
+
+function PowerRankingsSection({ rankings, playerClubName }: { rankings: PowerRankingEntry[]; playerClubName: string }) {
+  if (rankings.length === 0) return null;
+
+  const formColorMap: Record<string, string> = {
+    W: 'bg-emerald-400',
+    D: 'bg-amber-400',
+    L: 'bg-red-400',
+  };
+
+  return (
+    <motion.div
+      className="space-y-2.5"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.2 }}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+          <Zap className="h-3.5 w-3.5 text-sky-400" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-[#c9d1d9] leading-tight">Power Rankings</h2>
+          <p className="text-[10px] text-[#8b949e]">Top 10 clubs in world football</p>
+        </div>
+      </div>
+
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        {rankings.map((entry, idx) => {
+          const isPlayerClub = entry.clubName === playerClubName;
+          const rankChange = entry.prevRank - entry.rank;
+
+          return (
+            <div
+              key={entry.clubName}
+              className={`flex items-center gap-2.5 px-3 py-2.5 ${
+                idx < rankings.length - 1 ? 'border-b border-[#21262d]' : ''
+              } ${isPlayerClub ? 'bg-sky-500/5 border-l-2 border-l-sky-400' : ''}`}
+            >
+              {/* Rank number */}
+              <span className={`w-6 h-6 flex items-center justify-center text-[11px] font-bold rounded-md shrink-0 ${
+                entry.rank <= 3 ? 'bg-amber-500/15 text-amber-400' : 'bg-[#21262d] text-[#8b949e]'
+              }`}>
+                {entry.rank}
+              </span>
+
+              {/* Club name */}
+              <span className={`text-[12px] font-semibold min-w-0 flex-1 truncate ${
+                isPlayerClub ? 'text-sky-400' : 'text-[#c9d1d9]'
+              }`}>
+                {entry.clubName}
+              </span>
+
+              {/* Rank change arrow */}
+              <span className="text-[10px] shrink-0 w-5 text-center">
+                {rankChange > 0 ? (
+                  <span className="text-emerald-400">&#9650;{rankChange}</span>
+                ) : rankChange < 0 ? (
+                  <span className="text-red-400">&#9660;{Math.abs(rankChange)}</span>
+                ) : (
+                  <span className="text-[#484f58]">&mdash;</span>
+                )}
+              </span>
+
+              {/* Rating */}
+              <span className="text-[11px] text-[#8b949e] font-mono shrink-0 w-8 text-right">
+                {entry.rating.toFixed(1)}
+              </span>
+
+              {/* Form dots */}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {entry.form.map((result, formIdx) => (
+                  <span
+                    key={formIdx}
+                    className={`w-2 h-2 rounded-sm ${formColorMap[result]}`}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -1700,6 +2225,26 @@ export default function WorldFootballNews() {
     return counts;
   }, [newsItems]);
 
+  const featuredArticle = useMemo(() => {
+    if (!gameState) return null;
+    return generateFeaturedArticle(gameState);
+  }, [gameState, refreshKey]);
+
+  const transferRumorMillItems = useMemo(() => {
+    if (!gameState) return [];
+    return generateTransferRumorMill(gameState);
+  }, [gameState, refreshKey]);
+
+  const leagueRoundUpSummaries = useMemo(() => {
+    if (!gameState) return [];
+    return generateLeagueRoundUp(gameState);
+  }, [gameState, refreshKey]);
+
+  const powerRankingEntries = useMemo(() => {
+    if (!gameState) return [];
+    return generatePowerRankings(gameState);
+  }, [gameState, refreshKey]);
+
   if (!gameState) return null;
 
   const { player, currentClub } = gameState;
@@ -1745,6 +2290,19 @@ export default function WorldFootballNews() {
         <BreakingNewsBanner headlines={breakingHeadlines} />
 
         <div className="px-4 pt-3 space-y-3">
+          {/* Featured Article Hero */}
+          {featuredArticle && activeFilter === 'all' && (
+            <FeaturedArticleHero article={featuredArticle} />
+          )}
+
+          {/* Transfer Rumor Mill */}
+          {activeFilter === 'all' && (
+            <TransferRumorMillSection
+              items={transferRumorMillItems}
+              playerClubName={currentClub.name}
+            />
+          )}
+
           {/* Quick Stats Bar */}
           <motion.div
             className="flex items-center gap-2 p-2.5 bg-[#161b22] border border-[#30363d] rounded-lg"
@@ -1886,6 +2444,19 @@ export default function WorldFootballNews() {
           )}
 
           {/* End of feed */}
+          {/* League Round-Up */}
+          {activeFilter === 'all' && (
+            <LeagueRoundUpSection summaries={leagueRoundUpSummaries} />
+          )}
+
+          {/* Power Rankings */}
+          {activeFilter === 'all' && (
+            <PowerRankingsSection
+              rankings={powerRankingEntries}
+              playerClubName={currentClub.name}
+            />
+          )}
+
           {!hasMore && filteredItems.length > 0 && (
             <motion.div
               className="flex items-center justify-center gap-2 py-4 pb-6"

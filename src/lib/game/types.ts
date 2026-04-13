@@ -654,7 +654,9 @@ export type GameScreen =
   | 'in_game_store'
   | 'scouting_network'
   | 'youth_development'
-  | 'board_room';
+  | 'board_room'
+  | 'social_media_feed'
+  | 'create_a_club';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

@@ -89,6 +89,8 @@ import InGameStore from '@/components/game/InGameStore';
 import ScoutingNetwork from '@/components/game/ScoutingNetwork';
 import BoardRoom from '@/components/game/BoardRoom';
 import YouthDevelopment from '@/components/game/YouthDevelopment';
+import SocialMediaFeed from '@/components/game/SocialMediaFeed';
+import CreateAClub from '@/components/game/CreateAClub';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -175,6 +177,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   scouting_network: ScoutingNetwork,
   youth_development: YouthDevelopment,
   board_room: BoardRoom,
+  social_media_feed: SocialMediaFeed,
+  create_a_club: CreateAClub,
 };
 
 const gameScreens: GameScreen[] = [
@@ -228,6 +232,8 @@ const gameScreens: GameScreen[] = [
   'scouting_network',
   'youth_development',
   'board_room',
+  'social_media_feed',
+  'create_a_club',
 ];
 
 export default function Home() {

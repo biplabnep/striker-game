@@ -1825,6 +1825,615 @@ function CoachFinalReport({ completionPct, ovrChange, totalGains, playerAttrs, c
 }
 
 // ============================================================
+// New Section Types
+// ============================================================
+
+interface FitnessMetricData {
+  name: string;
+  current: number;
+  target: number;
+  startValue: number;
+  color: string;
+}
+
+interface DrillVisualizationData {
+  id: string;
+  name: string;
+  description: string;
+  duration: string;
+  intensity: 'Low' | 'Medium' | 'High';
+  calories: number;
+  completed: boolean;
+  intensityColor: string;
+}
+
+interface FriendlyMatchData {
+  opponent: string;
+  date: string;
+  venue: 'Home' | 'Away' | 'Neutral';
+  score: string | null;
+  minutes: number | null;
+  goals: number | null;
+  rating: number | null;
+}
+
+interface BondingActivityData {
+  name: string;
+  description: string;
+  moraleImpact: number;
+  completed: boolean;
+}
+
+// ============================================================
+// Camp Progress Dashboard
+// ============================================================
+function CampProgressDashboard({
+  trainingLoadPct,
+  campState,
+}: {
+  trainingLoadPct: number;
+  campState: CampState;
+}) {
+  const svgRadius = 38;
+  const svgCircumference = 2 * Math.PI * svgRadius;
+  const svgOffset = svgCircumference - (trainingLoadPct / 100) * svgCircumference;
+
+  const weekProgress: number[] = campState.schedule.map((weekSlots) => {
+    const completed = weekSlots.filter((s) => s.completed).length;
+    return Math.round((completed / SLOTS_PER_WEEK) * 100);
+  });
+
+  const phases: { label: string; sublabel: string; progress: number; color: string }[] = [
+    { label: 'Fitness', sublabel: 'Week 1', progress: weekProgress[0] ?? 0, color: '#34d399' },
+    { label: 'Tactical', sublabel: 'Week 2', progress: weekProgress[1] ?? 0, color: '#3b82f6' },
+    { label: 'Match Prep', sublabel: 'Weeks 3-4', progress: weekProgress[2] !== undefined && weekProgress[3] !== undefined ? Math.round((weekProgress[2] + weekProgress[3]) / 2) : 0, color: '#f59e0b' },
+  ];
+
+  const objectives: { id: string; label: string; completed: boolean }[] = [
+    { id: 'obj-fitness', label: 'Reach fitness target (80%+)', completed: (campState.fitnessChange ?? 0) >= 0 && trainingLoadPct >= 50 },
+    { id: 'obj-formation', label: 'Learn new tactical formation', completed: campState.schedule[1]?.some((s) => s.trainingId === 'tactical' && s.completed) ?? false },
+    { id: 'obj-bond', label: 'Build team chemistry', completed: trainingLoadPct >= 60 },
+    { id: 'obj-gains', label: 'Improve at least 3 attributes', completed: Object.keys(campState.totalGains).length >= 3 },
+    { id: 'obj-complete', label: 'Complete all training sessions', completed: campState.isComplete },
+  ];
+
+  const completedObjectives = objectives.filter((o) => o.completed).length;
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Target className="h-3.5 w-3.5 text-[#34d399]" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Camp Progress Dashboard</span>
+          </div>
+
+          {/* Circular progress + phase bars */}
+          <div className="flex items-center gap-4">
+            <svg viewBox="0 0 100 100" className="w-20 h-20 shrink-0">
+              <circle cx="50" cy="50" r={svgRadius} fill="none" stroke="#21262d" strokeWidth="6" />
+              <motion.circle
+                cx="50" cy="50" r={svgRadius} fill="none" stroke="#34d399" strokeWidth="6"
+                strokeDasharray={svgCircumference} strokeDashoffset={svgOffset}
+                strokeLinecap="round"
+                initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}
+              />
+              <text x="50" y="47" textAnchor="middle" fill="#34d399" fontSize="18" fontWeight="700">{trainingLoadPct}%</text>
+              <text x="50" y="58" textAnchor="middle" fill="#484f58" fontSize="6">COMPLETE</text>
+            </svg>
+
+            <div className="flex-1 space-y-2">
+              {phases.map((phase) => (
+                <div key={phase.label} className="space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] text-[#8b949e] font-medium">{phase.label} <span className="text-[#484f58]">· {phase.sublabel}</span></span>
+                    <span className="text-[9px] font-bold" style={{ color: phase.color }}>{phase.progress}%</span>
+                  </div>
+                  <div className="h-1.5 bg-[#21262d] rounded-sm overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-sm"
+                      initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+                      style={{ width: `${phase.progress}%`, backgroundColor: phase.color }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Objectives checklist */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-[#8b949e] uppercase tracking-wide font-medium">Camp Objectives</span>
+              <span className="text-[9px] text-[#484f58]">{completedObjectives}/{objectives.length}</span>
+            </div>
+            {objectives.map((obj) => (
+              <div key={obj.id} className="flex items-center gap-2 py-0.5">
+                <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border ${obj.completed ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-[#21262d] border-[#30363d]'}`}>
+                  {obj.completed && <Check className="h-2.5 w-2.5 text-emerald-400" />}
+                </div>
+                <span className={`text-[10px] ${obj.completed ? 'text-emerald-300' : 'text-[#8b949e]'}`}>{obj.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Camp difficulty display */}
+          <div className="pt-2 border-t border-[#21262d]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-[#8b949e] uppercase tracking-wide font-medium">Camp Difficulty</span>
+              <span className="text-[10px] font-bold" style={{ color: campState.intensity === 'intense' ? '#ef4444' : campState.intensity === 'moderate' ? '#f59e0b' : '#34d399' }}>
+                {campState.intensity === 'intense' ? 'Intense' : campState.intensity === 'moderate' ? 'Standard' : 'Easy'}
+              </span>
+            </div>
+            <div className="flex gap-1 mt-1.5">
+              {(['Easy', 'Standard', 'Intense'] as const).map((diff) => {
+                const isActive = (diff === 'Easy' && campState.intensity === 'light') || (diff === 'Standard' && campState.intensity === 'moderate') || (diff === 'Intense' && campState.intensity === 'intense');
+                const dotColor = diff === 'Easy' ? '#34d399' : diff === 'Standard' ? '#f59e0b' : '#ef4444';
+                return (
+                  <div key={diff} className={`flex-1 py-1.5 rounded-md border text-center text-[9px] font-semibold ${isActive ? 'border-[#30363d] bg-[#21262d]' : 'border-[#21262d] bg-[#0d1117] opacity-40'}`} style={{ color: isActive ? dotColor : '#484f58' }}>
+                    {diff}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Fitness Tracking Panel
+// ============================================================
+function FitnessTrackingPanel({
+  metrics,
+  overallScore,
+  isPeak,
+  trend,
+}: {
+  metrics: FitnessMetricData[];
+  overallScore: number;
+  isPeak: boolean;
+  trend: 'up' | 'down' | 'stable';
+}) {
+  const scoreRadius = 40;
+  const scoreCircumference = 2 * Math.PI * scoreRadius;
+  const scoreOffset = scoreCircumference - (overallScore / 100) * scoreCircumference;
+  const scoreColor = overallScore >= 80 ? '#34d399' : overallScore >= 60 ? '#f59e0b' : '#ef4444';
+  const scoreLabel = overallScore >= 85 ? 'Excellent' : overallScore >= 70 ? 'Good' : overallScore >= 55 ? 'Average' : 'Needs Work';
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.22 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="h-3.5 w-3.5 text-[#34d399]" />
+              <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Fitness Tracker</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isPeak && (
+                <Badge className="h-4 px-1.5 text-[8px] font-bold bg-emerald-500/15 text-emerald-300 border-emerald-500/30 rounded-md">
+                  Peak Fitness
+                </Badge>
+              )}
+              {trend === 'up' && <ArrowUp className="h-3 w-3 text-emerald-400" />}
+              {trend === 'down' && <ArrowDown className="h-3 w-3 text-red-400" />}
+              {trend === 'stable' && <span className="text-[9px] text-[#8b949e]">-</span>}
+            </div>
+          </div>
+
+          {/* Overall score gauge */}
+          <div className="flex items-center gap-3">
+            <svg viewBox="0 0 100 100" className="w-16 h-16 shrink-0">
+              <circle cx="50" cy="50" r={scoreRadius} fill="none" stroke="#21262d" strokeWidth="6" />
+              <motion.circle
+                cx="50" cy="50" r={scoreRadius} fill="none"
+                stroke={scoreColor} strokeWidth="6" strokeLinecap="round"
+                strokeDasharray={scoreCircumference} strokeDashoffset={scoreOffset}
+                initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+              />
+              <text x="50" y="47" textAnchor="middle" fill={scoreColor} fontSize="16" fontWeight="700">{overallScore}</text>
+              <text x="50" y="58" textAnchor="middle" fill="#484f58" fontSize="6">SCORE</text>
+            </svg>
+            <div>
+              <span className="text-sm font-bold" style={{ color: scoreColor }}>{scoreLabel}</span>
+              <p className="text-[10px] text-[#8b949e] mt-0.5">Overall fitness rating</p>
+            </div>
+          </div>
+
+          {/* 6 metrics grid */}
+          <div className="grid grid-cols-2 gap-2">
+            {metrics.map((metric) => {
+              const change = metric.current - metric.startValue;
+              const progressPct = Math.min(100, Math.round((metric.current / metric.target) * 100));
+              return (
+                <div key={metric.name} className="bg-[#0d1117] border border-[#30363d] rounded-md p-2 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] text-[#8b949e] font-medium">{metric.name}</span>
+                    <span className={`text-[9px] font-bold ${change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-[#484f58]'}`}>
+                      {change > 0 ? '+' : ''}{change}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold" style={{ color: metric.color }}>{metric.current}</span>
+                    <span className="text-[8px] text-[#484f58]">/ {metric.target}</span>
+                  </div>
+                  <div className="h-1 bg-[#21262d] rounded-sm overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-sm"
+                      initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+                      style={{ width: `${progressPct}%`, backgroundColor: metric.color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Training Drill Visualization
+// ============================================================
+function DrillVisualizationCards({
+  drills,
+}: {
+  drills: DrillVisualizationData[];
+}) {
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.24 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Play className="h-3.5 w-3.5 text-[#a78bfa]" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Drill Visualizations</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {drills.map((drill) => (
+              <div key={drill.id} className="bg-[#0d1117] border border-[#30363d] rounded-md p-2.5 space-y-2">
+                {/* SVG Illustration */}
+                <div className="bg-[#161b22] rounded-md p-2">
+                  {drill.id === 'interval-running' && (
+                    <svg viewBox="0 0 120 60" className="w-full">
+                      <ellipse cx="60" cy="30" rx="50" ry="18" fill="none" stroke="#30363d" strokeWidth="2" />
+                      <ellipse cx="60" cy="30" rx="40" ry="13" fill="none" stroke="#21262d" strokeWidth="1" />
+                      <circle cx="75" cy="14" r="3" fill="#34d399" />
+                      <circle cx="55" cy="14" r="3" fill="#f59e0b" />
+                      <circle cx="40" cy="18" r="3" fill="#3b82f6" />
+                      <line x1="10" y1="22" x2="110" y2="22" stroke="#21262d" strokeWidth="0.5" />
+                      <line x1="10" y1="38" x2="110" y2="38" stroke="#21262d" strokeWidth="0.5" />
+                    </svg>
+                  )}
+                  {drill.id === 'weight-training' && (
+                    <svg viewBox="0 0 120 60" className="w-full">
+                      <rect x="30" y="27" width="60" height="6" rx="3" fill="#8b949e" />
+                      <rect x="20" y="22" width="14" height="16" rx="2" fill="#ef4444" />
+                      <rect x="24" y="24" width="6" height="12" rx="1" fill="#ef444480" />
+                      <rect x="86" y="22" width="14" height="16" rx="2" fill="#ef4444" />
+                      <rect x="90" y="24" width="6" height="12" rx="1" fill="#ef444480" />
+                      <text x="27" y="33" textAnchor="middle" fill="#ffffff" fontSize="6" fontWeight="700">20</text>
+                      <text x="93" y="33" textAnchor="middle" fill="#ffffff" fontSize="6" fontWeight="700">20</text>
+                    </svg>
+                  )}
+                  {drill.id === 'tactical-drill' && (
+                    <svg viewBox="0 0 120 60" className="w-full">
+                      <rect x="5" y="5" width="110" height="50" fill="none" stroke="#30363d" strokeWidth="1.5" />
+                      <line x1="60" y1="5" x2="60" y2="55" stroke="#30363d" strokeWidth="0.8" />
+                      <circle cx="60" cy="30" r="8" fill="none" stroke="#30363d" strokeWidth="0.8" />
+                      <polygon points="25,15 28,10 31,15 28,20" fill="#f59e0b" />
+                      <polygon points="45,25 48,20 51,25 48,30" fill="#f59e0b" />
+                      <polygon points="70,35 73,30 76,35 73,40" fill="#f59e0b" />
+                      <polygon points="90,40 93,35 96,40 93,45" fill="#f59e0b" />
+                      <circle cx="20" cy="30" r="3" fill="#3b82f6" />
+                      <circle cx="40" cy="25" r="3" fill="#3b82f6" />
+                      <circle cx="60" cy="30" r="3" fill="#3b82f6" />
+                      <circle cx="80" cy="35" r="3" fill="#a78bfa" />
+                      <circle cx="100" cy="30" r="3" fill="#a78bfa" />
+                    </svg>
+                  )}
+                  {drill.id === 'match-simulation' && (
+                    <svg viewBox="0 0 120 60" className="w-full">
+                      <rect x="5" y="5" width="110" height="50" fill="#0d1117" stroke="#30363d" strokeWidth="1.5" />
+                      <line x1="60" y1="5" x2="60" y2="55" stroke="#30363d" strokeWidth="0.8" />
+                      <circle cx="60" cy="30" r="8" fill="none" stroke="#30363d" strokeWidth="0.8" />
+                      <rect x="5" y="22" width="10" height="16" fill="none" stroke="#484f58" strokeWidth="0.8" />
+                      <rect x="105" y="22" width="10" height="16" fill="none" stroke="#484f58" strokeWidth="0.8" />
+                      <circle cx="25" cy="20" r="2.5" fill="#3b82f6" />
+                      <circle cx="35" cy="30" r="2.5" fill="#3b82f6" />
+                      <circle cx="25" cy="40" r="2.5" fill="#3b82f6" />
+                      <circle cx="85" cy="20" r="2.5" fill="#a78bfa" />
+                      <circle cx="95" cy="30" r="2.5" fill="#a78bfa" />
+                      <circle cx="85" cy="40" r="2.5" fill="#a78bfa" />
+                      <circle cx="60" cy="30" r="2" fill="#ffffff" />
+                    </svg>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-[11px] font-semibold text-[#c9d1d9] block">{drill.name}</span>
+                  <span className="text-[9px] text-[#8b949e] block mt-0.5">{drill.description}</span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="h-3.5 px-1 text-[7px] font-bold bg-[#21262d] text-[#8b949e] border border-[#30363d] rounded-sm">
+                    {drill.duration}
+                  </Badge>
+                  <Badge className="h-3.5 px-1 text-[7px] font-bold rounded-sm border-0" style={{ backgroundColor: `${drill.intensityColor}20`, color: drill.intensityColor }}>
+                    {drill.intensity}
+                  </Badge>
+                  <span className="text-[8px] text-[#484f58]">{drill.calories} cal</span>
+                </div>
+
+                {drill.completed && (
+                  <div className="flex items-center gap-1">
+                    <Check className="h-2.5 w-2.5 text-emerald-400" />
+                    <span className="text-[8px] text-emerald-400 font-semibold">Completed</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Daily training schedule grid */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-[#8b949e] uppercase tracking-wide font-medium">Weekly Schedule Grid</span>
+            <div className="overflow-x-auto">
+              <div className="grid gap-1 min-w-[380px]" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
+                <div className="text-[8px] text-[#484f58] font-medium" />
+                {DAY_NAMES.map((day) => (
+                  <div key={day} className="text-[8px] text-[#8b949e] font-semibold text-center py-1">{day}</div>
+                ))}
+                {/* Morning row */}
+                <div className="flex items-center gap-1">
+                  <Sun className="h-2.5 w-2.5 text-amber-400" />
+                  <span className="text-[8px] text-[#484f58]">AM</span>
+                </div>
+                {(['Fit', 'Tac', 'Str', 'Rec', 'Fit', 'Set', 'Off'] as const).map((session, i) => {
+                  const sessionColor = session === 'Fit' ? '#34d399' : session === 'Tac' ? '#3b82f6' : session === 'Str' ? '#ef4444' : session === 'Rec' ? '#ec4899' : session === 'Set' ? '#06b6d4' : '#30363d';
+                  const isRest = session === 'Off';
+                  return (
+                    <div key={`am-${i}`} className={`rounded-sm py-1.5 text-center text-[7px] font-semibold ${isRest ? 'bg-[#0d1117]' : 'bg-[#21262d]'}`} style={{ color: isRest ? '#30363d' : sessionColor }}>
+                      {session}
+                    </div>
+                  );
+                })}
+                {/* Afternoon row */}
+                <div className="flex items-center gap-1">
+                  <Moon className="h-2.5 w-2.5 text-blue-400" />
+                  <span className="text-[8px] text-[#484f58]">PM</span>
+                </div>
+                {(['Str', 'Fit', 'Tac', 'Off', 'Set', 'Tac', 'Off'] as const).map((session, i) => {
+                  const sessionColor = session === 'Fit' ? '#34d399' : session === 'Tac' ? '#3b82f6' : session === 'Str' ? '#ef4444' : session === 'Set' ? '#06b6d4' : '#30363d';
+                  const isRest = session === 'Off';
+                  return (
+                    <div key={`pm-${i}`} className={`rounded-sm py-1.5 text-center text-[7px] font-semibold ${isRest ? 'bg-[#0d1117]' : 'bg-[#21262d]'}`} style={{ color: isRest ? '#30363d' : sessionColor }}>
+                      {session}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Pre-Season Friendlies Tracker
+// ============================================================
+function PreSeasonFriendliesTracker({
+  matches,
+}: {
+  matches: FriendlyMatchData[];
+}) {
+  const playedMatches = matches.filter((m) => m.score !== null);
+  const wins = playedMatches.filter((m) => {
+    if (!m.score) return false;
+    const parts = m.score.split('-');
+    return parts.length === 2 && Number(parts[0]) > Number(parts[1]);
+  }).length;
+  const draws = playedMatches.filter((m) => {
+    if (!m.score) return false;
+    const parts = m.score.split('-');
+    return parts.length === 2 && Number(parts[0]) === Number(parts[1]);
+  }).length;
+  const losses = playedMatches.length - wins - draws;
+  const nextMatch = matches.find((m) => m.score === null);
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.22 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-3.5 w-3.5 text-[#f59e0b]" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Pre-Season Friendlies</span>
+          </div>
+
+          {/* Results summary SVG mini table */}
+          <svg viewBox="0 0 300 50" className="w-full">
+            <rect x="0" y="5" width="90" height="20" rx="4" fill="#34d39920" stroke="#34d399" strokeWidth="0.8" />
+            <text x="45" y="19" textAnchor="middle" fill="#34d399" fontSize="9" fontWeight="700">{wins}W</text>
+            <rect x="100" y="5" width="90" height="20" rx="4" fill="#f59e0b20" stroke="#f59e0b" strokeWidth="0.8" />
+            <text x="145" y="19" textAnchor="middle" fill="#f59e0b" fontSize="9" fontWeight="700">{draws}D</text>
+            <rect x="200" y="5" width="90" height="20" rx="4" fill="#ef444420" stroke="#ef4444" strokeWidth="0.8" />
+            <text x="245" y="19" textAnchor="middle" fill="#ef4444" fontSize="9" fontWeight="700">{losses}L</text>
+            <text x="150" y="45" textAnchor="middle" fill="#484f58" fontSize="7">{playedMatches.length}/{matches.length} played</text>
+          </svg>
+
+          {/* Match list */}
+          <div className="space-y-1.5">
+            {matches.map((match, i) => {
+              const isResult = match.score !== null;
+              const resultColor = isResult
+                ? (() => {
+                    const parts = match.score!.split('-');
+                    const homeGoals = Number(parts[0]);
+                    const awayGoals = Number(parts[1]);
+                    return homeGoals > awayGoals ? '#34d399' : homeGoals === awayGoals ? '#f59e0b' : '#ef4444';
+                  })()
+                : '#30363d';
+              return (
+                <div key={i} className={`flex items-center justify-between py-2 px-2.5 rounded-md border ${isResult ? 'bg-[#0d1117] border-[#30363d]' : 'bg-[#161b22] border-dashed border-[#484f58]'}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-1.5 h-8 rounded-sm shrink-0" style={{ backgroundColor: resultColor }} />
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-semibold text-[#c9d1d9] block truncate">{match.opponent}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[8px] text-[#484f58]">{match.venue}</span>
+                        <span className="text-[8px] text-[#30363d]">·</span>
+                        <span className="text-[8px] text-[#484f58]">{match.date}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {isResult ? (
+                    <div className="text-right shrink-0">
+                      <span className="text-sm font-bold text-[#c9d1d9]">{match.score}</span>
+                      {match.rating !== null && (
+                        <div className="flex items-center gap-1 justify-end mt-0.5">
+                          {match.minutes !== null && <span className="text-[8px] text-[#484f58]">{match.minutes}'</span>}
+                          {match.goals !== null && match.goals > 0 && <span className="text-[8px] text-emerald-400">{match.goals}G</span>}
+                          <span className="text-[8px] font-bold" style={{ color: match.rating >= 7 ? '#34d399' : match.rating >= 6 ? '#f59e0b' : '#ef4444' }}>{match.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Badge className="h-4 px-1.5 text-[8px] font-bold bg-[#21262d] text-[#8b949e] border border-[#30363d] rounded-md shrink-0">
+                      Upcoming
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Next friendly countdown */}
+          {nextMatch && (
+            <div className="bg-[#161b22] border border-[#f59e0b]/30 rounded-md p-2.5">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-[#f59e0b]" />
+                <span className="text-[10px] text-[#f59e0b] uppercase tracking-wide font-medium">Next Friendly</span>
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <div>
+                  <span className="text-xs font-semibold text-[#c9d1d9]">{nextMatch.opponent}</span>
+                  <p className="text-[9px] text-[#8b949e]">{nextMatch.date} · {nextMatch.venue}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-bold text-[#f59e0b]">3 days</span>
+                  <p className="text-[8px] text-[#484f58]">until kickoff</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
+// Team Bonding Activities
+// ============================================================
+function TeamBondingActivities({
+  activities,
+  chemistryBefore,
+  chemistryAfter,
+}: {
+  activities: BondingActivityData[];
+  chemistryBefore: number;
+  chemistryAfter: number;
+}) {
+  const completedCount = activities.filter((a) => a.completed).length;
+
+  const getBondingIcon = (name: string): React.ReactNode => {
+    if (name.includes('Dinner')) return <Sun className="h-4 w-4" />;
+    if (name.includes('Building')) return <Shield className="h-4 w-4" />;
+    if (name.includes('Community')) return <Heart className="h-4 w-4" />;
+    if (name.includes('Media')) return <Camera className="h-4 w-4" />;
+    return <MessageCircle className="h-4 w-4" />;
+  };
+
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-3.5 w-3.5 text-[#a78bfa]" />
+              <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Team Bonding</span>
+            </div>
+            <span className="text-[9px] text-[#484f58]">{completedCount}/{activities.length} completed</span>
+          </div>
+
+          {/* Chemistry before/after */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 text-center">
+              <span className="text-[8px] text-[#484f58] uppercase tracking-wide">Before Camp</span>
+              <p className="text-base font-bold text-[#8b949e]">{chemistryBefore}</p>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <ArrowUp className="h-3 w-3 text-emerald-400" />
+              <span className="text-[10px] font-bold text-emerald-400">+{chemistryAfter - chemistryBefore}</span>
+            </div>
+            <div className="flex-1 text-center">
+              <span className="text-[8px] text-[#484f58] uppercase tracking-wide">After Camp</span>
+              <p className="text-base font-bold text-emerald-400">{chemistryAfter}</p>
+            </div>
+          </div>
+
+          {/* Activities list */}
+          <div className="space-y-1.5">
+            {activities.map((activity) => {
+              const impactColor = activity.moraleImpact > 0 ? '#34d399' : activity.moraleImpact < 0 ? '#ef4444' : '#8b949e';
+              return (
+                <div key={activity.name} className={`flex items-center gap-2.5 p-2 rounded-md border ${activity.completed ? 'bg-[#0d1117] border-[#30363d]' : 'bg-[#161b22] border-[#21262d]'}`}>
+                  <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${activity.completed ? 'bg-emerald-500/15 text-emerald-400' : 'bg-[#21262d] text-[#484f58]'}`}>
+                    {getBondingIcon(activity.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-[10px] font-semibold block ${activity.completed ? 'text-[#c9d1d9]' : 'text-[#8b949e]'}`}>{activity.name}</span>
+                    <span className="text-[8px] text-[#484f58] block truncate">{activity.description}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[9px] font-bold" style={{ color: impactColor }}>
+                      {activity.moraleImpact > 0 ? '+' : ''}{activity.moraleImpact}
+                    </span>
+                    {activity.completed && <Check className="h-2.5 w-2.5 text-emerald-400" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Squad chemistry bar */}
+          <div className="space-y-1 pt-1 border-t border-[#21262d]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] text-[#8b949e] uppercase tracking-wide font-medium">Squad Chemistry</span>
+              <span className="text-[9px] font-bold text-emerald-400">{chemistryAfter}/100</span>
+            </div>
+            <div className="h-2 bg-[#21262d] rounded-sm overflow-hidden">
+              <motion.div
+                className="h-full rounded-sm bg-emerald-500/60"
+                initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+                style={{ width: `${chemistryAfter}%` }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.section>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -2002,6 +2611,76 @@ export default function PreSeasonTrainingCamp() {
   const handleIntensityChange = useCallback((v: 'light' | 'moderate' | 'intense') => {
     setCampState(prev => ({ ...prev, intensity: v }));
   }, []);
+
+  // --- New section data hooks ---
+  const fitnessMetrics = useMemo<FitnessMetricData[]>(() => {
+    if (!player) return [];
+    const phys = player.attributes.physical ?? 50;
+    const pace = player.attributes.pace ?? 50;
+    const dri = player.attributes.dribbling ?? 50;
+    const baseFitness = player.fitness;
+    const fitDelta = campState.fitnessChange;
+
+    return [
+      { name: 'Stamina', current: Math.min(99, Math.round(baseFitness * 0.6 + phys * 0.4 + fitDelta * 0.3)), target: 85, startValue: Math.max(30, Math.round(baseFitness * 0.5 + phys * 0.3)), color: '#34d399' },
+      { name: 'Speed', current: Math.min(99, Math.round(pace * 0.7 + baseFitness * 0.3)), target: 80, startValue: Math.max(30, Math.round(pace * 0.6 + baseFitness * 0.2)), color: '#3b82f6' },
+      { name: 'Strength', current: Math.min(99, Math.round(phys * 0.85 + baseFitness * 0.15)), target: 82, startValue: Math.max(30, Math.round(phys * 0.7 + baseFitness * 0.1)), color: '#ef4444' },
+      { name: 'Agility', current: Math.min(99, Math.round(dri * 0.5 + pace * 0.3 + baseFitness * 0.2)), target: 78, startValue: Math.max(30, Math.round(dri * 0.4 + pace * 0.2 + baseFitness * 0.1)), color: '#f59e0b' },
+      { name: 'Flexibility', current: Math.min(99, Math.round(baseFitness * 0.6 + dri * 0.2 + pace * 0.2)), target: 75, startValue: Math.max(30, Math.round(baseFitness * 0.4 + dri * 0.1 + pace * 0.1)), color: '#a78bfa' },
+      { name: 'Endurance', current: Math.min(99, Math.round(baseFitness * 0.7 + phys * 0.3 + fitDelta * 0.2)), target: 83, startValue: Math.max(30, Math.round(baseFitness * 0.5 + phys * 0.2)), color: '#34d399' },
+    ];
+  }, [player, campState.fitnessChange]);
+
+  const fitnessOverallScore = useMemo(() => {
+    if (fitnessMetrics.length === 0) return 50;
+    const sum = fitnessMetrics.reduce((s, m) => s + m.current, 0);
+    return Math.round(sum / fitnessMetrics.length);
+  }, [fitnessMetrics]);
+
+  const fitnessTrend = useMemo<'up' | 'down' | 'stable'>(() => {
+    if (fitnessMetrics.length === 0) return 'stable';
+    const avgChange = fitnessMetrics.reduce((s, m) => s + (m.current - m.startValue), 0) / fitnessMetrics.length;
+    return avgChange > 1 ? 'up' : avgChange < -1 ? 'down' : 'stable';
+  }, [fitnessMetrics]);
+
+  const isPeakFitness = useMemo(() => {
+    return fitnessMetrics.length > 0 && fitnessMetrics.every(m => m.current >= m.target * 0.9);
+  }, [fitnessMetrics]);
+
+  const drillCards = useMemo<DrillVisualizationData[]>(() => {
+    const allSlots = campState.schedule.flat();
+    const completedIds = new Set(allSlots.filter(s => s.completed).map(s => s.trainingId));
+    return [
+      { id: 'interval-running', name: 'Interval Running', description: 'Sprint intervals on the training ground', duration: '45 min', intensity: 'High', calories: 420, completed: completedIds.has('fitness'), intensityColor: '#ef4444' },
+      { id: 'weight-training', name: 'Weight Training', description: 'Strength and conditioning in the gym', duration: '55 min', intensity: 'High', calories: 380, completed: completedIds.has('strength'), intensityColor: '#ef4444' },
+      { id: 'tactical-drill', name: 'Tactical Drill', description: 'Positioning and shape work on the pitch', duration: '40 min', intensity: 'Medium', calories: 280, completed: completedIds.has('tactical'), intensityColor: '#f59e0b' },
+      { id: 'match-simulation', name: 'Match Simulation', description: 'Full practice match with squad', duration: '60 min', intensity: 'High', calories: 520, completed: completedIds.has('technical') || completedIds.has('set_pieces'), intensityColor: '#ef4444' },
+    ];
+  }, [campState.schedule]);
+
+  const friendlyMatches = useMemo<FriendlyMatchData[]>(() => {
+    return [
+      { opponent: 'FC Bayern Munchen', date: 'Jul 15', venue: 'Home', score: '2-1', minutes: 75, goals: 1, rating: 7.2 },
+      { opponent: 'AC Milan', date: 'Jul 22', venue: 'Away', score: '1-1', minutes: 60, goals: 0, rating: 6.8 },
+      { opponent: 'Atletico Madrid', date: 'Jul 29', venue: 'Neutral', score: null, minutes: null, goals: null, rating: null },
+      { opponent: 'Juventus', date: 'Aug 3', venue: 'Home', score: null, minutes: null, goals: null, rating: null },
+    ];
+  }, []);
+
+  const bondingActivities = useMemo<BondingActivityData[]>(() => {
+    return [
+      { name: 'Team Dinner', description: 'Evening meal at a local restaurant with the squad', moraleImpact: 5, completed: trainingLoadPct >= 25 },
+      { name: 'Team Building Exercise', description: 'Outdoor challenge course and group exercises', moraleImpact: 8, completed: trainingLoadPct >= 50 },
+      { name: 'Community Visit', description: 'Hospital visit to meet young fans', moraleImpact: 6, completed: trainingLoadPct >= 75 },
+      { name: 'Media Day', description: 'Interviews and photoshoots for the season', moraleImpact: -2, completed: campState.isComplete },
+    ];
+  }, [trainingLoadPct, campState.isComplete]);
+
+  const chemistryBefore = 62;
+  const chemistryAfter = useMemo(() => {
+    const bonus = bondingActivities.filter(a => a.completed).reduce((s, a) => s + a.moraleImpact, 0);
+    return Math.min(99, chemistryBefore + bonus);
+  }, [bondingActivities]);
 
   if (!gameState || !player) {
     return (
@@ -2230,8 +2909,26 @@ export default function PreSeasonTrainingCamp() {
       {/* ---- Training Drill Mini-Games ---- */}
       <TrainingDrillMiniGames attrs={player.attributes} />
 
+      {/* ---- Drill Visualization Cards ---- */}
+      <DrillVisualizationCards drills={drillCards} />
+
       {/* ---- Camp Photo Gallery ---- */}
       <CampPhotoGallery />
+
+      {/* ---- Team Bonding Activities ---- */}
+      <TeamBondingActivities
+        activities={bondingActivities}
+        chemistryBefore={chemistryBefore}
+        chemistryAfter={chemistryAfter}
+      />
+
+      {/* ---- Fitness Tracking Panel ---- */}
+      <FitnessTrackingPanel
+        metrics={fitnessMetrics}
+        overallScore={fitnessOverallScore}
+        isPeak={isPeakFitness}
+        trend={fitnessTrend}
+      />
 
       {/* ---- Camp Comparison Chart ---- */}
       <CampComparisonChart
@@ -2239,6 +2936,12 @@ export default function PreSeasonTrainingCamp() {
         totalGains={campState.totalGains}
         playerOvr={player.overall}
         ovrChange={campState.ovrChange}
+      />
+
+      {/* ---- Camp Progress Dashboard ---- */}
+      <CampProgressDashboard
+        trainingLoadPct={trainingLoadPct}
+        campState={campState}
       />
 
       {/* ---- Coach's Final Report ---- */}
@@ -2387,6 +3090,9 @@ export default function PreSeasonTrainingCamp() {
             currentWeek={campState.currentWeek}
             onSelectSlot={handleSelectSlot}
           />
+
+          {/* ---- Pre-Season Friendlies ---- */}
+          <PreSeasonFriendliesTracker matches={friendlyMatches} />
 
           <div className="flex gap-2">
             <Button
