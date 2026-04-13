@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -51,6 +51,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'squad_rotation', icon: <RotateCcw className="h-5 w-5" />, label: 'Rotation' },
       { screen: 'match_engine_simulation', icon: <Cpu className="h-5 w-5" />, label: 'Engine' },
       { screen: 'training_drill_mini_games', icon: <Gamepad2 className="h-5 w-5" />, label: 'Mini Games' },
+      { screen: 'daily_rewards', icon: <Gift className="h-5 w-5" />, label: 'Rewards' },
     ],
   },
   {
@@ -86,6 +87,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'fantasy_draft', icon: <UsersRound className="h-5 w-5" />, label: 'Draft' },
       { screen: 'season_review_documentary', icon: <Clapperboard className="h-5 w-5" />, label: 'Season Review' },
       { screen: 'create_a_club', icon: <Palette className="h-5 w-5" />, label: 'Create Club' },
+      { screen: 'multiplayer_league', icon: <Swords className="h-5 w-5" />, label: 'MP League' },
     ],
   },
   {

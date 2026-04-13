@@ -442,6 +442,165 @@ function getFormationPositions(formation: string): { x: number; y: number; label
 }
 
 // ============================================================
+// Opponent Dossier Helpers
+// ============================================================
+
+function deriveOpponentManagerName(clubName: string): string {
+  const managerNames: string[] = [
+    'Carlos Silva', 'Erik Johansson', 'Marco Rossi', 'James Wilson',
+    'Hans Mueller', 'Pierre Dubois', 'Kenji Tanaka', 'Ahmed Hassan',
+    'Diego Garcia', 'Liam O\'Brien',
+  ];
+  const hash = clubName.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return managerNames[hash % managerNames.length];
+}
+
+function deriveOpponentPlayingStyle(
+  style: 'Attacking' | 'Balanced' | 'Defensive'
+): 'Possession' | 'Counter' | 'Pressing' | 'Direct' {
+  switch (style) {
+    case 'Attacking': return 'Possession';
+    case 'Balanced': return 'Counter';
+    case 'Defensive': return 'Pressing';
+  }
+}
+
+function deriveOpponentDangerMen(
+  oppQuality: number,
+  oppStyle: 'Attacking' | 'Balanced' | 'Defensive'
+): { name: string; position: string; ovr: number; keyStat: string }[] {
+  const forwards: string[] = ['A. Martinez', 'K. Yamamoto', 'R. Santos', 'D. Okafor', 'L. Fernandez'];
+  const mids: string[] = ['T. Kovac', 'M. Al-Hassan', 'P. Williams', 'J. Park', 'S. Nielsen'];
+  const defs: string[] = ['V. Komarov', 'B. Mensah', 'N. Weber', 'C. Okoro', 'F. Andersen'];
+  const positions = oppStyle === 'Attacking'
+    ? ['ST', 'RW', 'CAM']
+    : oppStyle === 'Defensive'
+      ? ['CB', 'CDM', 'CB']
+      : ['CM', 'ST', 'LW'];
+  const hash = oppQuality * 7 + (oppStyle === 'Attacking' ? 13 : oppStyle === 'Defensive' ? 7 : 3);
+  const namePool = [forwards[hash % 5], mids[(hash + 2) % 5], defs[(hash + 4) % 5]];
+  const ovrs = [
+    Math.min(95, oppQuality + 8 + (hash % 5)),
+    Math.min(93, oppQuality + 5 + (hash % 4)),
+    Math.min(91, oppQuality + 3 + (hash % 3)),
+  ];
+  const stats = ['22 goals', '14 assists', '89% pass', '92% tackle', '11 goals', '94% aerial'];
+  return namePool.map((n, i) => ({
+    name: n,
+    position: positions[i],
+    ovr: ovrs[i],
+    keyStat: stats[(hash + i) % stats.length],
+  }));
+}
+
+function deriveDetailedHeadToHead(homeTeam: string, awayTeam: string): ('W' | 'D' | 'L')[] {
+  const hash = (homeTeam + awayTeam).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const results: ('W' | 'D' | 'L')[] = [];
+  for (let i = 0; i < 5; i++) {
+    const v = (hash + i * 17) % 7;
+    results.push(v <= 2 ? 'W' : v <= 4 ? 'D' : 'L');
+  }
+  return results;
+}
+
+// ============================================================
+// Match Strategy Phase Helpers
+// ============================================================
+
+function deriveStrategyPhases(
+  pos: Position,
+  home: boolean,
+  style: 'Attacking' | 'Balanced' | 'Defensive'
+): {
+  phase: string;
+  icon: React.ReactNode;
+  formation: string;
+  mentality: 'Attacking' | 'Balanced' | 'Defensive';
+  instructions: string[];
+  trigger: string;
+}[] {
+  const isDef = ['CB', 'LB', 'RB', 'CDM', 'GK'].includes(pos);
+  return [
+    {
+      phase: 'Opening 15 min',
+      icon: <Zap className="size-4 text-emerald-400" />,
+      formation: home ? '4-3-3' : '4-5-1',
+      mentality: home ? 'Attacking' : 'Balanced',
+      instructions: home
+        ? ['Press high from the first whistle', 'Get the ball into wide areas early', 'Test their goalkeeper within 10 minutes']
+        : ['Stay compact and absorb early pressure', 'Don\'t chase the game — be patient', 'Look for counter-attacking opportunities'],
+      trigger: 'Concede early → drop deeper, slow tempo',
+    },
+    {
+      phase: 'Mid-First-Half',
+      icon: <Scale className="size-4 text-amber-400" />,
+      formation: '4-3-3',
+      mentality: 'Balanced',
+      instructions: style === 'Attacking'
+        ? ['Exploit space behind their high line', 'Target fullbacks on transitions', 'Keep possession in their half']
+        : ['Control tempo through midfield', 'Work the ball into wide channels', 'Look for overloads in the final third'],
+      trigger: 'Ahead → maintain shape; Level → push for advantage',
+    },
+    {
+      phase: 'Second Half Start',
+      icon: <ArrowUpRight className="size-4 text-emerald-400" />,
+      formation: '4-3-3',
+      mentality: 'Balanced',
+      instructions: [
+        'React to half-time tactical adjustments',
+        isDef ? 'Hold the defensive line higher' : 'Make runs in behind more frequently',
+        'Use fresh legs to press with greater intensity',
+      ],
+      trigger: 'Ahead → step up pressing; Behind → commit bodies forward',
+    },
+    {
+      phase: 'Final 15 min',
+      icon: <AlertTriangle className="size-4 text-red-400" />,
+      formation: isDef ? '5-3-2' : '3-4-3',
+      mentality: style === 'Defensive' ? 'Attacking' : 'Balanced',
+      instructions: [
+        'Manage fatigue — conserve energy on the ball',
+        'Set pieces become the primary attacking threat',
+        'Stay disciplined — avoid unnecessary bookings',
+      ],
+      trigger: 'Ahead → slow game down; Behind → throw caution to wind',
+    },
+  ];
+}
+
+// ============================================================
+// Player Role Card Helpers
+// ============================================================
+
+function derivePlayerDuty(position: Position): 'Attack' | 'Support' | 'Defend' {
+  if (['ST', 'LW', 'RW'].includes(position)) return 'Attack';
+  if (['CB', 'LB', 'RB', 'CDM', 'GK'].includes(position)) return 'Defend';
+  return 'Support';
+}
+
+function deriveFreedomLevel(position: Position): 'Disciplined' | 'Balanced' | 'Creative' {
+  if (['CB', 'LB', 'RB', 'GK'].includes(position)) return 'Disciplined';
+  if (['CAM', 'LW', 'RW'].includes(position)) return 'Creative';
+  return 'Balanced';
+}
+
+function derivePositionZone(position: Position): { x: number; y: number; w: number; h: number } {
+  switch (position) {
+    case 'ST': return { x: 0.3, y: 0.6, w: 0.4, h: 0.25 };
+    case 'LW': return { x: 0.0, y: 0.35, w: 0.25, h: 0.4 };
+    case 'RW': return { x: 0.75, y: 0.35, w: 0.25, h: 0.4 };
+    case 'CAM': return { x: 0.3, y: 0.4, w: 0.4, h: 0.25 };
+    case 'CM': return { x: 0.25, y: 0.3, w: 0.5, h: 0.25 };
+    case 'CDM': return { x: 0.25, y: 0.15, w: 0.5, h: 0.2 };
+    case 'CB': return { x: 0.2, y: 0.0, w: 0.6, h: 0.22 };
+    case 'LB': return { x: 0.0, y: 0.05, w: 0.22, h: 0.55 };
+    case 'RB': return { x: 0.78, y: 0.05, w: 0.22, h: 0.55 };
+    case 'GK': return { x: 0.35, y: 0.0, w: 0.3, h: 0.12 };
+    default: return { x: 0.25, y: 0.25, w: 0.5, h: 0.35 };
+  }
+}
+
+// ============================================================
 // Opacity-only animation variants
 // ============================================================
 
@@ -958,6 +1117,276 @@ function AnalysisTab() {
               </li>
             ))}
           </ul>
+        </InfoCard>
+      </motion.div>
+
+      {/* Opponent Dossier */}
+      <motion.div variants={staggerChild}>
+        <InfoCard className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white">Opponent Dossier</h3>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-[#21262d] border border-[#30363d] text-[#8b949e]">
+              {oppStyle} · {oppFormation}
+            </span>
+          </div>
+
+          {/* Overview Row */}
+          <div className="grid grid-cols-4 gap-2">
+            <div className="p-2 bg-[#0d1117] rounded-lg text-center">
+              <div className="text-[9px] uppercase text-[#8b949e]">Manager</div>
+              <div className="text-[11px] font-medium text-[#c9d1d9] mt-0.5">{deriveOpponentManagerName(opponent.name).split(' ')[0]}</div>
+            </div>
+            <div className="p-2 bg-[#0d1117] rounded-lg text-center">
+              <div className="text-[9px] uppercase text-[#8b949e]">League</div>
+              <div className="text-sm font-bold text-white">{oppPosition}<sup className="text-[8px] text-[#8b949e]">{oppPosition === 1 ? 'st' : oppPosition === 2 ? 'nd' : oppPosition === 3 ? 'rd' : 'th'}</sup></div>
+            </div>
+            <div className="p-2 bg-[#0d1117] rounded-lg text-center">
+              <div className="text-[9px] uppercase text-[#8b949e]">Style</div>
+              <div className="text-[11px] font-medium text-[#c9d1d9] mt-0.5">{deriveOpponentPlayingStyle(oppStyle)}</div>
+            </div>
+            <div className="p-2 bg-[#0d1117] rounded-lg text-center">
+              <div className="text-[9px] uppercase text-[#8b949e]">Squad</div>
+              <div className="text-sm font-bold text-white">{oppSquadQuality}</div>
+            </div>
+          </div>
+
+          {/* Form Dots */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase text-[#8b949e]">Recent Form</span>
+            <div className="flex items-center gap-1">
+              {deriveDetailedHeadToHead(homeClub.name, awayClub.name).map((r, i) => (
+                <FormResultBadge key={`dossier-form-${i}`} result={r} />
+              ))}
+            </div>
+          </div>
+
+          {/* SVG Formation Diagram */}
+          <div>
+            <div className="text-[10px] uppercase text-[#8b949e] mb-2">Likely XI ({oppFormation})</div>
+            <div className="relative w-full max-w-[200px] mx-auto" style={{ aspectRatio: '3/4' }}>
+              <svg viewBox="0 0 120 160" className="w-full h-full" fill="none">
+                <rect x="0" y="0" width="120" height="160" rx="3" fill="#1a3a2a" />
+                <rect x="5" y="5" width="110" height="150" rx="2" stroke="rgba(255,255,255,0.15)" strokeWidth="1" fill="none" />
+                <line x1="5" y1="80" x2="115" y2="80" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                <circle cx="60" cy="80" r="18" stroke="rgba(255,255,255,0.15)" strokeWidth="1" fill="none" />
+                <rect x="25" y="5" width="70" height="25" stroke="rgba(255,255,255,0.12)" strokeWidth="1" fill="none" />
+                {getFormationPositions(oppFormation).map((pos, i) => (
+                  <g key={`opp-doss-${i}`}>
+                    <circle cx={pos.x * 120} cy={pos.y * 160} r="10" fill="rgba(239,68,68,0.25)" stroke="#ef4444" strokeWidth="1.2" />
+                    <text x={pos.x * 120} y={pos.y * 160 + 3.5} textAnchor="middle" fill="#ef4444" fontSize="7" fontWeight="600">{pos.label}</text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+          </div>
+
+          {/* Key Strengths & Weaknesses */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[10px] uppercase text-emerald-400 mb-1.5 flex items-center gap-1">
+                <Zap className="size-3" /> Strengths
+              </div>
+              <ul className="space-y-1">
+                {oppStrengths.slice(0, 3).map((s, i) => (
+                  <li key={`ds-${i}`} className="text-[10px] leading-relaxed text-[#c9d1d9]">• {s}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase text-red-400 mb-1.5 flex items-center gap-1">
+                <AlertTriangle className="size-3" /> Weaknesses
+              </div>
+              <ul className="space-y-1">
+                {getOpponentWeaknesses(oppStyle).slice(0, 3).map((w, i) => (
+                  <li key={`dw-${i}`} className="text-[10px] leading-relaxed text-[#c9d1d9]">• {w}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Danger Men */}
+          <div>
+            <div className="text-[10px] uppercase text-[#8b949e] mb-2">Danger Men</div>
+            <div className="space-y-1.5">
+              {deriveOpponentDangerMen(oppSquadQuality, oppStyle).map((p, i) => (
+                <div key={`dm-${i}`} className="flex items-center justify-between p-2 bg-[#0d1117] rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center size-6 rounded bg-[#21262d]">
+                      <span className="text-[9px] font-bold text-[#c9d1d9]">{i + 1}</span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium text-white">{p.name}</div>
+                      <div className="text-[10px] text-[#8b949e]">{p.position}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-mono font-bold text-white">{p.ovr}</div>
+                    <div className="text-[9px] text-amber-400">{p.keyStat}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* H2H Summary */}
+          <div className="p-2.5 bg-[#0d1117] rounded-lg">
+            <div className="text-[10px] uppercase text-[#8b949e] mb-1.5">Head-to-Head (Last 5 Meetings)</div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[#c9d1d9]">Your Record</span>
+              <div className="flex items-center gap-1">
+                {deriveDetailedHeadToHead(homeClub.name, awayClub.name).map((r, i) => (
+                  <FormResultBadge key={`h2h-${i}`} result={r} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </InfoCard>
+      </motion.div>
+
+      {/* Tactical Intelligence Report */}
+      <motion.div variants={staggerChild}>
+        <InfoCard className="space-y-4">
+          <h3 className="text-sm font-semibold text-white">Tactical Intelligence Report</h3>
+
+          {/* Key Matchups */}
+          <div>
+            <SectionTitle>Key Matchups</SectionTitle>
+            <div className="space-y-2.5">
+              {attrs.slice(0, 3).map((a) => (
+                <AttributeBar
+                  key={`intel-${a.label}`}
+                  label={`${player.position} ${a.label}`}
+                  playerValue={a.player}
+                  opponentValue={a.opponent}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Space Analysis — SVG Pitch Heat Zones */}
+          <div>
+            <SectionTitle>Space Analysis — Opponent Vulnerability</SectionTitle>
+            <div className="relative w-full max-w-[220px] mx-auto" style={{ aspectRatio: '3/4' }}>
+              <svg viewBox="0 0 180 240" className="w-full h-full" fill="none">
+                <rect x="0" y="0" width="180" height="240" rx="3" fill="#1a3a2a" />
+                <rect x="5" y="5" width="170" height="230" rx="2" stroke="rgba(255,255,255,0.15)" strokeWidth="1" fill="none" />
+                <line x1="5" y1="120" x2="175" y2="120" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                <circle cx="90" cy="120" r="25" stroke="rgba(255,255,255,0.15)" strokeWidth="1" fill="none" />
+                <rect x="35" y="5" width="110" height="40" stroke="rgba(255,255,255,0.12)" strokeWidth="1" fill="none" />
+                {/* Vulnerability heat zones */}
+                {oppFormation === '4-3-3' ? (
+                  <>
+                    <rect x="45" y="60" width="90" height="40" fill="rgba(239,68,68,0.2)" rx="2" />
+                    <text x="90" y="82" textAnchor="middle" fill="#ef4444" fontSize="7" fontWeight="600">Midfield Gap</text>
+                    <rect x="5" y="40" width="35" height="80" fill="rgba(245,158,11,0.15)" rx="2" />
+                    <text x="22" y="82" textAnchor="middle" fill="#f59e0b" fontSize="6">Behind FB</text>
+                    <rect x="140" y="40" width="35" height="80" fill="rgba(245,158,11,0.15)" rx="2" />
+                    <text x="157" y="82" textAnchor="middle" fill="#f59e0b" fontSize="6">Behind FB</text>
+                    <rect x="55" y="140" width="70" height="35" fill="rgba(52,211,153,0.1)" rx="2" />
+                    <text x="90" y="160" textAnchor="middle" fill="#34d399" fontSize="6">Box Space</text>
+                  </>
+                ) : oppFormation === '3-5-2' ? (
+                  <>
+                    <rect x="55" y="50" width="70" height="40" fill="rgba(239,68,68,0.2)" rx="2" />
+                    <text x="90" y="72" textAnchor="middle" fill="#ef4444" fontSize="7" fontWeight="600">Channels</text>
+                    <rect x="5" y="20" width="25" height="60" fill="rgba(245,158,11,0.15)" rx="2" />
+                    <text x="17" y="52" textAnchor="middle" fill="#f59e0b" fontSize="6">WB Space</text>
+                    <rect x="150" y="20" width="25" height="60" fill="rgba(245,158,11,0.15)" rx="2" />
+                    <text x="162" y="52" textAnchor="middle" fill="#f59e0b" fontSize="6">WB Space</text>
+                    <rect x="40" y="150" width="100" height="30" fill="rgba(52,211,153,0.1)" rx="2" />
+                    <text x="90" y="168" textAnchor="middle" fill="#34d399" fontSize="6">Wide Areas</text>
+                  </>
+                ) : (
+                  <>
+                    <rect x="55" y="55" width="70" height="35" fill="rgba(239,68,68,0.2)" rx="2" />
+                    <text x="90" y="76" textAnchor="middle" fill="#ef4444" fontSize="7" fontWeight="600">Between Lines</text>
+                    <rect x="45" y="150" width="90" height="30" fill="rgba(245,158,11,0.15)" rx="2" />
+                    <text x="90" y="168" textAnchor="middle" fill="#f59e0b" fontSize="6">Below Block</text>
+                    <rect x="5" y="80" width="40" height="50" fill="rgba(52,211,153,0.1)" rx="2" />
+                    <text x="25" y="107" textAnchor="middle" fill="#34d399" fontSize="6">Flank</text>
+                    <rect x="135" y="80" width="40" height="50" fill="rgba(52,211,153,0.1)" rx="2" />
+                    <text x="155" y="107" textAnchor="middle" fill="#34d399" fontSize="6">Flank</text>
+                  </>
+                )}
+              </svg>
+            </div>
+            <div className="flex items-center justify-center gap-3 mt-2">
+              <div className="flex items-center gap-1"><div className="size-2 rounded-sm bg-red-500/40" /><span className="text-[9px] text-[#8b949e]">High Risk</span></div>
+              <div className="flex items-center gap-1"><div className="size-2 rounded-sm bg-amber-500/30" /><span className="text-[9px] text-[#8b949e]">Medium</span></div>
+              <div className="flex items-center gap-1"><div className="size-2 rounded-sm bg-emerald-500/20" /><span className="text-[9px] text-[#8b949e]">Low</span></div>
+            </div>
+          </div>
+
+          {/* Pressing Triggers */}
+          <div>
+            <SectionTitle>Pressing Triggers</SectionTitle>
+            <ul className="space-y-1.5">
+              <li className="flex items-start gap-2">
+                <Zap className="size-3 text-emerald-400 mt-0.5 shrink-0" />
+                <span className="text-[11px] leading-relaxed text-[#c9d1d9]">Opposition goalkeeper has the ball — press their CBs to force a long pass</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Zap className="size-3 text-emerald-400 mt-0.5 shrink-0" />
+                <span className="text-[11px] leading-relaxed text-[#c9d1d9]">Opposition CB receives under pressure — closest player closes down immediately</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Zap className="size-3 text-emerald-400 mt-0.5 shrink-0" />
+                <span className="text-[11px] leading-relaxed text-[#c9d1d9]">Loose pass or poor touch in midfield — collective press from 3 nearest players</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Counter-Attack Triggers */}
+          <div>
+            <SectionTitle>Counter-Attack Triggers</SectionTitle>
+            <ul className="space-y-1.5">
+              <li className="flex items-start gap-2">
+                <ArrowUpRight className="size-3 text-amber-400 mt-0.5 shrink-0" />
+                <span className="text-[11px] leading-relaxed text-[#c9d1d9]">Win possession in our defensive third — immediate vertical ball to the striker</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ArrowUpRight className="size-3 text-amber-400 mt-0.5 shrink-0" />
+                <span className="text-[11px] leading-relaxed text-[#c9d1d9]">Opposition corner cleared — winger holds width for the outlet pass</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ArrowUpRight className="size-3 text-amber-400 mt-0.5 shrink-0" />
+                <span className="text-[11px] leading-relaxed text-[#c9d1d9]">Opposition fullback caught forward — exploit the space behind with a diagonal run</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Keys to Victory */}
+          <div className="p-3 bg-[#0d1117] rounded-lg border border-emerald-500/20">
+            <div className="text-[10px] uppercase text-emerald-400 font-semibold mb-2 flex items-center gap-1.5">
+              <Lightbulb className="size-3.5" /> Keys to Victory
+            </div>
+            <ul className="space-y-1.5">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="size-3 text-emerald-400 mt-0.5 shrink-0" />
+                <span className="text-xs leading-relaxed text-[#c9d1d9]">
+                  {oppStyle === 'Attacking'
+                    ? 'Exploit the space behind their high defensive line with diagonal balls over the top'
+                    : oppStyle === 'Defensive'
+                      ? 'Be patient in possession — draw them out of shape before committing players forward'
+                      : 'Win the midfield battle through controlled pressing and quick transitions'}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="size-3 text-emerald-400 mt-0.5 shrink-0" />
+                <span className="text-xs leading-relaxed text-[#c9d1d9]">
+                  Target {oppFormation} structural weaknesses — {getFormationWeaknesses(oppFormation).slice(0, 1)[0]}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="size-3 text-emerald-400 mt-0.5 shrink-0" />
+                <span className="text-xs leading-relaxed text-[#c9d1d9]">
+                  {isHome
+                    ? 'Use home advantage to dictate tempo — take the game to the opposition from the start'
+                    : 'Stay compact in the first half and grow into the game — strike on the counter'}
+                </span>
+              </li>
+            </ul>
+          </div>
         </InfoCard>
       </motion.div>
     </motion.div>
@@ -1596,6 +2025,162 @@ function SetPiecesTab() {
       </motion.div>
 
       {/* =========================================================== */}
+      {/* Section: Set-Piece Routine Cards — 2x3 Grid                  */}
+      {/* =========================================================== */}
+      <motion.div variants={staggerChild}>
+        <SectionTitle>Set-Piece Routine Cards</SectionTitle>
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* 1. Corner Kick — Attacking Left */}
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-2.5 space-y-1.5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white">Corner ATK Left</span>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isAttacker ? `${EMERALD_BG} ${EMERALD}` : `${AMBER_BG} ${AMBER_TEXT}`}`}>
+                {isAttacker ? 'Primary' : 'Secondary'}
+              </span>
+            </div>
+            <svg viewBox="0 0 80 60" className="w-full h-12">
+              <rect x="0" y="0" width="80" height="60" fill="#1a3a2a" rx="2" />
+              <rect x="20" y="0" width="60" height="40" stroke="rgba(255,255,255,0.2)" fill="none" rx="1" />
+              <rect x="30" y="0" width="40" height="15" stroke="rgba(255,255,255,0.15)" fill="none" rx="1" />
+              <circle cx="78" cy="58" r="2" fill="#f59e0b" />
+              <path d="M 76 56 Q 48 28, 34 14" stroke="#10b981" strokeWidth="1" strokeDasharray="3 2" fill="none" />
+              <circle cx="34" cy="17" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="54" cy="24" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="44" cy="34" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="38" cy="8" r="3" fill="rgba(239,68,68,0.3)" stroke="none" />
+            </svg>
+            <div className="flex items-center justify-between text-[9px] text-[#8b949e]">
+              <span>Taker: LW</span>
+              <span>Near post: ST</span>
+            </div>
+          </div>
+
+          {/* 2. Corner Kick — Attacking Right */}
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-2.5 space-y-1.5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white">Corner ATK Right</span>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isAttacker ? `${EMERALD_BG} ${EMERALD}` : `${AMBER_BG} ${AMBER_TEXT}`}`}>
+                {isAttacker ? 'Primary' : 'Secondary'}
+              </span>
+            </div>
+            <svg viewBox="0 0 80 60" className="w-full h-12">
+              <rect x="0" y="0" width="80" height="60" fill="#1a3a2a" rx="2" />
+              <rect x="0" y="0" width="60" height="40" stroke="rgba(255,255,255,0.2)" fill="none" rx="1" />
+              <rect x="10" y="0" width="40" height="15" stroke="rgba(255,255,255,0.15)" fill="none" rx="1" />
+              <circle cx="2" cy="58" r="2" fill="#f59e0b" />
+              <path d="M 4 56 Q 32 28, 46 14" stroke="#10b981" strokeWidth="1" strokeDasharray="3 2" fill="none" />
+              <circle cx="46" cy="17" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="26" cy="24" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="36" cy="34" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="42" cy="8" r="3" fill="rgba(239,68,68,0.3)" stroke="none" />
+            </svg>
+            <div className="flex items-center justify-between text-[9px] text-[#8b949e]">
+              <span>Taker: RW</span>
+              <span>Far post: CB</span>
+            </div>
+          </div>
+
+          {/* 3. Free Kick — Central */}
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-2.5 space-y-1.5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white">Free Kick Central</span>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${(hasGoodShooting || hasGoodPassing) ? `${EMERALD_BG} ${EMERALD}` : `${AMBER_BG} ${AMBER_TEXT}`}`}>
+                {(hasGoodShooting || hasGoodPassing) ? 'Primary' : 'Optional'}
+              </span>
+            </div>
+            <svg viewBox="0 0 80 60" className="w-full h-12">
+              <rect x="0" y="0" width="80" height="60" fill="#1a3a2a" rx="2" />
+              <rect x="20" y="0" width="40" height="35" stroke="rgba(255,255,255,0.2)" fill="none" rx="1" />
+              <line x1="36" y1="28" x2="44" y2="28" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 40 27 L 40 4" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" fill="none" />
+              <circle cx="55" cy="16" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="25" cy="16" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="50" cy="36" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="40" cy="4" r="3" fill="rgba(245,158,11,0.4)" stroke="#f59e0b" strokeWidth="0.8" />
+            </svg>
+            <div className="flex items-center justify-between text-[9px] text-[#8b949e]">
+              <span>Taker: CAM</span>
+              <span>Edge of box: CM</span>
+            </div>
+          </div>
+
+          {/* 4. Free Kick — Wide */}
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-2.5 space-y-1.5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white">Free Kick Wide</span>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${['LW', 'RW', 'LB', 'RB'].includes(player.position) ? `${EMERALD_BG} ${EMERALD}` : `${AMBER_BG} ${AMBER_TEXT}`}`}>
+                {['LW', 'RW', 'LB', 'RB'].includes(player.position) ? 'Primary' : 'Secondary'}
+              </span>
+            </div>
+            <svg viewBox="0 0 80 60" className="w-full h-12">
+              <rect x="0" y="0" width="80" height="60" fill="#1a3a2a" rx="2" />
+              <rect x="20" y="0" width="60" height="40" stroke="rgba(255,255,255,0.2)" fill="none" rx="1" />
+              <circle cx="12" cy="22" r="2" fill="#f59e0b" />
+              <path d="M 14 20 Q 40 8, 60 12" stroke="#10b981" strokeWidth="1" strokeDasharray="3 2" fill="none" />
+              <circle cx="38" cy="10" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="55" cy="15" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="50" cy="30" r="3.5" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="1" />
+              <circle cx="60" cy="8" r="3" fill="rgba(245,158,11,0.4)" stroke="#f59e0b" strokeWidth="0.8" />
+            </svg>
+            <div className="flex items-center justify-between text-[9px] text-[#8b949e]">
+              <span>Taker: LW/RW</span>
+              <span>Back post: ST</span>
+            </div>
+          </div>
+
+          {/* 5. Throw-in Routine */}
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-2.5 space-y-1.5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white">Throw-in Routine</span>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${['LB', 'RB'].includes(player.position) ? `${EMERALD_BG} ${EMERALD}` : 'bg-[#21262d] text-[#8b949e]'}`}>
+                {['LB', 'RB'].includes(player.position) ? 'Primary' : 'Optional'}
+              </span>
+            </div>
+            <svg viewBox="0 0 80 60" className="w-full h-12">
+              <rect x="0" y="0" width="80" height="60" fill="#1a3a2a" rx="2" />
+              <line x1="10" y1="0" x2="10" y2="60" stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="2 3" />
+              <circle cx="10" cy="20" r="2" fill="#f59e0b" />
+              <path d="M 12 20 L 25 14" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" fill="none" />
+              <path d="M 25 14 L 40 10" stroke="#10b981" strokeWidth="1" strokeDasharray="2 2" fill="none" />
+              <circle cx="25" cy="16" r="3" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="0.8" />
+              <circle cx="40" cy="12" r="3" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="0.8" />
+              <circle cx="30" cy="28" r="3" fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth="0.8" />
+              <circle cx="48" cy="18" r="3" fill="rgba(245,158,11,0.4)" stroke="#f59e0b" strokeWidth="0.8" />
+            </svg>
+            <div className="flex items-center justify-between text-[9px] text-[#8b949e]">
+              <span>Taker: LB/RB</span>
+              <span>Near post: ST</span>
+            </div>
+          </div>
+
+          {/* 6. Penalty Routine */}
+          <div className={`${CARD_BG} border ${BORDER_COLOR} rounded-lg p-2.5 space-y-1.5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white">Penalty Routine</span>
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isAttacker ? `${EMERALD_BG} ${EMERALD}` : `${AMBER_BG} ${AMBER_TEXT}`}`}>
+                {isAttacker ? 'Primary' : 'Secondary'}
+              </span>
+            </div>
+            <svg viewBox="0 0 80 60" className="w-full h-12">
+              <rect x="0" y="0" width="80" height="60" fill="#1a3a2a" rx="2" />
+              <rect x="25" y="0" width="30" height="18" stroke="rgba(255,255,255,0.2)" fill="none" rx="1" />
+              <circle cx="40" cy="45" r="3.5" fill="rgba(16,185,129,0.5)" stroke="#10b981" strokeWidth="1" />
+              <path d="M 40 42 L 40 12" stroke="#10b981" strokeWidth="1" strokeDasharray="3 2" fill="none" />
+              <circle cx="30" cy="16" r="3" fill="rgba(239,68,68,0.3)" stroke="none" />
+              <circle cx="50" cy="16" r="3" fill="rgba(239,68,68,0.3)" stroke="none" />
+              <circle cx="20" cy="28" r="3" fill="rgba(16,185,129,0.3)" stroke="#10b981" strokeWidth="0.8" />
+              <circle cx="60" cy="28" r="3" fill="rgba(16,185,129,0.3)" stroke="#10b981" strokeWidth="0.8" />
+              <circle cx="40" cy="8" r="2.5" fill="rgba(245,158,11,0.4)" stroke="#f59e0b" strokeWidth="0.8" />
+            </svg>
+            <div className="flex items-center justify-between text-[9px] text-[#8b949e]">
+              <span>Taker: ST</span>
+              <span>Rebound: CB</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* =========================================================== */}
       {/* Section: Danger Zone Heat Map                                      */}
       {/* =========================================================== */}
       <motion.div variants={staggerChild}>
@@ -2098,6 +2683,176 @@ function MatchPlanTab() {
               </li>
             ))}
           </ul>
+        </InfoCard>
+      </motion.div>
+
+      {/* Match Strategy Board */}
+      <motion.div variants={staggerChild}>
+        <InfoCard>
+          <SectionTitle>Match Strategy Board</SectionTitle>
+          <div className="space-y-3">
+            {(() => {
+              const oppSortedTable = [...gameState.leagueTable].sort((a, b) => b.points - a.points);
+              const nextOpp = upcomingFixtures.find(
+                (f) => !f.played && (f.homeClubId === gameState.currentClub.id || f.awayClubId === gameState.currentClub.id) && f.competition === 'league'
+              );
+              if (!nextOpp) return null;
+              const oppClub = getClubById(nextOpp.homeClubId === gameState.currentClub.id ? nextOpp.awayClubId : nextOpp.homeClubId);
+              if (!oppClub) return null;
+              const oppPos = oppSortedTable.findIndex((e) => e.clubId === oppClub.id) + 1;
+              const oppStyle = deriveTacticalStyle(oppPos);
+              const phases = deriveStrategyPhases(player.position, isHome, oppStyle);
+              const mentalityColor = (m: string) => m === 'Attacking' ? 'text-emerald-400 bg-emerald-500/15' : m === 'Defensive' ? 'text-red-400 bg-red-500/15' : 'text-amber-400 bg-amber-500/15';
+              return phases.map((phase, i) => (
+                <div key={i}>
+                  <div className="p-3 bg-[#0d1117] rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {phase.icon}
+                        <span className="text-[11px] font-semibold text-white">{phase.phase}</span>
+                      </div>
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${mentalityColor(phase.mentality)}`}>
+                        {phase.mentality}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px]">
+                      <span className="text-[#8b949e]">Formation: <span className="text-white font-medium">{phase.formation}</span></span>
+                    </div>
+                    <ul className="space-y-1">
+                      {phase.instructions.map((inst, j) => (
+                        <li key={j} className="flex items-start gap-1.5">
+                          <ChevronRight className="size-2.5 text-emerald-400 mt-0.5 shrink-0" />
+                          <span className="text-[10px] leading-relaxed text-[#c9d1d9]">{inst}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-start gap-1.5 pt-1 border-t border-[#21262d]">
+                      <AlertTriangle className="size-2.5 text-amber-400 mt-0.5 shrink-0" />
+                      <span className="text-[9px] text-amber-400">{phase.trigger}</span>
+                    </div>
+                  </div>
+                  {i < phases.length - 1 && (
+                    <div className="flex items-center justify-center py-1">
+                      <div className="w-px h-3 bg-[#30363d]" />
+                      <ChevronRight className="size-2.5 text-[#30363d] mx-1" />
+                      <div className="w-px h-3 bg-[#30363d]" />
+                    </div>
+                  )}
+                </div>
+              ));
+            })()}
+          </div>
+        </InfoCard>
+      </motion.div>
+
+      {/* Player Role Instructions Card */}
+      <motion.div variants={staggerChild}>
+        <InfoCard className="space-y-4">
+          <SectionTitle>Your Role — {player.position}</SectionTitle>
+
+          {/* Role Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center size-10 rounded-lg bg-[#0d1117] border border-[#30363d]">
+                <span className="text-sm font-bold text-white">{player.position}</span>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-white">
+                  Duty: <span className={derivePlayerDuty(player.position) === 'Attack' ? 'text-emerald-400' : derivePlayerDuty(player.position) === 'Defend' ? 'text-red-400' : 'text-amber-400'}>
+                    {derivePlayerDuty(player.position)}
+                  </span>
+                </div>
+                <div className="text-[10px] text-[#8b949e]">
+                  Freedom: <span className="text-[#c9d1d9]">{deriveFreedomLevel(player.position)}</span>
+                </div>
+              </div>
+            </div>
+            <div className={`text-[8px] font-bold px-2 py-0.5 rounded ${
+              deriveFreedomLevel(player.position) === 'Creative'
+                ? 'bg-emerald-500/15 text-emerald-400'
+                : deriveFreedomLevel(player.position) === 'Disciplined'
+                  ? 'bg-red-500/15 text-red-400'
+                  : 'bg-amber-500/15 text-amber-400'
+            }`}>
+              {deriveFreedomLevel(player.position)}
+            </div>
+          </div>
+
+          {/* Positioning Zone SVG */}
+          <div>
+            <div className="text-[10px] uppercase text-[#8b949e] mb-1.5">Positioning Zone</div>
+            <div className="relative w-full max-w-[200px] mx-auto" style={{ aspectRatio: '3/4' }}>
+              <svg viewBox="0 0 120 160" className="w-full h-full" fill="none">
+                <rect x="0" y="0" width="120" height="160" rx="3" fill="#1a3a2a" />
+                <rect x="5" y="5" width="110" height="150" rx="2" stroke="rgba(255,255,255,0.12)" strokeWidth="1" fill="none" />
+                <line x1="5" y1="80" x2="115" y2="80" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+                <circle cx="60" cy="80" r="18" stroke="rgba(255,255,255,0.12)" strokeWidth="1" fill="none" />
+                {/* Position zone highlight */}
+                {(() => {
+                  const zone = derivePositionZone(player.position);
+                  return (
+                    <rect
+                      x={zone.x * 120}
+                      y={zone.y * 160}
+                      width={zone.w * 120}
+                      height={zone.h * 160}
+                      fill="rgba(59,130,246,0.2)"
+                      stroke="#3b82f6"
+                      strokeWidth="1.5"
+                      rx="4"
+                    />
+                  );
+                })()}
+                {/* Player dot */}
+                {(() => {
+                  const zone = derivePositionZone(player.position);
+                  return (
+                    <g>
+                      <circle
+                        cx={(zone.x + zone.w / 2) * 120}
+                        cy={(zone.y + zone.h / 2) * 160}
+                        r="12"
+                        fill="rgba(59,130,246,0.4)"
+                        stroke="#3b82f6"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={(zone.x + zone.w / 2) * 120}
+                        y={(zone.y + zone.h / 2) * 160 + 4}
+                        textAnchor="middle"
+                        fill="#3b82f6"
+                        fontSize="8"
+                        fontWeight="700"
+                      >
+                        {player.position}
+                      </text>
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+          </div>
+
+          {/* Key Responsibilities */}
+          <div>
+            <div className="text-[10px] uppercase text-[#8b949e] mb-2">Key Responsibilities</div>
+            <ul className="space-y-1.5">
+              {getPositionRoleInstructions(player.position).slice(0, 4).map((inst, i) => (
+                <li key={`role-inst-${i}`} className="flex items-start gap-2">
+                  <CheckCircle2 className="size-3 text-blue-400 mt-0.5 shrink-0" />
+                  <span className="text-[11px] leading-relaxed text-[#c9d1d9]">{inst}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Set-Piece Duty */}
+          <div className="p-2.5 bg-[#0d1117] rounded-lg">
+            <div className="text-[10px] uppercase text-[#8b949e] mb-1.5">Set-Piece Duty</div>
+            <div className="text-[10px] leading-relaxed text-[#c9d1d9]">
+              {getPositionSetPieceRole(player.position).attacking[0]}
+            </div>
+          </div>
         </InfoCard>
       </motion.div>
     </motion.div>

@@ -91,6 +91,8 @@ import BoardRoom from '@/components/game/BoardRoom';
 import YouthDevelopment from '@/components/game/YouthDevelopment';
 import SocialMediaFeed from '@/components/game/SocialMediaFeed';
 import CreateAClub from '@/components/game/CreateAClub';
+import DailyRewards from '@/components/game/DailyRewards';
+import MultiplayerLeague from '@/components/game/MultiplayerLeague';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -179,6 +181,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   board_room: BoardRoom,
   social_media_feed: SocialMediaFeed,
   create_a_club: CreateAClub,
+  daily_rewards: DailyRewards,
+  multiplayer_league: MultiplayerLeague,
 };
 
 const gameScreens: GameScreen[] = [
@@ -234,6 +238,8 @@ const gameScreens: GameScreen[] = [
   'board_room',
   'social_media_feed',
   'create_a_club',
+  'daily_rewards',
+  'multiplayer_league',
 ];
 
 export default function Home() {
