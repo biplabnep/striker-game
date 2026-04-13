@@ -59,6 +59,8 @@ import RivalSystem from '@/components/game/RivalSystem';
 import TacticalSubstitutions from '@/components/game/TacticalSubstitutions';
 import PotentialJourney from '@/components/game/PotentialJourney';
 import MatchDayLive from '@/components/game/MatchDayLive';
+import DynamicDifficultyPanel from '@/components/game/DynamicDifficultyPanel';
+import CareerLegacyProfile from '@/components/game/CareerLegacyProfile';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -115,6 +117,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   tactical_substitutions: TacticalSubstitutions,
   potential_journey: PotentialJourney,
   match_day_live: MatchDayLive,
+  dynamic_difficulty: DynamicDifficultyPanel,
+  career_legacy_profile: CareerLegacyProfile,
 };
 
 const gameScreens: GameScreen[] = [
@@ -138,6 +142,8 @@ const gameScreens: GameScreen[] = [
   'tactical_substitutions',
   'potential_journey',
   'match_day_live',
+  'dynamic_difficulty',
+  'career_legacy_profile',
 ];
 
 export default function Home() {

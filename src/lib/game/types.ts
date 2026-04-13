@@ -623,7 +623,9 @@ export type GameScreen =
   | 'rival_system'
   | 'tactical_substitutions'
   | 'potential_journey'
-  | 'match_day_live';
+  | 'match_day_live'
+  | 'dynamic_difficulty'
+  | 'career_legacy_profile';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
