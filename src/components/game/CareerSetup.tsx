@@ -106,6 +106,30 @@ const POSITION_DETAILS: Record<
       { label: 'Crossing', value: '78' },
     ],
   },
+  LM: {
+    description: 'Control the left channel with pace, crossing ability, and two-way stamina.',
+    keyAttrs: [
+      { label: 'Pace', value: '80' },
+      { label: 'Passing', value: '78' },
+      { label: 'Crossing', value: '82' },
+    ],
+  },
+  RM: {
+    description: 'Hug the right touchline, deliver crosses, and support both defense and attack.',
+    keyAttrs: [
+      { label: 'Pace', value: '80' },
+      { label: 'Passing', value: '78' },
+      { label: 'Crossing', value: '82' },
+    ],
+  },
+  CF: {
+    description: 'Operate between midfield and attack, creating chances with vision and technique.',
+    keyAttrs: [
+      { label: 'Passing', value: '85' },
+      { label: 'Dribbling', value: '83' },
+      { label: 'Shooting', value: '80' },
+    ],
+  },
   ST: {
     description: 'Lead the attack, find space in the box, and finish clinical chances.',
     keyAttrs: [

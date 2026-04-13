@@ -552,7 +552,7 @@ export default function MoralePanel() {
     },
   ], [playerFitness, actionsUsed]);
 
-  if (!gameState) return null;
+  if (!gameState || !player || !currentClub) return null;
 
   const moraleLevel = getMoraleLevel(player.morale);
 

@@ -8,7 +8,7 @@ import { Position, PlayerAttributes } from './types';
 // Position weights for OVR calculation
 // Different positions weight attributes differently
 // -----------------------------------------------------------
-export const POSITION_WEIGHTS: Record<Position, Record<keyof PlayerAttributes, number>> = {
+export const POSITION_WEIGHTS: Record<Position, Partial<Record<keyof PlayerAttributes, number>>> = {
   GK:  { pace: 0.05, shooting: 0.0,  passing: 0.10, dribbling: 0.0,  defending: 0.10, physical: 0.15, diving: 0.25, handling: 0.15, positioning: 0.10, reflexes: 0.20 },
   CB:  { pace: 0.10, shooting: 0.02, passing: 0.10, dribbling: 0.05, defending: 0.40, physical: 0.30 },
   LB:  { pace: 0.20, shooting: 0.03, passing: 0.15, dribbling: 0.10, defending: 0.30, physical: 0.20 },
@@ -296,7 +296,7 @@ export function calculateOverall(attributes: PlayerAttributes, position: Positio
   (Object.keys(weights) as (keyof PlayerAttributes)[]).forEach(key => {
     const weight = weights[key];
     const value = attributes[key];
-    if (value !== undefined && weight > 0) {
+    if (value !== undefined && weight !== undefined && weight > 0) {
       weightedSum += value * weight;
       totalWeight += weight;
     }

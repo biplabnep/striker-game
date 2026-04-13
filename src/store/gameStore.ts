@@ -88,6 +88,7 @@ import {
   calculateWage,
   randomBetween,
   clamp,
+  formatCurrency,
 } from '@/lib/game/gameUtils';
 import {
   generateSeasonObjectives,
@@ -115,6 +116,7 @@ import {
   calculateTeamDynamics,
   getDefaultTeamDynamics,
   generateNewRelationshipsOnTransfer,
+  getRelationshipLevel,
 } from '@/lib/game/relationshipsEngine';
 import {
   determineContinentalQualification,
@@ -622,7 +624,7 @@ function generateInjury(
   // Pick category based on severity
   const categoryRoll = Math.random();
   let category: InjuryCategory;
-  if (injuryType === 'concussion' || (categoryRoll < 0.08 && injuryType === 'minor')) {
+  if (categoryRoll < 0.08 && injuryType === 'minor') {
     category = 'concussion';
   } else if (categoryRoll < 0.10) {
     category = 'illness';
@@ -1597,7 +1599,7 @@ export const useGameStore = create<GameStore>()(
 
           if (isContinentalGroupWeek && continentalKnockoutRound === 0) {
             // Group stage matchday
-            const groupMatchday = CONTINENTAL_GROUP_WEEKS.indexOf(week) + 1;
+            const groupMatchday = CONTINENTAL_GROUP_MATCH_WEEKS.indexOf(week) + 1;
             const groupFixtures = continentalFixtures.filter(
               f => f.stage === 'group' && f.matchday === groupMatchday && !f.played
             );

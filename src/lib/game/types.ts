@@ -3,13 +3,13 @@
 // ============================================================
 
 // --- Positions ---
-export type Position = 'GK' | 'CB' | 'LB' | 'RB' | 'CDM' | 'CM' | 'CAM' | 'LW' | 'RW' | 'ST';
+export type Position = 'GK' | 'CB' | 'LB' | 'RB' | 'CDM' | 'CM' | 'CAM' | 'LW' | 'RW' | 'LM' | 'RM' | 'ST' | 'CF';
 
 export const POSITION_GROUPS: Record<string, Position[]> = {
   Goalkeeper: ['GK'],
   Defence: ['CB', 'LB', 'RB'],
-  Midfield: ['CDM', 'CM', 'CAM'],
-  Attack: ['LW', 'RW', 'ST'],
+  Midfield: ['CDM', 'CM', 'CAM', 'LM', 'RM'],
+  Attack: ['LW', 'RW', 'ST', 'CF'],
 };
 
 // --- Player Attributes (0-100 scale) ---
@@ -20,6 +20,11 @@ export interface PlayerAttributes {
   dribbling: number;
   defending: number;
   physical: number;
+  // GK-specific attributes
+  diving?: number;
+  handling?: number;
+  positioning?: number;
+  reflexes?: number;
 }
 
 // --- Playing Style ---
@@ -81,7 +86,7 @@ export interface InjuryRecord {
 }
 
 // --- Enhanced Injury System ---
-export type InjuryType = 'minor' | 'moderate' | 'severe' | 'career_threatening';
+export type InjuryType = 'minor' | 'moderate' | 'severe' | 'concussion' | 'career_threatening';
 export type InjuryCategory = 'muscle' | 'ligament' | 'bone' | 'concussion' | 'illness';
 
 export interface Injury {
@@ -396,7 +401,7 @@ export interface SaveSlot {
 // --- Game Notification ---
 export interface GameNotification {
   id: string;
-  type: 'match' | 'transfer' | 'event' | 'achievement' | 'social' | 'contract' | 'training';
+  type: 'match' | 'transfer' | 'event' | 'achievement' | 'social' | 'contract' | 'training' | 'career';
   title: string;
   message: string;
   read: boolean;

@@ -1,4 +1,6 @@
-import { Club } from './types';
+import { Club, Position } from './types';
+
+type RawClub = Omit<Club, 'quality' | 'budget' | 'wageBudget' | 'squadSize' | 'style' | 'needsPositions'>;
 
 // ============================================================
 // Elite Striker - Clubs Database
@@ -25,7 +27,7 @@ export const CUP_NAMES: Record<string, { name: string; emoji: string }> = {
 // Cup match weeks (every 4 weeks)
 export const CUP_MATCH_WEEKS = [4, 8, 12, 16, 20, 24, 28, 32, 36];
 
-export const CLUBS: Club[] = [
+export const CLUBS: RawClub[] = [
   // ============================================================
   // English Premier League (20 clubs)
   // ============================================================
@@ -1796,7 +1798,7 @@ function enrichClub(raw: Omit<Club, 'quality' | 'budget' | 'wageBudget' | 'squad
 }
 
 // Enriched clubs list matching the full Club type
-export const ENRICHED_CLUBS: Club[] = (CLUBS as any[]).map(enrichClub);
+export const ENRICHED_CLUBS: Club[] = CLUBS.map(enrichClub);
 
 // Helper: Get clubs by league
 export function getClubsByLeague(leagueId: string): Club[] {

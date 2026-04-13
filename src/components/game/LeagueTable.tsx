@@ -178,6 +178,7 @@ export default function LeagueTable() {
         if (goals < 1) continue;
         const assists = Math.round(goals * (0.1 + Math.random() * 0.25));
         scorers.push({
+          rank: 0,
           name: playerNameForClub(entry.clubId, p),
           clubId: entry.clubId,
           clubName: club?.shortName || entry.clubName,
@@ -192,6 +193,7 @@ export default function LeagueTable() {
     const playerAssists = gameState.player.seasonStats.assists;
     if (playerGoals > 0) {
       scorers.push({
+        rank: 0,
         name: gameState.player.name,
         clubId: gameState.currentClub.id,
         clubName: gameState.currentClub.shortName,
@@ -223,6 +225,7 @@ export default function LeagueTable() {
         if (assists < 1) continue;
         const goals = Math.round(assists * (0.05 + Math.random() * 0.2));
         assisters.push({
+          rank: 0,
           name: playerNameForClub(entry.clubId, p + 10),
           clubId: entry.clubId,
           clubName: club?.shortName || entry.clubName,
@@ -236,6 +239,7 @@ export default function LeagueTable() {
     const playerAssists = gameState.player.seasonStats.assists;
     if (playerAssists > 0) {
       assisters.push({
+        rank: 0,
         name: gameState.player.name,
         clubId: gameState.currentClub.id,
         clubName: gameState.currentClub.shortName,
