@@ -65,6 +65,8 @@ import PreSeasonTrainingCamp from '@/components/game/PreSeasonTrainingCamp';
 import KitCustomization from '@/components/game/KitCustomization';
 import TransferMarket from '@/components/game/TransferMarket';
 import PersonalFinances from '@/components/game/PersonalFinances';
+import CareerRetirement from '@/components/game/CareerRetirement';
+import TacticalFormationBoard from '@/components/game/TacticalFormationBoard';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -127,6 +129,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   kit_customization: KitCustomization,
   transfer_market: TransferMarket,
   personal_finances: PersonalFinances,
+  tactical_formation_board: TacticalFormationBoard,
+  career_retirement: CareerRetirement,
 };
 
 const gameScreens: GameScreen[] = [
@@ -156,6 +160,8 @@ const gameScreens: GameScreen[] = [
   'kit_customization',
   'transfer_market',
   'personal_finances',
+  'tactical_formation_board',
+  'career_retirement',
 ];
 
 export default function Home() {

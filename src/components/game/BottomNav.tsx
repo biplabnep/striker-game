@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -42,6 +42,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'match_highlights_enhanced', icon: <Zap className="h-5 w-5" />, label: 'Enhanced' },
       { screen: 'pre_match_scout', icon: <Search className="h-5 w-5" />, label: 'Scout' },
       { screen: 'team_selection', icon: <Users className="h-5 w-5" />, label: 'Lineup' },
+      { screen: 'tactical_formation_board', icon: <LayoutGrid className="h-5 w-5" />, label: 'Board' },
       { screen: 'match_stats_comparison', icon: <BarChart3 className="h-5 w-5" />, label: 'Match Stats' },
       { screen: 'match_day_live', icon: <Radio className="h-5 w-5" />, label: 'Live Match' },
       { screen: 'dynamic_difficulty', icon: <Gauge className="h-5 w-5" />, label: 'Difficulty' },
@@ -68,6 +69,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'season_awards', icon: <Sparkles className="h-5 w-5" />, label: 'Awards' },
       { screen: 'potential_journey', icon: <Route className="h-5 w-5" />, label: 'Journey' },
       { screen: 'career_legacy_profile', icon: <Crown className="h-5 w-5" />, label: 'Legacy' },
+      { screen: 'career_retirement', icon: <Hourglass className="h-5 w-5" />, label: 'Retirement' },
     ],
   },
   {

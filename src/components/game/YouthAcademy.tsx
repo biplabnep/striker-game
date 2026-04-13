@@ -52,6 +52,20 @@ const ATTR_LABELS: Record<CoreAttribute, { label: string; short: string; icon: R
   physical: { label: 'Physical', short: 'PHY', icon: <BarChart3 className="h-3 w-3" /> },
 };
 
+// Position coordinates for formation mini-diagram (120x80 viewBox)
+const PITCH_POSITION_MAP: Record<string, { x: number; y: number }> = {
+  GK: { x: 60, y: 70 },
+  CB: { x: 30, y: 55 }, CB2: { x: 60, y: 55 }, CB3: { x: 90, y: 55 },
+  LB: { x: 12, y: 35 }, RB: { x: 108, y: 35 },
+  CDM: { x: 60, y: 40 },
+  CM: { x: 40, y: 25 }, CM2: { x: 80, y: 25 },
+  CAM: { x: 60, y: 15 },
+  LW: { x: 15, y: 10 }, RW: { x: 105, y: 10 },
+  ST: { x: 60, y: 5 },
+  LM: { x: 20, y: 30 }, RM: { x: 100, y: 30 },
+  CF: { x: 60, y: 8 },
+};
+
 function getAttrColor(value: number): string {
   if (value >= 70) return 'bg-emerald-500';
   if (value >= 55) return 'bg-lime-500';
@@ -64,6 +78,14 @@ function getOverallColor(ovr: number): string {
   if (ovr >= 60) return 'text-lime-400';
   if (ovr >= 50) return 'text-amber-400';
   return 'text-red-400';
+}
+
+function getPotentialBorderColor(pot: number): string {
+  if (pot >= 90) return 'border-l-emerald-500';
+  if (pot >= 85) return 'border-l-lime-500';
+  if (pot >= 80) return 'border-l-amber-400';
+  if (pot >= 70) return 'border-l-orange-500';
+  return 'border-l-red-500';
 }
 
 function getFormColor(form: number): string {
@@ -99,6 +121,180 @@ function getTrainingFocusLabel(focus: keyof PlayerAttributes | undefined): strin
 }
 
 // ============================================================
+// Mini Radar helpers (60×60)
+// ============================================================
+function buildMiniRadarPoints(
+  attrs: PlayerAttributes,
+  cx: number,
+  cy: number,
+  r: number,
+  keys: (keyof PlayerAttributes)[],
+): string {
+  const n = keys.length;
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
+  return keys
+    .map((key, i) => {
+      const angle = startAngle + i * angleStep;
+      const val = (attrs[key] ?? 0) / 100;
+      const x = cx + r * val * Math.cos(angle);
+      const y = cy + r * val * Math.sin(angle);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+function buildMiniRadarPotential(
+  player: YouthPlayer,
+  cx: number,
+  cy: number,
+  r: number,
+  keys: (keyof PlayerAttributes)[],
+): string {
+  const n = keys.length;
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
+  const gap = Math.max(0, Math.floor((player.potential - player.overall) / n));
+  return keys
+    .map((key, i) => {
+      const angle = startAngle + i * angleStep;
+      const val = Math.min(1, ((player.attributes[key] ?? 0) + gap) / 100);
+      const x = cx + r * val * Math.cos(angle);
+      const y = cy + r * val * Math.sin(angle);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+// ============================================================
+// Academy Quality Radar (3-axis SVG radar)
+// ============================================================
+function AcademyQualityRadar({
+  facilities,
+  coaching,
+  recruitment,
+}: {
+  facilities: number;
+  coaching: number;
+  recruitment: number;
+}) {
+  const cx = 60;
+  const cy = 58;
+  const r = 42;
+  const values = [facilities, coaching, recruitment];
+  const labels = ['Fac', 'Coach', 'Recruit'];
+  const n = 3;
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
+
+  function getAxisPoint(i: number, val: number): { x: number; y: number } {
+    const angle = startAngle + i * angleStep;
+    return {
+      x: cx + r * (val / 100) * Math.cos(angle),
+      y: cy + r * (val / 100) * Math.sin(angle),
+    };
+  }
+
+  const axisEndPoints = values.map((v, i) => getAxisPoint(i, v));
+
+  return (
+    <svg width={120} height={116} viewBox="0 0 120 116" className="select-none">
+      {/* Grid rings */}
+      {[0.33, 0.66, 1.0].map(level => (
+        <polygon
+          key={level}
+          points={Array.from({ length: n }, (_, i) => {
+            const angle = startAngle + i * angleStep;
+            return `${cx + r * level * Math.cos(angle)},${cy + r * level * Math.sin(angle)}`;
+          }).join(' ')}
+          fill="none"
+          stroke="#30363d"
+          strokeWidth={0.5}
+          opacity={0.5}
+        />
+      ))}
+      {/* Axis lines */}
+      {axisEndPoints.map((pt, i) => (
+        <line key={i} x1={cx} y1={cy} x2={pt.x} y2={pt.y} stroke="#30363d" strokeWidth={0.5} opacity={0.6} />
+      ))}
+      {/* Data polygon */}
+      <polygon
+        points={axisEndPoints.map(p => `${p.x},${p.y}`).join(' ')}
+        fill="rgba(16, 185, 129, 0.15)"
+        stroke="#10b981"
+        strokeWidth={1.5}
+      />
+      {/* Dots + labels */}
+      {axisEndPoints.map((pt, i) => (
+        <g key={i}>
+          <circle cx={pt.x} cy={pt.y} r={3} fill="#10b981" stroke="#064e3b" strokeWidth={0.8} />
+          <text
+            x={cx + (r + 14) * Math.cos(startAngle + i * angleStep)}
+            y={cy + (r + 14) * Math.sin(startAngle + i * angleStep)}
+            textAnchor="middle"
+            className="fill-[#8b949e]"
+            fontSize={8}
+            fontWeight={600}
+          >
+            {labels[i]}
+          </text>
+          <text
+            x={cx + (r + 14) * Math.cos(startAngle + i * angleStep)}
+            y={cy + (r + 14) * Math.sin(startAngle + i * angleStep) + 9}
+            textAnchor="middle"
+            fill="#c9d1d9"
+            fontSize={9}
+            fontWeight={700}
+          >
+            {values[i]}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// Formation Mini-Diagram
+// ============================================================
+function FormationMiniDiagram({ players }: { players: YouthPlayer[] }) {
+  // Deduplicate by position, take highest-rated for each
+  const posMap = new Map<string, YouthPlayer>();
+  for (const p of players) {
+    const existing = posMap.get(p.position);
+    if (!existing || p.overall > existing.overall) posMap.set(p.position, p);
+  }
+
+  const dots = Array.from(posMap.entries()).map(([pos, p]) => ({
+    pos,
+    x: (PITCH_POSITION_MAP[pos]?.x ?? 60),
+    y: (PITCH_POSITION_MAP[pos]?.y ?? 40),
+    potential: p.potential,
+    overall: p.overall,
+    color: (POSITION_COLOR_MAP[pos]?.text ?? 'text-slate-400').replace('text-', ''),
+  }));
+
+  return (
+    <svg width={120} height={80} viewBox="0 0 120 80" className="select-none">
+      {/* Pitch outline */}
+      <rect x={1} y={1} width={118} height={78} rx={2} fill="none" stroke="#30363d" strokeWidth={1} opacity={0.6} />
+      {/* Center line */}
+      <line x1={1} y1={40} x2={119} y2={40} stroke="#30363d" strokeWidth={0.5} opacity={0.4} />
+      {/* Center circle */}
+      <circle cx={60} cy={40} r={8} fill="none" stroke="#30363d" strokeWidth={0.5} opacity={0.3} />
+      {/* Penalty areas */}
+      <rect x={30} y={60} width={60} height={19} fill="none" stroke="#30363d" strokeWidth={0.5} opacity={0.4} />
+      {/* Player dots */}
+      {dots.map((d, i) => (
+        <g key={`${d.pos}-${i}`}>
+          <circle cx={d.x} cy={d.y} r={3} fill={d.color} opacity={0.8} />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
 // Academy Rating Card
 // ============================================================
 
@@ -113,12 +309,6 @@ function AcademyRatingCard({
   recruitment: number;
   overall: number;
 }) {
-  const bars = [
-    { label: 'Facilities', value: facilities, icon: <Building2 className="h-3.5 w-3.5" /> },
-    { label: 'Coaching', value: coaching, icon: <UserCheck className="h-3.5 w-3.5" /> },
-    { label: 'Recruitment', value: recruitment, icon: <Search className="h-3.5 w-3.5" /> },
-  ];
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -133,33 +323,182 @@ function AcademyRatingCard({
         </div>
         <span className={`text-lg font-bold ${getOverallColor(overall)}`}>{overall}<span className="text-xs text-[#8b949e] font-normal">/100</span></span>
       </div>
-      <div className="space-y-2.5">
-        {bars.map((bar) => (
-          <div key={bar.label} className="space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#8b949e]">{bar.icon}</span>
-                <span className="text-xs text-[#8b949e]">{bar.label}</span>
-              </div>
-              <span className="text-xs font-semibold text-[#c9d1d9]">{bar.value}<span className="text-[#484f58] font-normal">/100</span></span>
-            </div>
-            <div className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
-              <motion.div
-                className={`h-full rounded-full ${
-                  bar.value >= 80 ? 'bg-emerald-500' :
-                  bar.value >= 60 ? 'bg-lime-500' :
-                  bar.value >= 40 ? 'bg-amber-500' :
-                  'bg-red-500'
-                }`}
-                initial={{ width: 0 }}
-                animate={{ width: `${bar.value}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-              />
-            </div>
-          </div>
-        ))}
+      <div className="flex items-center justify-center">
+        <AcademyQualityRadar facilities={facilities} coaching={coaching} recruitment={recruitment} />
       </div>
     </motion.div>
+  );
+}
+
+// ============================================================
+// Potential Progress Bar with Milestones
+// ============================================================
+function PotentialProgressBar({ overall, potential }: { overall: number; potential: number }) {
+  // Milestone markers at specific OVR thresholds mapped to bar percentage
+  const milestones = [
+    { ovr: 60, label: 'Youth Ready', color: '#8b949e' },
+    { ovr: 70, label: 'U21 Ready', color: '#f59e0b' },
+    { ovr: 80, label: 'First Team', color: '#22c55e' },
+  ];
+  // Map overall/potential to 0–100 range for display
+  const minOvr = 30;
+  const maxOvr = Math.max(overall, potential, 90);
+  const range = maxOvr - minOvr;
+  const overallPct = range > 0 ? ((overall - minOvr) / range) * 100 : 0;
+  const potentialPct = range > 0 ? ((potential - minOvr) / range) * 100 : 100;
+  const barColor = overall >= 80 ? 'bg-emerald-500' : overall >= 70 ? 'bg-lime-500' : overall >= 60 ? 'bg-amber-500' : 'bg-red-400';
+
+  // Triangle indicator point at current OVR
+  const triX = `${overallPct}%`;
+
+  return (
+    <div className="relative w-full">
+      <div className="relative w-full h-3 bg-[#21262d] rounded-lg overflow-hidden">
+        {/* Full potential track */}
+        <div className="absolute inset-0 bg-[#30363d]/40 rounded-lg" style={{ width: `${potentialPct}%` }} />
+        {/* Progress fill up to current OVR */}
+        <motion.div
+          className={`absolute top-0 left-0 h-full rounded-lg ${barColor}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${overallPct}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
+        {/* Milestone markers */}
+        {milestones.map((m) => {
+          const pct = range > 0 ? ((m.ovr - minOvr) / range) * 100 : 0;
+          if (pct < 0 || pct > 100) return null;
+          return (
+            <div
+              key={m.label}
+              className="absolute top-0 h-full flex flex-col items-center"
+              style={{ left: `${pct}%` }}
+            >
+              <div className="w-px h-full bg-[#8b949e]/40" />
+            </div>
+          );
+        })}
+      </div>
+      {/* Triangle indicator at current OVR */}
+      <svg className="absolute -top-1 pointer-events-none" style={{ left: triX, marginLeft: '-4px' }} width="8" height="5" viewBox="0 0 8 5">
+        <polygon points="4,0 0,5 8,5" fill={overall >= 80 ? '#22c55e' : overall >= 70 ? '#84cc16' : overall >= 60 ? '#f59e0b' : '#ef4444'} />
+      </svg>
+      {/* Milestone labels below bar */}
+      <div className="relative flex justify-between mt-1 px-0">
+        {milestones.map((m) => {
+          const pct = range > 0 ? ((m.ovr - minOvr) / range) * 100 : 0;
+          if (pct < 0 || pct > 100) return null;
+          return (
+            <div key={m.label} className="absolute flex flex-col items-center" style={{ left: `${pct}%`, marginLeft: '-20px', width: '40px' }}>
+              <span className="text-[6px] text-[#484f58] font-medium whitespace-nowrap">{m.label}</span>
+              <span className="text-[6px] text-[#30363d]">({m.ovr})</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Mini Potential Radar (64×64, 4-axis: PAC, SHO, PAS, PHY)
+// ============================================================
+function MiniPotentialRadar({ player }: { player: YouthPlayer }) {
+  const radarKeys = ['pace', 'shooting', 'passing', 'physical'] as (keyof PlayerAttributes)[];
+  const cx = 32;
+  const cy = 32;
+  const r = 24;
+  const n = 4;
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
+
+  const buildPoints = (attrs: PlayerAttributes, radR: number): string => {
+    return radarKeys
+      .map((key, i) => {
+        const angle = startAngle + i * angleStep;
+        const val = (attrs[key] ?? 0) / 100;
+        const x = cx + radR * val * Math.cos(angle);
+        const y = cy + radR * val * Math.sin(angle);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  };
+
+  // Estimate potential per attribute
+  const gap = Math.max(0, Math.floor((player.potential - player.overall) / n));
+  const potentialAttrs = { ...player.attributes };
+  radarKeys.forEach((key) => {
+    (potentialAttrs as Record<string, number>)[key] = Math.min(100, (player.attributes[key] ?? 0) + gap);
+  });
+
+  const axisLabels = ['PAC', 'SHO', 'PAS', 'PHY'];
+
+  return (
+    <svg width={64} height={64} viewBox="0 0 64 64" className="select-none">
+      {/* Grid rings */}
+      {[0.33, 0.66, 1.0].map(level => (
+        <polygon
+          key={level}
+          points={Array.from({ length: n }, (_, i) => {
+            const angle = startAngle + i * angleStep;
+            return `${cx + r * level * Math.cos(angle)},${cy + r * level * Math.sin(angle)}`;
+          }).join(' ')}
+          fill="none"
+          stroke="#30363d"
+          strokeWidth={0.3}
+          opacity={0.4}
+        />
+      ))}
+      {/* Axis lines */}
+      {Array.from({ length: n }, (_, i) => {
+        const angle = startAngle + i * angleStep;
+        return (
+          <line
+            key={i}
+            x1={cx} y1={cy}
+            x2={cx + r * Math.cos(angle)}
+            y2={cy + r * Math.sin(angle)}
+            stroke="#30363d"
+            strokeWidth={0.3}
+            opacity={0.3}
+          />
+        );
+      })}
+      {/* Potential polygon (dashed overlay) */}
+      <polygon
+        points={buildPoints(potentialAttrs, r)}
+        fill="none"
+        stroke="#f59e0b"
+        strokeWidth={0.8}
+        strokeDasharray="2 2"
+        opacity={0.5}
+      />
+      {/* Current attribute polygon */}
+      <polygon
+        points={buildPoints(player.attributes, r)}
+        fill="rgba(16, 185, 129, 0.15)"
+        stroke="#10b981"
+        strokeWidth={1}
+      />
+      {/* Axis labels */}
+      {Array.from({ length: n }, (_, i) => {
+        const angle = startAngle + i * angleStep;
+        const lx = cx + (r + 9) * Math.cos(angle);
+        const ly = cy + (r + 9) * Math.sin(angle);
+        return (
+          <text
+            key={i}
+            x={lx}
+            y={ly + 3}
+            textAnchor="middle"
+            className="fill-[#484f58]"
+            fontSize={6}
+            fontWeight={600}
+          >
+            {axisLabels[i]}
+          </text>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -183,7 +522,7 @@ function YouthPlayerCard({
   const potentialInfo = getPotentialRange(player.potential);
   const promoBadge = getPromotionBadge(player.promotionStatus);
   const posColor = POSITION_COLOR_MAP[player.position] ?? { bg: 'bg-slate-500/20 border-slate-500/40', text: 'text-slate-400' };
-  const ovrToPotProgress = player.potential > 0 ? ((player.overall / player.potential) * 100) : 0;
+  const isWonderkid = player.potential >= 85;
 
   return (
     <motion.div
@@ -191,46 +530,44 @@ function YouthPlayerCard({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      className={`bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden border-l-2 ${getPotentialBorderColor(player.potential)}`}
     >
       {/* Header row */}
       <div
-        className="flex items-center gap-2 p-3 cursor-pointer hover:bg-[#21262d] transition-colors"
+        className="relative flex items-center gap-2 p-3 cursor-pointer hover:bg-[#21262d] transition-colors"
         onClick={onToggle}
       >
-        {/* OVR / POT dual display */}
-        <div className="flex flex-col items-center min-w-[40px]">
-          <span className={`text-lg font-bold leading-tight ${getOverallColor(player.overall)}`}>
-            {player.overall}
-          </span>
-          <div className="w-full h-1 bg-slate-700 rounded-full overflow-hidden my-0.5">
-            <motion.div
-              className={`h-full rounded-full ${
-                ovrToPotProgress >= 80 ? 'bg-emerald-500' :
-                ovrToPotProgress >= 60 ? 'bg-lime-500' :
-                ovrToPotProgress >= 40 ? 'bg-amber-500' :
-                'bg-red-400'
-              }`}
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(ovrToPotProgress, 100)}%` }}
-              transition={{ duration: 0.4 }}
-            />
-          </div>
-          <span className="text-[10px] text-[#8b949e] leading-tight">POT {player.potential}</span>
-        </div>
-
-        {/* Position badge with filled background */}
-        <div className={`text-[10px] font-bold ${posColor.text} ${posColor.bg} border px-1.5 py-0.5 rounded leading-tight`}>
+        {/* Position badge top-left */}
+        <div className={`absolute top-2 left-2 text-[10px] font-bold ${posColor.text} ${posColor.bg} border px-1.5 py-0.5 rounded leading-tight z-10`}>
           {player.position}
         </div>
 
-        {/* Name, traits, training focus */}
-        <div className="flex-1 min-w-0">
+        {/* OVR badge top-right */}
+        <div className="absolute top-2 right-2 z-10">
+          <span className={`text-sm font-black tabular-nums ${getOverallColor(player.overall)} bg-[#1c2333] border border-[#30363d] px-1.5 py-0.5 rounded-lg leading-tight`}>
+            {player.overall}
+          </span>
+        </div>
+
+        {/* Spacer for top badges */}
+        <div className="w-16" />
+
+        {/* Name + Wonderkid badge */}
+        <div className="flex-1 min-w-0 ml-0">
           <div className="text-sm font-medium text-white truncate">{player.name}</div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`text-[10px] ${potentialInfo.color}`}>{potentialInfo.label}</span>
-            {player.traits.includes('wonderkid') && (
-              <span className="text-[10px] text-amber-400 font-semibold">Wonderkid</span>
+            {isWonderkid && (
+              <span className="flex items-center gap-1">
+                <motion.span
+                  className="inline-block w-6 h-6 rounded-full bg-amber-400/20 flex items-center justify-center"
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <Star className="h-3.5 w-3.5 text-amber-400" fill="currentColor" />
+                </motion.span>
+                <span className="text-[10px] text-amber-400 font-semibold">Wonderkid</span>
+              </span>
             )}
           </div>
           {/* Training focus indicator */}
@@ -244,38 +581,21 @@ function YouthPlayerCard({
           )}
         </div>
 
-        {/* Right side info column */}
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          {/* Age + Category chip */}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-[#8b949e]">{player.age}y</span>
-            <span className={`text-[9px] font-semibold px-1 py-px rounded ${
-              player.category === 'u18'
-                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-            }`}>
-              {player.category === 'u18' ? 'U18' : 'U21'}
-            </span>
-          </div>
-
-          {/* Form indicator */}
-          <div className="flex items-center gap-1">
-            <span className={`inline-block w-2 h-2 rounded-sm ${getFormColor(player.form)}`} />
-            <span className="text-[10px] text-[#8b949e]">{player.form}/10</span>
-          </div>
-
-          {/* Status badge */}
-          <div className={`text-[9px] font-medium px-1.5 py-px rounded border ${promoBadge.bg} ${promoBadge.color}`}>
-            {promoBadge.label}
-          </div>
-        </div>
-
         {/* Expand chevron — opacity only */}
         <div className="shrink-0 ml-1">
           {expanded
             ? <ChevronDown className="h-4 w-4 text-emerald-400" />
             : <ChevronRight className="h-4 w-4 text-[#484f58]" />
           }
+        </div>
+      </div>
+
+      {/* Potential milestone progress bar */}
+      <div className="px-3 pb-1.5">
+        <PotentialProgressBar overall={player.overall} potential={player.potential} />
+        <div className="flex items-center justify-between mt-0.5">
+          <span className="text-[9px] text-[#484f58]">{player.overall} OVR</span>
+          <span className="text-[9px] text-[#8b949e] font-medium">{player.potential} POT</span>
         </div>
       </div>
 
@@ -314,37 +634,52 @@ function YouthPlayerCard({
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 pt-1 border-t border-[#30363d] space-y-3">
-              {/* Attributes */}
-              <div className="grid grid-cols-3 gap-2">
-                {(Object.keys(player.attributes) as (keyof PlayerAttributes)[]).map((key) => {
-                  const rawVal = player.attributes[key];
-                  const val = rawVal !== undefined ? Math.round(rawVal) : 0;
-                  const attrInfo = ATTR_LABELS[key as CoreAttribute];
-                  const isFocus = player.trainingFocus === key;
-                  return (
-                    <div
-                      key={key}
-                      className={`relative flex items-center gap-1.5 p-1.5 rounded-lg cursor-pointer transition-colors ${
-                        isFocus ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-[#21262d] hover:bg-[#21262d]'
-                      }`}
-                      onClick={() => onSetFocus(key)}
-                    >
-                      <span className="text-[#8b949e]">{attrInfo.icon}</span>
-                      <span className="text-[10px] text-[#8b949e] w-6">{attrInfo.short}</span>
-                      <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                        <motion.div
-                          className={`h-full rounded-full ${getAttrColor(val)}`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${val}%` }}
-                          transition={{ duration: 0.5, delay: 0.1 }}
-                        />
-                      </div>
-                      <span className={`text-xs font-semibold min-w-[20px] text-right ${isFocus ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
-                        {val}
-                      </span>
-                    </div>
-                  );
-                })}
+              {/* Mini Radar + Attributes side by side */}
+              <div className="flex gap-3">
+                {/* Mini Potential Radar */}
+                <div className="shrink-0">
+                  <div className="text-[9px] text-[#8b949e] mb-1 text-center">Potential Radar</div>
+                  <MiniPotentialRadar player={player} />
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <span className="text-[7px] text-emerald-400">■ Current</span>
+                    <span className="text-[7px] text-amber-400">--- Potential</span>
+                  </div>
+                </div>
+
+                {/* Attributes */}
+                <div className="flex-1 min-w-0">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(Object.keys(player.attributes) as (keyof PlayerAttributes)[]).map((key) => {
+                      const rawVal = player.attributes[key];
+                      const val = rawVal !== undefined ? Math.round(rawVal) : 0;
+                      const attrInfo = ATTR_LABELS[key as CoreAttribute];
+                      const isFocus = player.trainingFocus === key;
+                      return (
+                        <div
+                          key={key}
+                          className={`relative flex items-center gap-1 p-1 rounded-lg cursor-pointer transition-colors ${
+                            isFocus ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-[#21262d] hover:bg-[#1c2333]'
+                          }`}
+                          onClick={() => onSetFocus(key)}
+                        >
+                          <span className="text-[#8b949e]">{attrInfo.icon}</span>
+                          <span className="text-[9px] text-[#8b949e] w-5">{attrInfo.short}</span>
+                          <div className="flex-1 h-1.5 bg-slate-700 rounded-lg overflow-hidden">
+                            <motion.div
+                              className={`h-full rounded-lg ${getAttrColor(val)}`}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${val}%` }}
+                              transition={{ duration: 0.5, delay: 0.1 }}
+                            />
+                          </div>
+                          <span className={`text-[10px] font-semibold min-w-[18px] text-right ${isFocus ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
+                            {val}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Stats */}
@@ -401,6 +736,32 @@ function YouthPlayerCard({
                 Tap an attribute to set training focus
               </div>
 
+              {/* Right side info */}
+              <div className="flex flex-col items-end gap-1 shrink-0 text-right">
+                {/* Age + Category chip */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-[#8b949e]">{player.age}y</span>
+                  <span className={`text-[9px] font-semibold px-1 py-px rounded ${
+                    player.category === 'u18'
+                      ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                      : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                  }`}>
+                    {player.category === 'u18' ? 'U18' : 'U21'}
+                  </span>
+                </div>
+
+                {/* Form indicator */}
+                <div className="flex items-center gap-1">
+                  <span className={`inline-block w-2 h-2 rounded-sm ${getFormColor(player.form)}`} />
+                  <span className="text-[10px] text-[#8b949e]">{player.form}/10</span>
+                </div>
+
+                {/* Status badge */}
+                <div className={`text-[9px] font-medium px-1.5 py-px rounded border ${promoBadge.bg} ${promoBadge.color}`}>
+                  {promoBadge.label}
+                </div>
+              </div>
+
               {/* Promotion buttons */}
               <div className="flex gap-2">
                 {player.category === 'u18' && player.promotionStatus !== 'developing' && (
@@ -440,7 +801,6 @@ function YouthPlayerCard({
 // ============================================================
 
 function getPositionChangeIndicator(clubId: string, currentPos: number): { symbol: string; color: string } {
-  // Deterministic pseudo-movement based on clubId hash for visual effect
   let hash = 0;
   for (let i = 0; i < clubId.length; i++) {
     const char = clubId.charCodeAt(i);
@@ -448,9 +808,9 @@ function getPositionChangeIndicator(clubId: string, currentPos: number): { symbo
     hash |= 0;
   }
   const val = Math.abs(hash);
-  if (val % 3 === 0) return { symbol: '\u25B2', color: 'text-emerald-400' };   // ▲ up
-  if (val % 3 === 1) return { symbol: '\u25BC', color: 'text-red-400' };      // ▼ down
-  return { symbol: '\u2014', color: 'text-[#484f58]' };                        // — same
+  if (val % 3 === 0) return { symbol: '\u25B2', color: 'text-emerald-400' };
+  if (val % 3 === 1) return { symbol: '\u25BC', color: 'text-red-400' };
+  return { symbol: '\u2014', color: 'text-[#484f58]' };
 }
 
 function YouthLeagueTableView({
@@ -593,13 +953,12 @@ export default function YouthAcademy() {
   const avgOverallU21 = u21Team?.players.length ?
     Math.round(u21Team.players.reduce((s, p) => s + p.overall, 0) / u21Team.players.length) : 0;
 
-  // Scout data — derive from available info
+  // Scout data
   const scoutCost = currentClub.tier <= 2 ? '£100K' : currentClub.tier <= 3 ? '£75K' : '£50K';
   const maxScoutsPerSeason = 3;
   const playersJoinedThisSeason = allYouthPlayers.filter(p => p.joinedSeason === gameState.currentSeason).length;
   const scoutsRemaining = Math.max(0, maxScoutsPerSeason - playersJoinedThisSeason);
 
-  // Last scout result summary — find most recent intake players
   const latestIntakePlayers = allYouthPlayers
     .filter(p => p.joinedSeason === gameState.currentSeason)
     .sort((a, b) => b.potential - a.potential);
@@ -607,12 +966,10 @@ export default function YouthAcademy() {
     ? `${latestIntakePlayers.length} scouted — Best: ${latestIntakePlayers[0].name} (${latestIntakePlayers[0].overall} OVR)`
     : 'No scouts used this season';
 
-  // Academy rating — derive from club data
   const facilitiesRating = Math.round(currentClub.facilities * 0.85 + currentClub.youthDevelopment * 0.15);
   const coachingRating = Math.round(currentClub.youthDevelopment * 0.75 + currentClub.quality * 0.25);
   const recruitmentRating = Math.round(currentClub.youthDevelopment * 0.6 + (currentClub.reputation ?? 50) * 0.4);
 
-  // Recent youth match results for player's club
   const recentYouthResults = youthMatchResults
     .filter(r => r.homeClubId === currentClub.id || r.awayClubId === currentClub.id)
     .slice(-5)
@@ -620,9 +977,7 @@ export default function YouthAcademy() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-4 pb-24 space-y-4">
-      {/* ============================================================ */}
       {/* Header with Enhanced Badge Row */}
-      {/* ============================================================ */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -640,36 +995,27 @@ export default function YouthAcademy() {
 
         {/* Enhanced Badge Row */}
         <div className="flex items-center gap-2 mt-3 flex-wrap">
-          {/* Total Players */}
           <div className="flex items-center gap-1.5 bg-[#21262d] rounded-lg px-2.5 py-1.5">
             <Users className="h-3.5 w-3.5 text-[#c9d1d9]" />
             <span className="text-xs font-semibold text-white">{totalPlayers}</span>
             <span className="text-[10px] text-[#8b949e]">Players</span>
           </div>
-
-          {/* Average Rating */}
           <div className="flex items-center gap-1.5 bg-[#21262d] rounded-lg px-2.5 py-1.5">
             <BarChart3 className="h-3.5 w-3.5 text-lime-400" />
             <span className={`text-xs font-semibold ${getOverallColor(avgOverallAll)}`}>{avgOverallAll}</span>
             <span className="text-[10px] text-[#8b949e]">Avg</span>
           </div>
-
-          {/* Ready for Promotion */}
           <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1.5">
             <ArrowUpRight className="h-3.5 w-3.5 text-emerald-400" />
             <span className="text-xs font-semibold text-emerald-400">{readyCount}</span>
             <span className="text-[10px] text-emerald-400/70">Ready</span>
           </div>
-
-          {/* Overdue */}
           {overdueCount > 0 && (
             <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
               <span className="text-xs font-semibold text-amber-400">{overdueCount}</span>
               <span className="text-[10px] text-amber-400/70">Overdue</span>
             </div>
           )}
-
-          {/* Wonderkids */}
           {wonderkidCount > 0 && (
             <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
               <Star className="h-3.5 w-3.5 text-amber-400" />
@@ -711,9 +1057,7 @@ export default function YouthAcademy() {
         </div>
       </motion.div>
 
-      {/* ============================================================ */}
       {/* Enhanced Scout Button */}
-      {/* ============================================================ */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -761,9 +1105,7 @@ export default function YouthAcademy() {
         </div>
       </motion.div>
 
-      {/* ============================================================ */}
       {/* Academy Rating Card */}
-      {/* ============================================================ */}
       <AcademyRatingCard
         facilities={Math.min(100, facilitiesRating)}
         coaching={Math.min(100, coachingRating)}
@@ -809,6 +1151,19 @@ export default function YouthAcademy() {
               </button>
             ))}
           </div>
+
+          {/* Formation Mini-Diagram */}
+          {allYouthPlayers.length > 0 && (
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-semibold text-[#8b949e]">Position Distribution</span>
+                <span className="text-[9px] text-[#484f58]">{allYouthPlayers.length} players</span>
+              </div>
+              <div className="flex justify-center">
+                <FormationMiniDiagram players={allYouthPlayers} />
+              </div>
+            </div>
+          )}
 
           {/* U18 Section */}
           <div className="space-y-2">
@@ -871,41 +1226,16 @@ export default function YouthAcademy() {
               )}
             </div>
           </div>
-
-          {/* Promotion Pipeline */}
-          <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <ArrowUpRight className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm font-semibold text-[#c9d1d9]">Promotion Pipeline</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-[#21262d] rounded-lg p-2">
-                <div className="text-xs text-blue-400 font-semibold">U18</div>
-                <div className="text-[10px] text-[#8b949e]">Ages 14-17</div>
-                <div className="text-[10px] text-[#8b949e] mt-1">→ U21</div>
-              </div>
-              <div className="bg-[#21262d] rounded-lg p-2">
-                <div className="text-xs text-purple-400 font-semibold">U21</div>
-                <div className="text-[10px] text-[#8b949e]">Ages 18-21</div>
-                <div className="text-[10px] text-[#8b949e] mt-1">→ First Team</div>
-              </div>
-              <div className="bg-emerald-500/10 rounded-lg p-2 border border-emerald-500/20">
-                <div className="text-xs text-emerald-400 font-semibold">First Team</div>
-                <div className="text-[10px] text-[#8b949e]">Senior Squad</div>
-                <div className="text-[10px] text-emerald-400 mt-1">Active</div>
-              </div>
-            </div>
-          </div>
         </TabsContent>
 
-        {/* League Table Tab */}
-        <TabsContent value="league" className="space-y-3 mt-3">
+        {/* League Tab */}
+        <TabsContent value="league" className="space-y-4 mt-3">
           {u18Standings.length > 0 && (
             <YouthLeagueTableView
               standings={u18Standings}
               clubId={currentClub.id}
               title="U18 League"
-              emoji="👦"
+              emoji="🛡"
             />
           )}
           {u21Standings.length > 0 && (
@@ -913,67 +1243,60 @@ export default function YouthAcademy() {
               standings={u21Standings}
               clubId={currentClub.id}
               title="U21 League"
-              emoji="🧑"
+              emoji="🏆"
             />
+          )}
+          {(u18Standings.length === 0 && u21Standings.length === 0) && (
+            <div className="text-center py-8 text-[#484f58] text-xs">
+              No league data available
+            </div>
           )}
         </TabsContent>
 
         {/* Results Tab */}
-        <TabsContent value="results" className="space-y-3 mt-3">
-          <div className="flex items-center gap-2">
-            <Award className="h-4 w-4 text-emerald-400" />
-            <span className="text-sm font-semibold text-[#c9d1d9]">Recent Youth Results</span>
-          </div>
+        <TabsContent value="results" className="space-y-2 mt-3">
+          {recentYouthResults.length > 0 ? (
+            recentYouthResults.map((result, i) => {
+              const isHome = result.homeClubId === currentClub.id;
+              const opponent = isHome ? result.awayClubName : result.homeClubName;
+              const homeGoals = result.homeGoals;
+              const awayGoals = result.awayGoals;
+              const teamGoals = isHome ? homeGoals : awayGoals;
+              const oppGoals = isHome ? awayGoals : homeGoals;
+              const resultLabel = teamGoals > oppGoals ? 'W' : teamGoals < oppGoals ? 'L' : 'D';
+              const resultColor = resultLabel === 'W'
+                ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+                : resultLabel === 'L'
+                ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                : 'text-[#8b949e] border-slate-500/30 bg-slate-500/10';
 
-          {recentYouthResults.length === 0 ? (
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 text-center">
-              <Trophy className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
-              <p className="text-xs text-[#8b949e]">No youth matches played yet</p>
-              <p className="text-[10px] text-[#484f58] mt-1">Results will appear as weeks advance</p>
-            </div>
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05 + i * 0.04 }}
+                  className="bg-[#161b22] border border-[#30363d] rounded-lg p-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${resultColor}`}>
+                        {isHome ? 'H' : 'A'}
+                      </span>
+                      <span className="text-xs text-[#c9d1d9] font-medium truncate">{opponent}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-bold text-[#c9d1d9] tabular-nums">{teamGoals}</span>
+                      <span className="text-[#30363d]">-</span>
+                      <span className="text-xs font-bold text-[#8b949e] tabular-nums">{oppGoals}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
           ) : (
-            <div className="space-y-2">
-              {recentYouthResults.map((result, idx) => {
-                const isHome = result.homeClubId === currentClub.id;
-                const playerScore = isHome ? result.homeScore : result.awayScore;
-                const opponentScore = isHome ? result.awayScore : result.homeScore;
-                const resultColor = playerScore > opponentScore ? 'text-emerald-400' :
-                  playerScore < opponentScore ? 'text-red-400' : 'text-amber-400';
-                const resultLabel = playerScore > opponentScore ? 'W' :
-                  playerScore < opponentScore ? 'L' : 'D';
-
-                return (
-                  <motion.div
-                    key={`${result.fixtureId}-${idx}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex items-center gap-3"
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                      resultLabel === 'W' ? 'bg-emerald-500/15 text-emerald-400' :
-                      resultLabel === 'L' ? 'bg-red-500/15 text-red-400' :
-                      'bg-amber-500/15 text-amber-400'
-                    }`}>
-                      {resultLabel}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-bold ${resultColor}`}>{playerScore} - {opponentScore}</span>
-                        <Badge variant="outline" className={`text-[10px] ${
-                          result.category === 'u18' ? 'text-blue-400 border-blue-500/30' : 'text-purple-400 border-purple-500/30'
-                        }`}>
-                          {result.category.toUpperCase()}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] text-[#8b949e] border-slate-600/30">
-                          {result.competition === 'youth_league' ? 'League' : 'Cup'}
-                        </Badge>
-                      </div>
-                      <div className="text-[10px] text-[#8b949e]">Week {result.week} • Season {result.season}</div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+            <div className="text-center py-8 text-[#484f58] text-xs">
+              No recent results
             </div>
           )}
         </TabsContent>

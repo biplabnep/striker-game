@@ -145,6 +145,29 @@ import {
   getMatchTypeLabel,
 } from '@/lib/game/internationalEngine';
 
+// ============================================================
+// Retirement probability calculation
+// ============================================================
+export function calculateRetirementProbability(
+  age: number,
+  fitness: number,
+  totalInjuries: number,
+  hasCareerThreateningInjury: boolean,
+  morale: number
+): number {
+  if (age <= 32) return 0;
+  // Base: 5% at 33, +8% per year
+  const base = 5 + (age - 33) * 8;
+  let probability = age >= 38 ? 45 : Math.min(base, 45);
+  // Modifiers
+  if (fitness < 50) probability += 10;
+  if (totalInjuries > 10) probability += 8;
+  if (hasCareerThreateningInjury) probability += 15;
+  if (morale > 80) probability -= 5;
+  if (morale < 30) probability += 8;
+  return Math.max(0, Math.min(100, Math.round(probability)));
+}
+
 // Persistence
 import {
   saveGame as persistSaveGame,
@@ -782,6 +805,9 @@ function migrateGameState(gs: GameState | null): GameState | null {
     // Weather System
     currentWeather: gs.currentWeather ?? null,
     weatherPreparation: gs.weatherPreparation ?? 'standard',
+    // Retirement
+    retirementPending: gs.retirementPending ?? false,
+    retirementRiskPushed: gs.retirementRiskPushed ?? false,
   };
 }
 
@@ -970,6 +996,9 @@ export const useGameStore = create<GameStore>()(
           // Weather System
           currentWeather: generateWeatherCondition(1, 1),
           weatherPreparation: 'standard' as const,
+          // Retirement
+          retirementPending: false,
+          retirementRiskPushed: false,
           // Mindset & Morale
           mindset: 'balanced' as PlayerMindset,
           moraleFactors: [],
@@ -2184,6 +2213,30 @@ export const useGameStore = create<GameStore>()(
           // Age up
           player.age += 1;
 
+          // Retirement check at season end (only for senior players age 33+)
+          if (playerTeamLevel === 'senior' && player.age >= 33 && !state.retirementRiskPushed) {
+            const careerThreatening = injuries.some(i => i.type === 'career_threatening');
+            const retirementProb = calculateRetirementProbability(
+              player.age,
+              player.fitness,
+              player.injuryHistory.length,
+              careerThreatening,
+              player.morale
+            );
+            // Deterministic roll based on age + season (same save = same result)
+            const roll = ((player.age * 7 + state.currentSeason * 13 + player.injuryHistory.length * 3) % 100);
+            if (roll < retirementProb) {
+              state.retirementPending = true;
+              get().addNotification({
+                type: 'career',
+                title: 'Retirement Looming',
+                message: `Your body can't keep up anymore. The time has come to consider hanging up your boots.`,
+                actionRequired: true,
+              });
+              get().setScreen('career_retirement');
+            }
+          }
+
           // Check for youth team promotion
           if (playerTeamLevel === 'u18' && (player.age >= 18 || player.overall >= 60)) {
             playerTeamLevel = 'u21';
@@ -2441,6 +2494,8 @@ export const useGameStore = create<GameStore>()(
             seasonTrainingFocus,
             injuries,
             currentInjury,
+            retirementPending: state.retirementPending,
+            retirementRiskPushed: state.retirementRiskPushed,
             lastSaved: new Date().toISOString(),
           },
           scheduledTraining: null,

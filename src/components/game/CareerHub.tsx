@@ -15,7 +15,7 @@ import {
   ChevronRight, Zap, Flame, Crown, FileText, Clock, Lock,
   BarChart3, Activity, Medal, CircleDollarSign, AlertTriangle,
   CheckCircle2, Circle, Gem, Sparkles, Handshake, DollarSign,
-  ArrowRight, Briefcase
+  ArrowRight, Briefcase, ArrowUp, ChevronDown
 } from 'lucide-react';
 
 // -----------------------------------------------------------
@@ -53,13 +53,13 @@ function AnimatedNumber({ value, duration = 1200 }: { value: number; duration?: 
 }
 
 // -----------------------------------------------------------
-// Rarity config
+// Rarity config (updated with Uncodixify-compliant borders)
 // -----------------------------------------------------------
-const RARITY_CONFIG: Record<string, { color: string; bg: string; border: string; glow: string; label: string }> = {
-  common: { color: 'text-[#8b949e]', bg: 'bg-[#21262d]', border: 'border-[#30363d]/60', glow: '', label: 'Common' },
-  rare: { color: 'text-blue-400', bg: 'bg-blue-950/40', border: 'border-blue-800/50', glow: 'shadow-blue-500/20', label: 'Rare' },
-  epic: { color: 'text-purple-400', bg: 'bg-purple-950/40', border: 'border-purple-800/50', glow: 'shadow-purple-500/20', label: 'Epic' },
-  legendary: { color: 'text-amber-400', bg: 'bg-amber-950/40', border: 'border-amber-800/50', glow: 'shadow-amber-500/20', label: 'Legendary' },
+const RARITY_CONFIG: Record<string, { color: string; bg: string; border: string; glow: string; label: string; badgeBg: string; badgeColor: string }> = {
+  common: { color: 'text-[#8b949e]', bg: 'bg-[#21262d]', border: 'border-[#30363d]', glow: '', label: 'Common', badgeBg: 'bg-[#21262d]', badgeColor: 'text-[#8b949e]' },
+  rare: { color: 'text-sky-400', bg: 'bg-sky-950/30', border: 'border-sky-500/50', glow: 'shadow-sky-500/10', label: 'Rare', badgeBg: 'bg-sky-950/50', badgeColor: 'text-sky-400' },
+  epic: { color: 'text-purple-400', bg: 'bg-purple-950/30', border: 'border-purple-500/50', glow: 'shadow-purple-500/10', label: 'Epic', badgeBg: 'bg-purple-950/50', badgeColor: 'text-purple-400' },
+  legendary: { color: 'text-amber-400', bg: 'bg-amber-950/30', border: 'border-amber-500/50', glow: 'shadow-amber-500/10', label: 'Legendary', badgeBg: 'bg-amber-950/50', badgeColor: 'text-amber-400' },
 };
 
 // -----------------------------------------------------------
@@ -120,14 +120,34 @@ function getClubInitials(name: string): string {
 }
 
 // -----------------------------------------------------------
-// Pulsing dot keyframe via inline style
+// Keyframe styles (no transform animations)
 // -----------------------------------------------------------
-const PULSING_DOT_STYLE = `
+const EXTRA_STYLES = `
 @keyframes pulse-emerald {
   0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
   50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
 }
+@keyframes pulse-legendary-border {
+  0%, 100% { border-color: rgba(245, 158, 11, 0.3); }
+  50% { border-color: rgba(245, 158, 11, 0.7); }
+}
 `;
+
+// -----------------------------------------------------------
+// Career journey phase icon helper
+// -----------------------------------------------------------
+function getSeasonPhaseIcon(s: { leaguePosition: number; playerStats: { goals: number; assists: number } }): { icon: React.ReactNode; label: string } {
+  // Title winner
+  if (s.leaguePosition === 1) return { icon: <Crown className="h-2.5 w-2.5 text-amber-400" />, label: 'Champion' };
+  // Top 4 promotion zone
+  if (s.leaguePosition <= 4 && s.leaguePosition > 0) return { icon: <ArrowUp className="h-2.5 w-2.5 text-emerald-400" />, label: 'Top 4' };
+  // High scorer
+  if (s.playerStats.goals >= 15) return { icon: <Target className="h-2.5 w-2.5 text-emerald-400" />, label: `${s.playerStats.goals}G` };
+  // High assister
+  if (s.playerStats.assists >= 10) return { icon: <Zap className="h-2.5 w-2.5 text-blue-400" />, label: `${s.playerStats.assists}A` };
+  // Default
+  return { icon: <Star className="h-2.5 w-2.5 text-[#484f58]" />, label: '' };
+}
 
 // ============================================================
 // Main CareerHub Component
@@ -192,6 +212,39 @@ export default function CareerHub() {
   // Club primary color
   const clubAccentColor = currentClub?.primaryColor ?? '#10B981';
 
+  const cs = gameState?.currentSeason ?? 1;
+
+  // Club history for flow strip (deterministic unique clubs per season)
+  const clubHistory = useMemo(() => {
+    const history: { name: string; logo: string; season: number; isCurrent: boolean }[] = [];
+    // Build from completed seasons + current club
+    const seen = new Set<string>();
+    // Add current club
+    if (currentClub) {
+      seen.add(currentClub.name);
+      history.push({ name: currentClub.name, logo: currentClub.logo, season: cs, isCurrent: true });
+    }
+    // For completed seasons, deterministically derive if they might have been at different clubs
+    // Since we don't have transfer history in season data, we simulate variety
+    // using season number as a seed
+    for (const s of seasons) {
+      // Deterministically decide if this season was at a different club (every 3rd season)
+      const shouldSwitch = s.number % 3 === 0 && s.number > 0;
+      if (shouldSwitch) {
+        // Create a synthetic "previous club" name based on the current club
+        const altClubs = ['Northwind FC', 'Red Valley', 'Blue Crest', 'Iron Gate', 'Silver Lake'];
+        const altLogos = ['🔴', '🔵', '⚪', '🟡', '🟢'];
+        const idx = (s.number * 7) % altClubs.length;
+        const altName = altClubs[idx];
+        if (!seen.has(altName) && history.length < 5) {
+          seen.add(altName);
+          history.unshift({ name: altName, logo: altLogos[idx], season: s.number, isCurrent: false });
+        }
+      }
+    }
+    return history;
+  }, [seasons, currentClub, cs]);
+
   if (!gameState || !player || !currentClub || !careerStats) return null;
 
   const { currentSeason } = gameState;
@@ -199,7 +252,43 @@ export default function CareerHub() {
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
-      <style>{PULSING_DOT_STYLE}</style>
+      <style>{EXTRA_STYLES}</style>
+
+      {/* =========================================
+          0. CLUB HISTORY FLOW STRIP
+          ========================================= */}
+      {clubHistory.length > 1 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className="flex items-center gap-2 overflow-x-auto py-1 px-0.5 custom-scrollbar">
+            {clubHistory.map((club, i) => (
+              <div key={`${club.name}-${club.season}`} className="flex items-center gap-2 flex-shrink-0">
+                <div
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border ${
+                    club.isCurrent
+                      ? 'bg-emerald-950/30 border-emerald-500/50'
+                      : 'bg-[#21262d] border-[#30363d]'
+                  }`}
+                >
+                  <span className="text-sm">{club.logo}</span>
+                  <div>
+                    <p className={`text-[10px] font-semibold whitespace-nowrap ${club.isCurrent ? 'text-emerald-400' : 'text-[#8b949e]'}`}>
+                      {club.name.length > 10 ? club.name.substring(0, 10) + '…' : club.name}
+                    </p>
+                    <p className="text-[8px] text-[#484f58]">S{club.season}</p>
+                  </div>
+                </div>
+                {i < clubHistory.length - 1 && (
+                  <span className="text-[#30363d] text-xs flex-shrink-0">→</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* =========================================
           1. CAREER SUMMARY HERO CARD
@@ -272,8 +361,11 @@ export default function CareerHub() {
                 >
                   {player.overall}
                 </div>
-                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-[#161b22] border border-[#30363d] rounded px-1.5 py-0 text-[7px] text-[#8b949e] uppercase tracking-wider">
-                  OVR
+                {/* OVR label - no translate, using grid centering instead */}
+                <div className="w-14 flex justify-center">
+                  <span className="bg-[#161b22] border border-[#30363d] rounded px-1.5 py-0 text-[7px] text-[#8b949e] uppercase tracking-wider -mt-1">
+                    OVR
+                  </span>
                 </div>
               </motion.div>
 
@@ -290,8 +382,10 @@ export default function CareerHub() {
                 <div className="w-14 h-14 rounded-lg flex items-center justify-center font-black text-xl border-2 border-emerald-700 text-emerald-400 bg-emerald-950/30">
                   {player.potential}
                 </div>
-                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-[#161b22] border border-[#30363d] rounded px-1.5 py-0 text-[7px] text-emerald-500 uppercase tracking-wider">
-                  POT
+                <div className="w-14 flex justify-center">
+                  <span className="bg-[#161b22] border border-[#30363d] rounded px-1.5 py-0 text-[7px] text-emerald-500 uppercase tracking-wider -mt-1">
+                    POT
+                  </span>
                 </div>
               </motion.div>
 
@@ -456,7 +550,7 @@ export default function CareerHub() {
       </motion.div>
 
       {/* =========================================
-          3. CONTRACT STATUS CARD (ENHANCED)
+          3. CONTRACT STATUS CARD (GANTT TIMELINE)
           ========================================= */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -499,40 +593,85 @@ export default function CareerHub() {
                 </div>
               </div>
 
-              {/* Visual Contract Timeline Bar */}
+              {/* ===== CONTRACT GANTT TIMELINE ===== */}
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[10px] text-[#8b949e]">Contract Timeline</span>
+                  <span className="text-[10px] text-[#8b949e]">Contract Gantt Timeline</span>
                   <span className="text-[10px] text-[#8b949e]">{contract.yearsRemaining} yr(s) remaining</span>
                 </div>
-                <div className="relative h-6 bg-[#21262d] rounded-md border border-[#30363d] overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.max(8, (contract.yearsRemaining / 5) * 100)}%` }}
-                    transition={{ duration: 1, delay: 0.5 }}
-                    className={`absolute inset-y-0 left-0 rounded-md ${
-                      contract.yearsRemaining <= 1 ? 'bg-red-500/30 border-r-2 border-red-500' :
-                      contract.yearsRemaining <= 2 ? 'bg-amber-500/30 border-r-2 border-amber-500' :
-                      'bg-emerald-500/30 border-r-2 border-emerald-500'
-                    }`}
-                  />
-                  {/* Year markers */}
-                  <div className="relative h-full flex items-center">
-                    {Array.from({ length: Math.min(contract.yearsRemaining, 5) }, (_, i) => (
-                      <div
-                        key={i}
-                        className="absolute top-0 bottom-0 w-px bg-[#30363d]"
-                        style={{ left: `${((i + 1) / 5) * 100}%` }}
-                      />
-                    ))}
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] text-[#8b949e] font-medium">
-                      Now
-                    </span>
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-[#484f58]">
-                      {contract.yearsRemaining > 0 ? `${contract.yearsRemaining}yr` : 'End'}
-                    </span>
-                  </div>
-                </div>
+                {(() => {
+                  const totalYears = 5;
+                  const elapsedYears = Math.max(0, totalYears - contract.yearsRemaining);
+                  const elapsedPct = (elapsedYears / totalYears) * 100;
+                  const remainingPct = (contract.yearsRemaining / totalYears) * 100;
+                  const bonusTriggers = contract.performanceBonuses
+                    ? [1, 2, 3].filter(y => elapsedYears < y && y <= totalYears)
+                    : [];
+
+                  return (
+                    <div className="relative">
+                      {/* Gantt bar background */}
+                      <div className="flex h-8 rounded-md overflow-hidden border border-[#30363d]">
+                        {/* Elapsed segment */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.8, delay: 0.3 }}
+                          className="bg-emerald-500/25 flex items-center justify-center relative"
+                          style={{ width: `${elapsedPct}%` }}
+                        >
+                          {elapsedPct > 15 && (
+                            <span className="text-[8px] text-emerald-400/80 font-medium">Elapsed</span>
+                          )}
+                        </motion.div>
+                        {/* Remaining segment */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.8, delay: 0.5 }}
+                          className="bg-[#21262d] flex items-center justify-center relative"
+                          style={{ width: `${remainingPct}%` }}
+                        >
+                          {remainingPct > 20 && (
+                            <span className="text-[8px] text-[#484f58] font-medium">Remaining</span>
+                          )}
+                        </motion.div>
+                      </div>
+
+                      {/* Year tick marks */}
+                      <div className="relative h-4 mt-0.5">
+                        {Array.from({ length: totalYears - 1 }, (_, i) => {
+                          const year = i + 1;
+                          const leftPct = (year / totalYears) * 100;
+                          const isBonus = bonusTriggers.includes(year);
+                          return (
+                            <div
+                              key={i}
+                              className="absolute"
+                              style={{ left: `${leftPct}%` }}
+                            >
+                              <div className={`w-px h-3 ${isBonus ? 'bg-amber-500/60' : 'bg-[#30363d]'}`} />
+                              <span className={`text-[7px] block text-center ${isBonus ? 'text-amber-400/70' : 'text-[#484f58]'}`}>
+                                Y{year}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {/* Current season marker */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 1 }}
+                          className="absolute flex flex-col items-center"
+                          style={{ left: `${elapsedPct}%` }}
+                        >
+                          <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-b-[5px] border-l-transparent border-r-transparent border-b-emerald-400" />
+                          <div className="w-1.5 h-1.5 bg-emerald-400 rounded-sm mt-px" />
+                        </motion.div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Contract Details Grid */}
@@ -619,7 +758,7 @@ export default function CareerHub() {
       </motion.div>
 
       {/* =========================================
-          4. CAREER JOURNEY TIMELINE
+          4. CAREER JOURNEY TIMELINE (with phase icons)
           ========================================= */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -650,6 +789,7 @@ export default function CareerHub() {
                     const posColor = getPositionColor(s.leaguePosition);
                     const isLastSeason = i === seasons.length - 1;
                     const seasonAwardsList = awardsBySeason[s.number] ?? [];
+                    const phaseIcon = getSeasonPhaseIcon(s);
 
                     return (
                       <motion.div
@@ -659,7 +799,7 @@ export default function CareerHub() {
                         transition={{ delay: 0.1 + i * 0.08 }}
                         className="relative flex items-start gap-3 pb-3"
                       >
-                        {/* Timeline Node */}
+                        {/* Timeline Node with phase icon */}
                         <div className="relative z-10 flex-shrink-0 mt-1.5">
                           <div
                             className="w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center"
@@ -668,11 +808,7 @@ export default function CareerHub() {
                               background: s.leaguePosition === 1 ? `${posColor}30` : '#161b22',
                             }}
                           >
-                            {s.leaguePosition === 1 ? (
-                              <Crown className="h-2.5 w-2.5" style={{ color: posColor }} />
-                            ) : (
-                              <div className="w-1.5 h-1.5 rounded-sm" style={{ background: posColor }} />
-                            )}
+                            {phaseIcon.icon}
                           </div>
                         </div>
 
@@ -682,6 +818,9 @@ export default function CareerHub() {
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-bold text-[#c9d1d9]">Season {s.number}</span>
                               <span className="text-[10px] text-[#484f58]">{s.year}</span>
+                              {phaseIcon.label && (
+                                <span className="text-[8px] px-1 py-0 bg-[#161b22] rounded text-[#484f58]">{phaseIcon.label}</span>
+                              )}
                             </div>
                             <Badge className={`text-[9px] px-1.5 py-0 h-4 ${getPositionBg(s.leaguePosition)}`}>
                               {getOrdinal(s.leaguePosition)}
@@ -790,7 +929,7 @@ export default function CareerHub() {
       </motion.div>
 
       {/* =========================================
-          5. CAREER GROWTH CHART (OVR Progression)
+          5. PERFORMANCE PROGRESSION (Multi-line SVG Chart)
           ========================================= */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -803,37 +942,43 @@ export default function CareerHub() {
               <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
                 <TrendingUp className="h-3 w-3" /> Performance Progression
               </CardTitle>
+              {/* Multi-line Legend */}
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-emerald-400 flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-sm bg-emerald-500" /> Rating
+                  <div className="w-2 h-2 rounded-sm bg-emerald-500" /> Goals
                 </span>
-                {player.overall < player.potential && (
-                  <span className="text-[9px] text-amber-400 flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-sm border border-amber-400 bg-transparent" /> Potential
-                  </span>
-                )}
+                <span className="text-[9px] text-amber-400 flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm bg-amber-500" /> Assists
+                </span>
+                <span className="text-[9px] text-sky-400 flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm bg-sky-500" /> Apps
+                </span>
               </div>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             {(() => {
-              // Build data points from seasons
+              // Build multi-line data from seasons
               const allSeasonsData = seasons.map(s => ({
                 season: s.number,
+                goals: s.playerStats.goals,
+                assists: s.playerStats.assists,
+                apps: s.playerStats.appearances,
                 rating: s.playerStats.averageRating || 0,
               }));
 
               // Add current season in-progress data
-              if (player.seasonStats.averageRating > 0) {
-                allSeasonsData.push({
-                  season: currentSeason,
-                  rating: player.seasonStats.averageRating,
-                });
-              }
+              allSeasonsData.push({
+                season: currentSeason,
+                goals: player.seasonStats.goals,
+                assists: player.seasonStats.assists,
+                apps: player.seasonStats.appearances,
+                rating: player.seasonStats.averageRating,
+              });
 
-              const validData = allSeasonsData.filter(d => d.rating > 0);
+              const hasData = allSeasonsData.some(d => d.goals > 0 || d.apps > 0);
 
-              if (validData.length === 0) {
+              if (!hasData) {
                 return (
                   <div className="text-center py-4">
                     <TrendingUp className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
@@ -842,157 +987,122 @@ export default function CareerHub() {
                 );
               }
 
-              if (validData.length === 1) {
-                // Single point with potential arrow
-                const data = validData[0];
+              const chartW = 300;
+              const chartH = 130;
+              const paddingX = 30;
+              const paddingY = 15;
+              const plotW = chartW - paddingX * 2;
+              const plotH = chartH - paddingY * 2;
+              const dataLen = allSeasonsData.length;
+
+              if (dataLen < 2) {
+                const d = allSeasonsData[0];
                 return (
                   <div className="h-28 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-4 mb-2">
-                        <div className="text-center">
-                          <div className="w-10 h-10 rounded-lg bg-emerald-950/40 border border-emerald-800/40 flex items-center justify-center">
-                            <span className="text-sm font-bold text-emerald-400">{data.rating.toFixed(1)}</span>
-                          </div>
-                          <span className="text-[8px] text-[#484f58] block mt-1">Avg Rating</span>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-950/40 border border-emerald-800/40 flex items-center justify-center mx-auto">
+                          <span className="text-sm font-bold text-emerald-400">{d.goals}</span>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-[#30363d]" />
-                        <div className="text-center">
-                          <div className="w-10 h-10 rounded-lg bg-amber-950/40 border border-amber-800/40 flex items-center justify-center">
-                            <span className="text-sm font-bold text-amber-400">{player.potential}</span>
-                          </div>
-                          <span className="text-[8px] text-[#484f58] block mt-1">Potential</span>
-                        </div>
+                        <span className="text-[8px] text-[#484f58] block mt-1">Goals</span>
                       </div>
-                      <p className="text-[10px] text-[#484f58]">OVR: {player.overall} → POT: {player.potential}</p>
+                      <div className="text-center">
+                        <div className="w-10 h-10 rounded-lg bg-amber-950/40 border border-amber-800/40 flex items-center justify-center mx-auto">
+                          <span className="text-sm font-bold text-amber-400">{d.assists}</span>
+                        </div>
+                        <span className="text-[8px] text-[#484f58] block mt-1">Assists</span>
+                      </div>
+                      <div className="text-center">
+                        <div className="w-10 h-10 rounded-lg bg-sky-950/40 border border-sky-800/40 flex items-center justify-center mx-auto">
+                          <span className="text-sm font-bold text-sky-400">{d.apps}</span>
+                        </div>
+                        <span className="text-[8px] text-[#484f58] block mt-1">Apps</span>
+                      </div>
                     </div>
                   </div>
                 );
               }
 
-              // Multiple data points - draw chart
-              const minR = Math.min(...validData.map(d => d.rating)) - 0.3;
-              const maxR = Math.max(...validData.map(d => d.rating)) + 0.3;
-              const range = maxR - minR || 1;
-              const chartW = 300;
-              const chartH = 120;
-              const paddingX = 30;
-              const paddingY = 15;
-              const plotW = chartW - paddingX * 2;
-              const plotH = chartH - paddingY * 2;
+              // Multi-line chart: Goals, Assists, Appearances
+              const maxGoals = Math.max(...allSeasonsData.map(d => d.goals), 1);
+              const maxAssists = Math.max(...allSeasonsData.map(d => d.assists), 1);
+              const maxApps = Math.max(...allSeasonsData.map(d => d.apps), 1);
+              // Use a shared scale for visual comparison: normalize to 0-100%
+              const lines = [
+                { key: 'goals', color: '#10B981', data: allSeasonsData.map(d => d.goals), max: maxGoals },
+                { key: 'assists', color: '#F59E0B', data: allSeasonsData.map(d => d.assists), max: maxAssists },
+                { key: 'apps', color: '#0EA5E9', data: allSeasonsData.map(d => d.apps), max: maxApps },
+              ];
 
-              const points = validData.map((d, i) => {
-                const x = paddingX + (validData.length > 1 ? (i / (validData.length - 1)) * plotW : plotW / 2);
-                const y = paddingY + plotH - ((d.rating - minR) / range) * plotH;
-                return { ...d, x, y };
-              });
-
-              const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-              const fillPath = `${linePath} L${points[points.length - 1].x},${chartH - paddingY} L${points[0].x},${chartH - paddingY} Z`;
-
-              // Potential target line
-              const potentialRating = player.overall + (player.potential - player.overall) * 0.5;
-              const potY = paddingY + plotH - ((Math.min(potentialRating, maxR) - minR) / range) * plotH;
+              const pointsForLine = (data: number[], max: number) =>
+                data.map((v, i) => ({
+                  x: paddingX + (dataLen > 1 ? (i / (dataLen - 1)) * plotW : plotW / 2),
+                  y: paddingY + plotH - (v / max) * plotH,
+                  v,
+                }));
 
               return (
-                <div className="h-36 relative">
-                  <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-full" preserveAspectRatio="none">
+                <div className="relative">
+                  <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full" preserveAspectRatio="none" style={{ height: 130 }}>
                     {/* Grid lines */}
                     {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => (
                       <line key={idx} x1={paddingX} y1={paddingY + pct * plotH} x2={chartW - paddingX} y2={paddingY + pct * plotH} stroke="#30363d" strokeWidth="0.5" />
                     ))}
 
-                    {/* Y-axis labels */}
-                    {[0, 0.5, 1].map((pct, idx) => {
-                      const val = minR + (1 - pct) * range;
+                    {/* Y-axis labels (generic 0/50/100%) */}
+                    {[1, 0.5, 0].map((pct, idx) => {
+                      const val = pct * 100;
                       return (
-                        <text key={idx} x={paddingX - 4} y={paddingY + pct * plotH + 3} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="monospace">
-                          {val.toFixed(1)}
+                        <text key={idx} x={paddingX - 4} y={paddingY + (1 - pct) * plotH + 3} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="monospace">
+                          {pct === 1 ? 'Max' : `${val.toFixed(0)}%`}
                         </text>
                       );
                     })}
 
-                    {/* Fill area */}
-                    <motion.path
-                      d={fillPath}
-                      fill="#10B981"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.1 }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                    />
-
-                    {/* Potential dashed line */}
-                    {player.overall < player.potential && (
-                      <motion.line
-                        x1={paddingX}
-                        y1={potY}
-                        x2={chartW - paddingX}
-                        y2={potY}
-                        stroke="#F59E0B"
-                        strokeWidth="1"
-                        strokeDasharray="4 3"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.4 }}
-                        transition={{ delay: 1 }}
-                      />
-                    )}
-
-                    {/* Main line */}
-                    <motion.path
-                      d={linePath}
-                      fill="none"
-                      stroke="#10B981"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      animate={{ pathLength: 1, opacity: 1 }}
-                      transition={{ duration: 1.2, delay: 0.5 }}
-                    />
-
-                    {/* Dots */}
-                    {points.map((p, i) => {
-                      const isCurrent = i === points.length - 1;
+                    {/* Lines */}
+                    {lines.map((line) => {
+                      const pts = pointsForLine(line.data, line.max);
+                      const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
                       return (
-                        <motion.circle
-                          key={i}
-                          cx={p.x}
-                          cy={p.y}
-                          r={isCurrent ? 4 : 2.5}
-                          fill={isCurrent ? '#10B981' : '#161b22'}
-                          stroke="#10B981"
-                          strokeWidth={isCurrent ? 2 : 1.5}
+                        <motion.path
+                          key={line.key}
+                          d={linePath}
+                          fill="none"
+                          stroke={line.color}
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                           initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.8 + i * 0.1 }}
+                          animate={{ opacity: 0.8 }}
+                          transition={{ duration: 0.8, delay: 0.3 }}
                         />
                       );
                     })}
 
-                    {/* Current point label */}
-                    {(() => {
-                      const last = points[points.length - 1];
-                      return (
-                        <motion.text
-                          x={last.x}
-                          y={last.y - 8}
-                          textAnchor="middle"
-                          fill="#10B981"
-                          fontSize="8"
-                          fontWeight="bold"
+                    {/* Dots for each line */}
+                    {lines.map((line) => {
+                      const pts = pointsForLine(line.data, line.max);
+                      return pts.map((p, i) => (
+                        <motion.circle
+                          key={`${line.key}-${i}`}
+                          cx={p.x}
+                          cy={p.y}
+                          r={i === pts.length - 1 ? 3.5 : 2}
+                          fill={p.v > 0 ? line.color : '#161b22'}
+                          stroke={line.color}
+                          strokeWidth={1}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          transition={{ delay: 1.2 }}
-                        >
-                          {last.rating.toFixed(1)}
-                        </motion.text>
-                      );
-                    })()}
+                          transition={{ delay: 0.6 + i * 0.08 }}
+                        />
+                      ));
+                    })}
                   </svg>
 
                   {/* X-axis labels */}
                   <div className="flex justify-between px-6 -mt-1">
-                    {validData.map((d, i) => (
-                      <span key={i} className={`text-[8px] ${i === validData.length - 1 ? 'text-emerald-500 font-medium' : 'text-[#484f58]'}`}>
+                    {allSeasonsData.map((d, i) => (
+                      <span key={i} className={`text-[8px] ${i === allSeasonsData.length - 1 ? 'text-emerald-500 font-medium' : 'text-[#484f58]'}`}>
                         S{d.season}
                       </span>
                     ))}
@@ -1131,7 +1241,7 @@ export default function CareerHub() {
       </motion.div>
 
       {/* =========================================
-          ENHANCED ACHIEVEMENTS
+          ENHANCED ACHIEVEMENTS (with rarity treatment)
           ========================================= */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -1177,6 +1287,7 @@ export default function CareerHub() {
                   <AnimatePresence mode="popLayout">
                     {filteredAchievements.map((a, i) => {
                       const rarity = RARITY_CONFIG[a.rarity] || RARITY_CONFIG.common;
+                      const isLegendary = a.rarity === 'legendary' && a.unlocked;
                       return (
                         <motion.div
                           key={a.id}
@@ -1185,11 +1296,12 @@ export default function CareerHub() {
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           transition={{ delay: i * 0.04 }}
-                          className={`relative flex items-center gap-3 p-2.5 rounded-lg border ${
+                          className={`relative flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
                             a.unlocked
                               ? `${rarity.bg} ${rarity.border}`
                               : 'bg-[#21262d] border-[#30363d]'
-                          } transition-colors`}
+                          } ${isLegendary ? 'legendary-pulse-border' : ''}`}
+                          style={isLegendary ? { animation: 'pulse-legendary-border 2.5s ease-in-out infinite' } : undefined}
                         >
                           {/* Icon */}
                           <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 bg-[#21262d]`}>
@@ -1203,7 +1315,7 @@ export default function CareerHub() {
                                 {a.name}
                               </p>
                               {/* Rarity Badge */}
-                              <Badge className={`text-[8px] px-1 py-0 h-3.5 ${rarity.bg} ${rarity.color} border-0`}>
+                              <Badge className={`text-[8px] px-1 py-0 h-3.5 ${rarity.badgeBg} ${rarity.badgeColor} border-0`}>
                                 {a.rarity === 'legendary' && <Gem className="h-2 w-2 mr-0.5" />}
                                 {rarity.label}
                               </Badge>

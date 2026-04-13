@@ -43,10 +43,11 @@ import {
   Lock,
   HardDrive,
   FileDown,
+  ShieldAlert,
 } from 'lucide-react';
 import { getLeagueById, getSeasonMatchdays } from '@/lib/game/clubsData';
 import { getSaveSlots, deleteSave as persistDeleteSave } from '@/services/persistenceService';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ============================================================
@@ -64,6 +65,17 @@ const notificationTypeColors: Record<string, string> = {
   career: 'bg-slate-600',
 };
 
+const notificationTypeBarColors: Record<string, string> = {
+  match: '#10B981',
+  transfer: '#F59E0B',
+  achievement: '#A855F7',
+  event: '#06B6D4',
+  social: '#EC4899',
+  contract: '#3B82F6',
+  training: '#06B6D4',
+  career: '#64748B',
+};
+
 const notificationTypeIcons: Record<string, string> = {
   match: '\u26BD',
   transfer: '\uD83D\uDD04',
@@ -74,6 +86,30 @@ const notificationTypeIcons: Record<string, string> = {
   training: '\uD83D\uDCAA',
   career: 'Career',
 };
+
+// Anim preview keyframes
+const ANIM_PREVIEW_STYLE = `
+@keyframes slide-off {
+  0% { left: 4px; }
+  100% { left: 4px; }
+}
+@keyframes slide-normal {
+  0% { left: 4px; }
+  50% { left: 48px; }
+  100% { left: 4px; }
+}
+@keyframes slide-fast {
+  0% { left: 4px; }
+  25% { left: 48px; }
+  50% { left: 4px; }
+  75% { left: 48px; }
+  100% { left: 4px; }
+}
+@keyframes pulse-danger-border {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
+  50% { border-color: rgba(239, 68, 68, 0.7); }
+}
+`;
 
 // ============================================================
 // Section Card Component
@@ -161,7 +197,68 @@ function SettingToggle({
 }
 
 // ============================================================
-// Selectable Option Card
+// Animation Speed Preview Card
+// ============================================================
+
+function AnimSpeedPreviewCard({
+  label,
+  sublabel,
+  selected,
+  onClick,
+  animName,
+  barColor,
+}: {
+  label: string;
+  sublabel?: string;
+  selected: boolean;
+  onClick: () => void;
+  animName: string;
+  barColor: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 rounded-lg p-3 text-left transition-colors ${
+        selected
+          ? 'bg-emerald-600/15 border-2 border-emerald-500/50'
+          : 'bg-[#21262d] border-2 border-transparent hover:bg-[#292e36] hover:border-[#30363d]'
+      }`}
+    >
+      <p className={`text-sm font-medium ${selected ? 'text-emerald-400' : 'text-[#8b949e]'}`}>
+        {label}
+      </p>
+      {sublabel && (
+        <p className={`text-[10px] mt-0.5 ${selected ? 'text-emerald-400/60' : 'text-[#484f58]'}`}>
+          {sublabel}
+        </p>
+      )}
+      {/* Mini animation preview bar */}
+      <div className="mt-2 h-2.5 bg-[#161b22] rounded-sm overflow-hidden relative">
+        <div
+          className="absolute top-0 bottom-0 w-3 rounded-sm"
+          style={{
+            background: selected ? barColor : '#484f58',
+            animation: `${animName} 2s ease-in-out infinite`,
+          }}
+        />
+      </div>
+      {selected && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center gap-1 mt-1.5"
+        >
+          <div className="w-1.5 h-1.5 rounded-sm bg-emerald-400" />
+          <span className="text-[10px] text-emerald-400 font-medium">Active</span>
+        </motion.div>
+      )}
+    </button>
+  );
+}
+
+// ============================================================
+// Selectable Option Card (for sim speed)
 // ============================================================
 
 function OptionCard({
@@ -237,6 +334,37 @@ function QuickLinkRow({
 }
 
 // ============================================================
+// Storage Usage Hook
+// ============================================================
+
+function useStorageUsage() {
+  const [usageKB, setUsageKB] = useState(0);
+
+  useEffect(() => {
+    const calc = () => {
+      let total = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          const val = localStorage.getItem(key);
+          if (val) total += val.length * 2; // UTF-16 = 2 bytes per char
+        }
+      }
+      setUsageKB(Math.round(total / 1024));
+    };
+    calc();
+    const id = setInterval(calc, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  const quotaKB = 5 * 1024; // 5MB
+  const pct = Math.min((usageKB / quotaKB) * 100, 100);
+  const barColor = pct < 50 ? '#10B981' : pct < 75 ? '#F59E0B' : '#EF4444';
+
+  return { usageKB, quotaKB, pct, barColor };
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -272,6 +400,18 @@ export default function SettingsPanel() {
 
   // ---- Notification section open state ----
   const [notifOpen, setNotifOpen] = useState(true);
+
+  // ---- Storage usage ----
+  const { usageKB, quotaKB, pct, barColor } = useStorageUsage();
+
+  // ---- Notification distribution ----
+  const notifDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of notifications) {
+      counts[n.type] = (counts[n.type] || 0) + 1;
+    }
+    return counts;
+  }, [notifications]);
 
   // ---- Handlers (all hooks before early return) ----
 
@@ -405,7 +545,6 @@ export default function SettingsPanel() {
 
   const handleClearCache = useCallback(() => {
     try {
-      // Clear non-essential cached data
       const keysToKeep = ['elite_striker_store'];
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -511,9 +650,9 @@ export default function SettingsPanel() {
   const diffInfo = difficultyConfig[difficulty] || difficultyConfig.normal;
 
   const animSpeedOptions = [
-    { value: 'off' as const, label: 'Off', sublabel: 'No animations' },
-    { value: 'normal' as const, label: 'Normal', sublabel: 'Default speed' },
-    { value: 'fast' as const, label: 'Fast', sublabel: 'Quick transitions' },
+    { value: 'off' as const, label: 'Off', sublabel: 'No animations', anim: 'slide-off', barColor: '#484f58' },
+    { value: 'normal' as const, label: 'Normal', sublabel: 'Default speed', anim: 'slide-normal', barColor: '#10B981' },
+    { value: 'fast' as const, label: 'Fast', sublabel: 'Quick transitions', anim: 'slide-fast', barColor: '#3B82F6' },
   ];
 
   const simSpeedOptions = [
@@ -524,6 +663,8 @@ export default function SettingsPanel() {
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4">
+      <style>{ANIM_PREVIEW_STYLE}</style>
+
       {/* ===== Header with Logo/Name/Version ===== */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -617,7 +758,7 @@ export default function SettingsPanel() {
         </div>
       </motion.div>
 
-      {/* ===== Quick Links Section ===== */}
+      {/* ===== Quick Links Section (FIXED) ===== */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.12, ease: 'easeOut' } }}
@@ -635,7 +776,7 @@ export default function SettingsPanel() {
           <Separator className="bg-[#21262d]" />
           <QuickLinkRow icon={Award} label="View Achievements" screen="achievements_system" />
           <QuickLinkRow icon={BarChart3} label="View Statistics" screen="career_statistics" />
-          <QuickLinkRow icon={BookOpen} label="Career Journal" screen="career_milestones" />
+          <QuickLinkRow icon={BookOpen} label="Career Journal" screen="career_journal" />
         </div>
       </motion.div>
 
@@ -655,7 +796,7 @@ export default function SettingsPanel() {
         />
       </SettingsCard>
 
-      {/* ===== Display Settings ===== */}
+      {/* ===== Display Settings (with Animation Speed Preview Cards) ===== */}
       <SettingsCard
         icon={Sparkles}
         title="Display"
@@ -669,7 +810,7 @@ export default function SettingsPanel() {
           </div>
           <div className="flex gap-2">
             {animSpeedOptions.map(opt => (
-              <OptionCard
+              <AnimSpeedPreviewCard
                 key={opt.value}
                 label={opt.label}
                 sublabel={opt.sublabel}
@@ -678,6 +819,8 @@ export default function SettingsPanel() {
                   setAnimSpeed(opt.value);
                   setAnimationsEnabled(opt.value !== 'off');
                 }}
+                animName={opt.anim}
+                barColor={opt.barColor}
               />
             ))}
           </div>
@@ -804,11 +947,11 @@ export default function SettingsPanel() {
               <p className="text-sm text-[#c9d1d9]">Sound Effects</p>
               <span className="text-xs text-[#8b949e]">{sfxVolume[0]}%</span>
             </div>
-            <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
+            <div className="h-2 bg-[#21262d] rounded-lg overflow-hidden">
               <motion.div
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: 1 }}
-                className="h-full bg-emerald-600 rounded-full"
+                className="h-full bg-emerald-600 rounded-lg"
                 style={{ width: `${sfxVolume[0]}%` }}
               />
             </div>
@@ -818,11 +961,11 @@ export default function SettingsPanel() {
               <p className="text-sm text-[#c9d1d9]">Music</p>
               <span className="text-xs text-[#8b949e]">{musicVolume[0]}%</span>
             </div>
-            <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
+            <div className="h-2 bg-[#21262d] rounded-lg overflow-hidden">
               <motion.div
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: 1 }}
-                className="h-full bg-emerald-600 rounded-full"
+                className="h-full bg-emerald-600 rounded-lg"
                 style={{ width: `${musicVolume[0]}%` }}
               />
             </div>
@@ -873,22 +1016,29 @@ export default function SettingsPanel() {
 
         <Separator className="bg-[#21262d]" />
 
-        {/* Danger Zone */}
-        <div className="space-y-2">
-          <p className="text-[10px] text-[#8b949e] font-semibold uppercase tracking-widest">Danger Zone</p>
+        {/* ===== Danger Zone (Enhanced) ===== */}
+        <div
+          className="border-2 rounded-lg p-3 space-y-3"
+          style={{ borderColor: 'rgba(239, 68, 68, 0.3)', animation: 'pulse-danger-border 3s ease-in-out infinite' }}
+        >
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-red-400" />
+            <span className="text-xs text-red-400 font-semibold uppercase tracking-widest">Danger Zone</span>
+          </div>
+          <p className="text-[11px] text-[#8b949e] leading-relaxed">
+            These actions are irreversible. Please make sure you have exported your data before proceeding.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={handleResetCareer}
-              variant="outline"
-              className="h-10 border-red-900/50 text-red-400 hover:bg-red-950/30 hover:text-red-300 hover:border-red-800/60 font-medium rounded-lg text-xs gap-1.5"
+              className="h-10 bg-red-900/60 hover:bg-red-800/80 text-red-100 hover:text-white font-medium rounded-lg text-xs gap-1.5 border-0"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
               Reset Career
             </Button>
             <Button
               onClick={handleClearAllData}
-              variant="outline"
-              className="h-10 border-red-900/50 text-red-400 hover:bg-red-950/30 hover:text-red-300 hover:border-red-800/60 font-medium rounded-lg text-xs gap-1.5"
+              className="h-10 bg-red-900/60 hover:bg-red-800/80 text-red-100 hover:text-white font-medium rounded-lg text-xs gap-1.5 border-0"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Clear All Data
@@ -938,7 +1088,44 @@ export default function SettingsPanel() {
         </div>
       </SettingsCard>
 
-      {/* ===== Notifications Feed ===== */}
+      {/* ===== Storage Usage Card ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.54, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <HardDrive className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Storage</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">localStorage usage (5 MB quota)</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <div className="h-3 bg-[#21262d] rounded-lg overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8 }}
+                className="h-full rounded-lg"
+                style={{ width: `${Math.max(2, pct)}%`, background: barColor }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-[#8b949e]">
+                {usageKB > 1024 ? `${(usageKB / 1024).toFixed(1)} MB` : `${usageKB} KB`} used
+              </span>
+              <span className="text-[10px] text-[#484f58]">
+                {pct.toFixed(1)}% of 5 MB
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ===== Notifications Feed (with distribution bar) ===== */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.56, ease: 'easeOut' } }}
@@ -976,6 +1163,40 @@ export default function SettingsPanel() {
               >
                 <Separator className="bg-[#30363d]" />
                 <div className="px-4 pt-2 pb-3">
+                  {/* Notification Category Distribution Bar */}
+                  {notifications.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-[10px] text-[#8b949e] mb-1">Distribution</p>
+                      <div className="flex h-2 rounded-lg overflow-hidden">
+                        {Object.entries(notifDistribution)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([type, count]) => {
+                            const widthPct = (count / notifications.length) * 100;
+                            const color = notificationTypeBarColors[type] || '#64748B';
+                            return (
+                              <div
+                                key={type}
+                                className="h-full"
+                                style={{ width: `${widthPct}%`, background: color, minWidth: count > 0 ? 2 : 0 }}
+                                title={`${type}: ${count}`}
+                              />
+                            );
+                          })}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                        {Object.entries(notifDistribution)
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 4)
+                          .map(([type, count]) => (
+                            <span key={type} className="flex items-center gap-1 text-[9px] text-[#8b949e]">
+                              <div className="w-1.5 h-1.5 rounded-sm" style={{ background: notificationTypeBarColors[type] || '#64748B' }} />
+                              {type} ({count})
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
                   {notifications.length > 0 && (
                     <div className="flex justify-end mb-2">
                       <Button

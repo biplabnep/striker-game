@@ -371,6 +371,110 @@ export default function AnalyticsPanel() {
       </motion.div>
 
       {/* ============================================= */}
+      {/* Performance Summary Cards (2×2) */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.05 }}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.06 }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                <Target className="h-4 w-4 text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-[#8b949e]">Total Goals</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold text-emerald-400 tabular-nums">
+                    <AnimatedNumber value={player.careerStats.totalGoals} />
+                  </p>
+                  <span className="text-[9px] text-emerald-400">
+                    {player.seasonStats.goals > 0 ? '\u25B2' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-[#8b949e]">Total Assists</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold text-amber-400 tabular-nums">
+                    <AnimatedNumber value={player.careerStats.totalAssists} />
+                  </p>
+                  <span className="text-[9px] text-amber-400">
+                    {player.seasonStats.assists > 0 ? '\u25B2' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.14 }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center">
+                <Award className="h-4 w-4 text-sky-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-[#8b949e]">Avg Rating</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold text-sky-400 tabular-nums">
+                    {player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'}
+                  </p>
+                  <span className="text-[9px]" style={{ color: player.seasonStats.averageRating >= 7 ? '#10b981' : '#ef4444' }}>
+                    {player.seasonStats.averageRating >= 7 ? '\u25B2' : player.seasonStats.averageRating > 0 ? '\u25BC' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.18 }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
+                <Star className="h-4 w-4 text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-[#8b949e]">Matches</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold text-purple-400 tabular-nums">
+                    <AnimatedNumber value={player.careerStats.totalAppearances} />
+                  </p>
+                  <span className="text-[9px] text-purple-400">
+                    {player.seasonStats.appearances > 0 ? '\u25B2' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* ============================================= */}
       {/* Radar / Spider Chart */}
       {/* ============================================= */}
       <motion.div
@@ -656,55 +760,184 @@ export default function AnalyticsPanel() {
       )}
 
       {/* ============================================= */}
-      {/* Match Rating Trend (Bar chart) */}
+      {/* Seasonal Rating Trend Line Chart (SVG) */}
       {/* ============================================= */}
-      {recentRatings.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2, delay: 0.25 }}
-        >
-          <Card className="bg-[#161b22]  border-[#30363d]">
-            <CardHeader className="pb-2 pt-3 px-4">
-              <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
-                <BarChart3 className="h-3 w-3 text-emerald-400" /> Rating Trend
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <div className="flex items-end gap-1 h-28">
-                {recentRatings.map((rating, i) => {
-                  const height = ((rating - 3) / (11 - 3)) * 100;
-                  const color = getRatingColor(rating);
-                  return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.25 }}
+      >
+        <Card className="bg-[#161b22]  border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
+              <BarChart3 className="h-3 w-3 text-emerald-400" /> Rating Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            {recentRatings.length > 0 ? (
+              <>
+                <svg width="100%" height={120} viewBox="0 0 300 120" className="select-none" preserveAspectRatio="xMidYMid meet">
+                  {/* Y-axis gridlines + labels */}
+                  {[4, 6, 8, 10].map(v => {
+                    const y = 110 - ((v - 4) / 6) * 100;
+                    return (
+                      <g key={v}>
+                        <line x1={30} y1={y} x2={290} y2={y} stroke="#30363d" strokeWidth={0.5} opacity={0.4} />
+                        <text x={26} y={y + 3} textAnchor="end" className="fill-[#484f58]" fontSize={7}>{v.toFixed(1)}</text>
+                      </g>
+                    );
+                  })}
+                  {/* X-axis baseline */}
+                  <line x1={30} y1={110} x2={290} y2={110} stroke="#30363d" strokeWidth={0.5} opacity={0.4} />
+                  {/* Build data points */}
+                  {(() => {
+                    const ratings = recentRatings.slice().reverse(); // oldest first
+                    const minR = 4;
+                    const maxR = 10;
+                    const range = maxR - minR;
+                    const chartLeft = 35;
+                    const chartRight = 285;
+                    const chartTop = 10;
+                    const chartBottom = 105;
+                    const chartW = chartRight - chartLeft;
+                    const chartH = chartBottom - chartTop;
+                    const pts = ratings.map((r, i) => ({
+                      x: chartLeft + (ratings.length > 1 ? (i / (ratings.length - 1)) * chartW : chartW / 2),
+                      y: chartBottom - ((r - minR) / range) * chartH,
+                      r,
+                      i,
+                    }));
+                    const maxVal = Math.max(...ratings);
+                    const hasMultiple = ratings.length > 1;
+                    return (
+                      <>
+                        {/* Area fill underneath */}
+                        <polygon
+                          points={pts.map(p => `${p.x},${p.y}`).join(' ') + ` ${pts[pts.length - 1].x},${chartBottom} ${pts[0].x},${chartBottom}`}
+                          fill="rgba(16, 185, 129, 0.08)"
+                          stroke="none"
+                        />
+                        {/* Line */}
+                        <polyline
+                          points={pts.map(p => `${p.x},${p.y}`).join(' ')}
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                        />
+                        {/* Dot markers */}
+                        {pts.map((p, idx) => {
+                          const isMax = p.r === maxVal && hasMultiple;
+                          return (
+                            <motion.circle
+                              key={idx}
+                              cx={p.x}
+                              cy={p.y}
+                              r={isMax ? 5 : 3}
+                              fill={isMax ? '#f59e0b' : '#10b981'}
+                              stroke={isMax ? '#92400e' : '#064e3b'}
+                              strokeWidth={1}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.1 + idx * 0.04 }}
+                            />
+                          );
+                        })}
+                        {/* X-axis labels */}
+                        {ratings.map((_, i) => {
+                          const x = chartLeft + (ratings.length > 1 ? (i / (ratings.length - 1)) * chartW : chartW / 2);
+                          return (
+                            <text key={i} x={x} y={118} textAnchor="middle" className="fill-[#484f58]" fontSize={7}>
+                              {ratings.length - i}
+                            </text>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </svg>
+                <div className="flex justify-between mt-1 text-[9px] text-[#484f58]">
+                  <span>← Oldest (Match #{recentRatings.length})</span>
+                  <span>Latest (Match 1)</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-24 text-sm text-[#484f58]">
+                Play matches to see your rating trend
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ============================================= */}
+      {/* Development Gap Analysis */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.22 }}
+      >
+        <Card className="bg-[#161b22]  border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
+              <Flame className="h-3 w-3 text-amber-400" /> Development Gap
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3 space-y-3">
+            {ATTR_KEYS.map((attr, idx) => {
+              const val = player.attributes[attr] ?? 0;
+              const potVal = potentialValues[ATTR_KEYS.indexOf(attr)] ?? val;
+              const gap = Math.max(0, Math.round(potVal - val));
+              const gapColor = gap < 5 ? '#10b981' : gap < 15 ? '#f59e0b' : '#ef4444';
+              const gapLabel = gap < 5 ? 'Maxed' : gap < 15 ? `${gap} remaining` : `${gap} remaining`;
+              return (
+                <motion.div
+                  key={attr}
+                  className="space-y-1"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.24 + idx * 0.04 }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[#8b949e]">{ATTR_ICONS[attr]}</span>
+                      <span className="text-xs text-[#c9d1d9]">{ATTR_FULL_LABELS[attr]}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-[#8b949e] tabular-nums">{val}</span>
+                      <span className="text-[9px] text-[#484f58]">→</span>
+                      <span className="text-[10px] font-semibold tabular-nums" style={{ color: gapColor }}>{Math.round(potVal)}</span>
+                    </div>
+                  </div>
+                  <div className="relative h-2 bg-[#21262d] rounded-lg overflow-hidden">
+                    {/* Current value (solid) */}
                     <motion.div
-                      key={i}
-                      className="flex-1 flex flex-col items-center gap-1"
+                      className="absolute top-0 left-0 h-full rounded-lg"
+                      style={{ backgroundColor: getAttributeCategory(val).color, width: `${val}%` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${val}%` }}
+                      transition={{ duration: 0.3, delay: 0.3 + idx * 0.04, ease: 'easeOut' }}
+                    />
+                    {/* Potential extension (semi-transparent) */}
+                    <motion.div
+                      className="absolute top-0 h-full rounded-lg"
+                      style={{ backgroundColor: gapColor, opacity: 0.2, left: `${val}%`, width: `${gap}%` }}
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.1 + i * 0.04 }}
-                    >
-                      <span className="text-[8px] text-[#8b949e] tabular-nums">
-                        {rating.toFixed(1)}
-                      </span>
-                      <motion.div
-                        className="w-full rounded-t"
-                        style={{ backgroundColor: color }}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${Math.max(height, 5)}%` }}
-                        transition={{ duration: 0.2, delay: 0.15 + i * 0.04, ease: 'easeOut' }}
-                      />
-                    </motion.div>
-                  );
-                })}
-              </div>
-              <div className="flex justify-between mt-2 text-[10px] text-[#484f58]">
-                <span>Latest</span>
-                <span>Oldest</span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+                      animate={{ opacity: 0.2 }}
+                      transition={{ duration: 0.3, delay: 0.35 + idx * 0.04 }}
+                    />
+                  </div>
+                  <p className="text-[9px] font-medium" style={{ color: gapColor }}>
+                    {gapLabel}
+                  </p>
+                </motion.div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* ============================================= */}
       {/* Season Comparison */}
@@ -798,7 +1031,12 @@ export default function AnalyticsPanel() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2, delay: 0.35 }}
         >
-          <Card className="bg-[#161b22]  border-[#30363d]">
+          <motion.div
+            animate={milestones.some(m => Math.min(100, Math.round((m.current / m.target) * 100)) >= 100) ? { borderColor: ['rgba(16,185,129,0.3)', 'rgba(16,185,129,0.08)', 'rgba(16,185,129,0.3)'] } : {}}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="rounded-lg"
+          >
+          <Card className={`bg-[#161b22]  border-[#30363d] ${milestones.some(m => Math.min(100, Math.round((m.current / m.target) * 100)) >= 100) ? 'border-emerald-500/30' : ''}`}>
             <CardHeader className="pb-2 pt-3 px-4">
               <CardTitle className="text-xs text-[#8b949e]  flex items-center gap-2">
                 <Target className="h-3 w-3 text-emerald-400" /> Milestones
@@ -868,6 +1106,7 @@ export default function AnalyticsPanel() {
               })}
             </CardContent>
           </Card>
+          </motion.div>
         </motion.div>
       )}
 

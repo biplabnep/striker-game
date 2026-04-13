@@ -630,7 +630,9 @@ export type GameScreen =
   | 'pre_season_camp'
   | 'kit_customization'
   | 'transfer_market'
-  | 'personal_finances';
+  | 'personal_finances'
+  | 'tactical_formation_board'
+  | 'career_retirement';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
@@ -780,6 +782,8 @@ export interface GameState {
   // Weather System
   currentWeather: WeatherCondition | null;
   weatherPreparation: 'standard' | 'adapt' | 'ignore';
+  retirementPending: boolean;
+  retirementRiskPushed: boolean;
   gameMode: 'career';
   difficulty: 'easy' | 'normal' | 'hard';
   createdAt: string;
