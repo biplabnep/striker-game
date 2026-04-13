@@ -77,6 +77,8 @@ import TrophyCabinet from '@/components/game/TrophyCabinet';
 import DynamicCareerEvents from '@/components/game/DynamicCareerEvents';
 import BadgeCollection from '@/components/game/BadgeCollection';
 import StadiumBuilder from '@/components/game/StadiumBuilder';
+import CareerStatsDeepDive from '@/components/game/CareerStatsDeepDive';
+import CoachCareerMode from '@/components/game/CoachCareerMode';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -151,6 +153,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   career_events: DynamicCareerEvents,
   badge_collection: BadgeCollection,
   stadium_builder: StadiumBuilder,
+  career_stats_deep_dive: CareerStatsDeepDive,
+  coach_career: CoachCareerMode,
 };
 
 const gameScreens: GameScreen[] = [
@@ -192,6 +196,8 @@ const gameScreens: GameScreen[] = [
   'career_events',
   'badge_collection',
   'stadium_builder',
+  'career_stats_deep_dive',
+  'coach_career',
 ];
 
 export default function Home() {

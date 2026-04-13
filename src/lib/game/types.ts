@@ -642,7 +642,9 @@ export type GameScreen =
   | 'trophy_cabinet'
   | 'career_events'
   | 'badge_collection'
-  | 'stadium_builder';
+  | 'stadium_builder'
+  | 'career_stats_deep_dive'
+  | 'coach_career';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

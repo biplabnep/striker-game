@@ -78,6 +78,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'trophy_cabinet', icon: <Trophy className="h-5 w-5" />, label: 'Trophies' },
       { screen: 'career_events', icon: <CalendarClock className="h-5 w-5" />, label: 'Events' },
       { screen: 'badge_collection', icon: <Award className="h-5 w-5" />, label: 'Badges' },
+      { screen: 'career_stats_deep_dive', icon: <BarChart3 className="h-5 w-5" />, label: 'Deep Dive' },
+      { screen: 'coach_career', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach' },
     ],
   },
   {

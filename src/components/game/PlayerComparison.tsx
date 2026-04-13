@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, Footprints, Crosshair, Target,
   Zap, Shield, Dumbbell, Users, BarChart3, ClipboardList,
-  ChevronRight, Crown, AlertTriangle, Clock, Check, Star,
+  ChevronRight, Crown, AlertTriangle, Clock, Check, Star, Swords, Percent, Trophy, User,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -285,6 +285,137 @@ function MiniRadar({ values }: { values: number[] }) {
 }
 
 // -----------------------------------------------------------
+// Detailed Comparison Radar (20/40/60/80/100 grid levels)
+// -----------------------------------------------------------
+function DetailedComparisonRadar({
+  playerValues,
+  comparisonValues,
+  playerLabel = 'Player',
+  comparisonLabel = 'Comparison',
+}: {
+  playerValues: number[];
+  comparisonValues: number[];
+  playerLabel?: string;
+  comparisonLabel?: string;
+}) {
+  const size = 280;
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = size / 2 - 40;
+  const gridLevels = [20, 40, 60, 80, 100];
+  const playerColor = '#34d399';
+  const compColor = '#22d3ee';
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="max-w-full" style={{ width: size, height: size }}>
+      {/* Grid hexagons at 20/40/60/80/100 */}
+      {gridLevels.map(level => {
+        const pts = getPolygonPoints(ATTR_KEYS.map(() => level), maxR, cx, cy);
+        return (
+          <polygon
+            key={level}
+            points={pts}
+            fill="none"
+            stroke={level === 100 ? '#30363d' : '#21262d'}
+            strokeWidth={level === 100 ? 1.5 : 0.5}
+          />
+        );
+      })}
+
+      {/* Grid level numbers along the top axis */}
+      {gridLevels.map(level => {
+        const pt = getAxisPoint(0, (level / 100) * maxR, cx, cy);
+        return (
+          <text key={`lvl-${level}`} x={cx + 4} y={pt.y + 3} fill="#484f58" fontSize={7} fontFamily="monospace">
+            {level}
+          </text>
+        );
+      })}
+
+      {/* Axis lines */}
+      {ATTR_KEYS.map((_, i) => {
+        const pt = getAxisPoint(i, maxR, cx, cy);
+        return (
+          <line key={`ax-${i}`} x1={cx} y1={cy} x2={pt.x} y2={pt.y} stroke="#30363d" strokeWidth={0.4} />
+        );
+      })}
+
+      {/* Comparison polygon (behind) */}
+      {comparisonValues.length > 0 && (
+        <motion.polygon
+          points={getPolygonPoints(comparisonValues, maxR, cx, cy)}
+          fill={compColor}
+          fillOpacity={0}
+          stroke={compColor}
+          strokeWidth={1.5}
+          strokeOpacity={0.5}
+          animate={{ fillOpacity: 0.1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        />
+      )}
+
+      {/* Player polygon (front) */}
+      <motion.polygon
+        points={getPolygonPoints(playerValues, maxR, cx, cy)}
+        fill={playerColor}
+        fillOpacity={0}
+        stroke={playerColor}
+        strokeWidth={2}
+        animate={{ fillOpacity: 0.15 }}
+        transition={{ duration: 0.5 }}
+      />
+
+      {/* Data points + value labels for both players */}
+      {ATTR_KEYS.map((key, i) => {
+        const pVal = playerValues[i];
+        const cVal = comparisonValues[i] ?? 0;
+        const pt = getAxisPoint(i, (pVal / 100) * maxR, cx, cy);
+        const ct = getAxisPoint(i, (cVal / 100) * maxR, cx, cy);
+        return (
+          <g key={`dp-${key}`}>
+            <circle cx={pt.x} cy={pt.y} r={3} fill={playerColor} />
+            <text x={pt.x + 5} y={pt.y - 4} fill={playerColor} fontSize={8} fontWeight={700} fontFamily="monospace">
+              {pVal}
+            </text>
+            {comparisonValues.length > 0 && (
+              <>
+                <circle cx={ct.x} cy={ct.y} r={2.5} fill={compColor} />
+                <text x={ct.x + 4} y={ct.y + 10} fill={compColor} fontSize={7} fontWeight={600} fontFamily="monospace">
+                  {cVal}
+                </text>
+              </>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Vertex labels */}
+      {ATTR_KEYS.map((key, i) => {
+        const { x, y, anchor } = getLabelPosition(i, maxR, cx, cy);
+        const meta = ATTR_META[key];
+        return (
+          <text key={`vl-${key}`} x={x} y={y - 6} textAnchor={anchor} fill="#c9d1d9" fontSize={10} fontWeight={700} fontFamily="monospace">
+            {meta.label}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+// -----------------------------------------------------------
+// SVG Player Silhouette (simple placeholder)
+// -----------------------------------------------------------
+function PlayerSilhouetteSVG({ color = '#484f58' }: { color?: string }) {
+  return (
+    <svg viewBox="0 0 40 56" width={40} height={56} className="shrink-0">
+      <circle cx={20} cy={12} r={8} fill={color} opacity={0.6} />
+      <path d="M20 20 C12 22, 8 30, 10 38 L14 50 C14.5 52, 16 54, 18 54 L22 54 C24 54, 25.5 52, 26 50 L30 38 C32 30, 28 22, 20 20Z" fill={color} opacity={0.4} />
+    </svg>
+  );
+}
+
+// -----------------------------------------------------------
 // NPC teammate generation (seeded pseudo-random from club name)
 // -----------------------------------------------------------
 interface NPCTeammate {
@@ -514,6 +645,55 @@ export default function PlayerComparison() {
       })
       .sort((a, b) => b.weakness - a.weakness);
   }, [gameState]);
+
+  // ── Derived data for new comparison sections (before early return) ──
+  const headToHeadRecord = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const seed = seedHash(`${gameState.player.name}-${chosenTeammate.name}`);
+    const matchesPlayed = 8 + (seed % 14);
+    const playerWins = Math.floor(matchesPlayed * (0.3 + ((seed % 40) / 100)));
+    const teammateWins = Math.floor(matchesPlayed * (0.2 + (((seed + 7) % 30) / 100)));
+    const draws = matchesPlayed - playerWins - teammateWins;
+    const playerGoals = 5 + ((seed + 13) % 20);
+    const teammateGoals = 3 + ((seed + 29) % 18);
+    const playerWinPct = Math.round((playerWins / matchesPlayed) * 100);
+    return { matchesPlayed, playerWins, teammateWins, draws, playerGoals, teammateGoals, playerWinPct };
+  }, [gameState, chosenTeammate]);
+
+  const similarPlayers = useMemo(() => {
+    if (!gameState) return [];
+    const seed = seedHash(gameState.player.name + gameState.player.position);
+    const similarFirst = ['Adrian', 'Felix', 'Bruno', 'Kai', 'Declan', 'Jamal', 'Pedri', 'Gavi', 'Florian', 'Dušan'];
+    const similarLast = ['Müller', 'Torres', 'Fernandes', 'Havertz', 'Rice', 'Musiala', 'González', 'Wirtz', 'Diaz', 'Vlahović'];
+    const similarClubs = ['Dortmund', 'Atlético', 'Man Utd', 'Arsenal', 'West Ham', 'Bayern', 'Barcelona', 'Leverkusen', 'Liverpool', 'Juventus'];
+    const similarPositions: Position[] = ['ST', 'CAM', 'CM', 'CF', 'LW', 'RW', 'CDM', 'CB'];
+    const result: { name: string; club: string; position: Position; overall: number; similarity: number; posMatch: boolean }[] = [];
+    for (let i = 0; i < 5; i++) {
+      const idx = (seed + i * 11) % similarFirst.length;
+      const name = `${similarFirst[idx]} ${similarLast[(seed + i * 17) % similarLast.length]}`;
+      const club = similarClubs[(seed + i * 23) % similarClubs.length];
+      const pos = similarPositions[(seed + i * 31) % similarPositions.length];
+      const ovr = Math.max(55, Math.min(92, gameState.player.overall + ((seed + i * 19) % 20) - 10));
+      const similarity = Math.max(72, Math.min(95, 80 + ((seed + i * 13) % 16)));
+      const posMatch = pos === gameState.player.position;
+      result.push({ name, club, position: pos, overall: ovr, similarity, posMatch });
+    }
+    return result;
+  }, [gameState]);
+
+  const comparisonVerdict = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const diffs = ATTR_KEYS.map(key => ({
+      key,
+      label: ATTR_META[key].label,
+      diff: gameState.player.attributes[key] - chosenTeammate.attributes[key],
+    }));
+    const playerWinsCount = diffs.filter(d => d.diff > 0).length;
+    const teammateWinsCount = diffs.filter(d => d.diff < 0).length;
+    const overallWinner = playerWinsCount > teammateWinsCount ? 'player' : teammateWinsCount > playerWinsCount ? 'teammate' : 'tie';
+    const topDiff = [...diffs].sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 3);
+    return { diffs, playerWinsCount, teammateWinsCount, overallWinner, topDiff };
+  }, [gameState, chosenTeammate]);
 
   if (!gameState) return null;
 
@@ -803,6 +983,7 @@ export default function PlayerComparison() {
 
               {/* Comparison */}
               {chosenTeammate && (
+                <>
                 <Card className="bg-[#161b22] border-[#30363d]">
                   <CardHeader className="pb-2 pt-3 px-4">
                     <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
@@ -977,6 +1158,349 @@ export default function PlayerComparison() {
                     })()}
                   </CardContent>
                 </Card>
+
+                {/* ─── Detailed Comparison Radar ─── */}
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <Crosshair className="h-3.5 w-3.5" /> Detailed Attribute Radar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <div className="flex justify-center">
+                      <DetailedComparisonRadar
+                        playerValues={playerValues}
+                        comparisonValues={getAttrValues(chosenTeammate.attributes)}
+                        playerLabel={player.name.split(' ')[0]}
+                        comparisonLabel={chosenTeammate.name.split(' ')[0]}
+                      />
+                    </div>
+                    <div className="flex items-center justify-center gap-4 mt-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: '#34d399' }} />
+                        <span className="text-[10px] text-[#8b949e]">{player.name.split(' ')[0]}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: '#22d3ee' }} />
+                        <span className="text-[10px] text-[#8b949e]">{chosenTeammate.name.split(' ')[0]}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ─── Attribute Detail Breakdown ─── */}
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <BarChart3 className="h-3.5 w-3.5" /> Attribute Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 space-y-3">
+                    {/* Column headers */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-emerald-400">{player.name.split(' ')[0]}</span>
+                      <span className="text-[10px] text-[#484f58]">ATTR</span>
+                      <span className="text-[10px] font-bold text-sky-400">{chosenTeammate.name.split(' ')[0]}</span>
+                    </div>
+                    {ATTR_KEYS.map((key, i) => {
+                      const pVal = player.attributes[key];
+                      const cVal = chosenTeammate.attributes[key];
+                      const diff = pVal - cVal;
+                      const meta = ATTR_META[key];
+                      return (
+                        <div key={key} className="space-y-1">
+                          {/* Values row */}
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-mono font-bold w-6 text-right ${diff >= 0 ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>{pVal}</span>
+                            <div className="flex items-center gap-1.5">
+                              {meta.icon}
+                              <span className="text-[10px] text-[#8b949e] font-medium">{meta.short}</span>
+                            </div>
+                            <span className={`text-xs font-mono font-bold w-6 ${diff <= 0 ? 'text-sky-400' : 'text-[#c9d1d9]'}`}>{cVal}</span>
+                          </div>
+                          {/* Mirrored bars */}
+                          <div className="flex items-center gap-1">
+                            <div className="flex-1 flex justify-end">
+                              <div className="w-full bg-[#21262d] rounded-sm h-1.5 overflow-hidden flex justify-end">
+                                <motion.div
+                                  className={`h-full rounded-sm ${diff >= 0 ? 'bg-emerald-500/70' : 'bg-emerald-500/25'}`}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${pVal}%` }}
+                                  transition={{ delay: i * 0.04, duration: 0.2 }}
+                                />
+                              </div>
+                            </div>
+                            <div className="w-px h-3 bg-[#30363d] shrink-0" />
+                            <div className="flex-1">
+                              <div className="w-full bg-[#21262d] rounded-sm h-1.5 overflow-hidden">
+                                <motion.div
+                                  className={`h-full rounded-sm ${diff <= 0 ? 'bg-sky-500/70' : 'bg-sky-500/25'}`}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${cVal}%` }}
+                                  transition={{ delay: i * 0.04 + 0.1, duration: 0.2 }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {/* Delta + badge */}
+                          <div className="flex items-center justify-between">
+                            <div />
+                            <div className="flex items-center gap-1.5">
+                              {diff !== 0 && (
+                                <span className={`text-[9px] font-bold font-mono ${diff > 0 ? 'text-emerald-400' : 'text-sky-400'}`}>
+                                  {diff > 0 ? '+' : ''}{diff}
+                                </span>
+                              )}
+                              {diff > 0 && (
+                                <Badge className="text-[8px] font-bold border-0 bg-emerald-500/20 text-emerald-400 px-1.5 py-0">
+                                  Advantage
+                                </Badge>
+                              )}
+                              {diff < 0 && (
+                                <Badge className="text-[8px] font-bold border-0 bg-red-500/20 text-red-400 px-1.5 py-0">
+                                  Disadvantage
+                                </Badge>
+                              )}
+                              {diff === 0 && (
+                                <span className="text-[9px] text-[#484f58]">Even</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
+                {/* ─── Head-to-Head Record ─── */}
+                {headToHeadRecord && (
+                  <Card className="bg-[#161b22] border-[#30363d]">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                        <Swords className="h-3.5 w-3.5" /> Head-to-Head Record
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4 space-y-3">
+                      {/* H2H rows with comparison bars */}
+                      {([
+                        { label: 'Matches Against', pVal: headToHeadRecord.matchesPlayed, cVal: headToHeadRecord.matchesPlayed },
+                        { label: 'Wins', pVal: headToHeadRecord.playerWins, cVal: headToHeadRecord.teammateWins },
+                        { label: 'Goals Scored', pVal: headToHeadRecord.playerGoals, cVal: headToHeadRecord.teammateGoals },
+                      ] as const).map((row, ri) => {
+                        const maxVal = Math.max(row.pVal, row.cVal, 1);
+                        const pPct = (row.pVal / maxVal) * 100;
+                        const cPct = (row.cVal / maxVal) * 100;
+                        return (
+                          <div key={ri} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-[#8b949e]">{row.label}</span>
+                              <div className="flex items-center gap-2 text-xs font-mono">
+                                <span className="text-emerald-400 font-bold">{row.pVal}</span>
+                                <span className="text-[#484f58]">-</span>
+                                <span className="text-sky-400 font-bold">{row.cVal}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex-1 flex justify-end">
+                                <div className="w-full bg-[#21262d] rounded-sm h-2 overflow-hidden flex justify-end">
+                                  <motion.div
+                                    className="h-full rounded-sm bg-emerald-500/60"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${pPct}%` }}
+                                    transition={{ delay: ri * 0.1, duration: 0.2 }}
+                                  />
+                                </div>
+                              </div>
+                              <div className="w-px h-3 bg-[#30363d] shrink-0" />
+                              <div className="flex-1">
+                                <div className="w-full bg-[#21262d] rounded-sm h-2 overflow-hidden">
+                                  <motion.div
+                                    className="h-full rounded-sm bg-sky-500/60"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${cPct}%` }}
+                                    transition={{ delay: ri * 0.1 + 0.1, duration: 0.2 }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* Draws summary stat */}
+                      <div className="pt-1 border-t border-[#30363d]">
+                        <div className="flex items-center justify-between bg-[#21262d] rounded-lg p-2.5">
+                          <span className="text-[10px] text-[#8b949e]">Draws</span>
+                          <span className="text-sm font-black text-amber-400">{headToHeadRecord.draws}</span>
+                        </div>
+                      </div>
+                      {/* Overall H2H verdict */}
+                      <div className={`rounded-lg p-3 text-center ${
+                        headToHeadRecord.playerWinPct >= 50
+                          ? 'bg-emerald-500/10 border border-emerald-500/30'
+                          : 'bg-sky-500/10 border border-sky-500/30'
+                      }`}>
+                        <div className="text-[10px] text-[#8b949e] mb-1">Overall H2H</div>
+                        <Badge className={`text-xs font-bold border-0 px-3 py-0.5 ${
+                          headToHeadRecord.playerWinPct >= 50
+                            ? 'bg-emerald-500/25 text-emerald-400'
+                            : 'bg-sky-500/25 text-sky-400'
+                        }`}>
+                          <Trophy className="h-3 w-3 inline mr-1" />
+                          {headToHeadRecord.playerWinPct}% Win Rate
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ─── Similar Players Carousel ─── */}
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                      <User className="h-3.5 w-3.5" /> Similar Players
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2 px-4 -mx-4">
+                      {similarPlayers.map((sp, i) => {
+                        const posColor = getPositionColor(sp.position);
+                        return (
+                          <motion.div
+                            key={sp.name}
+                            className="shrink-0 w-[120px] bg-[#21262d] rounded-lg p-3 border border-[#30363d]"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: i * 0.06, duration: 0.2 }}
+                          >
+                            {/* Silhouette */}
+                            <div className="flex justify-center mb-2">
+                              <PlayerSilhouetteSVG color={posColor} />
+                            </div>
+                            {/* OVR badge */}
+                            <div className="flex items-center justify-between mb-1">
+                              <Badge className="text-[10px] font-black border-0 bg-[#0d1117] text-white px-1.5 py-0">
+                                {sp.overall}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-bold px-1"
+                                style={{ color: posColor, borderColor: posColor }}
+                              >
+                                {sp.position}
+                              </Badge>
+                            </div>
+                            {/* Name */}
+                            <div className="text-[11px] font-bold text-[#c9d1d9] truncate">{sp.name}</div>
+                            <div className="text-[9px] text-[#8b949e] truncate">{sp.club}</div>
+                            {/* Similarity + position match */}
+                            <div className="flex items-center justify-between mt-2">
+                              <Badge className={`text-[8px] font-bold border-0 px-1.5 py-0 ${
+                                sp.similarity >= 88
+                                  ? 'bg-emerald-500/25 text-emerald-400'
+                                  : 'bg-amber-500/20 text-amber-400'
+                              }`}>
+                                <Percent className="h-2.5 w-2.5 mr-0.5" />
+                                {sp.similarity}% Similar
+                              </Badge>
+                              {sp.posMatch && (
+                                <Badge className="text-[7px] font-bold border-0 bg-[#0d1117] text-[#c9d1d9] px-1 py-0">
+                                  POS MATCH
+                                </Badge>
+                              )}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ─── Comparison Summary Card ─── */}
+                {comparisonVerdict && (
+                  <Card className="bg-[#161b22] border-[#30363d]">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                        <TrendingUp className="h-3.5 w-3.5" /> Overall Comparison
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4 space-y-3">
+                      {/* Verdict text */}
+                      <div className={`rounded-lg p-3 ${
+                        comparisonVerdict.overallWinner === 'player'
+                          ? 'bg-emerald-500/10 border border-emerald-500/30'
+                          : comparisonVerdict.overallWinner === 'teammate'
+                            ? 'bg-sky-500/10 border border-sky-500/30'
+                            : 'bg-[#21262d]'
+                      }`}>
+                        <div className="text-sm font-bold text-[#c9d1d9]">
+                          {comparisonVerdict.overallWinner === 'player' ? (
+                            <span className="text-emerald-400">{player.name.split(' ')[0]} is better overall</span>
+                          ) : comparisonVerdict.overallWinner === 'teammate' ? (
+                            <span className="text-sky-400">{chosenTeammate.name.split(' ')[0]} is better overall</span>
+                          ) : (
+                            <span className="text-amber-400">Players are evenly matched</span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-[#8b949e] mt-1">
+                          Wins {comparisonVerdict.playerWinsCount}-{comparisonVerdict.teammateWinsCount} in attributes
+                        </div>
+                      </div>
+
+                      {/* Key differentiators */}
+                      <div>
+                        <div className="text-[10px] text-[#8b949e] font-medium mb-2">Key Differentiators</div>
+                        <div className="space-y-1.5">
+                          {comparisonVerdict.topDiff.map((d) => {
+                            const isPlayerAdvantage = d.diff > 0;
+                            return (
+                              <div key={d.key} className="flex items-center justify-between bg-[#21262d] rounded-md px-2.5 py-2">
+                                <div className="flex items-center gap-1.5">
+                                  {ATTR_META[d.key as CoreAttribute].icon}
+                                  <span className="text-[11px] text-[#c9d1d9] font-medium">{d.label}</span>
+                                </div>
+                                <span className={`text-[10px] font-bold font-mono ${
+                                  d.diff > 0 ? 'text-emerald-400' : d.diff < 0 ? 'text-sky-400' : 'text-[#484f58]'
+                                }`}>
+                                  {isPlayerAdvantage
+                                    ? `${player.name.split(' ')[0]} +${Math.abs(d.diff)}`
+                                    : d.diff < 0
+                                      ? `${chosenTeammate.name.split(' ')[0]} +${Math.abs(d.diff)}`
+                                      : 'Even'
+                                  }
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Recommended Transfer badge */}
+                      {comparisonVerdict.overallWinner === 'teammate' && comparisonVerdict.teammateWinsCount >= 4 && (
+                        <div className="bg-[#21262d] rounded-lg p-3 flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-amber-400 shrink-0" />
+                          <div>
+                            <div className="text-[11px] font-bold text-amber-400">Recommended Transfer Target</div>
+                            <div className="text-[9px] text-[#8b949e]">
+                              Consider {chosenTeammate.name} as an upgrade in {comparisonVerdict.teammateWinsCount} areas
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {comparisonVerdict.overallWinner === 'player' && comparisonVerdict.playerWinsCount >= 4 && (
+                        <div className="bg-[#21262d] rounded-lg p-3 flex items-center gap-2">
+                          <Star className="h-4 w-4 text-emerald-400 shrink-0" />
+                          <div>
+                            <div className="text-[11px] font-bold text-emerald-400">You\u2019re the starter</div>
+                            <div className="text-[9px] text-[#8b949e]">
+                              Keep your spot — you lead in {comparisonVerdict.playerWinsCount} of 6 attributes
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
               )}
             </div>
           )}
