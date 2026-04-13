@@ -14,7 +14,8 @@ import {
   ArrowRight, ArrowRightLeft, Bell, Star, Swords, Table, ChevronRight, Flame,
   ArrowUp, ArrowDown, Minus, Target, Goal, CircleDot, FileText, UserCircle,
   Dumbbell, BarChart3, Shield, MapPin, Clock, Users, Sparkles,
-  GraduationCap, ArrowUpCircle, Crosshair, History, Wallet, Handshake, Mic
+  GraduationCap, ArrowUpCircle, Crosshair, History, Wallet, Handshake, Mic,
+  CheckCircle, Flag, ListChecks, Briefcase, Eye, ClipboardCheck, Medal, Banknote
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WeeklySummary from '@/components/game/WeeklySummary';
@@ -378,6 +379,212 @@ const shownTrainingFocusSeasons = new Set<number>();
       isPlayer: entry.clubId === currentClubIdSafe,
     }));
   }, [leagueTableSafe, leaguePosSafe, currentClubIdSafe]);
+
+  // ===== NEW SECTION COMPUTED VALUES (before early return) =====
+
+  // Dynamic greeting based on game week (deterministic)
+  const dynamicGreeting = useMemo(() => {
+    if (!gameState) return { greeting: 'Welcome Back', period: '' };
+    const weekInDay = ((gameState.currentWeek * 7) % 24);
+    let greeting: string;
+    let period: string;
+    if (weekInDay < 6) { greeting = 'Good Morning'; period = 'dawn'; }
+    else if (weekInDay < 12) { greeting = 'Good Afternoon'; period = 'midday'; }
+    else if (weekInDay < 18) { greeting = 'Good Evening'; period = 'dusk'; }
+    else { greeting = 'Good Night'; period = 'night'; }
+    return { greeting, period };
+  }, [gameState?.currentWeek]);
+
+  // OVR trend from seasons
+  const ovrTrend = useMemo(() => {
+    if (!gameState || gameState.seasons.length === 0) return 'stable' as const;
+    const prevSeason = gameState.seasons[gameState.seasons.length - 1];
+    // Estimate previous OVR from stats
+    const prevOvrEstimate = gameState.player.overall - Math.round(
+      (gameState.player.seasonStats.averageRating - 6.5) * 0.5
+    );
+    if (gameState.player.overall > prevOvrEstimate) return 'up' as const;
+    if (gameState.player.overall < prevOvrEstimate) return 'down' as const;
+    return 'stable' as const;
+  }, [gameState]);
+
+  // Recent activity feed entries (deterministic from game state)
+  const activityFeed = useMemo(() => {
+    if (!gameState) return [];
+    const feed: { id: string; type: 'match' | 'training' | 'achievement' | 'transfer' | 'contract' | 'media'; color: string; icon: string; title: string; subtitle: string; week: number }[] = [];
+
+    // Match results
+    const recentMatches = gameState.recentResults.slice(0, 4);
+    for (const r of recentMatches) {
+      const opponent = r.homeClub.id === gameState.currentClub.id ? r.awayClub : r.homeClub;
+      const playerScore = r.homeClub.id === gameState.currentClub.id ? r.homeScore : r.awayScore;
+      const oppScore = r.homeClub.id === gameState.currentClub.id ? r.awayScore : r.homeScore;
+      const won = playerScore > oppScore;
+      const drew = playerScore === oppScore;
+      feed.push({
+        id: `match-${r.week}-${r.season}`,
+        type: 'match',
+        color: won ? '#34d399' : drew ? '#f59e0b' : '#ef4444',
+        icon: won ? 'W' : drew ? 'D' : 'L',
+        title: `${playerScore}-${oppScore} vs ${opponent.shortName}`,
+        subtitle: r.playerGoals > 0 ? `${r.playerGoals}G${r.playerAssists > 0 ? ` ${r.playerAssists}A` : ''} | ${r.playerRating.toFixed(1)}` : `Rating ${r.playerRating.toFixed(1)}`,
+        week: r.week,
+      });
+    }
+
+    // Recent achievements
+    const recentAchievements = gameState.achievements
+      .filter(a => a.unlocked && a.unlockedSeason === gameState.currentSeason)
+      .slice(-2);
+    for (const a of recentAchievements) {
+      feed.push({
+        id: `achievement-${a.id}`,
+        type: 'achievement',
+        color: '#a78bfa',
+        icon: '★',
+        title: a.name,
+        subtitle: a.description,
+        week: gameState.currentWeek,
+      });
+    }
+
+    // Training history
+    const recentTraining = gameState.trainingHistory.slice(-2);
+    for (const t of recentTraining) {
+      feed.push({
+        id: `training-${t.type}-${t.completedAt}`,
+        type: 'training',
+        color: '#34d399',
+        icon: '💪',
+        title: `Training: ${t.type}`,
+        subtitle: `${t.focusAttribute ?? 'Fitness'} improved`,
+        week: gameState.currentWeek,
+      });
+    }
+
+    // Transfer offers
+    if (gameState.transferOffers.length > 0) {
+      const offer = gameState.transferOffers[0];
+      feed.push({
+        id: `transfer-${offer.id}`,
+        type: 'transfer',
+        color: '#3b82f6',
+        icon: '🔄',
+        title: `Transfer Interest: ${offer.fromClub.shortName}`,
+        subtitle: `${formatCurrency(offer.fee, 'M')} fee`,
+        week: gameState.currentWeek,
+      });
+    }
+
+    return feed.slice(0, 8);
+  }, [gameState]);
+
+  // Weekly goals (from seasonObjectives or generated)
+  const weeklyGoals = useMemo(() => {
+    if (!gameState) return [];
+    // Try to use actual season objectives
+    const currentObjectives = gameState.seasonObjectives?.find(
+      o => o.season === gameState.currentSeason
+    );
+    if (currentObjectives?.objectives && currentObjectives.objectives.length > 0) {
+      return currentObjectives.objectives.slice(0, 4).map(obj => ({
+        id: obj.id,
+        label: obj.title,
+        icon: obj.icon ?? '🎯',
+        current: obj.current,
+        target: obj.target,
+        reward: obj.reward,
+        completed: obj.status === 'completed',
+      }));
+    }
+    // Fallback: generate deterministic weekly goals
+    const seasonGoals = gameState.player.seasonStats.goals;
+    const seasonAssists = gameState.player.seasonStats.assists;
+    const avgRating = gameState.player.seasonStats.averageRating;
+    const weeklyGoalsList: { id: string; label: string; icon: string; current: number; target: number; reward: number; completed: boolean }[] = [
+      {
+        id: 'score-next-match',
+        label: 'Score in next match',
+        icon: '⚽',
+        current: recentResultsSafe.length > 0 && recentResultsSafe[0].playerGoals > 0 ? 1 : 0,
+        target: 1,
+        reward: 50,
+        completed: recentResultsSafe.length > 0 && recentResultsSafe[0].playerGoals > 0,
+      },
+      {
+        id: 'complete-training',
+        label: 'Complete 2 training sessions',
+        icon: '🏋️',
+        current: Math.min(2, 3 - gameState.trainingAvailable),
+        target: 2,
+        reward: 30,
+        completed: gameState.trainingAvailable <= 1,
+      },
+      {
+        id: 'maintain-rating',
+        label: 'Maintain rating above 7.0',
+        icon: '⭐',
+        current: Math.min(10, Math.round(avgRating * 10) / 10),
+        target: 7.0,
+        reward: 75,
+        completed: avgRating >= 7.0,
+      },
+      {
+        id: 'team-meeting',
+        label: 'Attend team meeting',
+        icon: '🤝',
+        current: gameState.currentWeek % 4 === 0 ? 1 : 0,
+        target: 1,
+        reward: 20,
+        completed: gameState.currentWeek % 4 === 0,
+      },
+    ];
+    return weeklyGoalsList;
+  }, [gameState, recentResultsSafe]);
+
+  // Weekly goals progress percentage
+  const weeklyGoalsProgress = useMemo(() => {
+    if (weeklyGoals.length === 0) return 0;
+    const completedCount = weeklyGoals.filter(g => g.completed).length;
+    return Math.round((completedCount / weeklyGoals.length) * 100);
+  }, [weeklyGoals]);
+
+  // Upcoming fixtures for the strip (next 5)
+  const upcomingFixturesStrip = useMemo(() => {
+    if (!gameState) return [];
+    return gameState.upcomingFixtures
+      .filter(f => !f.played && (f.homeClubId === gameState.currentClub.id || f.awayClubId === gameState.currentClub.id))
+      .slice(0, 5)
+      .map(f => {
+        const isHomeGame = f.homeClubId === gameState.currentClub.id;
+        const oppId = isHomeGame ? f.awayClubId : f.homeClubId;
+        const opp = getClubById(oppId);
+        return {
+          ...f,
+          isHome: isHomeGame,
+          opponent: opp,
+          difficulty: opp ? (opp.quality >= 75 ? 'hard' : opp.quality >= 50 ? 'medium' : 'easy') : 'medium',
+        };
+      });
+  }, [gameState]);
+
+  // Financial snapshot data
+  const financialSnapshot = useMemo(() => {
+    if (!gameState) return null;
+    const weeklyWage = gameState.player.contract.weeklyWage;
+    const contractYears = gameState.player.contract.yearsRemaining;
+    const totalContractValue = weeklyWage * 52 * contractYears;
+    const totalCareerEarnings = weeklyWage * 52 * (gameState.currentSeason + (gameState.currentWeek / 38));
+    const sponsorshipCount = gameState.achievements.filter(a => a.unlocked && a.category === 'career').length;
+    const bonusEarnings = sponsorshipCount * 5000;
+    return {
+      weeklyWage,
+      totalCareerEarnings: Math.round(totalCareerEarnings),
+      sponsorshipCount,
+      contractValueRemaining: Math.round(totalContractValue),
+      bonusEarnings,
+    };
+  }, [gameState]);
 
   if (!gameState) return null;
 
@@ -1685,6 +1892,458 @@ const shownTrainingFocusSeasons = new Set<number>();
           <TrendingUp className="mr-2 h-4 w-4" />
           {trainingAvailable} Training Session{trainingAvailable > 1 ? 's' : ''} Available
         </Button>
+      )}
+
+      {/* ===== SECTION 1: Dynamic Greeting & Player Status Card ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-xl p-4"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm text-[#8b949e]">{dynamicGreeting.greeting},</p>
+            <p className="text-lg font-bold text-[#c9d1d9]">{player.name}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{currentClub.logo}</span>
+            <div className="text-right">
+              <p className="text-xs font-semibold text-[#c9d1d9]">{currentClub.shortName}</p>
+              <p className="text-[9px] text-[#8b949e]">Season {currentSeason} &bull; Week {currentWeek}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Player card row: Face SVG, OVR badge, Position */}
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0d1117] border border-[#21262d]">
+          {/* Face placeholder SVG */}
+          <div className="w-14 h-14 rounded-xl bg-[#21262d] flex items-center justify-center shrink-0">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="12" r="6" fill="#8b949e" />
+              <ellipse cx="16" cy="28" rx="10" ry="8" fill="#8b949e" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-[#c9d1d9] truncate">{player.name}</span>
+              <Badge className="text-[9px] font-bold bg-[#21262d] text-[#c9d1d9] border border-[#30363d] px-1.5 py-0 h-5 shrink-0">
+                {player.position}
+              </Badge>
+            </div>
+            {/* OVR with trend arrow */}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xl font-black" style={{ color: overallColor }}>{player.overall}</span>
+              <span className="text-[9px] text-[#484f58] font-medium">OVR</span>
+              {ovrTrend === 'up' && <ArrowUp className="h-3 w-3 text-emerald-400" />}
+              {ovrTrend === 'down' && <ArrowDown className="h-3 w-3 text-red-400" />}
+              {ovrTrend === 'stable' && <Minus className="h-3 w-3 text-[#484f58]" />}
+            </div>
+          </div>
+        </div>
+
+        {/* Status chips row */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {/* Injury chip */}
+          {currentInjury ? (
+            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-red-500/10 border border-red-500/20 text-[10px] font-medium text-red-400">
+              <Activity className="h-3 w-3" /> {currentInjury.name}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-medium text-emerald-400">
+              <Activity className="h-3 w-3" /> Fit
+            </span>
+          )}
+          {/* Form indicator: last 5 matches dots */}
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-[#484f58] mr-0.5">Form:</span>
+            {formDots.slice(0, 5).map((result, i) => (
+              <div
+                key={i}
+                className={`w-4 h-4 rounded flex items-center justify-center text-[7px] font-bold text-white ${
+                  result === 'W' ? 'bg-emerald-500' : result === 'D' ? 'bg-amber-500' : 'bg-red-500'
+                }`}
+              >
+                {result}
+              </div>
+            ))}
+          </div>
+          {/* Morale emoji */}
+          <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#21262d] border border-[#30363d] text-[10px] text-[#8b949e]">
+            {player.morale >= 80 ? '😊' : player.morale >= 60 ? '😐' : player.morale >= 35 ? '😟' : '😤'}
+            {player.morale}
+          </span>
+        </div>
+
+        {/* Quick stat bar with mini sparkline SVGs */}
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          {([
+            { label: 'Goals', value: player.seasonStats.goals, data: sparklineData.goals, color: '#10b981' },
+            { label: 'Assists', value: player.seasonStats.assists, data: sparklineData.assists, color: '#38bdf8' },
+            { label: 'Avg Rating', value: player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-', data: sparklineData.ratings, color: '#f59e0b' },
+          ] as const).map((stat) => (
+            <div key={stat.label} className="flex flex-col items-center p-2 rounded-lg bg-[#0d1117] border border-[#21262d]">
+              <span className="text-sm font-bold" style={{ color: stat.color }}>{stat.value}</span>
+              <span className="text-[9px] text-[#484f58] font-medium">{stat.label}</span>
+              {stat.data.length >= 2 && (
+                <svg width={60} height={16} className="mt-1 overflow-visible">
+                  {(() => {
+                    const pts = stat.data.map((v: number, i: number) => {
+                      const x = (i / (stat.data.length - 1)) * 60;
+                      const maxV = Math.max(...stat.data, 1);
+                      const y = 14 - (v / maxV) * 12;
+                      return `${x},${y}`;
+                    }).join(' ');
+                    return <polyline points={pts} fill="none" stroke={stat.color} strokeWidth="1.5" strokeLinejoin="round" />;
+                  })()}
+                </svg>
+              )}
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ===== SECTION 2: Quick Actions Grid (2x3) ===== */}
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Quick Actions</span>
+        <div className="flex-1 border-t border-[#21262d]" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {/* Next Match */}
+        <button
+          onClick={() => setScreen('match_day')}
+          className="flex items-center gap-3 p-3 rounded-xl bg-[#161b22] border border-[#30363d] border-l-[3px] border-l-amber-500 hover:bg-[#21262d] transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Swords className="h-4 w-4 text-amber-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#c9d1d9]">Next Match</p>
+            <p className="text-[10px] text-[#8b949e] truncate">
+              {nextOpponent ? `vs ${nextOpponent.shortName}` : 'No fixture'}
+            </p>
+            {nextFixture && (
+              <p className="text-[9px] text-[#484f58]">
+                Week {nextFixture.matchday} &bull; {nextFixture.competition === 'league' ? 'League' : nextFixture.competition === 'cup' ? 'Cup' : 'Friendly'}
+              </p>
+            )}
+          </div>
+        </button>
+        {/* Training */}
+        <button
+          onClick={() => setScreen('training')}
+          className="flex items-center gap-3 p-3 rounded-xl bg-[#161b22] border border-[#30363d] border-l-[3px] border-l-emerald-500 hover:bg-[#21262d] transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <Dumbbell className="h-4 w-4 text-emerald-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#c9d1d9]">Training</p>
+            <p className="text-[10px] text-[#8b949e]">
+              {trainingAvailable} session{trainingAvailable !== 1 ? 's' : ''} available
+            </p>
+            <p className="text-[9px] text-[#484f58]">
+              {seasonTrainingFocus ? `${seasonTrainingFocus.area} Focus` : 'Set focus area'}
+            </p>
+          </div>
+        </button>
+        {/* Transfers */}
+        <button
+          onClick={() => setScreen('transfers')}
+          className="flex items-center gap-3 p-3 rounded-xl bg-[#161b22] border border-[#30363d] border-l-[3px] border-l-blue-500 hover:bg-[#21262d] transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+            <ArrowRightLeft className="h-4 w-4 text-blue-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#c9d1d9]">Transfers</p>
+            <p className="text-[10px] text-[#8b949e]">
+              {gameState.transferOffers.length > 0 ? `${gameState.transferOffers.length} offer${gameState.transferOffers.length !== 1 ? 's' : ''} pending` : 'No offers'}
+            </p>
+            <p className="text-[9px] text-[#484f58]">Transfer window open</p>
+          </div>
+        </button>
+        {/* Contract */}
+        <button
+          onClick={() => setShowContractNegotiation(true)}
+          className="flex items-center gap-3 p-3 rounded-xl bg-[#161b22] border border-[#30363d] border-l-[3px] border-l-cyan-500 hover:bg-[#21262d] transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0">
+            <FileText className="h-4 w-4 text-cyan-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#c9d1d9]">Contract</p>
+            <p className="text-[10px] text-[#8b949e]">
+              {player.contract.yearsRemaining}yr &bull; {formatCurrency(player.contract.weeklyWage, 'K')}/wk
+            </p>
+            <p className={`text-[9px] ${player.contract.yearsRemaining <= 1 ? 'text-red-400' : 'text-[#484f58]'}`}>
+              {player.contract.yearsRemaining <= 1 ? 'Expiring soon!' : `Expires S${currentSeason + player.contract.yearsRemaining}`}
+            </p>
+          </div>
+        </button>
+        {/* Squad */}
+        <button
+          onClick={() => setScreen('league_table')}
+          className="flex items-center gap-3 p-3 rounded-xl bg-[#161b22] border border-[#30363d] border-l-[3px] border-l-purple-500 hover:bg-[#21262d] transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+            <Users className="h-4 w-4 text-purple-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#c9d1d9]">Squad</p>
+            <p className="text-[10px] text-[#8b949e]">{currentClub.squadSize} players</p>
+            <p className="text-[9px] text-[#484f58]">{currentClub.formation} &bull; {leaguePos}{posSuffix}</p>
+          </div>
+        </button>
+        {/* Trophy Room */}
+        <button
+          onClick={() => setScreen('player_profile')}
+          className="flex items-center gap-3 p-3 rounded-xl bg-[#161b22] border border-[#30363d] border-l-[3px] border-l-amber-400 hover:bg-[#21262d] transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-amber-400/10 flex items-center justify-center shrink-0">
+            <Trophy className="h-4 w-4 text-amber-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#c9d1d9]">Trophy Room</p>
+            <p className="text-[10px] text-[#8b949e]">
+              {player.careerStats.trophies.length > 0 ? `${player.careerStats.trophies.length} trophy${player.careerStats.trophies.length !== 1 ? 's' : ''}` : 'No trophies yet'}
+            </p>
+            <p className="text-[9px] text-[#484f58]">
+              {player.careerStats.trophies.length > 0 ? `Latest: ${player.careerStats.trophies[player.careerStats.trophies.length - 1].name}` : 'Keep pushing!'}
+            </p>
+          </div>
+        </button>
+      </div>
+
+      {/* ===== SECTION 3: Recent Activity Feed ===== */}
+      {activityFeed.length > 0 && (
+        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+          <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
+            <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Recent Activity</CardTitle>
+            <button
+              onClick={() => setScreen('analytics')}
+              className="flex items-center gap-0.5 text-[9px] text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              View All <ChevronRight className="h-3 w-3" />
+            </button>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <div className="space-y-0">
+              {activityFeed.map((entry, idx) => (
+                <motion.div
+                  key={entry.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: idx * 0.05, duration: 0.2 }}
+                  className="flex items-start gap-3 py-2 border-l-2 pl-3"
+                  style={{ borderColor: entry.color }}
+                >
+                  <div
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0 mt-0.5"
+                    style={{ backgroundColor: entry.color + '30', color: entry.color }}
+                  >
+                    {entry.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium text-[#c9d1d9] truncate">{entry.title}</p>
+                    <p className="text-[10px] text-[#8b949e] truncate">{entry.subtitle}</p>
+                  </div>
+                  <span className="text-[9px] text-[#484f58] shrink-0 mt-0.5">Wk {entry.week}</span>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== SECTION 4: Weekly Goals Tracker ===== */}
+      {weeklyGoals.length > 0 && (
+        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+          <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Weekly Goals</CardTitle>
+            </div>
+            <span className="text-xs font-bold text-emerald-400">{weeklyGoalsProgress}%</span>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            {/* Overall progress bar */}
+            <div className="h-1.5 bg-[#21262d] rounded-lg overflow-hidden mb-3">
+              <motion.div
+                className="h-full rounded-lg bg-emerald-500"
+                initial={{ width: 0 }}
+                animate={{ width: `${weeklyGoalsProgress}%` }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              />
+            </div>
+            <div className="space-y-2.5">
+              {weeklyGoals.map((goal) => {
+                const progressPct = goal.target > 0
+                  ? Math.min(100, Math.round((Math.min(goal.current, goal.target) / goal.target) * 100))
+                  : 0;
+                const isCompleted = goal.completed;
+                const barColor = isCompleted ? '#22c55e' : progressPct >= 50 ? '#f59e0b' : '#ef4444';
+                return (
+                  <div key={goal.id} className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#21262d] flex items-center justify-center text-sm shrink-0">
+                      {isCompleted ? (
+                        <CheckCircle className="h-4 w-4 text-emerald-400" />
+                      ) : (
+                        <span>{goal.icon}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-[10px] font-medium ${isCompleted ? 'text-emerald-400' : 'text-[#c9d1d9]'}`}>
+                          {goal.label}
+                        </span>
+                        <span className="text-[9px] text-[#484f58]">+{goal.reward} XP</span>
+                      </div>
+                      <div className="h-1.5 bg-[#21262d] rounded-lg overflow-hidden">
+                        <div
+                          className="h-full rounded-lg transition-all duration-500"
+                          style={{ width: `${progressPct}%`, backgroundColor: barColor }}
+                        />
+                      </div>
+                      <p className="text-[9px] text-[#484f58] mt-0.5">
+                        {typeof goal.current === 'number' && goal.current % 1 !== 0 ? goal.current.toFixed(1) : goal.current}/{goal.target}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== SECTION 5: Financial Snapshot Mini ===== */}
+      {financialSnapshot && (
+        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+          <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
+            <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Financial Snapshot</CardTitle>
+            <Wallet className="h-3.5 w-3.5 text-[#8b949e]" />
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <div className="flex items-center gap-4">
+              {/* Donut chart SVG */}
+              <div className="relative w-20 h-20 shrink-0">
+                <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
+                  {/* Wage segment */}
+                  <circle
+                    cx="40" cy="40" r="32"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="8"
+                    strokeDasharray={`${2 * Math.PI * 32 * 0.6} ${2 * Math.PI * 32 * 0.4}`}
+                    strokeDashoffset="0"
+                  />
+                  {/* Sponsorship segment */}
+                  <circle
+                    cx="40" cy="40" r="32"
+                    fill="none"
+                    stroke="#38bdf8"
+                    strokeWidth="8"
+                    strokeDasharray={`${2 * Math.PI * 32 * 0.25} ${2 * Math.PI * 32 * 0.75}`}
+                    strokeDashoffset={`${-(2 * Math.PI * 32 * 0.6)}`}
+                  />
+                  {/* Bonuses segment */}
+                  <circle
+                    cx="40" cy="40" r="32"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="8"
+                    strokeDasharray={`${2 * Math.PI * 32 * 0.15} ${2 * Math.PI * 32 * 0.85}`}
+                    strokeDashoffset={`${-(2 * Math.PI * 32 * 0.85)}`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-[10px] font-bold text-[#c9d1d9]">{formatCurrency(financialSnapshot.weeklyWage, 'K')}</span>
+                  <span className="text-[8px] text-[#484f58]">/week</span>
+                </div>
+              </div>
+              {/* Stats list */}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-sm bg-emerald-500" />
+                    <span className="text-[10px] text-[#8b949e]">Weekly Wage</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#c9d1d9]">{formatCurrency(financialSnapshot.weeklyWage, 'K')}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-sm bg-cyan-500" />
+                    <span className="text-[10px] text-[#8b949e]">Sponsorships</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#c9d1d9]">{financialSnapshot.sponsorshipCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-sm bg-amber-500" />
+                    <span className="text-[10px] text-[#8b949e]">Career Earnings</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#c9d1d9]">{formatCurrency(financialSnapshot.totalCareerEarnings, 'K')}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1.5 border-t border-[#21262d]">
+                  <span className="text-[10px] text-[#8b949e]">Contract Value</span>
+                  <span className="text-[10px] font-bold text-emerald-400">{formatCurrency(financialSnapshot.contractValueRemaining, 'K')}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== SECTION 6: Upcoming Fixtures Strip ===== */}
+      {upcomingFixturesStrip.length > 0 && (
+        <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+          <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
+            <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Upcoming Fixtures</CardTitle>
+            <Calendar className="h-3.5 w-3.5 text-[#8b949e]" />
+          </CardHeader>
+          <CardContent className="pb-3">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              {upcomingFixturesStrip.map((fixture, idx) => {
+                const diffColor = fixture.difficulty === 'hard' ? '#ef4444'
+                  : fixture.difficulty === 'medium' ? '#f59e0b' : '#22c55e';
+                const diffBg = fixture.difficulty === 'hard' ? 'bg-red-500/10 border-red-500/20'
+                  : fixture.difficulty === 'medium' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20';
+                return (
+                  <motion.div
+                    key={`${fixture.matchday}-${fixture.season}-${idx}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: idx * 0.08, duration: 0.2 }}
+                    className={`shrink-0 w-[130px] p-2.5 rounded-xl border ${diffBg} flex flex-col items-center gap-1.5`}
+                  >
+                    {/* Competition badge */}
+                    <Badge className="text-[7px] px-1.5 py-0 border border-[#30363d] bg-[#21262d] text-[#8b949e] font-medium">
+                      {fixture.competition === 'league' ? 'LG' : fixture.competition === 'cup' ? 'CU' : 'FR'}
+                    </Badge>
+                    {/* Opponent */}
+                    <div className="text-center">
+                      <span className="text-sm block">{fixture.opponent?.logo ?? '⚽'}</span>
+                      <span className="text-[10px] font-semibold text-[#c9d1d9] truncate block max-w-[110px]">
+                        {fixture.opponent?.shortName ?? 'TBD'}
+                      </span>
+                    </div>
+                    {/* Home/Away + Date */}
+                    <div className="flex items-center gap-1.5 text-[9px] text-[#8b949e]">
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold text-white ${
+                        fixture.isHome ? 'bg-emerald-600' : 'bg-blue-600'
+                      }`}>
+                        {fixture.isHome ? 'H' : 'A'}
+                      </span>
+                      <span>Wk {fixture.matchday}</span>
+                    </div>
+                    {/* Difficulty indicator */}
+                    <div className="w-full h-0.5 rounded-sm mt-0.5" style={{ backgroundColor: diffColor, opacity: 0.5 }} />
+                  </motion.div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
 

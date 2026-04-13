@@ -648,7 +648,9 @@ export type GameScreen =
   | 'fantasy_draft'
   | 'international_tournament'
   | 'career_mode_selector'
-  | 'match_engine_simulation';
+  | 'match_engine_simulation'
+  | 'training_drill_mini_games'
+  | 'season_review_documentary';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

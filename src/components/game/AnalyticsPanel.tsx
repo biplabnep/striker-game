@@ -411,6 +411,145 @@ export default function AnalyticsPanel() {
     return { projected, upperBound, lowerBound, numPoints, currentOverall, potential };
   }, [gameState]);
 
+  // ---- Advanced Metrics (xG, xA, pass completion, etc.) ----
+  const advancedMetrics = useMemo(() => {
+    if (!gameState) return null;
+    const p = gameState.player;
+    const ss = p.seasonStats;
+    const seed = p.overall * 3 + p.potential * 7 + ss.goals * 13;
+    const sr = (i: number) => {
+      const x = Math.sin(seed + i * 91.3) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    const apps = Math.max(1, ss.appearances);
+    const minutes = Math.max(1, ss.minutesPlayed || apps * 80);
+    const minutes90 = minutes / 90;
+
+    return [
+      { label: 'xG', value: Math.max(0, +(ss.goals * (0.6 + sr(1) * 0.35)).toFixed(2)), leagueAvg: +(apps * 0.18).toFixed(2), unit: '', gauge: true },
+      { label: 'xA', value: Math.max(0, +(ss.assists * (0.55 + sr(2) * 0.4)).toFixed(2)), leagueAvg: +(apps * 0.14).toFixed(2), unit: '', gauge: true },
+      { label: 'Pass Comp %', value: Math.min(100, Math.round(65 + (p.attributes.passing ?? 50) * 0.3 + (sr(3) - 0.5) * 10)), leagueAvg: 76, unit: '%', circular: true },
+      { label: 'Key Passes /90', value: +(1.2 + (p.attributes.passing ?? 50) / 80 * 1.8 + (sr(4) - 0.5) * 0.8).toFixed(1), leagueAvg: 1.8, unit: '', bar: true },
+      { label: 'Dribble Success', value: Math.min(95, Math.round(40 + (p.attributes.dribbling ?? 50) * 0.5 + (sr(5) - 0.5) * 15)), leagueAvg: 52, unit: '%', hBar: true },
+      { label: 'Aerial Duel Win', value: Math.min(95, Math.round(35 + (p.attributes.physical ?? 50) * 0.5 + (sr(6) - 0.5) * 12)), leagueAvg: 48, unit: '%', hBar: true },
+      { label: 'Pressures /90', value: +(12 + (p.attributes.physical ?? 50) / 80 * 8 + (sr(7) - 0.5) * 5).toFixed(1), leagueAvg: 16.5, unit: '', sparkline: true },
+      { label: 'Progressive Passes', value: Math.round(3 + (p.attributes.passing ?? 50) / 80 * 6 + (sr(8) - 0.5) * 3), leagueAvg: 5.2, unit: '/90', trend: true },
+    ];
+  }, [gameState]);
+
+  // ---- Season-by-Season Breakdown data ----
+  const seasonBreakdown = useMemo(() => {
+    if (!gameState) return null;
+    const seasons = gameState.seasons;
+    if (seasons.length === 0) return null;
+    return seasons.map(s => ({
+      number: s.number,
+      goals: s.playerStats.goals,
+      assists: s.playerStats.assists,
+      appearances: s.playerStats.appearances,
+      avgRating: s.playerStats.averageRating,
+      cleanSheets: s.playerStats.cleanSheets,
+      motm: s.playerStats.manOfTheMatch,
+    }));
+  }, [gameState]);
+
+  // ---- Performance Radar (8-axis: current vs debut) ----
+  const performanceRadar = useMemo(() => {
+    if (!gameState) return null;
+    const p = gameState.player;
+    const attrs = ATTR_KEYS.map(k => p.attributes[k] ?? 0);
+    const radar8Keys = ['Pace', 'Shooting', 'Passing', 'Dribbling', 'Defending', 'Physical', 'Vision', 'Composure'];
+    const current = [...attrs,
+      Math.round((attrs[2] + attrs[3]) / 2 + 2),
+      Math.round((attrs[5] + attrs[0]) / 2 + 1),
+    ];
+    const debutOffset = Math.round((p.potential - p.overall) * 0.6);
+    const debut = current.map(v => Math.max(30, v - debutOffset - Math.round(Math.sin(v) * 3)));
+    const overallGrowth = Math.round(
+      ((current.reduce((a, b) => a + b, 0) - debut.reduce((a, b) => a + b, 0)) / debut.reduce((a, b) => a + b, 0)) * 100
+    );
+    return { keys: radar8Keys, current, debut, overallGrowth };
+  }, [gameState]);
+
+  // ---- Clutch Performance data ----
+  const clutchData = useMemo(() => {
+    if (!gameState) return null;
+    const results = gameState.recentResults;
+    const clutchMatches: Array<{
+      week: number;
+      rating: number;
+      goals: number;
+      assists: number;
+      type: 'rating' | 'late_goal' | 'motm';
+    }> = [];
+    let clutchGoals = 0;
+    let clutchAssists = 0;
+    let lateGoals = 0;
+    let matchWinningGoals = 0;
+
+    for (const r of results) {
+      let isClutch = false;
+      let type: 'rating' | 'late_goal' | 'motm' = 'rating';
+      if (r.playerRating >= 8.0) { isClutch = true; type = 'rating'; }
+      if (r.playerGoals > 0 && r.events) {
+        for (const e of r.events) {
+          if (e.type === 'goal' && e.playerName === gameState.player.name && e.minute >= 75) {
+            isClutch = true;
+            type = 'late_goal';
+            lateGoals++;
+          }
+        }
+      }
+      if (r.playerRating >= 8.5 && r.playerGoals > 0) {
+        isClutch = true;
+        if (type !== 'late_goal') type = 'motm';
+      }
+      if (isClutch) {
+        if (r.playerGoals > 0) {
+          clutchGoals += r.playerGoals;
+          if (r.playerRating >= 8.0 && r.playerGoals > 0) matchWinningGoals++;
+        }
+        clutchAssists += r.playerAssists;
+        clutchMatches.push({ week: r.week, rating: r.playerRating, goals: r.playerGoals, assists: r.playerAssists, type });
+      }
+    }
+
+    const clutchRating = clutchMatches.length > 0
+      ? +(clutchMatches.reduce((s, m) => s + m.rating, 0) / clutchMatches.length).toFixed(1)
+      : 0;
+    const stars = clutchRating >= 8.5 ? 5 : clutchRating >= 8.0 ? 4 : clutchRating >= 7.5 ? 3 : clutchRating >= 7.0 ? 2 : clutchRating > 0 ? 1 : 0;
+    const top3 = [...clutchMatches].sort((a, b) => b.rating - a.rating).slice(0, 3);
+
+    return { clutchMatches, clutchGoals, clutchAssists, lateGoals, matchWinningGoals, clutchRating, stars, top3 };
+  }, [gameState]);
+
+  // ---- Opponent Analysis Grid ----
+  const opponentAnalysis = useMemo(() => {
+    if (!gameState) return null;
+    const p = gameState.player;
+    const ss = p.seasonStats;
+    const seed = p.overall * 11 + p.potential * 3 + ss.goals * 7;
+    const sr = (i: number) => {
+      const x = Math.sin(seed + i * 61.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    const types = [
+      'vs Top 6', 'vs Mid Table', 'vs Bottom 6',
+      'vs Strong Def', 'vs Weak Def', 'vs High Press',
+      'vs Low Block', 'vs Possession', 'vs Counter',
+      'vs Physical', 'vs Technical', 'vs Fast Teams',
+    ];
+    return types.map((label, i) => {
+      const apps = Math.max(0, Math.round(2 + sr(i * 3) * 10));
+      const goals = apps > 0 ? Math.round(sr(i * 3 + 1) * apps * 0.5 * (p.attributes.shooting ?? 50) / 80) : 0;
+      const assists = apps > 0 ? Math.round(sr(i * 3 + 2) * apps * 0.35 * (p.attributes.passing ?? 50) / 80) : 0;
+      const rating = apps > 0
+        ? +(5.5 + (p.overall - 60) / 80 + (sr(i * 3 + 10) - 0.3) * 1.5).toFixed(1)
+        : 0;
+      return { label, apps, goals, assists, rating: Math.max(4, Math.min(10, rating)) };
+    });
+  }, [gameState]);
+
   // ---- Early return ----
   if (!gameState) return null;
 
@@ -1999,6 +2138,601 @@ export default function AnalyticsPanel() {
                   );
                 })()}
               </svg>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Advanced Metrics Dashboard */}
+      {/* ============================================= */}
+      {advancedMetrics && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.6 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                  <BarChart3 className="h-3 w-3 text-emerald-400" /> Advanced Metrics
+                </CardTitle>
+                <Badge className="bg-[#21262d] text-[#8b949e] border-[#30363d] text-[9px]">
+                  vs League Avg
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 space-y-3">
+              {advancedMetrics.map((m, idx) => {
+                const isAbove = m.gauge || m.circular
+                  ? m.value >= m.leagueAvg
+                  : parseFloat(String(m.value)) >= m.leagueAvg;
+                return (
+                  <motion.div
+                    key={m.label}
+                    className="flex items-center gap-3"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.65 + idx * 0.04 }}
+                  >
+                    {/* Label + value */}
+                    <div className="w-28 shrink-0">
+                      <p className="text-[10px] text-[#8b949e]">{m.label}</p>
+                      <p className="text-sm font-bold text-[#c9d1d9] tabular-nums">
+                        {typeof m.value === 'number' && m.value % 1 !== 0 ? m.value.toFixed(1) : m.value}{m.unit}
+                      </p>
+                    </div>
+
+                    {/* SVG gauge for xG / xA */}
+                    {m.gauge && (
+                      <svg width={56} height={28} viewBox="0 0 56 28" className="shrink-0">
+                        <path d="M 6 24 A 22 22 0 0 1 50 24" fill="none" stroke="#30363d" strokeWidth={3} strokeLinecap="round" />
+                        <motion.path
+                          d="M 6 24 A 22 22 0 0 1 50 24"
+                          fill="none"
+                          stroke={isAbove ? '#34d399' : '#f59e0b'}
+                          strokeWidth={3}
+                          strokeLinecap="round"
+                          strokeDasharray="69.12"
+                          initial={{ strokeDashoffset: 69.12 }}
+                          animate={{ strokeDashoffset: 69.12 - (Math.min(parseFloat(String(m.value)) / Math.max(0.01, m.leagueAvg * 2), 1) * 69.12) }}
+                          transition={{ duration: 0.3, delay: 0.7 + idx * 0.04 }}
+                        />
+                        <text x={28} y={22} textAnchor="middle" fill="#8b949e" fontSize={6}>
+                          Avg: {m.leagueAvg}
+                        </text>
+                      </svg>
+                    )}
+
+                    {/* Circular progress for Pass Comp */}
+                    {m.circular && (() => {
+                      const pct = m.value as number;
+                      const r = 10;
+                      const circ = 2 * Math.PI * r;
+                      const offset = circ - (pct / 100) * circ;
+                      return (
+                        <svg width={28} height={28} viewBox="0 0 28 28" className="shrink-0">
+                          <circle cx={14} cy={14} r={r} fill="none" stroke="#30363d" strokeWidth={2.5} />
+                          <g transform="rotate(-90 14 14)">
+                            <motion.circle
+                              cx={14} cy={14} r={r}
+                              fill="none"
+                              stroke={pct >= 80 ? '#34d399' : pct >= 65 ? '#f59e0b' : '#ef4444'}
+                              strokeWidth={2.5}
+                              strokeLinecap="round"
+                              strokeDasharray={circ}
+                              initial={{ strokeDashoffset: circ }}
+                              animate={{ strokeDashoffset: offset }}
+                              transition={{ duration: 0.3, delay: 0.7 + idx * 0.04 }}
+                            />
+                          </g>
+                        </svg>
+                      );
+                    })()}
+
+                    {/* Bar for Key Passes */}
+                    {m.bar && (
+                      <svg width={56} height={20} viewBox="0 0 56 20" className="shrink-0">
+                        <rect x={0} y={4} width={56} height={12} rx={3} fill="#21262d" />
+                        <motion.rect
+                          x={0} y={4}
+                          width={Math.min(56, (parseFloat(String(m.value)) / Math.max(0.01, m.leagueAvg * 2)) * 56)}
+                          height={12} rx={3}
+                          fill={isAbove ? '#34d399' : '#f59e0b'}
+                          initial={{ width: 0 }}
+                          animate={{ width: Math.min(56, (parseFloat(String(m.value)) / Math.max(0.01, m.leagueAvg * 2)) * 56) }}
+                          transition={{ duration: 0.3, delay: 0.7 + idx * 0.04 }}
+                        />
+                        <line x1={(m.leagueAvg / Math.max(0.01, m.leagueAvg * 2)) * 56} y1={3} x2={(m.leagueAvg / Math.max(0.01, m.leagueAvg * 2)) * 56} y2={17} stroke="#8b949e" strokeWidth={0.8} strokeDasharray="2 1" />
+                      </svg>
+                    )}
+
+                    {/* Horizontal bars for Dribble/Aerial */}
+                    {m.hBar && (
+                      <svg width={56} height={20} viewBox="0 0 56 20" className="shrink-0">
+                        <rect x={0} y={4} width={56} height={12} rx={3} fill="#21262d" />
+                        <motion.rect
+                          x={0} y={4}
+                          width={((m.value as number) / 100) * 56}
+                          height={12} rx={3}
+                          fill={isAbove ? '#34d399' : '#f59e0b'}
+                          initial={{ width: 0 }}
+                          animate={{ width: ((m.value as number) / 100) * 56 }}
+                          transition={{ duration: 0.3, delay: 0.7 + idx * 0.04 }}
+                        />
+                        <line x1={(m.leagueAvg / 100) * 56} y1={3} x2={(m.leagueAvg / 100) * 56} y2={17} stroke="#8b949e" strokeWidth={0.8} strokeDasharray="2 1" />
+                      </svg>
+                    )}
+
+                    {/* Sparkline for Pressures */}
+                    {m.sparkline && (() => {
+                      const pts: number[] = [3, 5, 7, 4, 8, 6, 9, parseFloat(String(m.value))];
+                      const max = Math.max(...pts, 1);
+                      const min = Math.min(...pts, 0);
+                      const range = max - min || 1;
+                      return (
+                        <svg width={56} height={20} viewBox="0 0 56 20" className="shrink-0">
+                          <polyline
+                            points={pts.map((v, i) => `${(i / (pts.length - 1)) * 54 + 1},${18 - ((v - min) / range) * 15}`).join(' ')}
+                            fill="none"
+                            stroke={isAbove ? '#34d399' : '#f59e0b'}
+                            strokeWidth={1.5}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <line x1={0} y1={18} x2={56} y2={18} stroke="#30363d" strokeWidth={0.3} />
+                        </svg>
+                      );
+                    })()}
+
+                    {/* Trend line for Progressive Passes */}
+                    {m.trend && (() => {
+                      const pts: number[] = [2, 4, 3, 5, 6, 4, 7, m.value as number];
+                      const max = Math.max(...pts, 1);
+                      const min = Math.min(...pts, 0);
+                      const range = max - min || 1;
+                      return (
+                        <svg width={56} height={20} viewBox="0 0 56 20" className="shrink-0">
+                          <polygon
+                            points={pts.map((v, i) => `${(i / (pts.length - 1)) * 54 + 1},${18 - ((v - min) / range) * 15}`).join(' ') + ` 55,18 1,18`}
+                            fill="rgba(59, 130, 246, 0.15)"
+                            stroke="none"
+                          />
+                          <polyline
+                            points={pts.map((v, i) => `${(i / (pts.length - 1)) * 54 + 1},${18 - ((v - min) / range) * 15}`).join(' ')}
+                            fill="none"
+                            stroke="#3b82f6"
+                            strokeWidth={1.5}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle cx={55} cy={18 - ((pts[pts.length - 1] - min) / range) * 15} r={2.5} fill="#3b82f6" stroke="#161b22" strokeWidth={1} />
+                        </svg>
+                      );
+                    })()}
+
+                    {/* Badge */}
+                    <Badge
+                      className={`text-[8px] px-1.5 py-0 border ${
+                        isAbove
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      }`}
+                    >
+                      {isAbove ? 'Above Avg' : 'Below Avg'}
+                    </Badge>
+                  </motion.div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Season-by-Season Breakdown Chart */}
+      {/* ============================================= */}
+      {seasonBreakdown && seasonBreakdown.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.62 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                <Trophy className="h-3 w-3 text-amber-400" /> Season-by-Season Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <svg width="100%" height={180} viewBox="0 0 320 180" className="select-none" preserveAspectRatio="xMidYMid meet">
+                {(() => {
+                  const data = seasonBreakdown;
+                  const cLeft = 35;
+                  const cRight = 310;
+                  const cTop = 10;
+                  const cBottom = 145;
+                  const cW = cRight - cLeft;
+                  const cH = cBottom - cTop;
+                  const groupW = cW / data.length;
+                  const barW = Math.max(3, groupW / 7 - 1);
+                  const statKeys = ['goals', 'assists', 'appearances', 'avgRating', 'cleanSheets', 'motm'] as const;
+                  const statColors = ['#34d399', '#3b82f6', '#a78bfa', '#f59e0b', '#ef4444', '#ec4899'];
+                  const statLabels = ['Goals', 'Assists', 'Apps', 'Avg Rat', 'CS', 'MotM'];
+                  const maxVals: number[] = [];
+                  for (const sk of statKeys) {
+                    const vals = data.map(d => sk === 'avgRating' ? d[sk] * 10 : d[sk] as number);
+                    maxVals.push(Math.max(...vals, 1));
+                  }
+                  const globalMax = Math.max(...maxVals, 1);
+
+                  return (
+                    <>
+                      {/* Gridlines */}
+                      {[0, 0.25, 0.5, 0.75, 1].map(f => {
+                        const y = cBottom - f * cH;
+                        return (
+                          <g key={f}>
+                            <line x1={cLeft} y1={y} x2={cRight} y2={y} stroke="#30363d" strokeWidth={0.3} opacity={0.4} />
+                            <text x={cLeft - 4} y={y + 3} textAnchor="end" className="fill-[#484f58]" fontSize={6}>
+                              {Math.round(f * globalMax)}
+                            </text>
+                          </g>
+                        );
+                      })}
+                      {/* Baseline */}
+                      <line x1={cLeft} y1={cBottom} x2={cRight} y2={cBottom} stroke="#30363d" strokeWidth={0.4} />
+
+                      {/* Bars per season */}
+                      {data.map((season, si) => {
+                        const gx = cLeft + si * groupW + groupW / 2;
+                        return statKeys.map((sk, bi) => {
+                          const rawVal = sk === 'avgRating' ? season[sk] * 10 : season[sk] as number;
+                          const normVal = rawVal / globalMax;
+                          const bh = normVal * cH;
+                          const bx = gx - (statKeys.length * (barW + 1)) / 2 + bi * (barW + 1);
+                          return (
+                            <rect
+                              key={`${si}-${bi}`}
+                              x={bx}
+                              y={cBottom - bh}
+                              width={barW}
+                              height={bh}
+                              rx={1.5}
+                              fill={statColors[bi]}
+                              opacity={0.8}
+                            />
+                          );
+                        });
+                      })}
+
+                      {/* Season labels */}
+                      {data.map((season, si) => {
+                        const gx = cLeft + si * groupW + groupW / 2;
+                        return (
+                          <text key={si} x={gx} y={cBottom + 12} textAnchor="middle" className="fill-[#8b949e]" fontSize={7} fontWeight={600}>
+                            S{season.number}
+                          </text>
+                        );
+                      })}
+
+                      {/* Legend */}
+                      {statLabels.map((label, i) => (
+                        <g key={label}>
+                          <rect x={cLeft + i * 45} y={166} width={8} height={6} rx={1.5} fill={statColors[i]} opacity={0.8} />
+                          <text x={cLeft + i * 45 + 11} y={172} className="fill-[#484f58]" fontSize={6}>{label}</text>
+                        </g>
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Performance Radar Breakdown (8-axis) */}
+      {/* ============================================= */}
+      {performanceRadar && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.64 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-1 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                  <Zap className="h-3 w-3 text-purple-400" /> Growth Radar
+                </CardTitle>
+                <Badge
+                  className={`text-[9px] px-1.5 py-0 border ${
+                    performanceRadar.overallGrowth >= 15
+                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                      : performanceRadar.overallGrowth >= 5
+                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                      : 'bg-red-500/15 text-red-400 border-red-500/25'
+                  }`}
+                >
+                  +{performanceRadar.overallGrowth}% Growth
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-1.5 bg-emerald-500 opacity-80" />
+                  <span className="text-[8px] text-[#8b949e]">Current</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-1.5 bg-[#484f58] opacity-60" />
+                  <span className="text-[8px] text-[#8b949e]">Debut</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-3 flex justify-center">
+              <svg width={260} height={260} viewBox="0 0 260 260" className="select-none">
+                {(() => {
+                  const cx = 130;
+                  const cy = 130;
+                  const R = 100;
+                  const numAxes = 8;
+                  const aOff = -Math.PI / 2;
+                  const getA = (i: number) => aOff + (2 * Math.PI * i) / numAxes;
+                  const getR = (i: number, v: number) => {
+                    const a = getA(i);
+                    const r = (v / 100) * R;
+                    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+                  };
+                  const poly = (vals: number[]) => vals.map((v, i) => { const p = getR(i, v); return `${p.x},${p.y}`; }).join(' ');
+
+                  return (
+                    <>
+                      {/* Grid polygons */}
+                      {[20, 40, 60, 80, 100].map(level => (
+                        <polygon key={level} points={poly(Array(8).fill(level))} fill="none" stroke="#334155" strokeWidth={0.4} opacity={0.4} />
+                      ))}
+                      {/* Axes */}
+                      {Array.from({ length: 8 }, (_, i) => {
+                        const a = getA(i);
+                        return (
+                          <line key={i} x1={cx} y1={cy} x2={cx + R * Math.cos(a)} y2={cy + R * Math.sin(a)} stroke="#334155" strokeWidth={0.4} opacity={0.3} />
+                        );
+                      })}
+                      {/* Debut polygon */}
+                      <polygon
+                        points={poly(performanceRadar.debut)}
+                        fill="rgba(72, 79, 88, 0.12)"
+                        stroke="#484f58"
+                        strokeWidth={1.2}
+                        strokeDasharray="3 2"
+                        opacity={0.6}
+                      />
+                      {/* Current polygon */}
+                      <motion.polygon
+                        points={poly(performanceRadar.current)}
+                        fill="rgba(52, 211, 153, 0.15)"
+                        stroke="#34d399"
+                        strokeWidth={2}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.7 }}
+                      />
+                      {/* Labels */}
+                      {performanceRadar.keys.map((label, i) => {
+                        const a = getA(i);
+                        const lx = cx + (R + 16) * Math.cos(a);
+                        const ly = cy + (R + 16) * Math.sin(a);
+                        const cur = performanceRadar.current[i];
+                        const deb = performanceRadar.debut[i];
+                        const delta = cur - deb;
+                        return (
+                          <g key={label}>
+                            <text x={lx} y={ly - 2} textAnchor="middle" className="fill-[#8b949e]" fontSize={7} fontWeight={600}>
+                              {label}
+                            </text>
+                            <text x={lx} y={ly + 8} textAnchor="middle" fill={delta >= 0 ? '#34d399' : '#ef4444'} fontSize={8} fontWeight={700}>
+                              {delta >= 0 ? '+' : ''}{delta}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+              </svg>
+            </CardContent>
+            {/* Stats table */}
+            <div className="px-4 pb-3">
+              <div className="grid grid-cols-4 gap-1 text-center">
+                {performanceRadar.keys.map((key, i) => {
+                  const cur = performanceRadar.current[i];
+                  const deb = performanceRadar.debut[i];
+                  const delta = cur - deb;
+                  return (
+                    <div key={key} className="bg-[#21262d] rounded-lg p-1.5">
+                      <p className="text-[8px] text-[#8b949e]">{key}</p>
+                      <p className="text-xs font-bold text-[#c9d1d9] tabular-nums">{cur}</p>
+                      <p className={`text-[8px] tabular-nums ${delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {delta >= 0 ? '+' : ''}{delta}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Clutch Performance Tracker */}
+      {/* ============================================= */}
+      {clutchData && clutchData.clutchMatches.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.66 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                  <Flame className="h-3 w-3 text-red-400" /> Clutch Performances
+                </CardTitle>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-3 w-3 ${i < clutchData.stars ? 'text-amber-400' : 'text-[#30363d]'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 space-y-3">
+              {/* Summary stats row */}
+              <div className="grid grid-cols-4 gap-2">
+                {([
+                  { label: 'Clutch Goals', value: clutchData.clutchGoals, color: '#34d399' },
+                  { label: 'Clutch Assists', value: clutchData.clutchAssists, color: '#3b82f6' },
+                  { label: 'Late Goals (75\'+)', value: clutchData.lateGoals, color: '#f59e0b' },
+                  { label: 'Match Winners', value: clutchData.matchWinningGoals, color: '#a78bfa' },
+                ] as const).map((stat) => (
+                  <div key={stat.label} className="bg-[#21262d] rounded-lg p-2 text-center border border-[#30363d]">
+                    <p className="text-base font-bold tabular-nums" style={{ color: stat.color }}>{stat.value}</p>
+                    <p className="text-[8px] text-[#8b949e] leading-tight">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Clutch Rating */}
+              {clutchData.clutchRating > 0 && (
+                <div className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d] flex items-center justify-between">
+                  <span className="text-[10px] text-[#8b949e]">Clutch Rating</span>
+                  <span
+                    className="text-lg font-bold tabular-nums"
+                    style={{ color: getRatingColor(clutchData.clutchRating) }}
+                  >
+                    {clutchData.clutchRating.toFixed(1)}
+                  </span>
+                </div>
+              )}
+
+              {/* SVG Timeline */}
+              <svg width="100%" height={36} viewBox="0 0 300 36" className="select-none" preserveAspectRatio="xMidYMid meet">
+                {/* Timeline line */}
+                <line x1={10} y1={18} x2={290} y2={18} stroke="#30363d" strokeWidth={1} />
+                {clutchData.clutchMatches.map((m, i) => {
+                  const total = Math.max(clutchData.clutchMatches.length, 1);
+                  const x = 10 + (i / Math.max(total - 1, 1)) * 280;
+                  const dotColor = m.type === 'late_goal' ? '#ef4444' : m.type === 'motm' ? '#a78bfa' : '#34d399';
+                  return (
+                    <g key={i}>
+                      <circle cx={x} cy={18} r={5} fill={dotColor} opacity={0.8} stroke="#161b22" strokeWidth={1.5} />
+                      <text x={x} y={10} textAnchor="middle" fill="#8b949e" fontSize={5}>Wk{m.week}</text>
+                      <text x={x} y={32} textAnchor="middle" fill={dotColor} fontSize={6} fontWeight={600}>{m.rating.toFixed(1)}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Top 3 performances */}
+              {clutchData.top3.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[9px] text-[#484f58] font-semibold">Top Clutch Performances</p>
+                  {clutchData.top3.map((m, i) => (
+                    <div key={i} className="flex items-center justify-between bg-[#21262d] rounded-lg px-2.5 py-1.5 border border-[#30363d]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold text-amber-400">#{i + 1}</span>
+                        <span className="text-[10px] text-[#8b949e]">Week {m.week}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {m.goals > 0 && <span className="text-[9px] text-emerald-400">{m.goals}G</span>}
+                        {m.assists > 0 && <span className="text-[9px] text-blue-400">{m.assists}A</span>}
+                        <span className="text-xs font-bold tabular-nums" style={{ color: getRatingColor(m.rating) }}>{m.rating.toFixed(1)}</span>
+                        <Badge className={`text-[7px] px-1 py-0 border ${
+                          m.type === 'late_goal' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                          m.type === 'motm' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                          'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        }`}>
+                          {m.type === 'late_goal' ? 'Late Goal' : m.type === 'motm' ? 'MotM' : '8+ Rating'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Opponent Analysis Grid */}
+      {/* ============================================= */}
+      {opponentAnalysis && opponentAnalysis.some(o => o.apps > 0) && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.68 }}
+        >
+          <Card className="bg-[#161b22] border-[#30363d]">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+                <Shield className="h-3 w-3 text-blue-400" /> Opponent Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <div className="grid grid-cols-3 gap-1.5">
+                {opponentAnalysis.map((opp) => {
+                  const ratingColor = opp.rating >= 7.0 ? 'border-emerald-500/25 bg-emerald-500/5' : opp.rating >= 6.0 ? 'border-amber-500/25 bg-amber-500/5' : opp.apps > 0 ? 'border-red-500/25 bg-red-500/5' : 'border-[#30363d] bg-[#21262d]';
+                  const textColor = opp.rating >= 7.0 ? 'text-emerald-400' : opp.rating >= 6.0 ? 'text-amber-400' : opp.apps > 0 ? 'text-red-400' : 'text-[#484f58]';
+                  return (
+                    <div key={opp.label} className={`rounded-lg border p-2 ${ratingColor} ${opp.apps === 0 ? 'opacity-40' : ''}`}>
+                      <p className="text-[9px] text-[#8b949e] font-medium truncate">{opp.label}</p>
+                      {opp.apps > 0 ? (
+                        <div className="mt-1 space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] text-[#484f58]">MP</span>
+                            <span className="text-[9px] text-[#c9d1d9] tabular-nums font-semibold">{opp.apps}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] text-[#484f58]">G</span>
+                            <span className="text-[9px] text-emerald-400 tabular-nums font-semibold">{opp.goals}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] text-[#484f58]">A</span>
+                            <span className="text-[9px] text-blue-400 tabular-nums font-semibold">{opp.assists}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] text-[#484f58]">Rat</span>
+                            <span className={`text-[9px] tabular-nums font-bold ${textColor}`}>{opp.rating.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[8px] text-[#484f58] mt-1">No data</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend */}
+              <div className="flex items-center gap-3 mt-2 justify-center">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm bg-emerald-500/30" />
+                  <span className="text-[8px] text-[#484f58]">7.0+ Rating</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm bg-amber-500/30" />
+                  <span className="text-[8px] text-[#484f58]">6.0-6.9</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm bg-red-500/30" />
+                  <span className="text-[8px] text-[#484f58]">Below 6.0</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
