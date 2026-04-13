@@ -626,7 +626,8 @@ export type GameScreen =
   | 'match_day_live'
   | 'dynamic_difficulty'
   | 'career_legacy_profile'
-  | 'pre_season_camp';
+  | 'pre_season_camp'
+  | 'kit_customization';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
