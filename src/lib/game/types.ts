@@ -625,7 +625,8 @@ export type GameScreen =
   | 'potential_journey'
   | 'match_day_live'
   | 'dynamic_difficulty'
-  | 'career_legacy_profile';
+  | 'career_legacy_profile'
+  | 'pre_season_camp';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
