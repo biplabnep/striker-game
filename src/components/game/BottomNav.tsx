@@ -72,6 +72,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'career_legacy_profile', icon: <Crown className="h-5 w-5" />, label: 'Legacy' },
       { screen: 'career_retirement', icon: <Hourglass className="h-5 w-5" />, label: 'Retirement' },
       { screen: 'facilities_upgrades', icon: <Building2 className="h-5 w-5" />, label: 'Facilities' },
+      { screen: 'loan_system', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Loans' },
     ],
   },
   {
@@ -104,6 +105,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'world_football_news', icon: <Newspaper className="h-5 w-5" />, label: 'News' },
       { screen: 'post_match_analysis', icon: <FileText className="h-5 w-5" />, label: 'Analysis' },
       { screen: 'press_conference', icon: <Mic className="h-5 w-5" />, label: 'Press Conf' },
+      { screen: 'media_interview', icon: <Mic className="h-5 w-5" />, label: 'Interview' },
     ],
   },
   {

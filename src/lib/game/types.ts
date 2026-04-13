@@ -634,7 +634,9 @@ export type GameScreen =
   | 'tactical_formation_board'
   | 'career_retirement'
   | 'squad_rotation'
-  | 'facilities_upgrades';
+  | 'facilities_upgrades'
+  | 'media_interview'
+  | 'loan_system';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

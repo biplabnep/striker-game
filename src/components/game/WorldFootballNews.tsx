@@ -86,7 +86,7 @@ interface SocialReaction {
   retweets: number;
 }
 
-type FilterTab = 'all' | 'transfer' | 'match' | 'rumors' | 'international' | 'your_club';
+type FilterTab = 'all' | 'transfer' | 'results' | 'injuries' | 'rumours' | 'international';
 
 // ============================================================
 // Constants
@@ -132,6 +132,27 @@ const TIME_AGOS = [
   '1w ago',
 ];
 
+const SOURCE_COLORS: Record<string, string> = {
+  'BBC Sport': '#bb1919',
+  'Sky Sports': '#d4a017',
+  'The Athletic': '#f97316',
+  'ESPN FC': '#dc2626',
+  'ESPN': '#dc2626',
+  'Goal.com': '#16a34a',
+  'Marca': '#e11d48',
+  "L'Equipe": '#2563eb',
+  'Gazzetta dello Sport': '#059669',
+  'Kicker': '#dc2626',
+  'The Guardian': '#0f766e',
+  'Football Italia': '#059669',
+  'Bundesliga.com': '#dc2626',
+  'Premier League.com': '#3b0764',
+  'CBS Sports': '#1d4ed8',
+  'The Telegraph': '#475569',
+  'BBC Radio 5 Live': '#bb1919',
+  'Football Daily': '#64748b',
+};
+
 const CATEGORY_CONFIG: Record<NewsCategory, {
   label: string;
   badgeColor: string;
@@ -139,46 +160,52 @@ const CATEGORY_CONFIG: Record<NewsCategory, {
   iconBg: string;
   icon: React.ReactNode;
   imageBg: string;
+  borderColor: string;
 }> = {
   transfer: {
     label: 'Transfer',
-    badgeColor: 'bg-sky-500/15 border-sky-500/30',
-    badgeTextColor: 'text-sky-400',
-    iconBg: 'bg-sky-500/15',
-    imageBg: 'bg-sky-500/10',
-    icon: <ArrowUpDown className="h-3.5 w-3.5 text-sky-400" />,
+    badgeColor: 'bg-amber-500/15 border-amber-500/30',
+    badgeTextColor: 'text-amber-400',
+    iconBg: 'bg-amber-500/15',
+    imageBg: 'bg-amber-500/10',
+    icon: <ArrowUpDown className="h-3.5 w-3.5 text-amber-400" />,
+    borderColor: 'border-l-amber-400',
   },
   match: {
-    label: 'Match',
+    label: 'Result',
     badgeColor: 'bg-emerald-500/15 border-emerald-500/30',
     badgeTextColor: 'text-emerald-400',
     iconBg: 'bg-emerald-500/15',
     imageBg: 'bg-emerald-500/10',
     icon: <Trophy className="h-3.5 w-3.5 text-emerald-400" />,
+    borderColor: 'border-l-emerald-400',
   },
   player: {
-    label: 'Player',
-    badgeColor: 'bg-amber-500/15 border-amber-500/30',
-    badgeTextColor: 'text-amber-400',
-    iconBg: 'bg-amber-500/15',
-    imageBg: 'bg-amber-500/10',
-    icon: <UserCircle className="h-3.5 w-3.5 text-amber-400" />,
+    label: 'Injury',
+    badgeColor: 'bg-red-500/15 border-red-500/30',
+    badgeTextColor: 'text-red-400',
+    iconBg: 'bg-red-500/15',
+    imageBg: 'bg-red-500/10',
+    icon: <UserCircle className="h-3.5 w-3.5 text-red-400" />,
+    borderColor: 'border-l-red-400',
   },
   league: {
-    label: 'League',
-    badgeColor: 'bg-slate-500/15 border-slate-500/30',
-    badgeTextColor: 'text-slate-400',
-    iconBg: 'bg-slate-500/15',
-    imageBg: 'bg-slate-500/10',
-    icon: <TrendingUp className="h-3.5 w-3.5 text-slate-400" />,
-  },
-  international: {
-    label: 'International',
+    label: 'Rumour',
     badgeColor: 'bg-purple-500/15 border-purple-500/30',
     badgeTextColor: 'text-purple-400',
     iconBg: 'bg-purple-500/15',
     imageBg: 'bg-purple-500/10',
-    icon: <Globe className="h-3.5 w-3.5 text-purple-400" />,
+    icon: <TrendingUp className="h-3.5 w-3.5 text-purple-400" />,
+    borderColor: 'border-l-purple-400',
+  },
+  international: {
+    label: 'International',
+    badgeColor: 'bg-sky-500/15 border-sky-500/30',
+    badgeTextColor: 'text-sky-400',
+    iconBg: 'bg-sky-500/15',
+    imageBg: 'bg-sky-500/10',
+    icon: <Globe className="h-3.5 w-3.5 text-sky-400" />,
+    borderColor: 'border-l-sky-400',
   },
   youth: {
     label: 'Youth',
@@ -187,6 +214,7 @@ const CATEGORY_CONFIG: Record<NewsCategory, {
     iconBg: 'bg-cyan-500/15',
     imageBg: 'bg-cyan-500/10',
     icon: <Sprout className="h-3.5 w-3.5 text-cyan-400" />,
+    borderColor: 'border-l-cyan-400',
   },
   social: {
     label: 'Social',
@@ -195,6 +223,7 @@ const CATEGORY_CONFIG: Record<NewsCategory, {
     iconBg: 'bg-pink-500/15',
     imageBg: 'bg-pink-500/10',
     icon: <Heart className="h-3.5 w-3.5 text-pink-400" />,
+    borderColor: 'border-l-pink-400',
   },
   manager: {
     label: 'Manager',
@@ -203,16 +232,17 @@ const CATEGORY_CONFIG: Record<NewsCategory, {
     iconBg: 'bg-violet-500/15',
     imageBg: 'bg-violet-500/10',
     icon: <Shield className="h-3.5 w-3.5 text-violet-400" />,
+    borderColor: 'border-l-violet-400',
   },
 };
 
-const FILTER_TABS: { value: FilterTab; label: string }[] = [
+const FILTER_TABS: { value: FilterTab; label: string; category?: NewsCategory }[] = [
   { value: 'all', label: 'All' },
-  { value: 'transfer', label: 'Transfers' },
-  { value: 'match', label: 'Match Reports' },
-  { value: 'rumors', label: 'Rumors' },
-  { value: 'international', label: 'International' },
-  { value: 'your_club', label: 'Your Club' },
+  { value: 'transfer', label: 'Transfers', category: 'transfer' },
+  { value: 'results', label: 'Results', category: 'match' },
+  { value: 'injuries', label: 'Injuries', category: 'player' },
+  { value: 'rumours', label: 'Rumours' },
+  { value: 'international', label: 'International', category: 'international' },
 ];
 
 const SOCIAL_USERNAMES = [
@@ -1264,15 +1294,15 @@ function BreakingNewsBanner({ headlines }: { headlines: string[] }) {
 
   return (
     <motion.div
-      className="bg-red-600/15 border-b border-red-600/25"
+      className="bg-red-600/15 border-b-2 border-l-4 border-l-red-500 border-b-red-600/25"
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      animate={{ opacity: 1, borderLeftColor: ['#ef4444', '#991b1b'] }}
+      transition={{ duration: 0.3, repeat: Infinity, repeatType: 'reverse', borderLeftColor: { duration: 1.2, repeat: Infinity, repeatType: 'reverse' } }}
     >
       <div className="flex items-center max-w-lg mx-auto px-4 py-2 gap-3">
-        <div className="shrink-0 flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
+        <div className="shrink-0 flex items-center gap-1 bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
           <AlertTriangle className="h-3 w-3" />
-          LIVE
+          BREAKING
         </div>
         <div className="overflow-hidden flex-1">
           <div className="flex animate-breaking-ticker whitespace-nowrap">
@@ -1301,6 +1331,9 @@ function NewsCard({
   socialReactions?: SocialReaction[];
 }) {
   const config = CATEGORY_CONFIG[item.category];
+  const sourceColor = SOURCE_COLORS[item.source] ?? '#64748b';
+  const engagementScore = parseInt(item.reads) || 0;
+  const isTrending = item.isHot || engagementScore > 5000;
 
   return (
     <motion.div
@@ -1311,10 +1344,10 @@ function NewsCard({
         delay: index * 0.03,
         ease: 'easeOut',
       }}
-      className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      className={`bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden border-l-[3px] ${config.borderColor}`}
     >
       <div className="p-4">
-        {/* Top row: category badge + trending badge + related tag + time */}
+        {/* Top row: category badge + trending badge + related tag + time + reading time */}
         <div className="flex items-start justify-between mb-2.5 gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <Badge
@@ -1324,10 +1357,10 @@ function NewsCard({
               {config.icon}
               <span className="ml-1">{config.label}</span>
             </Badge>
-            {item.isHot && (
+            {isTrending && (
               <Badge className="text-[9px] px-1.5 py-0 bg-orange-500/15 text-orange-400 border border-orange-500/30">
                 <Flame className="h-3 w-3 mr-0.5" />
-                Trending
+                Hot
               </Badge>
             )}
             {item.relatedToClub && (
@@ -1337,15 +1370,19 @@ function NewsCard({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1 text-[#8b949e] shrink-0">
-            <Clock className="h-3 w-3" />
+          <div className="flex items-center gap-2 text-[#8b949e] shrink-0">
             <span className="text-[10px]">{item.timeAgo}</span>
+            <span className="text-[10px] text-[#484f58]">·</span>
+            <span className="text-[10px] flex items-center gap-0.5">
+              <BookmarkCheck className="h-2.5 w-2.5" />
+              {item.readTime}m read
+            </span>
           </div>
         </div>
 
         {/* Image placeholder (optional) */}
         {item.hasImage && (
-          <div className={`${config.imageBg} rounded-md h-24 flex items-center justify-center mb-3`}>
+          <div className={`${config.imageBg} rounded-lg h-24 flex items-center justify-center mb-3`}>
             <div className={`w-10 h-10 rounded-lg ${config.iconBg} flex items-center justify-center`}>
               {config.icon}
             </div>
@@ -1354,6 +1391,7 @@ function NewsCard({
 
         {/* Headline */}
         <h3 className="text-sm font-semibold text-[#c9d1d9] leading-snug mb-1.5">
+          {isTrending && <span className="mr-1">🔥</span>}
           {item.headline}
         </h3>
 
@@ -1367,22 +1405,24 @@ function NewsCard({
           <SocialReactions reactions={socialReactions} />
         )}
 
-        {/* Footer: source credibility + read time + engagement */}
+        {/* Footer: source badge + credibility + engagement */}
         <div className="flex items-center justify-between pt-2.5 border-t border-[#30363d]">
           <div className="flex items-center gap-1.5 min-w-0">
-            {/* Source credibility indicator */}
+            {/* Source badge with colored indicator */}
             <span
-              className={`w-1.5 h-1.5 rounded-sm shrink-0 ${
-                item.reliability === 'reliable' ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}
+              className="w-2 h-2 rounded-sm shrink-0"
+              style={{ backgroundColor: sourceColor }}
             />
             <span className="text-[10px] text-[#8b949e] font-medium truncate">
               {item.source}
             </span>
-            <span className="text-[10px] text-[#484f58] shrink-0">&middot;</span>
-            <span className="text-[10px] text-[#8b949e] shrink-0 flex items-center gap-0.5">
-              <BookmarkCheck className="h-2.5 w-2.5" />
-              {item.readTime} min
+            <span className={`text-[9px] px-1 py-0 rounded-sm shrink-0 ${
+              item.reliability === 'reliable'
+                ? 'bg-emerald-500/15 text-emerald-400'
+                : 'bg-amber-500/15 text-amber-400'
+            }`}
+            >
+              {item.reliability === 'reliable' ? 'Verified' : 'Unverified'}
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">

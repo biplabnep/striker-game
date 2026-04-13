@@ -39,6 +39,11 @@ import {
   MessageCircle,
   Clock,
   RotateCcw,
+  LayoutGrid,
+  Sun,
+  Moon,
+  User,
+  Crown,
 } from 'lucide-react';
 
 // ============================================================
@@ -54,6 +59,11 @@ interface CampTrainingType {
   improves: { attr: keyof PlayerAttributes; label: string; delta: [number, number] }[];
   energyCost: number;
   weekMultiplier: number[];
+  difficulty: 1 | 2 | 3;
+  duration: string;
+  intensityLabel: string;
+  intensityLevel: number;
+  focusAttr: string;
 }
 
 interface SlotAssignment {
@@ -77,6 +87,13 @@ interface CampState {
   ovrChange: number;
   fitnessChange: number;
   isComplete: boolean;
+  intensity: 'light' | 'moderate' | 'intense';
+}
+
+interface TeammateInfo {
+  name: string;
+  position: string;
+  overall: number;
 }
 
 const CAMP_WEEKS = 4;
@@ -95,6 +112,11 @@ const CAMP_TRAINING_TYPES: CampTrainingType[] = [
     ],
     energyCost: 2,
     weekMultiplier: [1.0, 1.1, 1.2, 1.3],
+    difficulty: 2,
+    duration: '45 min',
+    intensityLabel: 'Medium',
+    intensityLevel: 2,
+    focusAttr: 'Pace & Physical',
   },
   {
     id: 'technical',
@@ -109,11 +131,16 @@ const CAMP_TRAINING_TYPES: CampTrainingType[] = [
     ],
     energyCost: 3,
     weekMultiplier: [1.0, 1.1, 1.2, 1.3],
+    difficulty: 3,
+    duration: '60 min',
+    intensityLabel: 'High',
+    intensityLevel: 3,
+    focusAttr: 'Shooting & Passing',
   },
   {
     id: 'tactical',
     label: 'Tactical',
-    icon: <ClipboardList className="h-4 w-4" />,
+    icon: <LayoutGrid className="h-4 w-4" />,
     description: 'Positioning, game intelligence',
     color: '#8b5cf6',
     improves: [
@@ -122,6 +149,11 @@ const CAMP_TRAINING_TYPES: CampTrainingType[] = [
     ],
     energyCost: 1,
     weekMultiplier: [1.0, 1.1, 1.2, 1.3],
+    difficulty: 2,
+    duration: '40 min',
+    intensityLabel: 'Low',
+    intensityLevel: 1,
+    focusAttr: 'Passing & Defending',
   },
   {
     id: 'strength',
@@ -135,6 +167,11 @@ const CAMP_TRAINING_TYPES: CampTrainingType[] = [
     ],
     energyCost: 3,
     weekMultiplier: [1.0, 1.1, 1.2, 1.3],
+    difficulty: 3,
+    duration: '55 min',
+    intensityLabel: 'High',
+    intensityLevel: 3,
+    focusAttr: 'Physical & Defending',
   },
   {
     id: 'recovery',
@@ -145,6 +182,11 @@ const CAMP_TRAINING_TYPES: CampTrainingType[] = [
     improves: [],
     energyCost: 1,
     weekMultiplier: [1.0, 1.0, 1.0, 1.0],
+    difficulty: 1,
+    duration: '30 min',
+    intensityLabel: 'Low',
+    intensityLevel: 1,
+    focusAttr: 'Fitness Recovery',
   },
   {
     id: 'set_pieces',
@@ -157,6 +199,11 @@ const CAMP_TRAINING_TYPES: CampTrainingType[] = [
     ],
     energyCost: 2,
     weekMultiplier: [1.0, 1.15, 1.25, 1.4],
+    difficulty: 2,
+    duration: '50 min',
+    intensityLabel: 'Medium',
+    intensityLevel: 2,
+    focusAttr: 'Shooting',
   },
 ];
 
@@ -183,6 +230,14 @@ const CORE_ATTRS: CoreAttribute[] = ['pace', 'shooting', 'passing', 'dribbling',
 const OPACITY_FAST = { duration: 0.15 };
 const OPACITY_MED = { duration: 0.25 };
 
+const INTENSITY_CONFIG = {
+  light: { label: 'Light', color: '#10b981', bg: 'bg-emerald-500/15', border: 'border-emerald-500/40', xpMult: 0.6, riskLabel: 'Low fatigue risk', ovrBonus: 0 },
+  moderate: { label: 'Moderate', color: '#f59e0b', bg: 'bg-amber-500/15', border: 'border-amber-500/40', xpMult: 1.0, riskLabel: 'Moderate fatigue risk', ovrBonus: 0 },
+  intense: { label: 'Intense', color: '#ef4444', bg: 'bg-red-500/15', border: 'border-red-500/40', xpMult: 1.4, riskLabel: 'High fatigue risk', ovrBonus: 1 },
+};
+
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -205,6 +260,7 @@ function buildEmptyCampState(): CampState {
     ovrChange: 0,
     fitnessChange: 0,
     isComplete: false,
+    intensity: 'moderate',
   };
 }
 
@@ -215,31 +271,27 @@ function computeTrainingResult(
   playerAttrs: PlayerAttributes,
   playerFitness: number,
   playerAge: number,
+  intensity: 'light' | 'moderate' | 'intense' = 'moderate',
 ): TrainingResult {
   const gains: Partial<Record<keyof PlayerAttributes, number>> = {};
   let totalGainPoints = 0;
+  const intensityMult = INTENSITY_CONFIG[intensity].xpMult;
 
   for (const imp of trainingType.improves) {
     const currentVal = playerAttrs[imp.attr] ?? 50;
     const [minD, maxD] = imp.delta;
     const weekMult = trainingType.weekMultiplier[week - 1] ?? 1.0;
 
-    // Diminishing returns: higher stats = less gain
     const diminishFactor = Math.max(0.3, 1 - (currentVal / 120));
-
-    // Younger players gain more
     const ageFactor = playerAge < 20 ? 1.2 : playerAge < 25 ? 1.0 : playerAge < 30 ? 0.85 : 0.7;
-
-    // Fitness factor: lower fitness = less effective
     const fitnessFactor = playerFitness > 70 ? 1.0 : playerFitness > 40 ? 0.8 : 0.5;
 
-    // Deterministic base: use attribute value + week * training type char code sum for seed
     const seed = currentVal * 7 + week * 13 + trainingType.id.charCodeAt(0) * 3 + trainingType.id.charCodeAt(1) * 11;
-    const normalizedSeed = ((seed % 100) / 100); // 0-1
+    const normalizedSeed = ((seed % 100) / 100);
 
     const baseGain = minD + normalizedSeed * (maxD - minD);
-    const finalGain = Math.round(baseGain * weekMult * diminishFactor * ageFactor * fitnessFactor * 10) / 10;
-    const clampedGain = Math.max(0, Math.round(finalGain * 2) / 2); // round to 0.5 steps
+    const finalGain = Math.round(baseGain * weekMult * diminishFactor * ageFactor * fitnessFactor * intensityMult * 10) / 10;
+    const clampedGain = Math.max(0, Math.round(finalGain * 2) / 2);
 
     if (clampedGain > 0) {
       gains[imp.attr] = clampedGain;
@@ -247,7 +299,6 @@ function computeTrainingResult(
     }
   }
 
-  // Recovery special: fitness boost
   if (trainingType.id === 'recovery') {
     const fitnessBoost = Math.round((8 + week * 2) * (playerFitness < 60 ? 1.3 : 1.0));
     return {
@@ -259,10 +310,9 @@ function computeTrainingResult(
     };
   }
 
-  // OVR estimate (rough: average of gains * 0.4)
   const gainCount = Object.values(gains).length;
   const avgGain = gainCount > 0 ? totalGainPoints / gainCount : 0;
-  const ovrChange = Math.round(avgGain * 0.4 * 10) / 10;
+  const ovrChange = Math.round(avgGain * 0.4 * 10) / 10 + INTENSITY_CONFIG[intensity].ovrBonus;
 
   let quality: TrainingResult['quality'];
   let message: string;
@@ -277,10 +327,12 @@ function computeTrainingResult(
     message = 'Room for improvement. Keep pushing!';
   }
 
+  const fatigueCost = intensity === 'intense' ? Math.round(trainingType.energyCost * 2) : intensity === 'light' ? Math.round(trainingType.energyCost * 1) : Math.round(trainingType.energyCost * 1.5);
+
   return {
     gains,
     ovrChange,
-    fitnessChange: -Math.round(trainingType.energyCost * 1.5),
+    fitnessChange: -fatigueCost,
     quality,
     message,
   };
@@ -346,7 +398,6 @@ function generateCoachTips(
     });
   }
 
-  // Position-specific tips
   const attackers = ['ST', 'CF', 'LW', 'RW'];
   const defenders = ['CB', 'LB', 'RB'];
   const midfielders = ['CDM', 'CM', 'CAM', 'LM', 'RM'];
@@ -395,8 +446,6 @@ function generateCoachTips(
     }
   }
 
-  // Balance tip
-  const avg = entries.reduce((s, e) => s + e.val, 0) / entries.length;
   const spread = entries[entries.length - 1].val - entries[0].val;
   if (spread > 30) {
     tips.push({
@@ -421,6 +470,46 @@ function getPositionRecommendedFocus(position: string): string[] {
   if (goalkeepers.includes(position)) return ['strength', 'tactical', 'recovery'];
   return ['fitness', 'technical', 'tactical'];
 }
+
+// Deterministic camp MVP teammate
+function getCampMVP(playerName: string, totalGains: Partial<Record<keyof PlayerAttributes, number>>, ovrChange: number): TeammateInfo {
+  const names = ['Marcus Silva', 'Lucas Müller', 'Kenji Tanaka', 'Carlos Ruiz', 'Ahmed Hassan', 'James Cooper', 'Pieter van Berg', 'Antoine Dupont'];
+  let hash = 0;
+  for (let i = 0; i < playerName.length; i++) {
+    hash = ((hash << 5) - hash) + playerName.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % names.length;
+  const positions = ['CM', 'ST', 'CB', 'LW', 'CAM', 'CDM'];
+  return {
+    name: names[idx],
+    position: positions[Math.abs(hash + 3) % positions.length],
+    overall: 72 + Math.abs(hash % 15),
+  };
+}
+
+// Deterministic weekly schedule for SVG timeline
+function generateWeeklySchedule(): { day: string; drillId: string | null; isRest: boolean }[][] {
+  const schedules: { day: string; drillId: string | null; isRest: boolean }[][] = [];
+  const drillOrder = ['fitness', 'tactical', 'recovery', 'technical', 'strength', 'set_pieces', 'fitness'];
+
+  for (let w = 0; w < CAMP_WEEKS; w++) {
+    const weekSchedule: { day: string; drillId: string | null; isRest: boolean }[] = [];
+    let drillIdx = w * 2; // offset per week
+    for (let d = 0; d < 7; d++) {
+      if (d === 6) {
+        weekSchedule.push({ day: DAY_NAMES[d], drillId: null, isRest: true });
+      } else {
+        const drill = drillOrder[(drillIdx + d) % drillOrder.length];
+        weekSchedule.push({ day: DAY_NAMES[d], drillId: drill, isRest: false });
+      }
+    }
+    schedules.push(weekSchedule);
+  }
+  return schedules;
+}
+
+const WEEKLY_SCHEDULE = generateWeeklySchedule();
 
 // ============================================================
 // Sub-Components
@@ -464,6 +553,8 @@ function TrainingTypeCard({
   onTrain: () => void;
   disabled: boolean;
 }) {
+  const difficultyDots = Array.from({ length: training.difficulty }, (_, i) => i);
+
   return (
     <motion.div
       initial={{ opacity: 0.7 }}
@@ -473,7 +564,6 @@ function TrainingTypeCard({
       style={{ borderLeft: `3px solid ${training.color}` }}
     >
       <div className="flex items-start gap-3">
-        {/* Icon */}
         <div
           className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${training.color}18`, color: training.color }}
@@ -481,7 +571,6 @@ function TrainingTypeCard({
           {training.icon}
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[#c9d1d9]">{training.label}</span>
@@ -496,6 +585,51 @@ function TrainingTypeCard({
             )}
           </div>
           <p className="text-[11px] text-[#8b949e] mt-0.5">{training.description}</p>
+
+          {/* Enhanced meta row: difficulty + duration + focus */}
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            {/* Difficulty dots */}
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-[#484f58]">Difficulty:</span>
+              <div className="flex gap-0.5">
+                {difficultyDots.map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-sm"
+                    style={{ backgroundColor: i < training.difficulty ? training.color : '#30363d' }}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* Duration */}
+            <div className="flex items-center gap-1">
+              <Clock className="h-2.5 w-2.5 text-[#484f58]" />
+              <span className="text-[9px] text-[#484f58]">{training.duration}</span>
+            </div>
+            {/* Focus attribute */}
+            <Badge className="h-4 px-1.5 text-[9px] font-medium rounded-md border border-[#30363d] bg-[#21262d] text-[#8b949e]">
+              {training.focusAttr}
+            </Badge>
+          </div>
+
+          {/* Intensity bar */}
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[9px] text-[#484f58]">Intensity</span>
+              <span className="text-[9px] font-semibold" style={{ color: training.intensityLevel >= 3 ? '#ef4444' : training.intensityLevel >= 2 ? '#f59e0b' : '#10b981' }}>
+                {training.intensityLabel}
+              </span>
+            </div>
+            <div className="h-1 bg-[#21262d] rounded-sm overflow-hidden">
+              <div
+                className="h-full rounded-sm transition-all duration-500"
+                style={{
+                  width: `${(training.intensityLevel / 3) * 100}%`,
+                  backgroundColor: training.intensityLevel >= 3 ? '#ef4444' : training.intensityLevel >= 2 ? '#f59e0b' : '#10b981',
+                }}
+              />
+            </div>
+          </div>
 
           {/* Improves */}
           {training.improves.length > 0 && (
@@ -525,7 +659,6 @@ function TrainingTypeCard({
             </div>
           )}
 
-          {/* Train button */}
           {!isCompletedThisWeek && (
             <Button
               size="sm"
@@ -572,7 +705,6 @@ function ScheduleGrid({
         <div className="grid gap-2 min-w-[540px]" style={{ gridTemplateColumns: `repeat(${CAMP_WEEKS}, 1fr)` }}>
           {Array.from({ length: CAMP_WEEKS }, (_, wi) => (
             <div key={wi} className="space-y-1">
-              {/* Week header */}
               <div className={`flex items-center justify-between px-2 py-1.5 rounded-md border ${
                 wi === currentWeek - 1
                   ? 'border-emerald-500/40 bg-emerald-500/5'
@@ -592,13 +724,10 @@ function ScheduleGrid({
                 </span>
               </div>
 
-              {/* Slots */}
               {Array.from({ length: SLOTS_PER_WEEK }, (_, si) => {
                 const slot = schedule[wi]?.[si];
                 const trainingType = slot?.trainingId ? CAMP_TRAINING_TYPES.find(t => t.id === slot.trainingId) : null;
                 const isCurrentWeek = wi === currentWeek - 1;
-                const isPast = wi < currentWeek - 1;
-                const isFuture = wi > currentWeek - 1;
 
                 return (
                   <motion.button
@@ -615,7 +744,7 @@ function ScheduleGrid({
                           ? 'border-dashed border-[#484f58] bg-[#161b22] cursor-pointer hover:border-[#8b949e]'
                           : isCurrentWeek && slot?.trainingId
                             ? 'border-[#484f58] bg-[#161b22] cursor-pointer hover:border-[#8b949e]'
-                            : isFuture
+                            : wi > currentWeek - 1
                               ? 'border-[#21262d] bg-[#0d1117]/30 opacity-40 cursor-not-allowed'
                               : 'border-[#30363d] bg-[#0d1117]/50 cursor-default'
                     }`}
@@ -637,10 +766,6 @@ function ScheduleGrid({
                           )}
                         </div>
                         {slot.completed && <Check className="h-3 w-3 text-emerald-500 shrink-0" />}
-                      </div>
-                    ) : isFuture ? (
-                      <div className="flex items-center justify-center h-full">
-                        <Lock className="h-3 w-3 text-[#30363d]" />
                       </div>
                     ) : (
                       <div className="flex items-center justify-center h-full">
@@ -687,16 +812,12 @@ function TrainingResultsModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60" />
-
-      {/* Modal content */}
       <Card
         className="relative bg-[#161b22] border-[#30363d] rounded-lg w-full max-w-sm z-10"
         onClick={(e) => e.stopPropagation()}
       >
         <CardContent className="p-5 space-y-4">
-          {/* Close button */}
           <button
             onClick={onClose}
             className="absolute top-3 right-3 w-6 h-6 rounded-md bg-[#21262d] flex items-center justify-center hover:bg-[#30363d] transition-opacity"
@@ -704,7 +825,6 @@ function TrainingResultsModal({
             <X className="h-3.5 w-3.5 text-[#8b949e]" />
           </button>
 
-          {/* Header */}
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -718,12 +838,10 @@ function TrainingResultsModal({
             </div>
           </div>
 
-          {/* Quality badge */}
           <Badge className={`w-full justify-center h-7 text-xs font-bold rounded-md border ${qualityBadge.color}`}>
             {qualityBadge.label}
           </Badge>
 
-          {/* Skill gains */}
           {Object.keys(result.gains).length > 0 && (
             <div className="space-y-2">
               <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Skill Gains</span>
@@ -740,7 +858,6 @@ function TrainingResultsModal({
             </div>
           )}
 
-          {/* OVR change */}
           {result.ovrChange !== 0 && (
             <div className="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2">
               <div className="flex items-center gap-2">
@@ -753,7 +870,6 @@ function TrainingResultsModal({
             </div>
           )}
 
-          {/* Fitness change */}
           {result.fitnessChange !== 0 && (
             <div className="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2">
               <div className="flex items-center gap-2">
@@ -766,13 +882,11 @@ function TrainingResultsModal({
             </div>
           )}
 
-          {/* Message */}
           <div className="flex items-start gap-2 bg-[#21262d] rounded-md p-3">
             <MessageCircle className="h-4 w-4 text-[#8b949e] mt-0.5 shrink-0" />
             <p className="text-xs text-[#c9d1d9] leading-relaxed">{result.message}</p>
           </div>
 
-          {/* Close button */}
           <Button
             onClick={onClose}
             className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-md border-0"
@@ -792,6 +906,7 @@ function CampCompletionSummary({
   playerFitness,
   playerAge,
   season,
+  playerName,
   onReset,
 }: {
   campState: CampState;
@@ -800,13 +915,13 @@ function CampCompletionSummary({
   playerFitness: number;
   playerAge: number;
   season: number;
+  playerName: string;
   onReset: () => void;
 }) {
   const completedCount = campState.schedule.flat().filter(s => s.completed).length;
   const totalPossible = CAMP_WEEKS * SLOTS_PER_WEEK;
   const completionPct = Math.round((completedCount / totalPossible) * 100);
 
-  // Calculate projected new attributes
   const projectedAttrs: Partial<Record<keyof PlayerAttributes, number>> = {};
   for (const attr of CORE_ATTRS) {
     const totalGain = Object.entries(campState.totalGains)
@@ -818,12 +933,17 @@ function CampCompletionSummary({
   const newOvr = playerOvr + campState.ovrChange;
   const newFitness = Math.min(100, Math.max(0, Math.round((playerFitness + campState.fitnessChange) * 10) / 10));
 
+  const totalXP = Math.round(Object.values(campState.totalGains).reduce((s, v) => s + (v ?? 0), 0) * 10);
+
   const readinessScore = Math.min(100, Math.round(
     (completionPct * 0.4) + (newFitness * 0.3) + (campState.ovrChange > 0 ? 30 : 10)
   ));
 
   const readinessLabel = readinessScore >= 85 ? 'Fully Ready' : readinessScore >= 65 ? 'Good Shape' : readinessScore >= 45 ? 'Needs Work' : 'Underprepared';
   const readinessColor = readinessScore >= 85 ? '#10b981' : readinessScore >= 65 ? '#f59e0b' : readinessScore >= 45 ? '#f97316' : '#ef4444';
+
+  // Camp MVP
+  const mvp = getCampMVP(playerName, campState.totalGains, campState.ovrChange);
 
   return (
     <motion.div
@@ -845,7 +965,6 @@ function CampCompletionSummary({
 
       {/* Summary stats grid */}
       <div className="grid grid-cols-2 gap-2">
-        {/* Sessions completed */}
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3 text-center">
             <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Sessions</span>
@@ -853,7 +972,6 @@ function CampCompletionSummary({
           </CardContent>
         </Card>
 
-        {/* New OVR */}
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3 text-center">
             <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">New OVR</span>
@@ -865,7 +983,6 @@ function CampCompletionSummary({
           </CardContent>
         </Card>
 
-        {/* Fitness */}
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3 text-center">
             <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Fitness</span>
@@ -873,7 +990,6 @@ function CampCompletionSummary({
           </CardContent>
         </Card>
 
-        {/* Readiness */}
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-3 text-center">
             <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Readiness</span>
@@ -883,26 +999,59 @@ function CampCompletionSummary({
         </Card>
       </div>
 
-      {/* Attribute changes */}
+      {/* Total XP Gained */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-emerald-400" />
+            <span className="text-xs text-[#8b949e] font-medium">Total XP Gained</span>
+          </div>
+          <span className="text-lg font-bold text-emerald-400">+{totalXP} XP</span>
+        </CardContent>
+      </Card>
+
+      {/* Before/After Attribute Comparison Bars */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardContent className="p-3 space-y-2">
-          <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Attribute Changes</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Before → After Comparison</span>
+          </div>
+          <div className="space-y-2">
             {CORE_ATTRS.map((attr) => {
               const oldVal = playerAttrs[attr] ?? 50;
               const gain = campState.totalGains[attr] ?? 0;
               const newVal = Math.min(99, Math.round((oldVal + gain) * 10) / 10);
+              const barMaxWidth = 99;
               return (
-                <div key={attr} className="bg-[#0d1117] border border-[#30363d] rounded-md p-2 text-center">
-                  <span className="text-[10px] text-[#8b949e] font-medium">{ATTR_LABELS[attr]}</span>
-                  <div className="flex items-center justify-center gap-1 mt-0.5">
-                    <span className="text-sm text-[#484f58]">{Math.round(oldVal)}</span>
-                    {gain > 0 && (
-                      <>
-                        <ArrowUp className="h-2.5 w-2.5 text-emerald-400" />
-                        <span className="text-sm font-bold text-emerald-400">{newVal}</span>
-                      </>
-                    )}
+                <div key={attr} className="space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-[#8b949e] font-medium w-8">{ATTR_LABELS[attr]}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-[#484f58]">{Math.round(oldVal)}</span>
+                      {gain > 0 && (
+                        <>
+                          <ArrowUp className="h-2.5 w-2.5 text-emerald-400" />
+                          <span className="text-[10px] font-bold text-emerald-400">{newVal}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    {/* Before bar */}
+                    <div className="flex-1 h-2 bg-[#21262d] rounded-md overflow-hidden">
+                      <div className="h-full rounded-md bg-[#30363d]" style={{ width: `${(oldVal / barMaxWidth) * 100}%` }} />
+                    </div>
+                    {/* After bar */}
+                    <div className="flex-1 h-2 bg-[#21262d] rounded-md overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-md bg-emerald-500/50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                        style={{ width: `${(newVal / barMaxWidth) * 100}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               );
@@ -911,7 +1060,40 @@ function CampCompletionSummary({
         </CardContent>
       </Card>
 
-      {/* Reset button */}
+      {/* Fitness Change Card */}
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardContent className="p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Heart className="h-4 w-4 text-pink-400" />
+            <span className="text-xs text-[#8b949e] font-medium">Fitness Change</span>
+          </div>
+          <div className="text-right">
+            <span className="text-lg font-bold" style={{ color: campState.fitnessChange > 0 ? '#10b981' : '#ef4444' }}>
+              {campState.fitnessChange > 0 ? '+' : ''}{campState.fitnessChange}%
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Camp MVP */}
+      <Card className="bg-[#161b22] border-amber-500/30">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Crown className="h-4 w-4 text-amber-400" />
+            <span className="text-[10px] text-amber-400 uppercase tracking-wide font-medium">Camp MVP</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg font-bold text-amber-300">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#c9d1d9]">{mvp.name}</p>
+              <p className="text-[10px] text-[#8b949e]">{mvp.position} · OVR {mvp.overall}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Button
         onClick={onReset}
         variant="outline"
@@ -921,6 +1103,148 @@ function CampCompletionSummary({
         Restart Camp
       </Button>
     </motion.div>
+  );
+}
+
+// ============================================================
+// Weekly Training Schedule SVG Timeline
+// ============================================================
+function WeeklyScheduleTimeline({
+  currentWeek,
+  campState,
+}: {
+  currentWeek: number;
+  campState: CampState;
+}) {
+  const barWidth = 320;
+  const dayWidth = barWidth / 7;
+  const headerH = 20;
+  const bodyH = 36;
+
+  const weekSchedule = WEEKLY_SCHEDULE[currentWeek - 1] ?? WEEKLY_SCHEDULE[0];
+  const completedDrillIds = new Set(
+    campState.schedule[currentWeek - 1]
+      ?.filter(s => s.completed && s.trainingId)
+      .map(s => s.trainingId) ?? [],
+  );
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-3.5 w-3.5 text-[#8b949e]" />
+          <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Week {currentWeek} Schedule</span>
+        </div>
+        <svg viewBox={`0 0 ${barWidth} ${headerH + bodyH}`} className="w-full" style={{ overflow: 'visible' }}>
+          {/* Day columns */}
+          {DAY_NAMES.map((day, i) => {
+            const drillInfo = weekSchedule[i];
+            const isRest = drillInfo?.isRest ?? false;
+            const drill = drillInfo?.drillId ? CAMP_TRAINING_TYPES.find(t => t.id === drillInfo.drillId) : null;
+            const isCompleted = drillInfo?.drillId ? completedDrillIds.has(drillInfo.drillId) : false;
+            const x = i * dayWidth;
+
+            return (
+              <g key={day}>
+                {/* Header */}
+                <text x={x + dayWidth / 2} y={12} textAnchor="middle" className="fill-[#8b949e]" fontSize="8" fontWeight="600">
+                  {day}
+                </text>
+                {/* Body background */}
+                <rect x={x + 1} y={headerH} width={dayWidth - 2} height={bodyH - 2} rx="4"
+                  fill={isRest ? '#0d1117' : isCompleted ? '#0d1117' : '#161b22'}
+                  stroke="#30363d"
+                  strokeWidth={0.5}
+                />
+                {/* Drill content */}
+                {isRest ? (
+                  <g>
+                    <text x={x + dayWidth / 2} y={headerH + bodyH / 2 - 4} textAnchor="middle" className="fill-[#30363d]" fontSize="8">
+                      Rest
+                    </text>
+                    <text x={x + dayWidth / 2} y={headerH + bodyH / 2 + 8} textAnchor="middle" className="fill-[#484f58]" fontSize="6">
+                      😴
+                    </text>
+                  </g>
+                ) : drill ? (
+                  <g>
+                    <circle
+                      cx={x + dayWidth / 2}
+                      cy={headerH + bodyH / 2 - 2}
+                      r={8}
+                      fill={isCompleted ? `${drill.color}20` : `${drill.color}30`}
+                    />
+                    <text x={x + dayWidth / 2} y={headerH + bodyH / 2 - 1} textAnchor="middle"
+                      className={isCompleted ? 'fill-emerald-300' : 'fill-[#c9d1d9]'}
+                      fontSize="7" fontWeight="600"
+                    >
+                      {drill.label.slice(0, 3)}
+                    </text>
+                    {isCompleted && (
+                      <text x={x + dayWidth / 2} y={headerH + bodyH / 2 + 9} textAnchor="middle"
+                        className="fill-emerald-400" fontSize="6"
+                      >
+                        ✓
+                      </text>
+                    )}
+                  </g>
+                ) : (
+                  <text x={x + dayWidth / 2} y={headerH + bodyH / 2 - 2} textAnchor="middle"
+                    className="fill-[#30363d]" fontSize="7"
+                  >
+                    —
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Training Intensity Selector
+// ============================================================
+function IntensitySelector({
+  current,
+  onChange,
+}: {
+  current: 'light' | 'moderate' | 'intense';
+  onChange: (v: 'light' | 'moderate' | 'intense') => void;
+}) {
+  const options: ('light' | 'moderate' | 'intense')[] = ['light', 'moderate', 'intense'];
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Flame className="h-3.5 w-3.5 text-[#8b949e]" />
+          <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Training Intensity</span>
+        </div>
+        <div className="flex gap-1.5">
+          {options.map((opt) => {
+            const cfg = INTENSITY_CONFIG[opt];
+            const isActive = current === opt;
+            return (
+              <button
+                key={opt}
+                onClick={() => onChange(opt)}
+                className={`flex-1 py-2 px-2 rounded-lg border text-xs font-semibold transition-opacity flex flex-col items-center gap-1 ${
+                  isActive
+                    ? `${cfg.bg} ${cfg.color} ${cfg.border}`
+                    : 'bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:border-[#484f58]'
+                }`}
+              >
+                <span className="font-bold">{cfg.label}</span>
+                <span className="text-[9px] opacity-70">{cfg.riskLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -940,32 +1264,27 @@ export default function PreSeasonTrainingCamp() {
   const [resultModal, setResultModal] = useState<{ result: TrainingResult; training: CampTrainingType } | null>(null);
   const [activeTab, setActiveTab] = useState<'train' | 'schedule' | 'assessment' | 'tips'>('train');
 
-  // Derived
   const schedule = campState.schedule;
   const completedThisWeek = schedule[campState.currentWeek - 1]?.filter(s => s.completed).length ?? 0;
   const totalCompleted = schedule.flat().filter(s => s.completed).length ?? 0;
   const totalPossible = CAMP_WEEKS * SLOTS_PER_WEEK;
   const trainingLoadPct = Math.round((totalCompleted / totalPossible) * 100);
 
-  // Simulated fitness for camp (starts from player fitness, modified by camp activities)
   const campFitness = useMemo(() => {
     if (!player) return 70;
     return Math.max(0, Math.min(100, player.fitness + campState.fitnessChange));
   }, [player, campState.fitnessChange]);
 
-  // Coach tips
   const coachTips = useMemo(() => {
     if (!player) return [];
     return generateCoachTips(player.attributes, player.position);
   }, [player]);
 
-  // Recommended training for position
   const recommendedFocus = useMemo(() => {
     if (!player) return [];
     return getPositionRecommendedFocus(player.position);
   }, [player]);
 
-  // Expected total gains if all slots filled with recommended
   const expectedGrowth = useMemo(() => {
     if (!player) return {};
     const gains: Record<string, number> = {};
@@ -977,7 +1296,7 @@ export default function PreSeasonTrainingCamp() {
           const tt = trainingMap[slot.trainingId];
           if (!tt) continue;
           const weekIdx = schedule.indexOf(week);
-          const result = computeTrainingResult(tt, weekIdx + 1, player.attributes, campFitness, player.age);
+          const result = computeTrainingResult(tt, weekIdx + 1, player.attributes, campFitness, player.age, campState.intensity);
           for (const [attr, gain] of Object.entries(result.gains)) {
             gains[attr] = (gains[attr] ?? 0) + (gain ?? 0);
           }
@@ -985,12 +1304,11 @@ export default function PreSeasonTrainingCamp() {
       }
     }
 
-    // Also add future potential for unassigned slots
     for (const attr of CORE_ATTRS) {
       if (!gains[attr]) gains[attr] = 0;
     }
     return gains;
-  }, [player, schedule, campFitness]);
+  }, [player, schedule, campFitness, campState.intensity]);
 
   // Handlers
   const handleSelectSlot = useCallback((week: number, slot: number) => {
@@ -1024,7 +1342,6 @@ export default function PreSeasonTrainingCamp() {
     const training = CAMP_TRAINING_TYPES.find(t => t.id === trainingId);
     if (!training || !player) return;
 
-    // Check if already completed this type this week
     const currentWeekSchedule = campState.schedule[campState.currentWeek - 1];
     if (currentWeekSchedule?.some(s => s.trainingId === trainingId && s.completed)) return;
 
@@ -1034,14 +1351,13 @@ export default function PreSeasonTrainingCamp() {
       player.attributes,
       campFitness,
       player.age,
+      campState.intensity,
     );
 
-    // Update camp state
     setCampState(prev => {
       const newSchedule = prev.schedule.map(w => w.map(s => ({ ...s })));
       const weekSchedule = newSchedule[prev.currentWeek - 1];
 
-      // Find first available slot or assign to an existing matching slot
       let assigned = false;
       for (let i = 0; i < SLOTS_PER_WEEK; i++) {
         if (weekSchedule[i].trainingId === trainingId && !weekSchedule[i].completed) {
@@ -1061,7 +1377,6 @@ export default function PreSeasonTrainingCamp() {
         }
       }
 
-      // Accumulate gains
       const newTotalGains = { ...prev.totalGains };
       for (const [attr, gain] of Object.entries(result.gains)) {
         newTotalGains[attr as keyof PlayerAttributes] = (newTotalGains[attr as keyof PlayerAttributes] ?? 0) + (gain ?? 0);
@@ -1070,7 +1385,6 @@ export default function PreSeasonTrainingCamp() {
       const newOvrChange = prev.ovrChange + result.ovrChange;
       const newFitnessChange = prev.fitnessChange + result.fitnessChange;
 
-      // Check if week is complete
       const isWeekComplete = weekSchedule.every(s => s.completed);
       let newCurrentWeek = prev.currentWeek;
       let isComplete = prev.isComplete;
@@ -1092,9 +1406,8 @@ export default function PreSeasonTrainingCamp() {
       };
     });
 
-    // Show result modal
     setResultModal({ result, training });
-  }, [player, campState.currentWeek, campState.schedule, campFitness]);
+  }, [player, campState.currentWeek, campState.schedule, campFitness, campState.intensity]);
 
   const handleClearSlot = useCallback((week: number, slot: number) => {
     setCampState(prev => {
@@ -1110,7 +1423,10 @@ export default function PreSeasonTrainingCamp() {
     setResultModal(null);
   }, []);
 
-  // Guard: no player data
+  const handleIntensityChange = useCallback((v: 'light' | 'moderate' | 'intense') => {
+    setCampState(prev => ({ ...prev, intensity: v }));
+  }, []);
+
   if (!gameState || !player) {
     return (
       <div className="max-w-lg mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
@@ -1122,7 +1438,6 @@ export default function PreSeasonTrainingCamp() {
     );
   }
 
-  // Tab definitions
   const tabs = [
     { id: 'train' as const, label: 'Train', icon: <Dumbbell className="h-3.5 w-3.5" /> },
     { id: 'schedule' as const, label: 'Schedule', icon: <Calendar className="h-3.5 w-3.5" /> },
@@ -1132,7 +1447,6 @@ export default function PreSeasonTrainingCamp() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pb-24 space-y-4">
-      {/* Result Modal */}
       <AnimatePresence>
         {resultModal && (
           <TrainingResultsModal
@@ -1143,7 +1457,6 @@ export default function PreSeasonTrainingCamp() {
         )}
       </AnimatePresence>
 
-      {/* Training Picker (slot selected) */}
       <AnimatePresence>
         {selectedSlot && (
           <motion.div
@@ -1227,7 +1540,7 @@ export default function PreSeasonTrainingCamp() {
         </div>
       </motion.header>
 
-      {/* ---- Camp Overview Card ---- */}
+      {/* ---- Camp Progress Overview Card (Enhanced) ---- */}
       <motion.section
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -1235,34 +1548,51 @@ export default function PreSeasonTrainingCamp() {
       >
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardContent className="p-4 space-y-3">
-            {/* Week indicators */}
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Camp Progress</span>
-              <span className="text-[10px] text-[#8b949e]">{totalCompleted}/{totalPossible} sessions</span>
+            <div className="flex items-center gap-2 mb-1">
+              <Sun className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-sm font-semibold text-[#c9d1d9]">
+                Summer Training Camp {year}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              {Array.from({ length: CAMP_WEEKS }, (_, i) => {
-                const weekCompleted = schedule[i]?.every(s => s.completed) ?? false;
-                const isCurrent = i === campState.currentWeek - 1 && !campState.isComplete;
-                const hasSome = schedule[i]?.some(s => s.completed) ?? false;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <div className={`w-full h-1.5 rounded-md ${
-                      weekCompleted ? 'bg-emerald-500' :
-                      hasSome ? 'bg-emerald-500/40' :
-                      isCurrent ? 'bg-amber-400' :
-                      'bg-[#21262d]'
-                    }`} />
-                    <span className={`text-[9px] font-semibold ${
-                      weekCompleted ? 'text-emerald-400' :
-                      isCurrent ? 'text-amber-400' :
-                      'text-[#484f58]'
-                    }`}>
-                      {isCurrent ? `W${i + 1} ▸` : `W${i + 1}`}
-                    </span>
-                  </div>
-                );
-              })}
+            {/* Progress bar */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-[#8b949e]">Camp Completion</span>
+                <span className="text-[10px] text-[#8b949e] font-bold">{trainingLoadPct}%</span>
+              </div>
+              <div className="h-2.5 bg-[#21262d] rounded-md overflow-hidden">
+                <motion.div
+                  className="h-full rounded-md"
+                  initial={{ opacity: 0.6 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  style={{ width: `${trainingLoadPct}%`, backgroundColor: '#10b981' }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[10px] text-[#484f58]">
+                  {totalCompleted}/{totalPossible} sessions completed
+                </span>
+                <span className="text-[10px] text-[#484f58]">
+                  {CAMP_WEEKS - campState.currentWeek + (campState.isComplete ? 0 : 1)} days remaining
+                </span>
+              </div>
+            </div>
+            {/* Overall camp rating */}
+            <div className="flex items-center justify-between pt-2 border-t border-[#21262d]">
+              <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Overall Rating</span>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-3.5 w-3.5 ${
+                      i < Math.round((trainingLoadPct / 100) * 5)
+                        ? 'text-emerald-400'
+                        : 'text-[#30363d]'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
 
             {/* Training Load & Fitness */}
@@ -1299,7 +1629,6 @@ export default function PreSeasonTrainingCamp() {
               </div>
             </div>
 
-            {/* Fatigue risk */}
             {trainingLoadPct >= 75 && (
               <div className="flex items-center gap-2 pt-2 border-t border-[#21262d]">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
@@ -1308,6 +1637,15 @@ export default function PreSeasonTrainingCamp() {
             )}
           </CardContent>
         </Card>
+      </motion.section>
+
+      {/* ---- Training Intensity Selector ---- */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        <IntensitySelector current={campState.intensity} onChange={handleIntensityChange} />
       </motion.section>
 
       {/* ---- Tab Navigation ---- */}
@@ -1363,7 +1701,7 @@ export default function PreSeasonTrainingCamp() {
             </CardContent>
           </Card>
 
-          {/* Current player attributes summary */}
+          {/* Current player attributes */}
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
@@ -1413,7 +1751,6 @@ export default function PreSeasonTrainingCamp() {
             })}
           </div>
 
-          {/* All slots used message */}
           {completedThisWeek >= SLOTS_PER_WEEK && !campState.isComplete && (
             <Card className="bg-emerald-500/10 border-emerald-500/30">
               <CardContent className="p-3 flex items-center gap-3">
@@ -1440,13 +1777,15 @@ export default function PreSeasonTrainingCamp() {
           transition={OPACITY_MED}
           className="space-y-3"
         >
+          {/* Weekly Training Schedule SVG Timeline */}
+          <WeeklyScheduleTimeline currentWeek={campState.currentWeek} campState={campState} />
+
           <ScheduleGrid
             schedule={schedule}
             currentWeek={campState.currentWeek}
             onSelectSlot={handleSelectSlot}
           />
 
-          {/* Clear assigned but uncompleted slots */}
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -1459,7 +1798,6 @@ export default function PreSeasonTrainingCamp() {
             </Button>
           </div>
 
-          {/* Current week detail */}
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3 space-y-2">
               <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">
@@ -1509,7 +1847,6 @@ export default function PreSeasonTrainingCamp() {
           transition={OPACITY_MED}
           className="space-y-3"
         >
-          {/* Before/After comparison */}
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3 space-y-3">
               <div className="flex items-center gap-2">
@@ -1547,11 +1884,10 @@ export default function PreSeasonTrainingCamp() {
                         </>
                       )}
                     </div>
-                  );
-                })}
+                );
+              })}
               </div>
 
-              {/* OVR projection */}
               <div className="flex items-center justify-between pt-2 border-t border-[#21262d]">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-4 w-4 text-amber-400" />
@@ -1568,7 +1904,6 @@ export default function PreSeasonTrainingCamp() {
             </CardContent>
           </Card>
 
-          {/* Total camp gains summary */}
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3 space-y-2">
               <div className="flex items-center gap-2">
@@ -1599,7 +1934,6 @@ export default function PreSeasonTrainingCamp() {
             </CardContent>
           </Card>
 
-          {/* Position-specific recommendation */}
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3 space-y-2">
               <div className="flex items-center gap-2">
@@ -1638,7 +1972,6 @@ export default function PreSeasonTrainingCamp() {
             </CardContent>
           </Card>
 
-          {/* Risk indicators */}
           <Card className="bg-[#161b22] border border-amber-600/30">
             <CardContent className="p-3 space-y-2">
               <div className="flex items-center gap-2">
@@ -1712,7 +2045,6 @@ export default function PreSeasonTrainingCamp() {
             </CardContent>
           </Card>
 
-          {/* Player summary card for tips context */}
           <Card className="bg-[#161b22] border-[#30363d]">
             <CardContent className="p-3 space-y-2">
               <span className="text-[10px] text-[#8b949e] uppercase tracking-wide font-medium">Player Profile</span>
@@ -1753,7 +2085,7 @@ export default function PreSeasonTrainingCamp() {
         </motion.div>
       )}
 
-      {/* ---- Camp Completion Summary (replaces content when done) ---- */}
+      {/* ---- Camp Completion Summary ---- */}
       {campState.isComplete && (
         <div className="mt-4">
           <CampCompletionSummary
@@ -1763,6 +2095,7 @@ export default function PreSeasonTrainingCamp() {
             playerFitness={player.fitness}
             playerAge={player.age}
             season={currentSeason}
+            playerName={player.name}
             onReset={handleResetCamp}
           />
         </div>
