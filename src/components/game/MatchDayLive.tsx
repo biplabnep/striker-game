@@ -56,6 +56,26 @@ interface PlayerPerformance {
   distanceKm: number;
 }
 
+interface SetPieceStatsData {
+  cornersTotal: number;
+  cornersHome: number;
+  cornersAway: number;
+  cornerGoals: number;
+  freeKicksTotal: number;
+  freeKicksDangerous: number;
+  freeKickGoals: number;
+  throwInsHome: number;
+  throwInsAway: number;
+  homeClubName: string;
+  awayClubName: string;
+}
+
+interface HeatMapResult {
+  home: number[][];
+  away: number[][];
+  playerZone: { row: number; col: number } | null;
+}
+
 // ============================================================
 // Seeded random number generator
 // ============================================================
@@ -547,6 +567,488 @@ function PlayerRatingCard({
 }
 
 // ============================================================
+// Detailed Momentum Chart with Event Markers
+// ============================================================
+function DetailedMomentumChart({
+  history,
+  events,
+  currentMinute,
+  homeClubName,
+  awayClubName,
+}: {
+  history: { minute: number; home: number; away: number }[];
+  events: MatchEvent[];
+  currentMinute: number;
+  homeClubName: string;
+  awayClubName: string;
+}) {
+  if (history.length < 3) return null;
+
+  const w = 360;
+  const h = 110;
+  const padX = 30;
+  const padY = 12;
+  const padBottom = 18;
+  const trackW = w - padX - 10;
+  const trackH = h - padY - padBottom;
+  const midY = padY + trackH / 2;
+
+  const evtColorMap: Record<string, string> = {
+    goal: '#34d399',
+    yellow_card: '#fbbf24',
+    red_card: '#ef4444',
+    substitution: '#38bdf8',
+  };
+
+  const xForMinute = (min: number) => padX + (min / 90) * trackW;
+
+  // Build area paths for home (above midline) and away (below midline)
+  const homePoints: { x: number; y: number }[] = [];
+  const awayPoints: { x: number; y: number }[] = [];
+
+  for (let i = 0; i < history.length; i++) {
+    const x = padX + (i / (history.length - 1)) * trackW;
+    const d = history[i];
+    const diff = (d.home - d.away) / 2;
+    const maxSwing = trackH / 2 - 2;
+    const homeY = midY - (diff / 50) * maxSwing;
+    const awayY = midY + (diff / 50) * maxSwing;
+    homePoints.push({ x, y: Math.max(padY, Math.min(midY - 1, homeY)) });
+    awayPoints.push({ x, y: Math.max(midY + 1, Math.min(padY + trackH, awayY)) });
+  }
+
+  const homeLine = homePoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const awayLine = awayPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const homeArea = `${homeLine} L${homePoints[homePoints.length - 1].x},${midY} L${homePoints[0].x},${midY} Z`;
+  const awayArea = `${awayLine} L${awayPoints[awayPoints.length - 1].x},${midY} L${awayPoints[0].x},${midY} Z`;
+
+  // Momentum phase
+  const lastDiff = history[history.length - 1].home - history[history.length - 1].away;
+  let phaseLabel = 'Even Contest';
+  let phaseColor = '#8b949e';
+  if (lastDiff > 15) { phaseLabel = 'Home Dominating'; phaseColor = '#34d399'; }
+  else if (lastDiff < -15) { phaseLabel = 'Away Dominating'; phaseColor = '#ef4444'; }
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '110px' }}>
+        <rect x="0" y="0" width={w} height={h} rx="6" fill="#0d1117" />
+        <line x1={padX} y1={midY} x2={padX + trackW} y2={midY} stroke="#21262d" strokeWidth="0.5" strokeDasharray="3,2" />
+        <line x1={xForMinute(45)} y1={padY - 2} x2={xForMinute(45)} y2={padY + trackH + 2} stroke="#484f58" strokeWidth="0.5" strokeDasharray="2,3" />
+        {[0, 15, 30, 45, 60, 75, 90].map(min => (
+          <text key={min} x={xForMinute(min)} y={h - 4} textAnchor="middle" fill="#484f58" fontSize="6" fontFamily="monospace">{min}&apos;</text>
+        ))}
+        <path d={homeArea} fill="#34d399" opacity="0.1" />
+        <path d={homeLine} fill="none" stroke="#34d399" strokeWidth="1.2" opacity="0.7" />
+        <path d={awayArea} fill="#ef4444" opacity="0.1" />
+        <path d={awayLine} fill="none" stroke="#ef4444" strokeWidth="1.2" opacity="0.7" />
+        {events.filter(e => ['goal', 'yellow_card', 'red_card'].includes(e.type)).map((e, i) => {
+          const x = xForMinute(e.minute);
+          const color = evtColorMap[e.type] || '#8b949e';
+          return (
+            <g key={`dm-evt-${i}`}>
+              <line x1={x} y1={padY - 2} x2={x} y2={padY + trackH + 2} stroke={color} strokeWidth="0.6" opacity="0.5" strokeDasharray="2,2" />
+              <circle cx={x} cy={e.team === 'home' ? padY + 3 : padY + trackH - 3} r="2.5" fill={color} opacity="0.9" />
+            </g>
+          );
+        })}
+        {currentMinute > 0 && currentMinute <= 90 && (
+          <line x1={xForMinute(currentMinute)} y1={padY} x2={xForMinute(currentMinute)} y2={padY + trackH} stroke="white" strokeWidth="0.6" opacity="0.3" />
+        )}
+        <text x={padX - 4} y={padY + 6} textAnchor="end" fill="#34d399" fontSize="6" fontFamily="monospace" opacity="0.8">HOME</text>
+        <text x={padX - 4} y={padY + trackH - 2} textAnchor="end" fill="#ef4444" fontSize="6" fontFamily="monospace" opacity="0.8">AWAY</text>
+      </svg>
+      <div className="flex items-center justify-between mt-1 px-1">
+        <span className="text-[8px] text-[#484f58] font-mono">{homeClubName} vs {awayClubName}</span>
+        <span className="text-[9px] font-bold tracking-wider" style={{ color: phaseColor }}>{phaseLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Player Live Stats Grid with Sparklines
+// ============================================================
+function PlayerLiveStatsGrid({
+  performance,
+  matchMinute,
+  playerName,
+  playerPos,
+}: {
+  performance: PlayerPerformance;
+  matchMinute: number;
+  playerName: string;
+  playerPos: string;
+}) {
+  const passAccuracy = performance.passesAttempted > 0
+    ? Math.round((performance.passesCompleted / performance.passesAttempted) * 100)
+    : 0;
+
+  const seed = matchMinute * 7 + performance.passesCompleted * 3;
+  const sRng = seededRandom(Math.abs(seed) + 1);
+
+  const totalSprints = Math.round(performance.distanceKm * 2.3);
+  const totalKeyPasses = Math.round(performance.assists * 4 + sRng() * 3);
+
+  const intervals = 6;
+  const genSparkline = (total: number): number[] => {
+    const data: number[] = [];
+    let acc = 0;
+    for (let i = 0; i < intervals; i++) {
+      const fraction = (i + 1) / intervals;
+      const jitter = 0.6 + sRng() * 0.8;
+      acc = Math.round(total * fraction * jitter);
+      data.push(acc);
+    }
+    return data;
+  };
+
+  const stats: { label: string; value: string; seasonAvg: number; current: number; sparkline: number[] }[] = [
+    { label: 'Passes', value: `${performance.passesCompleted}`, seasonAvg: 28, current: performance.passesCompleted, sparkline: genSparkline(performance.passesCompleted) },
+    { label: 'Accuracy', value: `${passAccuracy}%`, seasonAvg: 82, current: passAccuracy, sparkline: genSparkline(passAccuracy) },
+    { label: 'Distance', value: `${performance.distanceKm}km`, seasonAvg: 10.5, current: Math.round(performance.distanceKm * 10) / 10, sparkline: genSparkline(Math.round(performance.distanceKm * 10)) },
+    { label: 'Sprints', value: `${totalSprints}`, seasonAvg: 22, current: totalSprints, sparkline: genSparkline(totalSprints) },
+    { label: 'Tackles', value: `${performance.tackles}`, seasonAvg: 3, current: performance.tackles, sparkline: genSparkline(performance.tackles) },
+    { label: 'Key Passes', value: `${totalKeyPasses}`, seasonAvg: 2, current: totalKeyPasses, sparkline: genSparkline(totalKeyPasses) },
+  ];
+
+  const isOnFire = performance.rating >= 8.0;
+  const isStruggling = performance.rating < 5.0;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[#c9d1d9] font-semibold">{playerName}</span>
+          <span className="text-[8px] text-[#8b949e]">{playerPos}</span>
+        </div>
+        {isOnFire && (
+          <Badge className="text-[8px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-bold gap-1">
+            <Flame className="w-2.5 h-2.5" /> ON FIRE
+          </Badge>
+        )}
+        {isStruggling && (
+          <Badge className="text-[8px] px-1.5 py-0 bg-red-500/20 text-red-400 border-red-500/30 font-bold">STRUGGLING</Badge>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {stats.map(stat => {
+          const aboveAvg = stat.current >= stat.seasonAvg;
+          const maxSpark = Math.max(...stat.sparkline, 1);
+          const sparkW = 48;
+          const sparkH = 16;
+          const sparkPts = stat.sparkline.map((v, i) => {
+            const x = (i / (stat.sparkline.length - 1)) * sparkW;
+            const y = sparkH - (v / maxSpark) * (sparkH - 2) - 1;
+            return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+          }).join(' ');
+
+          return (
+            <div key={stat.label} className="bg-[#21262d] rounded-lg p-2">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[8px] text-[#484f58] uppercase font-semibold">{stat.label}</span>
+                <span className={`text-[7px] font-bold ${aboveAvg ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {aboveAvg ? '▲' : '▼'} avg
+                </span>
+              </div>
+              <p className="text-sm font-bold text-[#c9d1d9] mb-0.5">{stat.value}</p>
+              <svg viewBox={`0 0 ${sparkW} ${sparkH}`} className="w-full" style={{ height: '16px' }}>
+                <path d={sparkPts} fill="none" stroke={aboveAvg ? '#34d399' : '#ef4444'} strokeWidth="1.2" opacity="0.7" />
+                {stat.sparkline.map((v, i) => {
+                  const x = (i / (stat.sparkline.length - 1)) * sparkW;
+                  const y = sparkH - (v / maxSpark) * (sparkH - 2) - 1;
+                  return <circle key={i} cx={x} cy={y} r="1" fill={aboveAvg ? '#34d399' : '#ef4444'} opacity="0.6" />;
+                })}
+              </svg>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Detailed Match Event Timeline
+// ============================================================
+function DetailedEventTimeline({
+  events,
+  homeClubName,
+  awayClubName,
+}: {
+  events: MatchEvent[];
+  homeClubName: string;
+  awayClubName: string;
+}) {
+  if (events.length === 0) return null;
+
+  const goalTypes = ['Header', 'Volley', 'Penalty', 'Free Kick', 'Left Foot', 'Right Foot', 'Tap-in'];
+  const cardReasons = ['Reckless tackle', 'Persistent fouling', 'Dissent', 'Time wasting', 'Professional foul'];
+  const injurySeverities = ['Minor knock', 'Moderate', 'Potential concussion'];
+
+  const enrichedEvents = events.map((e, idx) => {
+    const d: Record<string, string> = {};
+    if (e.type === 'goal' || e.type === 'own_goal') {
+      d.goalType = goalTypes[idx % goalTypes.length];
+      d.assist = idx > 0 ? 'Assist by teammate' : '';
+      d.scorer = e.playerName || 'Unknown';
+      d.teamLabel = e.team === 'home' ? homeClubName : awayClubName;
+    } else if (e.type === 'yellow_card' || e.type === 'red_card' || e.type === 'second_yellow') {
+      d.reason = cardReasons[idx % cardReasons.length];
+      d.player = e.playerName || 'Unknown';
+      d.teamLabel = e.team === 'home' ? homeClubName : awayClubName;
+    } else if (e.type === 'substitution') {
+      d.playerOff = e.playerName || 'Player';
+      d.playerOn = 'Substitute';
+      d.teamLabel = e.team === 'home' ? homeClubName : awayClubName;
+    } else if (e.type === 'injury') {
+      d.player = e.playerName || 'Unknown';
+      d.severity = injurySeverities[idx % injurySeverities.length];
+      d.teamLabel = e.team === 'home' ? homeClubName : awayClubName;
+    } else {
+      d.teamLabel = e.team === 'home' ? homeClubName : awayClubName;
+    }
+    return { event: e, detail: d };
+  });
+
+  const typeColorMap: Record<string, string> = {
+    goal: '#34d399',
+    own_goal: '#34d399',
+    yellow_card: '#fbbf24',
+    red_card: '#ef4444',
+    second_yellow: '#ef4444',
+    substitution: '#38bdf8',
+    injury: '#fb923c',
+    save: '#a78bfa',
+  };
+
+  const typeLabelMap: Record<string, string> = {
+    goal: 'GOAL',
+    own_goal: 'OWN GOAL',
+    yellow_card: 'YELLOW',
+    red_card: 'RED',
+    second_yellow: '2ND YLW',
+    substitution: 'SUB',
+    injury: 'INJURY',
+    save: 'SAVE',
+  };
+
+  return (
+    <div className="space-y-0">
+      {enrichedEvents.map(({ event: e, detail: d }, i) => {
+        const color = typeColorMap[e.type] || '#8b949e';
+        const label = typeLabelMap[e.type] || e.type;
+
+        let description = '';
+        if (e.type === 'goal' || e.type === 'own_goal') {
+          description = `${d.scorer} (${d.goalType})${d.assist ? ` — ${d.assist}` : ''}`;
+        } else if (e.type === 'yellow_card' || e.type === 'red_card' || e.type === 'second_yellow') {
+          description = `${d.player} — ${d.reason}`;
+        } else if (e.type === 'substitution') {
+          description = `${d.playerOff} \u2192 ${d.playerOn}`;
+        } else if (e.type === 'injury') {
+          description = `${d.player} — ${d.severity}`;
+        } else {
+          description = e.playerName || e.detail || '';
+        }
+
+        return (
+          <div key={`det-evt-${i}`} className="flex items-start gap-2.5 py-1.5 relative">
+            <div className="absolute left-[11px] top-5 bottom-0 w-px bg-[#21262d]" />
+            <div
+              className="w-[22px] h-[22px] rounded-md flex items-center justify-center text-[8px] font-bold text-white shrink-0 relative z-10"
+              style={{ backgroundColor: color }}
+            >
+              {e.minute}&apos;
+            </div>
+            <Badge
+              className="text-[7px] px-1.5 py-0 h-4 font-bold shrink-0 border"
+              style={{
+                color,
+                backgroundColor: `${color}15`,
+                borderColor: `${color}40`,
+              }}
+            >
+              {label}
+            </Badge>
+            <div className="flex-1 min-w-0 border-l-2 pl-2 py-0.5" style={{ borderColor: `${color}40` }}>
+              <p className="text-[10px] text-[#c9d1d9] leading-snug truncate">{description}</p>
+              {d.teamLabel && (
+                <span className="text-[8px] text-[#484f58]">{d.teamLabel}</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================
+// Set-Piece Statistics Panel
+// ============================================================
+function SetPieceStatsPanel({ stats }: { stats: SetPieceStatsData }) {
+  const sections: { title: string; items: { label: string; home: number; away: number }[] }[] = [
+    {
+      title: 'Corners',
+      items: [
+        { label: 'Total', home: stats.cornersHome, away: stats.cornersAway },
+        { label: 'Goals', home: Math.round(stats.cornerGoals / 2), away: stats.cornerGoals - Math.round(stats.cornerGoals / 2) },
+      ],
+    },
+    {
+      title: 'Free Kicks',
+      items: [
+        { label: 'Total', home: Math.round(stats.freeKicksTotal / 2), away: stats.freeKicksTotal - Math.round(stats.freeKicksTotal / 2) },
+        { label: 'Dangerous', home: Math.round(stats.freeKicksDangerous / 2), away: stats.freeKicksDangerous - Math.round(stats.freeKicksDangerous / 2) },
+        { label: 'Goals', home: Math.round(stats.freeKickGoals / 2), away: stats.freeKickGoals - Math.round(stats.freeKickGoals / 2) },
+      ],
+    },
+    {
+      title: 'Throw-ins',
+      items: [
+        { label: 'Total', home: stats.throwInsHome, away: stats.throwInsAway },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      {sections.map(section => (
+        <div key={section.title}>
+          <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider mb-1.5">{section.title}</p>
+          {section.items.map(item => {
+            const maxVal = Math.max(item.home, item.away, 1);
+            const homeW = (item.home / maxVal) * 40;
+            const awayW = (item.away / maxVal) * 40;
+            return (
+              <div key={item.label} className="flex items-center gap-1 text-[10px] mb-1.5">
+                <span className="w-6 text-right font-mono font-bold text-[#c9d1d9]">{item.home}</span>
+                <div className="flex-1 flex items-center">
+                  <div className="flex-1 flex justify-end">
+                    <div className="h-2 bg-[#38bdf8] rounded-l-sm" style={{ width: `${homeW}%`, opacity: homeW > 0 ? 0.8 : 0 }} />
+                  </div>
+                  <span className="w-12 text-center text-[8px] text-[#484f58] font-semibold uppercase">{item.label}</span>
+                  <div className="flex-1">
+                    <div className="h-2 bg-[#fb7185] rounded-r-sm" style={{ width: `${awayW}%`, opacity: awayW > 0 ? 0.8 : 0 }} />
+                  </div>
+                </div>
+                <span className="w-6 text-left font-mono font-bold text-[#c9d1d9]">{item.away}</span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// Team Heat Map Comparison
+// ============================================================
+function TeamHeatMapComparison({
+  homeData,
+  awayData,
+  homeName,
+  awayName,
+  playerHighlight,
+}: {
+  homeData: number[][];
+  awayData: number[][];
+  homeName: string;
+  awayName: string;
+  playerHighlight: { row: number; col: number } | null;
+}) {
+  const rows = homeData.length;
+  const cols = homeData[0]?.length || 6;
+  const cellW = 28;
+  const cellH = 18;
+  const labelW = 30;
+  const svgW = labelW + cols * cellW;
+  const svgH = rows * cellH;
+  const zoneLabels = ['Def', 'Def W', 'Mid C', 'Mid W', 'Att C', 'Att W'];
+
+  function renderGrid(data: number[][], highlight: { row: number; col: number } | null, offsetX: number) {
+    return data.map((row, r) => row.map((val, c) => {
+      const intensity = Math.min(val / 10, 1);
+      const fillR = Math.round(16 + intensity * (52 - 16));
+      const fillG = Math.round(185 + intensity * (211 - 185));
+      const fillB = Math.round(129 + intensity * (153 - 129));
+      const isPlayer = highlight && highlight.row === r && highlight.col === c;
+      return (
+        <g key={`${r}-${c}-${offsetX}`}>
+          <rect
+            x={offsetX + c * cellW + 1}
+            y={r * cellH + 1}
+            width={cellW - 2}
+            height={cellH - 2}
+            rx="2"
+            fill={`rgb(${fillR},${fillG},${fillB})`}
+            opacity={0.3 + intensity * 0.7}
+          />
+          {isPlayer && (
+            <rect
+              x={offsetX + c * cellW}
+              y={r * cellH}
+              width={cellW}
+              height={cellH}
+              rx="3"
+              fill="none"
+              stroke="#fbbf24"
+              strokeWidth="1.5"
+              opacity="0.8"
+            />
+          )}
+        </g>
+      );
+    }));
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between mb-1 px-1">
+        <span className="text-[8px] text-[#38bdf8] font-bold uppercase tracking-wider">{homeName}</span>
+        <span className="text-[8px] text-[#fb7185] font-bold uppercase tracking-wider">{awayName}</span>
+      </div>
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ height: `${svgH}px` }}>
+            <rect x="0" y="0" width={svgW} height={svgH} rx="4" fill="#0d1117" />
+            {zoneLabels.map((label, i) => (
+              <text key={label} x={4} y={i * cellH + cellH / 2 + 3} fill="#484f58" fontSize="5.5" fontFamily="monospace">{label}</text>
+            ))}
+            {renderGrid(homeData, playerHighlight, labelW)}
+          </svg>
+        </div>
+        <div className="flex-1">
+          <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ height: `${svgH}px` }}>
+            <rect x="0" y="0" width={svgW} height={svgH} rx="4" fill="#0d1117" />
+            {zoneLabels.map((label, i) => (
+              <text key={label} x={4} y={i * cellH + cellH / 2 + 3} fill="#484f58" fontSize="5.5" fontFamily="monospace">{label}</text>
+            ))}
+            {renderGrid(awayData, playerHighlight, labelW)}
+          </svg>
+        </div>
+      </div>
+      <div className="flex items-center justify-center gap-3 mt-1">
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: 'rgb(16,185,129)', opacity: 0.3 }} />
+          <span className="text-[7px] text-[#484f58]">Low</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: 'rgb(52,211,153)', opacity: 1 }} />
+          <span className="text-[7px] text-[#484f58]">High</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded-sm border border-[#fbbf24] inline-block" />
+          <span className="text-[7px] text-[#484f58]">You</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function MatchDayLive() {
@@ -1022,6 +1524,62 @@ export default function MatchDayLive() {
   const homeLeaguePos = Math.max(1, Math.round(20 - (homeClub?.quality ?? 50) / 5));
   const awayLeaguePos = Math.max(1, Math.round(20 - (awayClub?.quality ?? 50) / 5));
 
+  // ============================================================
+  // Computed Data for Enhanced Sections
+  // ============================================================
+  const setPieceStatsData = useMemo((): SetPieceStatsData => {
+    const cornerGoals = matchEvents.filter(e => e.type === 'goal' && e.detail?.includes('corner')).length;
+    const freeKickGoals = matchEvents.filter(e => e.type === 'goal' && e.detail?.includes('free')).length;
+    return {
+      cornersTotal: liveStats.homeCorners + liveStats.awayCorners,
+      cornersHome: liveStats.homeCorners,
+      cornersAway: liveStats.awayCorners,
+      cornerGoals: Math.max(cornerGoals, Math.round((liveStats.homeCorners + liveStats.awayCorners) * 0.08)),
+      freeKicksTotal: liveStats.homeFouls + liveStats.awayFouls,
+      freeKicksDangerous: Math.round((liveStats.homeFouls + liveStats.awayFouls) * 0.35),
+      freeKickGoals: Math.max(freeKickGoals, Math.round((liveStats.homeFouls + liveStats.awayFouls) * 0.04)),
+      throwInsHome: Math.round(matchMinute * 0.7 + liveStats.homePasses * 0.03),
+      throwInsAway: Math.round(matchMinute * 0.7 + liveStats.awayPasses * 0.03),
+      homeClubName: homeClub?.shortName || homeClub?.name || 'Home',
+      awayClubName: awayClub?.shortName || awayClub?.name || 'Away',
+    };
+  }, [liveStats, matchEvents, matchMinute, homeClub, awayClub]);
+
+  const heatMapData = useMemo((): HeatMapResult => {
+    const seedVal = (homeClub?.quality ?? 50) * 13 + (awayClub?.quality ?? 50) * 7 + matchMinute * 3;
+    const hRng = seededRandom(Math.abs(seedVal) + 1);
+    const aRng = seededRandom(Math.abs(seedVal) + 99);
+
+    const buildGrid = (rng: () => number, qualityBias: number): number[][] => {
+      const grid: number[][] = [];
+      for (let r = 0; r < 4; r++) {
+        const row: number[] = [];
+        for (let c = 0; c < 6; c++) {
+          let base = rng() * 6 + qualityBias * 0.04;
+          if (r >= 1 && r <= 2) base += 2;
+          if (c >= 2 && c <= 3) base += 1.5;
+          row.push(Math.round(base * 10) / 10);
+        }
+        grid.push(row);
+      }
+      return grid;
+    };
+
+    const hGrid = buildGrid(hRng, homeClub?.quality ?? 50);
+    const aGrid = buildGrid(aRng, awayClub?.quality ?? 50);
+
+    let playerZone: { row: number; col: number } | null = null;
+    const playerPos = playerPositionIndex !== null
+      ? (FORMATIONS[homeClub?.formation || '4-3-3'] || FORMATIONS['4-3-3'])[playerPositionIndex]?.pos
+      : null;
+    if (playerPos === 'GK') playerZone = { row: 3, col: 2 };
+    else if (['CB', 'LB', 'RB'].includes(playerPos || '')) playerZone = { row: 2, col: 2 };
+    else if (['CM', 'CDM', 'LM', 'RM'].includes(playerPos || '')) playerZone = { row: 1, col: 3 };
+    else if (['ST', 'LW', 'RW', 'CAM'].includes(playerPos || '')) playerZone = { row: 0, col: 3 };
+
+    return { home: hGrid, away: aGrid, playerZone };
+  }, [homeClub, awayClub, matchMinute, playerPositionIndex]);
+
   if (!gameState || !homeClub || !awayClub) return null;
 
   const hFormation = homeClub.formation || '4-3-3';
@@ -1351,6 +1909,71 @@ export default function MatchDayLive() {
             <MomentumAreaChart history={momentumHistory} />
           </div>
         )}
+
+        {/* Detailed Momentum Chart */}
+        {momentumHistory.length > 3 && (
+          <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3 space-y-1">
+            <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <TrendingUp className="w-3 h-3" /> Live Momentum Analysis
+            </p>
+            <DetailedMomentumChart
+              history={momentumHistory}
+              events={visibleEvents}
+              currentMinute={matchMinute}
+              homeClubName={homeClub.shortName || homeClub.name}
+              awayClubName={awayClub.shortName || awayClub.name}
+            />
+          </div>
+        )}
+
+        {/* Player Live Stats Grid */}
+        <div className="bg-[#161b22] rounded-lg border border-[#fbbf24]/30 p-3">
+          <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5 mb-2">
+            <Target className="w-3 h-3" /> Your Match Stats
+          </p>
+          <PlayerLiveStatsGrid
+            performance={playerPerformance}
+            matchMinute={matchMinute}
+            playerName={gameState.player.name}
+            playerPos={gameState.player.position}
+          />
+        </div>
+
+        {/* Detailed Event Timeline */}
+        {visibleEvents.length > 0 && (
+          <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3">
+            <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5 mb-2">
+              <Activity className="w-3 h-3" /> Full Event Timeline
+            </p>
+            <DetailedEventTimeline
+              events={visibleEvents}
+              homeClubName={homeClub.shortName || homeClub.name}
+              awayClubName={awayClub.shortName || awayClub.name}
+            />
+          </div>
+        )}
+
+        {/* Set-Piece Statistics */}
+        <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3">
+          <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5 mb-2">
+            <Shield className="w-3 h-3" /> Set-Piece Stats
+          </p>
+          <SetPieceStatsPanel stats={setPieceStatsData} />
+        </div>
+
+        {/* Heat Map Comparison */}
+        <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3">
+          <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5 mb-2">
+            <Footprints className="w-3 h-3" /> Pitch Heat Maps
+          </p>
+          <TeamHeatMapComparison
+            homeData={heatMapData.home}
+            awayData={heatMapData.away}
+            homeName={homeClub.shortName || homeClub.name}
+            awayName={awayClub.shortName || awayClub.name}
+            playerHighlight={heatMapData.playerZone}
+          />
+        </div>
 
         {/* Player Performance Panel */}
         <div className="bg-[#161b22] rounded-lg border border-[#fbbf24]/30 p-3">
@@ -1722,6 +2345,66 @@ export default function MatchDayLive() {
                 ));
               })()}
             </div>
+          </div>
+        </motion.div>
+
+        {/* Detailed Momentum Chart - Full Time */}
+        {momentumHistory.length > 3 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.26 }}>
+            <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3 space-y-1">
+              <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+                <TrendingUp className="w-3 h-3" /> Match Momentum Analysis
+              </p>
+              <DetailedMomentumChart
+                history={momentumHistory}
+                events={matchEvents}
+                currentMinute={90}
+                homeClubName={homeClub.shortName || homeClub.name}
+                awayClubName={awayClub.shortName || awayClub.name}
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {/* Full Event Timeline */}
+        {matchEvents.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.27 }}>
+            <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3">
+              <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5 mb-2">
+                <Activity className="w-3 h-3" /> Full Event Timeline
+              </p>
+              <DetailedEventTimeline
+                events={matchEvents}
+                homeClubName={homeClub.shortName || homeClub.name}
+                awayClubName={awayClub.shortName || awayClub.name}
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {/* Set-Piece Statistics */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.28 }}>
+          <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3">
+            <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5 mb-2">
+              <Shield className="w-3 h-3" /> Set-Piece Stats
+            </p>
+            <SetPieceStatsPanel stats={setPieceStatsData} />
+          </div>
+        </motion.div>
+
+        {/* Heat Map Comparison */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.29 }}>
+          <div className="bg-[#0d1117] rounded-lg border border-[#30363d] p-3">
+            <p className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5 mb-2">
+              <Footprints className="w-3 h-3" /> Pitch Heat Maps
+            </p>
+            <TeamHeatMapComparison
+              homeData={heatMapData.home}
+              awayData={heatMapData.away}
+              homeName={homeClub.shortName || homeClub.name}
+              awayName={awayClub.shortName || awayClub.name}
+              playerHighlight={heatMapData.playerZone}
+            />
           </div>
         </motion.div>
 

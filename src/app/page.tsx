@@ -87,6 +87,8 @@ import TrainingDrillMiniGames from '@/components/game/TrainingDrillMiniGames';
 import SeasonReviewDocumentary from '@/components/game/SeasonReviewDocumentary';
 import InGameStore from '@/components/game/InGameStore';
 import ScoutingNetwork from '@/components/game/ScoutingNetwork';
+import BoardRoom from '@/components/game/BoardRoom';
+import YouthDevelopment from '@/components/game/YouthDevelopment';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -171,6 +173,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   season_review_documentary: SeasonReviewDocumentary,
   in_game_store: InGameStore,
   scouting_network: ScoutingNetwork,
+  youth_development: YouthDevelopment,
+  board_room: BoardRoom,
 };
 
 const gameScreens: GameScreen[] = [
@@ -222,6 +226,8 @@ const gameScreens: GameScreen[] = [
   'season_review_documentary',
   'in_game_store',
   'scouting_network',
+  'youth_development',
+  'board_room',
 ];
 
 export default function Home() {

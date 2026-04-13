@@ -26,6 +26,14 @@ import {
   User,
   MapPin,
   ArrowRight,
+  Heart,
+  MessageCircle,
+  Music,
+  Users,
+  BookOpen,
+  Timer,
+  Sparkles,
+  BarChart3,
 } from 'lucide-react';
 
 // ── Animation Constants ─────────────────────────────────────
@@ -84,6 +92,16 @@ function getOvrColor(ovr: number): string {
   if (ovr >= 65) return '#f59e0b';
   if (ovr >= 55) return '#fb923c';
   return '#ef4444';
+}
+
+function simpleHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
 }
 
 // ── Sub-Components ──────────────────────────────────────────
@@ -224,6 +242,55 @@ const LEGEND_TIERS: LegendTier[] = [
   { name: 'Diamond', min: 500, max: 800, color: '#60a5fa', bgColor: 'rgba(96,165,250,0.15)', icon: <Diamond className="h-5 w-5" /> },
   { name: 'Legend', min: 800, max: 10000, color: '#34d399', bgColor: 'rgba(52,211,153,0.15)', icon: <Crown className="h-5 w-5" /> },
 ];
+
+// ── Hall of Fame Inductee ────────────────────────────────
+interface HofInductee {
+  name: string;
+  nationality: string;
+  flag: string;
+  position: string;
+  yearsActive: string;
+  highlights: string[];
+  trophyCount: number;
+  inductionYear: number;
+  tier: 'Legend' | 'Icon' | 'Great';
+}
+
+// ── Club Record ──────────────────────────────────────────
+interface ClubRecord {
+  label: string;
+  holder: string;
+  value: string;
+  playerValue: number;
+  recordValue: number;
+  playerRank: number;
+  icon: React.ReactNode;
+}
+
+// ── Legacy Category ──────────────────────────────────────
+interface LegacyCategory {
+  name: string;
+  score: number;
+  percentage: number;
+}
+
+// ── Moment of Glory ──────────────────────────────────────
+interface MomentOfGlory {
+  title: string;
+  date: string;
+  description: string;
+  matchContext: string;
+  impact: number;
+  color: string;
+}
+
+// ── Fan Tribute ──────────────────────────────────────────
+interface FanTributeData {
+  messages: string[];
+  approvalRating: number;
+  chant: string;
+  followers: string;
+}
 
 // ── Main Component ──────────────────────────────────────────
 export default function HallOfFame() {
@@ -573,6 +640,113 @@ export default function HallOfFame() {
       icon: <Footprints className="h-3.5 w-3.5" />,
     });
 
+    // ── Hall of Fame Inductees ───────────────────────────
+    const clubSeed = simpleHash(gameState.currentClub.name);
+    const hofFirstNames: string[] = ['Marco', 'Carlos', 'Ahmed', 'James', 'Yuki', 'Luca', 'Omar', 'Patrick'];
+    const hofLastNames: string[] = ['Rossi', 'Silva', 'Al-Farsi', 'Williams', 'Tanaka', 'Bianchi', 'Hassan', "O'Brien"];
+    const hofNationalities: string[] = ['Italy', 'Brazil', 'Saudi Arabia', 'England', 'Japan', 'Italy', 'Egypt', 'Ireland'];
+    const hofPositions: string[] = ['ST', 'CM', 'CB', 'LW', 'GK', 'CAM', 'RB', 'CDM'];
+    const hofTiers: ('Legend' | 'Icon' | 'Great')[] = ['Legend', 'Icon', 'Icon', 'Great', 'Great', 'Great', 'Icon', 'Great'];
+    const hofHighlights: string[][] = [
+      ['All-time top scorer: 247 goals', 'Won 5 league titles', '3x Player of the Year'],
+      ['Record 189 assists in 312 apps', 'Only player with 300+ appearances', 'Club captain for 8 seasons'],
+      ['Defensive rock: 400+ clean sheets', 'Never received a red card', 'UCL Final MVP'],
+      ['Fastest player in club history', 'Scored in 10 consecutive matches', 'Fan favorite for 12 seasons'],
+      ['Most appearances: 450 games', 'Mr. Reliable in every role', 'Scored the derby winner twice'],
+      ['Creative genius: 200+ assists', 'Set piece specialist', 'Scored 45-yard goal vs rivals'],
+      ['Most trophies won: 12 total', 'Won the domestic double 3 times', 'Club ambassador after retiring'],
+      ['Academy graduate turned legend', 'One-club man for 15 years', 'Scored on debut vs top opposition'],
+    ];
+
+    const hofInductees: HofInductee[] = [];
+    for (let idx = 0; idx < 8; idx++) {
+      const s = clubSeed + idx * 137;
+      const startYear = 1990 + (s * 3) % 25;
+      const endYear = startYear + 8 + (s * 2) % 12;
+      hofInductees.push({
+        name: `${hofFirstNames[s % hofFirstNames.length]} ${hofLastNames[(s + 7) % hofLastNames.length]}`,
+        nationality: hofNationalities[(s + 3) % hofNationalities.length],
+        flag: countryToFlag(hofNationalities[(s + 3) % hofNationalities.length]),
+        position: hofPositions[(s + 11) % hofPositions.length],
+        yearsActive: `${startYear}-${endYear}`,
+        highlights: hofHighlights[idx],
+        trophyCount: 1 + (s * 5) % 14,
+        inductionYear: endYear + 2 + s % 5,
+        tier: hofTiers[idx],
+      });
+    }
+
+    // ── All-Time Records Board ───────────────────────────
+    const recordHolders: string[] = ['Marco Rossi', 'Carlos Silva', 'Ahmed Al-Farsi', 'James Williams', 'Yuki Tanaka', 'Luca Bianchi', 'Omar Hassan', "Patrick O'Brien", 'Dimitri Petrov', 'Rafael Santos', 'Erik Lindberg', 'Samuel Okonkwo'];
+    const allTimeRecords: ClubRecord[] = [
+      { label: 'Most Goals', holder: recordHolders[0], value: `${150 + clubSeed % 100}`, playerValue: totalGoals, recordValue: 150 + clubSeed % 100, playerRank: totalGoals >= 150 + clubSeed % 100 ? 1 : totalGoals > 0 ? Math.max(2, Math.round((150 + clubSeed % 100) / Math.max(1, totalGoals))) : 0, icon: <Target className="h-3.5 w-3.5" /> },
+      { label: 'Most Assists', holder: recordHolders[1], value: `${120 + (clubSeed + 1) % 80}`, playerValue: totalAssists, recordValue: 120 + (clubSeed + 1) % 80, playerRank: totalAssists >= 120 + (clubSeed + 1) % 80 ? 1 : totalAssists > 0 ? Math.max(2, Math.round((120 + (clubSeed + 1) % 80) / Math.max(1, totalAssists))) : 0, icon: <Swords className="h-3.5 w-3.5" /> },
+      { label: 'Most Appearances', holder: recordHolders[2], value: `${400 + (clubSeed + 2) % 100}`, playerValue: totalAppearances, recordValue: 400 + (clubSeed + 2) % 100, playerRank: totalAppearances >= 400 + (clubSeed + 2) % 100 ? 1 : totalAppearances > 0 ? Math.max(2, Math.round((400 + (clubSeed + 2) % 100) / Math.max(1, totalAppearances))) : 0, icon: <Calendar className="h-3.5 w-3.5" /> },
+      { label: 'Most Trophies', holder: recordHolders[3], value: `${12 + (clubSeed + 3) % 8}`, playerValue: trophies.length, recordValue: 12 + (clubSeed + 3) % 8, playerRank: trophies.length >= 12 + (clubSeed + 3) % 8 ? 1 : Math.max(2, (12 + (clubSeed + 3) % 8) - trophies.length + 1), icon: <TrophyIcon className="h-3.5 w-3.5" /> },
+      { label: 'Highest Avg Rating', holder: recordHolders[4], value: `${(8.0 + (clubSeed + 4) % 15 / 100).toFixed(2)}`, playerValue: bestRating, recordValue: 8.0 + (clubSeed + 4) % 15 / 100, playerRank: bestRating >= 8.0 ? 1 : bestRating > 0 ? Math.max(2, Math.round(8.0 / Math.max(0.1, bestRating) * 3)) : 0, icon: <Star className="h-3.5 w-3.5" /> },
+      { label: 'Most MotM Awards', holder: recordHolders[5], value: `${35 + (clubSeed + 5) % 20}`, playerValue: 0, recordValue: 35 + (clubSeed + 5) % 20, playerRank: 0, icon: <Flame className="h-3.5 w-3.5" /> },
+      { label: 'Longest Unbeaten', holder: recordHolders[6], value: `${18 + (clubSeed + 6) % 15} matches`, playerValue: longestWinStreak, recordValue: 18 + (clubSeed + 6) % 15, playerRank: longestWinStreak > 0 ? Math.max(2, Math.round((18 + (clubSeed + 6) % 15) / Math.max(1, longestWinStreak))) : 0, icon: <Shield className="h-3.5 w-3.5" /> },
+      { label: 'Most Clean Sheets', holder: recordHolders[7], value: `${80 + (clubSeed + 7) % 60}`, playerValue: cleanSheets, recordValue: 80 + (clubSeed + 7) % 60, playerRank: cleanSheets > 0 ? (cleanSheets >= 80 + (clubSeed + 7) % 60 ? 1 : Math.max(2, Math.round((80 + (clubSeed + 7) % 60) / Math.max(1, cleanSheets)))) : 0, icon: <Medal className="h-3.5 w-3.5" /> },
+      { label: 'Youngest Debut', holder: recordHolders[8], value: `${16 + (clubSeed + 8) % 3}y`, playerValue: 0, recordValue: 16 + (clubSeed + 8) % 3, playerRank: 0, icon: <User className="h-3.5 w-3.5" /> },
+      { label: 'Oldest Appearance', holder: recordHolders[9], value: `${38 + (clubSeed + 9) % 4}y`, playerValue: 0, recordValue: 38 + (clubSeed + 9) % 4, playerRank: 0, icon: <Timer className="h-3.5 w-3.5" /> },
+      { label: 'Most Red Cards', holder: recordHolders[10], value: `${10 + (clubSeed + 10) % 8}`, playerValue: 0, recordValue: 10 + (clubSeed + 10) % 8, playerRank: 0, icon: <Lock className="h-3.5 w-3.5" /> },
+      { label: 'Fastest Hat-Trick', holder: recordHolders[11], value: `${8 + (clubSeed + 11) % 10} min`, playerValue: 0, recordValue: 8 + (clubSeed + 11) % 10, playerRank: 0, icon: <Zap className="h-3.5 w-3.5" /> },
+    ];
+
+    // ── Career Legacy Score ──────────────────────────────
+    const goalLegacy = Math.min(100, totalGoals * 2);
+    const playLegacy = Math.min(100, totalAssists * 2.5);
+    const leadLegacy = Math.min(100, totalAppearances * 0.25 + trophies.length * 10);
+    const tropLegacy = Math.min(100, trophies.length * 12);
+    const intlLegacy = Math.min(100, intlCaps * 5);
+    const loyaltyLegacy = Math.min(100, totalSeasons * 8);
+    const legacyCategories: LegacyCategory[] = [
+      { name: 'Goalscoring Legacy', score: goalLegacy, percentage: goalLegacy },
+      { name: 'Playmaking Legacy', score: playLegacy, percentage: playLegacy },
+      { name: 'Leadership Legacy', score: Math.min(100, leadLegacy), percentage: Math.min(100, leadLegacy) },
+      { name: 'Trophy Legacy', score: tropLegacy, percentage: tropLegacy },
+      { name: 'International Legacy', score: intlLegacy, percentage: intlLegacy },
+      { name: 'Club Loyalty Legacy', score: loyaltyLegacy, percentage: loyaltyLegacy },
+    ];
+    const legacyOverall = Math.round(goalLegacy * 0.25 + playLegacy * 0.2 + leadLegacy * 0.15 + tropLegacy * 0.2 + intlLegacy * 0.1 + loyaltyLegacy * 0.1);
+    let legacyTier: string;
+    let legacyTierColor: string;
+    if (legacyOverall >= 80) { legacyTier = 'Club Legend'; legacyTierColor = '#34d399'; }
+    else if (legacyOverall >= 60) { legacyTier = 'Fan Favorite'; legacyTierColor = '#f59e0b'; }
+    else if (legacyOverall >= 40) { legacyTier = 'Cult Hero'; legacyTierColor = '#a78bfa'; }
+    else if (legacyOverall >= 20) { legacyTier = 'Squad Player'; legacyTierColor = '#3b82f6'; }
+    else { legacyTier = 'Newcomer'; legacyTierColor = '#8b949e'; }
+
+    // ── Career Moments of Glory ──────────────────────────
+    const momentsOfGlory: MomentOfGlory[] = [
+      { title: 'Debut Goal', date: `Season 1, Week 3`, description: totalGoals > 0 ? `${player.name} announced their arrival with a clinical finish on debut.` : `The debut match that started it all for ${player.name}.`, matchContext: `${gameState.currentClub.name} vs League Rivals`, impact: totalGoals > 0 ? 4 : 3, color: '#34d399' },
+      { title: 'First Trophy Lift', date: trophies.length > 0 ? `Season ${Math.min(currentSeason, 3)}` : '—', description: trophies.length > 0 ? 'The moment silverware was lifted for the first time.' : 'Trophy glory still awaits in the future.', matchContext: trophies.length > 0 ? 'Domestic Cup Final' : '—', impact: trophies.length > 0 ? 5 : 1, color: '#f59e0b' },
+      { title: 'Record-Breaking Night', date: totalGoals >= 50 ? `Season ${Math.min(currentSeason, 5)}` : '—', description: totalGoals >= 50 ? `${player.name} shattered expectations with a historic performance.` : 'Records are waiting to be broken.', matchContext: totalGoals >= 50 ? 'Championship Decider' : '—', impact: totalGoals >= 50 ? 5 : 1, color: '#ef4444' },
+      { title: 'Derby Day Hero', date: `Season ${1 + currentSeason % 4}`, description: totalGoals > 0 ? `${player.name} wrote their name into derby folklore.` : 'Every great player needs a derby moment.', matchContext: 'City Derby', impact: totalGoals > 10 ? 4 : 2, color: '#3b82f6' },
+      { title: 'European Night', date: `Season ${2 + currentSeason % 3}`, description: bestRating >= 7.0 ? 'A masterclass under the European floodlights.' : 'European stages await the next chapter.', matchContext: bestRating >= 7.0 ? 'Continental Quarter-Final' : '—', impact: bestRating >= 7.0 ? 5 : 2, color: '#a78bfa' },
+      { title: 'Final Whistle', date: `Season ${currentSeason}`, description: `The current chapter continues. ${player.name} has ${totalGoals} goals and ${trophies.length} trophies so far.`, matchContext: 'Career in progress', impact: Math.min(5, Math.max(1, Math.floor(totalGoals / 20))), color: '#8b949e' },
+    ];
+
+    // ── Fan Tribute ──────────────────────────────────────
+    const fanHash = simpleHash(player.name + gameState.currentClub.name);
+    const fanMessages: string[] = [
+      `${player.name} is the heartbeat of this team. Every match, every tackle, every goal. Pure passion!`,
+      `I've supported ${gameState.currentClub.name} for 30 years and ${player.name} is among the best I've seen wear the shirt.`,
+      `When ${player.name} gets the ball, you can feel the electricity in the stadium. Special player.`,
+      `My kids' first hero is ${player.name}. That says everything about the impact on and off the pitch.`,
+      `${player.name} doesn't just play for ${gameState.currentClub.name} — they ARE ${gameState.currentClub.name}. A true legend in the making.`,
+    ];
+    const fanApprovalRating = Math.min(100, Math.max(15, Math.round(legendScore / 10 + totalGoals / 2 + trophies.length * 5)));
+    const fanFollowersRaw = Math.max(1000, totalGoals * 12500 + trophies.length * 250000 + legendScore * 5000);
+    const fanFollowersStr = fanFollowersRaw >= 1_000_000 ? `${(fanFollowersRaw / 1_000_000).toFixed(1)}M` : fanFollowersRaw >= 1000 ? `${(fanFollowersRaw / 1000).toFixed(0)}K` : `${fanFollowersRaw}`;
+    const fanChant = `Oh, ${player.name}, ${player.name}\nRunning down the wing for ${gameState.currentClub.name}\nGoals and glory, heart and soul\nYou're the one who makes us whole!`;
+    const fanTribute: FanTributeData = {
+      messages: fanMessages.slice(0, 4 + fanHash % 2),
+      approvalRating: fanApprovalRating,
+      chant: fanChant,
+      followers: fanFollowersStr,
+    };
+
     return {
       // Hero
       careerSpan,
@@ -619,6 +793,15 @@ export default function HallOfFame() {
       allTimeBests,
       // Awards
       seasonAwards,
+      // Hall of Fame
+      hofInductees,
+      allTimeRecords,
+      legacyOverall,
+      legacyCategories,
+      legacyTier,
+      legacyTierColor,
+      momentsOfGlory,
+      fanTribute,
     };
   }, [gameState]);
 
@@ -665,6 +848,14 @@ export default function HallOfFame() {
     milestones,
     allTimeBests,
     seasonAwards,
+    hofInductees,
+    allTimeRecords,
+    legacyOverall,
+    legacyCategories,
+    legacyTier,
+    legacyTierColor,
+    momentsOfGlory,
+    fanTribute,
   } = computed;
 
   const flag = countryToFlag(player.nationality);
@@ -1554,6 +1745,359 @@ export default function HallOfFame() {
                 Play matches to see your all-time bests
               </p>
             )}
+          </motion.div>
+        </section>
+
+        {/* ═══════════════════ 10. HALL OF FAME INDUCTEE GALLERY ═══════════════════ */}
+        <section>
+          <SectionHeader
+            title="Hall of Fame Gallery"
+            icon={<BookOpen className="h-4 w-4" />}
+            delay={SEC_DELAY * 9}
+          />
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...BASE_ANIM, delay: SEC_DELAY * 9 + ITEM_DELAY }}
+          >
+            <div className="overflow-x-auto pb-2 -mx-1 px-1">
+              <div className="flex gap-3" style={{ minWidth: 'max-content' }}>
+                {hofInductees.map((inductee, i) => {
+                  const tierClr = inductee.tier === 'Legend' ? '#34d399' : inductee.tier === 'Icon' ? '#f59e0b' : '#3b82f6';
+                  const tierBg = inductee.tier === 'Legend' ? 'rgba(52,211,153,0.1)' : inductee.tier === 'Icon' ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.1)';
+                  const pClr = getPositionColor(inductee.position);
+                  return (
+                    <motion.div
+                      key={inductee.name}
+                      className="w-44 shrink-0 border rounded-lg p-3 space-y-2"
+                      style={{ backgroundColor: '#21262d', borderColor: tierClr }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ ...BASE_ANIM, delay: SEC_DELAY * 9 + ITEM_DELAY * 2 + i * ITEM_DELAY }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <svg width="40" height="48" viewBox="0 0 40 48" fill="none">
+                          <circle cx="20" cy="14" r="7" fill="#30363d" />
+                          <path d="M8 44 C8 34 14 30 20 30 C26 30 32 34 32 44" fill="#30363d" />
+                        </svg>
+                        <span className="text-[7px] font-bold px-1.5 py-0.5" style={{ color: tierClr, backgroundColor: tierBg, borderRadius: 4 }}>
+                          {inductee.tier}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[#c9d1d9] truncate">{inductee.name}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px]">{inductee.flag}</span>
+                          <span className="text-[8px] px-1 py-0.5 text-white font-bold" style={{ backgroundColor: pClr, borderRadius: 3 }}>
+                            {inductee.position}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[8px] text-[#8b949e] tabular-nums">{inductee.yearsActive}</p>
+                      <ul className="space-y-0.5">
+                        {inductee.highlights.map((h, hi) => (
+                          <li key={hi} className="text-[7px] text-[#8b949e] flex items-start gap-1">
+                            <span className="text-[5px] mt-0.5" style={{ color: tierClr }}>&#9679;</span>
+                            <span className="leading-tight">{h}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex items-center justify-between pt-1 border-t border-[#30363d]">
+                        <div className="flex items-center gap-1">
+                          <TrophyIcon className="h-2.5 w-2.5 text-amber-400" />
+                          <span className="text-[8px] text-amber-400 font-bold tabular-nums">{inductee.trophyCount}</span>
+                        </div>
+                        <span className="text-[7px] text-[#484f58] tabular-nums">Ind. {inductee.inductionYear}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+            {legacyOverall >= 60 && (
+              <div className="mt-3 p-2 border rounded-lg flex items-center gap-2" style={{ borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.05)' }}>
+                <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                <div>
+                  <p className="text-[10px] font-bold text-emerald-400">Your Journey</p>
+                  <p className="text-[8px] text-[#8b949e]">You&apos;re on track to join these legends!</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </section>
+
+        {/* ═══════════════════ 11. ALL-TIME RECORDS BOARD ═══════════════════ */}
+        <section>
+          <SectionHeader
+            title="All-Time Records Board"
+            icon={<BarChart3 className="h-4 w-4" />}
+            delay={SEC_DELAY * 10}
+          />
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...BASE_ANIM, delay: SEC_DELAY * 10 + ITEM_DELAY }}
+          >
+            <div className="grid grid-cols-1 gap-2">
+              {allTimeRecords.map((rec, i) => {
+                const progressPct = rec.recordValue > 0 ? Math.min(100, (rec.playerValue / rec.recordValue) * 100) : 0;
+                const isRecordHolder = rec.playerRank === 1;
+                const isClose = rec.playerRank > 0 && rec.playerRank <= 3;
+                return (
+                  <motion.div
+                    key={rec.label}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border"
+                    style={{
+                      backgroundColor: isRecordHolder ? 'rgba(52,211,153,0.05)' : '#21262d',
+                      borderColor: isRecordHolder ? '#34d399' : '#30363d',
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ ...BASE_ANIM, delay: SEC_DELAY * 10 + ITEM_DELAY * 2 + i * ITEM_DELAY * 0.5 }}
+                  >
+                    <span className="text-emerald-400 shrink-0">{rec.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-[#c9d1d9]">{rec.label}</p>
+                        {isRecordHolder && (
+                          <span className="text-[7px] font-bold px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400" style={{ borderRadius: 3 }}>
+                            RECORD HOLDER
+                          </span>
+                        )}
+                        {isClose && !isRecordHolder && (
+                          <span className="text-[7px] font-bold px-1.5 py-0.5 bg-amber-500/15 text-amber-400" style={{ borderRadius: 3 }}>
+                            CLOSE
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1.5 bg-[#21262d] rounded-sm overflow-hidden">
+                          <motion.div
+                            className="h-full rounded-sm"
+                            style={{ backgroundColor: isRecordHolder ? '#34d399' : isClose ? '#f59e0b' : '#3b82f6' }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1, width: `${progressPct}%` }}
+                            transition={{ ...BASE_ANIM, width: { duration: 0.4 }, delay: SEC_DELAY * 10 + ITEM_DELAY * 3 + i * ITEM_DELAY * 0.5 }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <span className="text-[8px] text-[#8b949e]">{rec.holder} &middot; {rec.value}</span>
+                        <span className="text-[8px] font-bold tabular-nums" style={{ color: rec.playerRank > 0 ? (isRecordHolder ? '#34d399' : '#f59e0b') : '#484f58' }}>
+                          {rec.playerRank > 0 ? `You: #${rec.playerRank}` : 'You: ---'}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        </section>
+
+        {/* ═══════════════════ 12. CAREER LEGACY SCORE ═══════════════════ */}
+        <section>
+          <SectionHeader
+            title="Career Legacy Score"
+            icon={<Crown className="h-4 w-4" />}
+            delay={SEC_DELAY * 11}
+          />
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...BASE_ANIM, delay: SEC_DELAY * 11 + ITEM_DELAY }}
+          >
+            {/* Legacy Gauge */}
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0" style={{ width: 100, height: 100 }}>
+                <svg width="100" height="100" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#21262d" strokeWidth="6" />
+                  <motion.circle
+                    cx="50" cy="50" r="42" fill="none"
+                    stroke={legacyTierColor}
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 42}
+                    initial={{ opacity: 0, strokeDashoffset: 2 * Math.PI * 42 }}
+                    animate={{ opacity: 1, strokeDashoffset: 2 * Math.PI * 42 - (legacyOverall / 100) * 2 * Math.PI * 42 }}
+                    transition={{ ...BASE_ANIM, strokeDashoffset: { duration: 0.6 }, delay: SEC_DELAY * 11 + ITEM_DELAY * 2 }}
+                    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-lg font-black tabular-nums" style={{ color: legacyTierColor }}>{legacyOverall}</span>
+                  <span className="text-[7px] text-[#8b949e]">/ 100</span>
+                </div>
+              </div>
+              <div className="flex-1 space-y-1">
+                <span className="text-xs font-bold px-2 py-0.5 inline-block" style={{ color: legacyTierColor, backgroundColor: legacyTierColor.replace(')', ',0.12)'), borderRadius: 4 }}>
+                  {legacyTier}
+                </span>
+                <p className="text-[10px] text-[#8b949e] mt-1">Your career legacy is shaped by goals, assists, trophies, and loyalty.</p>
+              </div>
+            </div>
+
+            {/* Legacy Categories */}
+            <div className="space-y-2 pt-2 border-t border-[#30363d]">
+              {legacyCategories.map((cat, i) => {
+                const catColors = ['#34d399', '#3b82f6', '#f59e0b', '#ef4444', '#a78bfa', '#8b949e'];
+                const catColor = catColors[i] || '#8b949e';
+                return (
+                  <motion.div
+                    key={cat.name}
+                    className="space-y-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ ...BASE_ANIM, delay: SEC_DELAY * 11 + ITEM_DELAY * 3 + i * ITEM_DELAY }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] text-[#c9d1d9]">{cat.name}</span>
+                      <span className="text-[9px] font-bold tabular-nums" style={{ color: catColor }}>{Math.round(cat.percentage)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-[#21262d] rounded-sm overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-sm"
+                        style={{ backgroundColor: catColor }}
+                        initial={{ opacity: 0, width: '0%' }}
+                        animate={{ opacity: 1, width: `${cat.percentage}%` }}
+                        transition={{ ...BASE_ANIM, width: { duration: 0.4 }, delay: SEC_DELAY * 11 + ITEM_DELAY * 4 + i * ITEM_DELAY }}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        </section>
+
+        {/* ═══════════════════ 13. CAREER MOMENTS OF GLORY ═══════════════════ */}
+        <section>
+          <SectionHeader
+            title="Career Moments of Glory"
+            icon={<Flame className="h-4 w-4" />}
+            delay={SEC_DELAY * 12}
+          />
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...BASE_ANIM, delay: SEC_DELAY * 12 + ITEM_DELAY }}
+          >
+            <div className="relative space-y-0">
+              <div className="absolute left-[11px] top-2 bottom-2 w-px bg-[#30363d]" />
+              {momentsOfGlory.map((moment, i) => (
+                <motion.div
+                  key={moment.title}
+                  className="relative flex items-start gap-3 py-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ ...BASE_ANIM, delay: SEC_DELAY * 12 + ITEM_DELAY * 2 + i * ITEM_DELAY }}
+                >
+                  <div
+                    className="relative z-10 w-[22px] h-[22px] border-2 flex items-center justify-center shrink-0"
+                    style={{ borderColor: moment.color, borderRadius: '50%', backgroundColor: moment.color.replace(')', ',0.15)') }}
+                  >
+                    <Star className="h-3 w-3" style={{ color: moment.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[11px] font-bold text-[#c9d1d9]">{moment.title}</p>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: moment.impact }).map((_, hi) => (
+                          <Heart key={hi} className="h-2.5 w-2.5" style={{ color: moment.color }} fill={moment.color} />
+                        ))}
+                        {Array.from({ length: 5 - moment.impact }).map((_, hi) => (
+                          <Heart key={hi} className="h-2.5 w-2.5" style={{ color: '#30363d' }} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-[#8b949e]">
+                      <span className="text-[#484f58]">{moment.date}</span>
+                      {moment.matchContext !== '—' && (
+                        <span> &middot; {moment.matchContext}</span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-[#c9d1d9] leading-snug">{moment.description}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </section>
+
+        {/* ═══════════════════ 14. FAN TRIBUTE SECTION ═══════════════════ */}
+        <section>
+          <SectionHeader
+            title="Fan Tribute"
+            icon={<Users className="h-4 w-4" />}
+            delay={SEC_DELAY * 13}
+          />
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...BASE_ANIM, delay: SEC_DELAY * 13 + ITEM_DELAY }}
+          >
+            {/* Fan Approval Bar */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-3.5 w-3.5 text-red-400" fill="#ef4444" />
+                  <span className="text-[11px] font-bold text-[#c9d1d9]">Fan Approval</span>
+                </div>
+                <span className="text-[11px] font-bold tabular-nums text-red-400">{fanTribute.approvalRating}%</span>
+              </div>
+              <div className="h-3 bg-[#21262d] rounded-sm overflow-hidden">
+                <motion.div
+                  className="h-full rounded-sm bg-red-400"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, width: `${fanTribute.approvalRating}%` }}
+                  transition={{ ...BASE_ANIM, width: { duration: 0.5 }, delay: SEC_DELAY * 13 + ITEM_DELAY * 2 }}
+                />
+              </div>
+            </div>
+
+            {/* Social Followers */}
+            <div className="flex items-center gap-3 p-2.5 rounded-lg bg-[#21262d] border border-[#30363d]">
+              <Users className="h-4 w-4 text-sky-400" />
+              <div>
+                <p className="text-[10px] text-[#8b949e]">Social Media Followers</p>
+                <p className="text-sm font-bold text-sky-400 tabular-nums">{fanTribute.followers}</p>
+              </div>
+            </div>
+
+            {/* Fan Messages */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-3.5 w-3.5 text-[#8b949e]" />
+                <p className="text-[10px] font-medium text-[#8b949e]">Fan Messages</p>
+              </div>
+              {fanTribute.messages.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  className="p-2.5 rounded-lg bg-[#21262d] border border-[#30363d]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ ...BASE_ANIM, delay: SEC_DELAY * 13 + ITEM_DELAY * 3 + i * ITEM_DELAY }}
+                >
+                  <p className="text-[10px] text-[#c9d1d9] italic leading-relaxed">&ldquo;{msg}&rdquo;</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Chant */}
+            <div className="p-3 rounded-lg bg-[#21262d] border border-[#30363d] space-y-1">
+              <div className="flex items-center gap-2">
+                <Music className="h-3.5 w-3.5 text-amber-400" />
+                <p className="text-[10px] font-medium text-amber-400">The Chant</p>
+              </div>
+              <p className="text-[10px] text-[#c9d1d9] leading-relaxed whitespace-pre-line font-medium">
+                {fanTribute.chant}
+              </p>
+            </div>
           </motion.div>
         </section>
       </div>

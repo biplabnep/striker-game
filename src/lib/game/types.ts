@@ -652,7 +652,9 @@ export type GameScreen =
   | 'training_drill_mini_games'
   | 'season_review_documentary'
   | 'in_game_store'
-  | 'scouting_network';
+  | 'scouting_network'
+  | 'youth_development'
+  | 'board_room';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
