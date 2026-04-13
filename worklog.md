@@ -3018,3 +3018,111 @@ Priority Recommendations for Next Phase:
 6. Sound effects integration for match simulation
 7. Accessibility audit: ARIA labels, keyboard navigation, screen reader support
 8. Add pre-season training camp modal before season starts
+---
+Task ID: cron-10-50
+Agent: main (cron review)
+Task: Styling improvements, new features, QA
+
+Current Project Status:
+- 50 game components (~45,000+ lines total), all using framer-motion opacity-only animations
+- 39 registered game screens in GameScreen type (1 new this cycle: match_stats_comparison)
+- 18 root-owned component files that cannot be modified
+- Lint passes clean with zero errors
+- Full Uncodixify compliance: zero y/x/scale transforms, zero gradients, zero glassmorphism, zero backdrop-blur, zero rounded-full on >24px
+- TypeScript errors: 78 remaining (all in root-owned files, unchanged)
+- Server compiles and returns HTTP 200
+
+Work Log:
+
+QA Testing via agent-browser:
+- Verified Dashboard renders correctly with new visual polish
+- Verified Training screen loads and functions
+- Verified BottomNav More panel redesign works with flat grid + search
+- Verified Match Stats Comparison screen renders with empty state
+- Verified Analytics screen renders with radar chart and attribute data
+- No runtime errors found in browser console
+- Lint clean, Uncodixify audit passed
+
+Styling Improvements:
+
+1. **BottomNav More Panel Redesign** (BottomNav.tsx):
+   - Replaced accordion-style category expansion with flat scrollable grid showing all 35+ items at once
+   - Added search bar with "Search screens..." placeholder that filters items in real-time by label
+   - Added "Recent" section tracking last 3 accessed More items (via useState, shown at top with Clock icon)
+   - Category headers converted to non-interactive section dividers (uppercase, icon, horizontal rule)
+   - Compact 4-column grid layout for all items
+   - Active screen gets emerald highlight, Events item gets red notification dot
+   - Removed: expandedCategory state, handleCategoryToggle, accordion AnimatePresence wrappers
+   - Added: searchQuery state, recentScreens state, itemByScreen lookup Map, no-results empty state
+   - All opacity-only animations, no gradients, no backdrop-blur
+
+2. **Dashboard Visual Polish** (Dashboard.tsx):
+   - Player Profile Card: Added 3px emerald left border accent, "PLAYER" small caps section header
+   - OVR badge: Larger (54px), upgraded border treatment, bold uppercase label
+   - POT badge: Enlarged with overallColor-tinted border-2, upgraded typography
+   - Position badge: Unified emerald accent background (bg-emerald-500/10, text-emerald-400, border-emerald-500/20)
+   - Status indicators: Added colored 3px left border (green/amber/red) via EnhancedStatBar component
+   - Section dividers: border-t border-[#21262d] before Season Progress, Season Stats, and Recent Form sections
+   - Quick Actions: "QUICK ACTIONS" small caps header, increased gap-3, adjusted icon background opacity
+   - Advance Week button: font-bold, shadow-lg shadow-emerald-500/20 glow effect
+   - Recent Results: Renamed "Recent Form", added border-l-[3px] color indicator per result (W=emerald, D=amber, L=red)
+   - W/D/L badges: Enlarged from text-[10px] to text-[11px] with py-0.5 padding
+   - Unified CardTitle style: text-[10px] font-semibold text-[#484f58] uppercase tracking-widest
+
+New Features:
+
+1. **Season Preview Modal** (SeasonPreview.tsx, ~290 lines):
+   - Auto-shows at start of each season (currentWeek === 1, once per session via useRef)
+   - Season Header: "Season X" with year range, club logo/name, player info with emoji flag
+   - League Overview: 3-col grid with league name, team count, total matchdays; 3-4 key rival badges
+   - Pre-Season Assessment: OVR rating with growth potential, form trend mini-bar (last 5 ratings), season objectives preview
+   - Fixture Highlights: First 5 league fixtures with HOME/AWAY styling (emerald/slate)
+   - "Ready to Begin" dismiss button with matchday context
+   - Integrated into Dashboard.tsx via import + showSeasonPreview state + useEffect auto-trigger
+
+2. **Match Stats Comparison** (MatchStatsComparison.tsx, ~430 lines):
+   - Match Header: Home vs Away with logos, scores, WIN/DRAW/LOSS badge, competition, venue
+   - Performance Ratings Panel: Side-by-side team rating cards with color-coded backgrounds
+   - 8 Stat Comparison Bars: Possession, Shots, Shots on Target, Passes, Pass Accuracy, Tackles, Corners, Fouls — animated width bars, emerald for home, blue for away
+   - Player Performance Card: 6-stat grid (Goals, Assists, Shots on Target, Pass Accuracy, Tackles, Key Passes) with emerald highlights
+   - Match Events Timeline: Vertical timeline of goals, cards, subs — player events get emerald left-border
+   - Match Rating Breakdown: Rating factors with +/- color coding
+   - Empty state: "No Matches Played Yet" with message
+   - Seeded pseudo-random generator for deterministic simulated stats
+   - Match selector tabs when multiple results exist
+   - Registered: GameScreen type, page.tsx, BottomNav.tsx (Playing category, BarChart3 icon, "Match Stats" label)
+
+Files Modified:
+- src/components/game/BottomNav.tsx — More panel redesign
+- src/components/game/Dashboard.tsx — Visual polish + SeasonPreview integration
+- src/components/game/SeasonPreview.tsx — NEW FILE
+- src/components/game/MatchStatsComparison.tsx — NEW FILE
+- src/lib/game/types.ts — Added 'match_stats_comparison' to GameScreen union
+- src/app/page.tsx — Added MatchStatsComparison import + screenComponents entry
+
+Stage Summary:
+- 0 bugs found during QA
+- 2 new features created (Season Preview + Match Stats Comparison)
+- 39 total registered screens (up from 38)
+- BottomNav redesigned for faster screen access (flat grid + search + recent items)
+- Dashboard visually polished with section headers, border accents, improved badges
+- Lint clean, Uncodixify compliant, server compiles successfully
+- All user-owned files TS-error free
+
+Unresolved Issues:
+- 18 component files owned by root (78 TS errors total, unchanged)
+- Turbopack instability: server crashes after extended idle or high request volume
+- agent-browser motion.button click workaround needed for framer-motion wrapped buttons
+- BottomNav More panel has 36 items across 7 categories (one more than before)
+- PWAInstallPromptFixed.tsx is root-owned (needs sudo to modify)
+- SeasonPreview auto-triggers at week 1 — could be annoying if user replays from start
+
+Priority Recommendations for Next Phase:
+1. Obtain sudo/root access to fix TS errors in 18 root-owned components
+2. Add sound effects integration for match simulation (goal scored, whistle, crowd)
+3. Add Stadium/Atmosphere system affecting home advantage in matches
+4. Performance optimization: code-split Dashboard (~1700 lines) and MatchDay (~1800+ lines)
+5. Add pre-season training camp modal with attribute focus choices
+6. Enhance TransferHub with richer club detail cards and negotiation flow
+7. Accessibility audit: ARIA labels, keyboard navigation, screen reader support
+8. Add achievements wiring — connect achievement conditions to actual game events

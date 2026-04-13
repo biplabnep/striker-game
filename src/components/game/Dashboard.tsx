@@ -21,6 +21,7 @@ import WeeklySummary from '@/components/game/WeeklySummary';
 import SeasonEndSummary from '@/components/game/SeasonEndSummary';
 import ContractNegotiation from '@/components/game/ContractNegotiation';
 import SeasonTrainingFocusModal from '@/components/game/SeasonTrainingFocusModal';
+import SeasonPreview from '@/components/game/SeasonPreview';
 import { PlayerAttributes, Achievement, SquadStatus, SeasonPlayerStats, LeagueStanding, MatchResult, PlayerTeamLevel, SeasonTrainingFocusArea } from '@/lib/game/types';
 
 // Season end data type for the modal
@@ -107,6 +108,10 @@ export default function Dashboard() {
   const [seasonEndData, setSeasonEndData] = useState<SeasonEndData | null>(null);
   const [showContractNegotiation, setShowContractNegotiation] = useState(false);
   const [showFocusModal, setShowFocusModal] = useState(false);
+  const [showSeasonPreview, setShowSeasonPreview] = useState(false);
+
+  // Ref to track if season preview has been shown this session
+  const seasonPreviewRef = useRef(false);
 
   // Refs to track previous values for season-end detection
   const prevSeasonsLengthRef = useRef(0);
@@ -320,6 +325,18 @@ export default function Dashboard() {
     }
   }, [shouldAutoShowFocus]);
 
+  // Auto-show season preview when week === 1 (only once per session until conditions change)
+  useEffect(() => {
+    if (!gameState) return;
+    if (gameState.currentWeek === 1 && !seasonPreviewRef.current) {
+      seasonPreviewRef.current = true;
+      setTimeout(() => setShowSeasonPreview(true), 300);
+    }
+    if (gameState.currentWeek > 1) {
+      seasonPreviewRef.current = false;
+    }
+  }, [gameState?.currentWeek, gameState]);
+
   if (!gameState) return null;
 
   const { player, currentClub, currentWeek, currentSeason, recentResults = [], upcomingFixtures = [], activeEvents = [], leagueTable = [], trainingAvailable = 0, seasons = [], currentInjury } = gameState;
@@ -379,8 +396,14 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {/* Section Header: Player */}
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Player</span>
+        <div className="flex-1 border-t border-[#21262d]" />
+      </div>
+
       {/* Player Profile Card */}
-      <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <Card className="bg-[#161b22] border-[#30363d] overflow-hidden border-l-[3px] border-l-emerald-500">
 
         <CardContent className="p-4 relative">
           <div className="flex items-center gap-4">
@@ -404,7 +427,7 @@ export default function Dashboard() {
               <div className="w-[68px] h-[68px] rounded-3xl flex items-center justify-center font-black text-4xl border-2 relative z-10" style={{ borderColor: overallColor, color: overallColor }}>
                 {player.overall}
               </div>
-              <span className="text-[10px] text-[#8b949e] mt-1.5 font-medium">OVR</span>
+              <span className="text-[10px] text-[#8b949e] mt-1.5 font-semibold uppercase tracking-wider">OVR</span>
             </div>
 
             {/* Player Info */}
@@ -439,7 +462,7 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-2 text-sm text-[#8b949e] mt-1.5">
                 <span>{nationInfo?.flag}</span>
-                <Badge variant="outline" className="text-xs font-bold gap-1" style={{ color: posColor, borderColor: posColor }}>
+                <Badge className="text-xs font-bold gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   {/* Field position indicator icon */}
                   <PositionIcon position={player.position} size={10} />
                   {player.position}
@@ -471,15 +494,15 @@ export default function Dashboard() {
 
             {/* Potential */}
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-3xl flex items-center justify-center font-bold text-sm border border-[#30363d] text-[#8b949e]">
+              <div className="w-[54px] h-[54px] rounded-2xl flex items-center justify-center font-bold text-lg border-2 text-[#c9d1d9]" style={{ borderColor: overallColor + '40' }}>
                 {player.potential}
               </div>
-              <span className="text-[10px] text-[#8b949e] mt-1">POT</span>
+              <span className="text-[10px] text-[#8b949e] mt-1.5 font-semibold uppercase tracking-wider">POT</span>
             </div>
           </div>
 
           {/* Enhanced Player Status Indicators */}
-          <div className="grid grid-cols-3 gap-3 mt-4">
+          <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#21262d]">
             <EnhancedStatBar
               icon={<Activity className="h-3 w-3" />}
               label="Form"
@@ -616,8 +639,14 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Section Header: Quick Actions */}
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Quick Actions</span>
+        <div className="flex-1 border-t border-[#21262d]" />
+      </div>
+
       {/* Quick Actions Panel */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-3">
         <QuickActionButton
           icon={<Dumbbell className="h-5 w-5" />}
           label="Train"
@@ -647,6 +676,9 @@ export default function Dashboard() {
           accentColor="purple"
         />
       </div>
+
+      {/* Section Divider */}
+      <div className="border-t border-[#21262d]" />
 
       {/* Season Progress Card */}
       <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
@@ -870,7 +902,7 @@ export default function Dashboard() {
 
           <CardHeader className="pb-2 pt-3 px-4 relative">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs text-[#8b949e]">Next Match</CardTitle>
+              <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Next Match</CardTitle>
               <div className="flex items-center gap-1.5">
                 {/* Competition Badge */}
                 <Badge variant="outline" className="text-[9px] border-[#30363d] text-[#8b949e]">
@@ -1021,11 +1053,17 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Section Header: Advance */ }
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Advance</span>
+        <div className="flex-1 border-t border-[#21262d]" />
+      </div>
+
       {/* Advance Week + Match Day Actions */}
       <div className="grid grid-cols-2 gap-3">
         <Button
           onClick={handleAdvanceWeek}
-          className="h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-sm transition-all"
+          className="h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all"
         >
           <ArrowRight className="mr-2 h-5 w-5" />
           <div className="flex flex-col items-start">
@@ -1046,10 +1084,13 @@ export default function Dashboard() {
         </Button>
       </div>
 
+      {/* Section Divider */}
+      <div className="border-t border-[#21262d]" />
+
       {/* Season Stats Summary */}
       <Card className="bg-[#161b22] border-[#30363d]">
         <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
-          <CardTitle className="text-xs text-[#8b949e]">Season Stats</CardTitle>
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Season Stats</CardTitle>
           <button
             onClick={() => setScreen('league_table')}
             className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -1214,11 +1255,14 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Section Divider */}
+      <div className="border-t border-[#21262d]" />
+
       {/* Enhanced Recent Results */}
       {recentResults.length > 0 && (
         <Card className="bg-[#161b22] border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4 flex-row items-center justify-between">
-            <CardTitle className="text-xs text-[#8b949e]">Recent Results</CardTitle>
+            <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Recent Form</CardTitle>
             {/* Streak indicator in header */}
             {streakInfo && (
               <span className={`text-[10px] font-semibold flex items-center gap-1 ${
@@ -1237,10 +1281,13 @@ export default function Dashboard() {
               const playerScore = result.homeClub.id === currentClub.id ? result.homeScore : result.awayScore;
               const opponentScore = result.homeClub.id === currentClub.id ? result.awayScore : result.homeScore;
 
-              // Background gradient based on result
+              // Border + left accent based on result
               const borderClass = resultType === 'W' ? 'border-emerald-500/20'
                 : resultType === 'D' ? 'border-[#30363d]'
                 : 'border-red-500/15';
+              const borderLeftClass = resultType === 'W' ? 'border-l-emerald-500'
+                : resultType === 'D' ? 'border-l-amber-500'
+                : 'border-l-red-500';
 
               // Rating circle size
               const ratingColor = getRatingColor(result.playerRating);
@@ -1260,12 +1307,12 @@ export default function Dashboard() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.06, duration: 0.2 }}
-                  className={`rounded-lg bg-[#161b22] border ${borderClass} p-2.5 hover:bg-[#21262d] transition-colors`}
+                  className={`rounded-lg bg-[#161b22] border ${borderClass} border-l-[3px] ${borderLeftClass} p-2.5 hover:bg-[#21262d] transition-colors`}
                 >
                   <div className="flex items-center justify-between">
                     {/* Left: Result badge + Opponent info + Quality */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <Badge className={`text-[10px] px-1.5 font-bold shrink-0 ${
+                      <Badge className={`text-[11px] px-2 py-0.5 font-bold shrink-0 ${
                         resultType === 'W' ? 'bg-emerald-600 text-white' :
                         resultType === 'D' ? 'bg-amber-600 text-white' :
                         'bg-red-600 text-white'
@@ -1402,6 +1449,12 @@ export default function Dashboard() {
       open={showFocusModal}
       onClose={() => setShowFocusModal(false)}
     />
+
+    {/* Season Preview Modal */}
+    <SeasonPreview
+      open={showSeasonPreview}
+      onClose={() => setShowSeasonPreview(false)}
+    />
     </>
   );
 }
@@ -1430,7 +1483,7 @@ function EnhancedStatBar({
                          '#ef4444';
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 border-l-[3px] pl-2 rounded-sm" style={{ borderColor: statusHexColor }}>
       <div className="flex items-center gap-1 text-[#8b949e]">
         {icon}
         <span className="text-[10px]">{label}</span>
@@ -1585,10 +1638,10 @@ function QuickActionButton({
   };
 
   const iconBgClasses = {
-    emerald: 'bg-emerald-500/15',
-    amber: 'bg-amber-500/15',
-    cyan: 'bg-cyan-500/15',
-    purple: 'bg-purple-500/15',
+    emerald: 'bg-emerald-500/10',
+    amber: 'bg-amber-500/10',
+    cyan: 'bg-cyan-500/10',
+    purple: 'bg-purple-500/10',
   };
 
   return (

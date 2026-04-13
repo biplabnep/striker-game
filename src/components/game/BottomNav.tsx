@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, ChevronRight, Shield, Zap, UsersRound, Film, Search } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -41,6 +41,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'match_highlights', icon: <Film className="h-5 w-5" />, label: 'Highlights' },
       { screen: 'match_highlights_enhanced', icon: <Zap className="h-5 w-5" />, label: 'Enhanced' },
       { screen: 'pre_match_scout', icon: <Search className="h-5 w-5" />, label: 'Scout' },
+      { screen: 'match_stats_comparison', icon: <BarChart3 className="h-5 w-5" />, label: 'Match Stats' },
     ],
   },
   {
@@ -106,6 +107,9 @@ const moreCategories: NavCategory[] = [
 const allMoreItems = moreCategories.flatMap(c => c.items);
 const moreScreenSet = new Set(allMoreItems.map(i => i.screen));
 
+// Build a lookup map for quick access to item details by screen
+const itemByScreen = new Map(allMoreItems.map(i => [i.screen, i]));
+
 export default function BottomNav() {
   const screen = useGameStore(state => state.screen);
   const setScreen = useGameStore(state => state.setScreen);
@@ -113,32 +117,45 @@ export default function BottomNav() {
   const unreadNotifications = useGameStore(state => state.notifications.filter(n => !n.read).length);
 
   const [moreOpen, setMoreOpen] = useState(false);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [recentScreens, setRecentScreens] = useState<GameScreen[]>([]);
 
   const isMoreActive = moreScreenSet.has(screen);
   const totalBadges = activeEvents.length + unreadNotifications;
 
   const handleMoreClick = () => {
     setMoreOpen(prev => !prev);
-    if (moreOpen) setExpandedCategory(null);
+    if (moreOpen) setSearchQuery('');
   };
 
   const handleScreenSelect = (target: GameScreen) => {
     setScreen(target);
     setMoreOpen(false);
-    setExpandedCategory(null);
+    setSearchQuery('');
+    // Track recently accessed screens (last 3, no duplicates)
+    setRecentScreens(prev => {
+      const recent = prev.filter(s => s !== target);
+      recent.unshift(target);
+      return recent.slice(0, 3);
+    });
   };
 
-  const handleCategoryToggle = (title: string) => {
-    setExpandedCategory(prev => prev === title ? null : title);
-  };
+  // Get recent items for the "Recent" section
+  const recentItems = recentScreens
+    .map(s => itemByScreen.get(s))
+    .filter(Boolean) as NavItem[];
 
-  const getCategoryBadgeCount = (category: NavCategory) => {
-    return category.items.filter(item => {
-      if (item.screen === 'events' && activeEvents.length > 0) return true;
-      return false;
-    }).length;
-  };
+  // Filter categories and their items based on search query
+  const filteredCategories = searchQuery.trim()
+    ? moreCategories
+        .map(cat => ({
+          ...cat,
+          items: cat.items.filter(item =>
+            item.label.toLowerCase().includes(searchQuery.toLowerCase())
+          ),
+        }))
+        .filter(cat => cat.items.length > 0)
+    : moreCategories;
 
   return (
     <>
@@ -151,96 +168,149 @@ export default function BottomNav() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
+            {/* Backdrop */}
             <div
               className="fixed inset-0 bg-black/50 z-30"
-              onClick={() => { setMoreOpen(false); setExpandedCategory(null); }}
+              onClick={() => { setMoreOpen(false); setSearchQuery(''); }}
             />
+            {/* Panel - positioned above PWA install banner at bottom-20 */}
             <div
-              className="fixed bottom-16 left-0 right-0 z-40 px-3 pb-2 max-h-[70vh] overflow-y-auto overscroll-contain"
+              className="fixed bottom-16 left-0 right-0 z-40 px-2 pb-1"
             >
-              <div className="max-w-lg mx-auto bg-[#161b22] rounded-lg border border-[#30363d] shadow overflow-hidden">
+              <div className="max-w-lg mx-auto bg-[#161b22] rounded-lg border border-[#30363d] shadow-lg overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363d]">
                   <span className="text-sm font-semibold text-[#c9d1d9]">More Options</span>
-                  <button onClick={() => { setMoreOpen(false); setExpandedCategory(null); }} className="text-[#8b949e] hover:text-[#c9d1d9] transition-colors">
+                  <button
+                    onClick={() => { setMoreOpen(false); setSearchQuery(''); }}
+                    className="text-[#8b949e] hover:text-[#c9d1d9] transition-colors p-0.5"
+                  >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                {/* Category Sections */}
-                <div className="p-2 space-y-1">
-                  {moreCategories.map(category => {
-                    const isExpanded = expandedCategory === category.title;
-                    const badgeCount = getCategoryBadgeCount(category);
-                    const hasActiveItem = category.items.some(item => screen === item.screen);
+                {/* Search Bar */}
+                <div className="px-3 pt-3 pb-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8b949e]" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search screens..."
+                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg pl-8 pr-3 py-2 text-xs text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-colors"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8b949e] hover:text-[#c9d1d9] transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                    return (
-                      <div key={category.title}>
-                        {/* Category Header */}
-                        <button
-                          onClick={() => handleCategoryToggle(category.title)}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${
-                            isExpanded
-                              ? 'bg-[#21262d] text-[#c9d1d9]'
-                              : hasActiveItem
-                                ? 'text-[#c9d1d9] hover:bg-[#21262d]'
-                                : 'text-[#8b949e] hover:bg-[#21262d]/50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-[#8b949e]">{category.icon}</span>
-                            <span className="text-xs font-semibold tracking-wide uppercase">{category.title}</span>
-                            {badgeCount > 0 && (
-                              <span className="min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded flex items-center justify-center px-1">
-                                {badgeCount}
-                              </span>
-                            )}
-                          </div>
-                          <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
-                        </button>
-
-                        {/* Category Items */}
-                        <AnimatePresence>
-                          {isExpanded && (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.12 }}
-                              className="grid grid-cols-4 gap-0.5 px-1 pb-1"
-                            >
-                              {category.items.map(item => {
-                                const isActive = screen === item.screen;
-                                const hasBadge = item.screen === 'events' && activeEvents.length > 0;
-                                return (
-                                  <button
-                                    key={item.screen}
-                                    onClick={() => handleScreenSelect(item.screen)}
-                                    className={`relative flex flex-col items-center gap-1.5 py-2.5 rounded-lg transition-all ${
-                                      isActive
-                                        ? 'bg-emerald-500/10 text-emerald-400'
-                                        : 'text-[#8b949e] hover:bg-[#21262d] hover:text-[#c9d1d9]'
-                                    }`}
-                                  >
-                                    <div className="relative">
-                                      {item.icon}
-                                      {hasBadge && (
-                                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-                                      )}
-                                    </div>
-                                    <span className="text-[10px] font-medium leading-tight text-center">{item.label}</span>
-                                    {isActive && (
-                                      <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-400 rounded-full" />
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                {/* Scrollable Content */}
+                <div className="max-h-[60vh] overflow-y-auto overscroll-contain px-2 pb-2">
+                  {/* Recent Section — only show when not searching */}
+                  {!searchQuery.trim() && recentItems.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.12, delay: 0.05 }}
+                    >
+                      {/* Recent Header */}
+                      <div className="flex items-center gap-1.5 px-2 pt-1 pb-1.5">
+                        <Clock className="h-3 w-3 text-[#8b949e]" />
+                        <span className="text-[10px] font-semibold tracking-wide uppercase text-[#8b949e]">Recent</span>
                       </div>
-                    );
-                  })}
+                      {/* Recent Items Grid */}
+                      <div className="grid grid-cols-3 gap-1 mb-2 bg-[#0d1117] rounded-lg p-1.5">
+                        {recentItems.map(item => {
+                          const isActive = screen === item.screen;
+                          const hasBadge = item.screen === 'events' && activeEvents.length > 0;
+                          return (
+                            <button
+                              key={`recent-${item.screen}`}
+                              onClick={() => handleScreenSelect(item.screen)}
+                              className={`relative flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-all ${
+                                isActive
+                                  ? 'bg-emerald-500/15 text-emerald-400'
+                                  : 'text-[#8b949e] hover:bg-[#21262d] hover:text-[#c9d1d9]'
+                              }`}
+                            >
+                              <div className="relative">
+                                {item.icon}
+                                {hasBadge && (
+                                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                                )}
+                              </div>
+                              <span className="text-[10px] font-medium leading-tight text-center truncate w-full">{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Category Sections */}
+                  <div className="space-y-1.5">
+                    {filteredCategories.map((category, catIndex) => (
+                      <motion.div
+                        key={category.title}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.1, delay: catIndex * 0.03 }}
+                      >
+                        {/* Category Divider (non-interactive) */}
+                        <div className="flex items-center gap-2 px-2 pt-2 pb-1">
+                          <span className="text-[#8b949e]">{category.icon}</span>
+                          <span className="text-[10px] font-semibold tracking-wide uppercase text-[#8b949e]">{category.title}</span>
+                          <div className="flex-1 h-px bg-[#30363d]/50" />
+                        </div>
+
+                        {/* Items Grid */}
+                        <div className="grid grid-cols-4 gap-1">
+                          {category.items.map(item => {
+                            const isActive = screen === item.screen;
+                            const hasBadge = item.screen === 'events' && activeEvents.length > 0;
+                            return (
+                              <button
+                                key={item.screen}
+                                onClick={() => handleScreenSelect(item.screen)}
+                                className={`relative flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-lg transition-all ${
+                                  isActive
+                                    ? 'bg-emerald-500/15 text-emerald-400'
+                                    : 'text-[#8b949e] hover:bg-[#21262d] hover:text-[#c9d1d9]'
+                                }`}
+                              >
+                                <div className="relative">
+                                  {item.icon}
+                                  {hasBadge && (
+                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-medium leading-tight text-center">{item.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* No Results */}
+                  {searchQuery.trim() && filteredCategories.length === 0 && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex flex-col items-center justify-center py-8 text-[#484f58]"
+                    >
+                      <Search className="h-8 w-8 mb-2 text-[#30363d]" />
+                      <span className="text-xs">No screens match "{searchQuery}"</span>
+                    </motion.div>
+                  )}
                 </div>
               </div>
             </div>

@@ -48,6 +48,7 @@ import MatchHighlights from '@/components/game/MatchHighlights';
 import MatchHighlightsEnhanced from '@/components/game/MatchHighlightsEnhanced';
 import PreMatchScoutReport from '@/components/game/PreMatchScoutReport';
 import DreamTransfer from '@/components/game/DreamTransfer';
+import MatchStatsComparison from '@/components/game/MatchStatsComparison';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -93,6 +94,7 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   match_highlights: MatchHighlights,
   match_highlights_enhanced: MatchHighlightsEnhanced,
   pre_match_scout: PreMatchScoutReport,
+  match_stats_comparison: MatchStatsComparison,
 };
 
 const gameScreens: GameScreen[] = [
@@ -105,6 +107,7 @@ const gameScreens: GameScreen[] = [
   'post_match_analysis', 'player_comparison', 'transfer_negotiation',
   'fan_engagement', 'world_football_news', 'hall_of_fame', 'player_traits', 'match_highlights', 'match_highlights_enhanced',
   'pre_match_scout', 'dream_transfer',
+  'match_stats_comparison',
 ];
 
 export default function Home() {
