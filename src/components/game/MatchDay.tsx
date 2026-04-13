@@ -11,7 +11,7 @@ import {
   Play, ArrowRight, Clock, Trophy, Star, Crown,
   Target, Shield, Zap, Heart, TrendingUp, Activity,
   ChevronRight, Swords, Flame, Footprints, FastForward,
-  SkipForward, Gauge, Radio, BarChart3
+  SkipForward, Gauge, Radio, BarChart3, Eye, Home
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -138,6 +138,10 @@ function simulateMatchStats(homeQuality: number, awayQuality: number, homeScore:
   const awayFouls = Math.max(5, Math.round(12 + qualityDiff * 0.05 + (Math.random() * 4 - 2)));
   const homePassAcc = Math.round(78 + qualityDiff * 0.1 + (Math.random() * 6 - 3));
   const awayPassAcc = Math.round(78 - qualityDiff * 0.1 + (Math.random() * 6 - 3));
+  const homeTackles = Math.max(5, Math.round(18 + qualityDiff * 0.1 + (Math.random() * 6 - 3)));
+  const awayTackles = Math.max(5, Math.round(18 - qualityDiff * 0.1 + (Math.random() * 6 - 3)));
+  const homePasses = Math.max(200, Math.round(450 + qualityDiff * 5 + (Math.random() * 60 - 30)));
+  const awayPasses = Math.max(200, Math.round(450 - qualityDiff * 5 + (Math.random() * 60 - 30)));
 
   return {
     homePossession: Math.max(25, Math.min(75, homePossession)),
@@ -152,7 +156,23 @@ function simulateMatchStats(homeQuality: number, awayQuality: number, homeScore:
     awayFouls,
     homePassAcc: Math.min(95, Math.max(60, homePassAcc)),
     awayPassAcc: Math.min(95, Math.max(60, awayPassAcc)),
+    homeTackles,
+    awayTackles,
+    homePasses,
+    awayPasses,
   };
+}
+
+// -----------------------------------------------------------
+// Match grade helper
+// -----------------------------------------------------------
+function getMatchGrade(rating: number): { grade: string; color: string } {
+  if (rating >= 9.0) return { grade: 'A+', color: 'text-emerald-300' };
+  if (rating >= 8.0) return { grade: 'A', color: 'text-emerald-400' };
+  if (rating >= 7.0) return { grade: 'B', color: 'text-sky-400' };
+  if (rating >= 6.0) return { grade: 'C', color: 'text-amber-400' };
+  if (rating >= 5.0) return { grade: 'D', color: 'text-orange-400' };
+  return { grade: 'F', color: 'text-red-400' };
 }
 
 // -----------------------------------------------------------
@@ -824,107 +844,137 @@ export default function MatchDay() {
     const won = (lastResult.homeClub.id === currentClub.id && lastResult.homeScore > lastResult.awayScore) ||
                 (lastResult.awayClub.id === currentClub.id && lastResult.awayScore > lastResult.homeScore);
     const drew = lastResult.homeScore === lastResult.awayScore;
-    const isMotm = lastResult.playerRating >= 8.0;
-    const ratingColor = lastResult.playerRating >= 7 ? '#10b981' : lastResult.playerRating >= 6 ? '#f59e0b' : '#ef4444';
+    const isMotm = lastResult.playerRating >= 8.5;
+    const matchGrade = getMatchGrade(lastResult.playerRating);
+    const ratingColor = lastResult.playerRating >= 9 ? '#6ee7b7' : lastResult.playerRating >= 8 ? '#10b981' : lastResult.playerRating >= 7 ? '#38bdf8' : lastResult.playerRating >= 6 ? '#f59e0b' : '#ef4444';
+    const ratingBgColor = lastResult.playerRating >= 9 ? 'bg-emerald-300/15 border-emerald-300/40' : lastResult.playerRating >= 8 ? 'bg-emerald-500/15 border-emerald-500/40' : lastResult.playerRating >= 7 ? 'bg-sky-500/15 border-sky-500/40' : lastResult.playerRating >= 6 ? 'bg-amber-500/15 border-amber-500/40' : 'bg-red-500/15 border-red-500/40';
 
     const homeName = lastResult.homeClub.shortName || lastResult.homeClub.name.slice(0, 3);
     const awayName = lastResult.awayClub.shortName || lastResult.awayClub.name.slice(0, 3);
+    const homeAbbr = lastResult.homeClub.name.slice(0, 2).toUpperCase();
+    const awayAbbr = lastResult.awayClub.name.slice(0, 2).toUpperCase();
+    const competitionLabel = lastResult.competition === 'league' ? 'League' : lastResult.competition === 'cup' ? 'Cup' : lastResult.competition;
+    const competitionBadge = lastResult.competition === 'cup' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
 
     return (
       <div className="p-4 max-w-lg mx-auto space-y-4">
-        {/* Result Header Card */}
+        {/* Enhanced Result Header Card */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
-          <Card className="bg-[#161b22] border-[#30363d] overflow-hidden border-l-[3px] border-l-emerald-500">
-            <div className={`h-2 ${won ? 'bg-emerald-500' : drew ? 'bg-amber-500' : 'bg-red-500'}`} />
-            <CardContent className="p-5 text-center">
-              <p className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest mb-2">Result</p>
+          <Card className={`bg-[#161b22] border-[#30363d] overflow-hidden ${won ? 'border-l-[3px] border-l-emerald-500' : drew ? 'border-l-[3px] border-l-amber-500' : 'border-l-[3px] border-l-red-500'}`}>
+            <div className={`h-1.5 ${won ? 'bg-emerald-500' : drew ? 'bg-amber-500' : 'bg-red-500'}`} />
+            <CardContent className="p-5">
+              {/* Top row: Competition badge + Full Time */}
+              <div className="flex items-center justify-between mb-4">
+                <Badge variant="outline" className={`text-[10px] px-2 py-0.5 border ${competitionBadge} font-semibold`}>
+                  <Trophy className="w-3 h-3 mr-1" />
+                  {competitionLabel}
+                </Badge>
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-slate-600 text-slate-400 font-bold tracking-wider">
+                  FULL TIME
+                </Badge>
+              </div>
+
+              {/* Match Status: WIN/DRAW/LOSS */}
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className={`text-sm font-bold mb-4 tracking-wider ${won ? 'text-emerald-400' : drew ? 'text-amber-400' : 'text-red-400'}`}
+                transition={{ delay: 0.15 }}
+                className={`text-center text-2xl font-black mb-5 tracking-widest ${won ? 'text-emerald-400' : drew ? 'text-amber-400' : 'text-red-400'}`}
               >
-                {won ? '🏆 VICTORY!' : drew ? '🤝 DRAW' : '💪 DEFEAT'}
+                {won ? 'WIN' : drew ? 'DRAW' : 'LOSS'}
               </motion.p>
 
-              {/* Score Display */}
-              <div className="flex items-center justify-center gap-5 mb-4">
-                <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                  <span className="text-3xl">{lastResult.homeClub.logo}</span>
-                  <span className="text-sm text-[#c9d1d9] font-semibold">{homeName}</span>
+              {/* Score Display with larger team badges */}
+              <div className="flex items-center justify-center gap-4 mb-4">
+                {/* Home Team */}
+                <div className="flex flex-col items-center gap-2 min-w-[80px]">
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl bg-sky-500/10 border-2 border-sky-500/30 text-sky-400 font-black text-sm">
+                    {homeAbbr}
+                  </div>
+                  <span className="text-sm text-[#c9d1d9] font-semibold text-center leading-tight">{homeName}</span>
                   <Badge variant="outline" className="text-[9px] border-sky-500/30 text-sky-400">HOME</Badge>
                 </div>
-                <div className="text-6xl font-black text-white tracking-wider">
-                  {lastResult.homeScore} <span className="text-[#484f58]">-</span> {lastResult.awayScore}
+                {/* Score */}
+                <div className="flex flex-col items-center gap-1 min-w-[90px]">
+                  <div className="text-6xl font-black text-white tracking-wider">
+                    {lastResult.homeScore} <span className="text-[#484f58]">-</span> {lastResult.awayScore}
+                  </div>
                 </div>
-                <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                  <span className="text-3xl">{lastResult.awayClub.logo}</span>
-                  <span className="text-sm text-[#c9d1d9] font-semibold">{awayName}</span>
+                {/* Away Team */}
+                <div className="flex flex-col items-center gap-2 min-w-[80px]">
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl bg-rose-500/10 border-2 border-rose-500/30 text-rose-400 font-black text-sm">
+                    {awayAbbr}
+                  </div>
+                  <span className="text-sm text-[#c9d1d9] font-semibold text-center leading-tight">{awayName}</span>
                   <Badge variant="outline" className="text-[9px] border-rose-500/30 text-rose-400">AWAY</Badge>
                 </div>
               </div>
 
               {/* Competition & Week */}
-              <p className="text-[10px] text-[#8b949e]">
-                {lastResult.competition === 'league' ? 'League' : lastResult.competition} • Week {lastResult.week} • Season {lastResult.season}
+              <p className="text-center text-[10px] text-[#8b949e]">
+                Week {lastResult.week} &bull; Season {lastResult.season}
               </p>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Player Performance Card */}
+        {/* Enhanced Player Performance Card */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.2 }}
         >
           <Card className={`bg-[#161b22] border-[#30363d] overflow-hidden ${isMotm ? 'ring-1 ring-amber-500/30' : ''}`}>
-            <CardContent className="p-5 text-center">
-              <p className="text-xs text-[#8b949e]  mb-3">Your Performance</p>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <p className="text-xs text-[#8b949e] font-medium">Your Performance</p>
+                {isMotm && (
+                  <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold px-1.5">
+                    <Star className="w-3 h-3 mr-0.5" /> MAN OF THE MATCH
+                  </Badge>
+                )}
+              </div>
 
-              {/* MOTM Badge */}
-              {isMotm && (
-                <div className="mb-3">
-                  <MOTMBadge />
-                </div>
-              )}
-
-              {/* Rating */}
-              <motion.div
-                animate={isMotm ? {
-                  textShadow: [
-                    '0 0 8px rgba(251,191,36,0.3)',
-                    '0 0 20px rgba(251,191,36,0.6)',
-                    '0 0 8px rgba(251,191,36,0.3)',
-                  ],
-                } : {}}
-                transition={{ duration: 0.2, repeat: Infinity, ease: 'easeInOut' }}
-                className="text-6xl font-black"
-                style={{ color: isMotm ? '#fbbf24' : ratingColor }}
-              >
-                {lastResult.playerRating.toFixed(1)}
-              </motion.div>
-              <p className="text-sm text-[#8b949e] mt-1">{getMatchRatingLabel(lastResult.playerRating)}</p>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#30363d]">
-                {[
-                  { value: lastResult.playerGoals, label: 'Goals', icon: <Target className="w-3 h-3 text-emerald-400" /> },
-                  { value: lastResult.playerAssists, label: 'Assists', icon: <Zap className="w-3 h-3 text-sky-400" /> },
-                  { value: `${lastResult.playerMinutesPlayed}'`, label: 'Minutes', icon: <Clock className="w-3 h-3 text-[#8b949e]" /> },
-                ].map((stat, i) => (
-                  <div key={i} className="bg-[#21262d] rounded-lg py-2 px-1">
-                    <div className="flex items-center justify-center gap-1 mb-0.5">
-                      {stat.icon}
-                      <span className="text-lg font-bold text-white">{stat.value}</span>
-                    </div>
-                    <p className="text-[10px] text-[#8b949e]">{stat.label}</p>
+              <div className="flex items-center gap-5">
+                {/* Rating Circular Badge */}
+                <div className="flex-shrink-0">
+                  <div className={`w-20 h-20 rounded-2xl flex flex-col items-center justify-center border-2 ${ratingBgColor}`}>
+                    <span className="text-3xl font-black leading-none" style={{ color: ratingColor }}>
+                      {lastResult.playerRating.toFixed(1)}
+                    </span>
+                    <span className={`text-xs font-bold mt-0.5 ${matchGrade.color}`}>{matchGrade.grade}</span>
                   </div>
-                ))}
+                  <p className="text-[10px] text-[#8b949e] text-center mt-1.5">{getMatchRatingLabel(lastResult.playerRating)}</p>
+                </div>
+
+                {/* Stat Pills */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5 flex-1">
+                      <Target className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-lg font-bold text-emerald-400">{lastResult.playerGoals}</span>
+                      <span className="text-[10px] text-[#8b949e] ml-0.5">Goals</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/20 rounded-lg px-3 py-1.5 flex-1">
+                      <Zap className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="text-lg font-bold text-sky-400">{lastResult.playerAssists}</span>
+                      <span className="text-[10px] text-[#8b949e] ml-0.5">Assists</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-[#21262d] border border-[#30363d] rounded-lg px-3 py-1.5 flex-1">
+                      <Clock className="w-3.5 h-3.5 text-[#8b949e]" />
+                      <span className="text-lg font-bold text-white">{lastResult.playerMinutesPlayed}&apos;</span>
+                      <span className="text-[10px] text-[#8b949e] ml-0.5">Minutes</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -995,6 +1045,28 @@ export default function MatchDay() {
                   homeLabel={String(matchStats.homeShots)}
                   awayLabel={String(matchStats.awayShots)}
                   title="Shots"
+                  homeClubbName={homeName}
+                  awayClubName={awayName}
+                />
+                </div>
+                <div className={"pb-3 border-b border-[#30363d]"}>
+                <StatBar
+                  homeValue={matchStats.homePasses}
+                  awayValue={matchStats.awayPasses}
+                  homeLabel={String(matchStats.homePasses)}
+                  awayLabel={String(matchStats.awayPasses)}
+                  title="Passes"
+                  homeClubbName={homeName}
+                  awayClubName={awayName}
+                />
+                </div>
+                <div className={"pb-3 border-b border-[#30363d]"}>
+                <StatBar
+                  homeValue={matchStats.homeTackles}
+                  awayValue={matchStats.awayTackles}
+                  homeLabel={String(matchStats.homeTackles)}
+                  awayLabel={String(matchStats.awayTackles)}
+                  title="Tackles"
                   homeClubbName={homeName}
                   awayClubName={awayName}
                 />
@@ -1091,49 +1163,47 @@ export default function MatchDay() {
           </Card>
         </motion.div>
 
-        {/* Match Stats Button */}
+        {/* Post-Match Actions - Horizontal Row */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
+          className="space-y-3"
         >
-          <Button
-            onClick={() => setShowStats(true)}
-            variant="outline"
-            className="w-full h-12 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg font-semibold gap-2"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Match Stats
-          </Button>
-        </motion.div>
-
-        {/* Press Conference Button */}
-        {lastResult.playerMinutesPlayed > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.65 }}
-          >
+          <p className="text-xs text-[#8b949e] font-semibold uppercase tracking-wider">Post-Match Actions</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              onClick={() => setScreen('post_match_analysis')}
+              variant="outline"
+              className="h-11 border-[#30363d] bg-[#21262d] hover:bg-[#292e36] hover:border-emerald-500/30 text-[#c9d1d9] hover:text-emerald-400 rounded-lg text-xs font-semibold gap-1.5"
+            >
+              <BarChart3 className="w-4 h-4 text-emerald-400" />
+              Full Analysis
+            </Button>
             <Button
               onClick={() => { setPressConferenceType('post-match'); setShowPressConference(true); }}
               variant="outline"
-              className="w-full h-12 border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-lg font-semibold gap-2"
+              className="h-11 border-[#30363d] bg-[#21262d] hover:bg-[#292e36] hover:border-red-500/30 text-[#c9d1d9] hover:text-red-400 rounded-lg text-xs font-semibold gap-1.5"
             >
-              <span className="text-lg">🎙️</span>
-              Post-Match Press Conference
+              <Radio className="w-4 h-4 text-red-400" />
+              Press Conference
             </Button>
-          </motion.div>
-        )}
-
-        {/* Back Button */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.75 }}
-        >
-          <Button onClick={() => { setShowResult(false); setScreen('dashboard'); }} className="w-full h-12 bg-emerald-700 hover:bg-emerald-600 rounded-lg font-semibold">
-            Back to Dashboard
-          </Button>
+            <Button
+              onClick={() => setScreen('match_highlights')}
+              variant="outline"
+              className="h-11 border-[#30363d] bg-[#21262d] hover:bg-[#292e36] hover:border-amber-500/30 text-[#c9d1d9] hover:text-amber-400 rounded-lg text-xs font-semibold gap-1.5"
+            >
+              <Eye className="w-4 h-4 text-amber-400" />
+              View Highlights
+            </Button>
+            <Button
+              onClick={() => { setShowResult(false); setScreen('dashboard'); }}
+              className="h-11 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold gap-1.5"
+            >
+              <Home className="w-4 h-4" />
+              Dashboard
+            </Button>
+          </div>
         </motion.div>
 
         {/* Press Conference Modal */}

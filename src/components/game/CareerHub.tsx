@@ -6,6 +6,7 @@ import { formatCurrency, getOverallColor } from '@/lib/game/gameUtils';
 import { getLeagueById } from '@/lib/game/clubsData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,7 +14,8 @@ import {
   Trophy, Target, Calendar, TrendingUp, Award, Shield, Star,
   ChevronRight, Zap, Flame, Crown, FileText, Clock, Lock,
   BarChart3, Activity, Medal, CircleDollarSign, AlertTriangle,
-  CheckCircle2, Circle, Gem, Sparkles
+  CheckCircle2, Circle, Gem, Sparkles, Handshake, DollarSign,
+  ArrowRight, Briefcase
 } from 'lucide-react';
 
 // -----------------------------------------------------------
@@ -104,6 +106,29 @@ function getContractStatus(yearsRemaining: number): { label: string; color: stri
   return { label: 'Secure', color: 'text-emerald-400', icon: <CheckCircle2 className="h-4 w-4 text-emerald-400" /> };
 }
 
+// -----------------------------------------------------------
+// Club initials helper
+// -----------------------------------------------------------
+function getClubInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(w => !['FC', 'CF', 'AC', 'AS', 'SSC', 'SS', 'OGC', 'LOSC', 'RC', 'RCD', 'VfL', 'VfB', 'SV', '1.', 'FCU', 'TSG', 'SC', 'UD', 'CA'].includes(w.toUpperCase()))
+    .slice(0, 2)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+// -----------------------------------------------------------
+// Pulsing dot keyframe via inline style
+// -----------------------------------------------------------
+const PULSING_DOT_STYLE = `
+@keyframes pulse-emerald {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+`;
+
 // ============================================================
 // Main CareerHub Component
 // ============================================================
@@ -115,9 +140,11 @@ export default function CareerHub() {
   // Computed values
   const seasons = useMemo(() => gameState?.seasons ?? [], [gameState]);
   const achievements = useMemo(() => gameState?.achievements ?? [], [gameState]);
+  const seasonAwards = useMemo(() => gameState?.seasonAwards ?? [], [gameState]);
   const player = useMemo(() => gameState?.player, [gameState]);
   const currentClub = useMemo(() => gameState?.currentClub, [gameState]);
   const careerStats = useMemo(() => player?.careerStats, [player]);
+  const playerTeamLevel = useMemo(() => gameState?.playerTeamLevel ?? 'senior', [gameState]);
 
   const filteredAchievements = useMemo(() => {
     if (achievementFilter === 'all') return achievements;
@@ -146,6 +173,25 @@ export default function CareerHub() {
     return { mostGoals, bestRating, mostAssists, mostApps, bestLeaguePos };
   }, [seasons]);
 
+  // Awards grouped by season
+  const awardsBySeason = useMemo(() => {
+    const map: Record<number, typeof seasonAwards> = {};
+    for (const award of seasonAwards) {
+      if (!map[award.season]) map[award.season] = [];
+      map[award.season].push(award);
+    }
+    return map;
+  }, [seasonAwards]);
+
+  // Peak market value (from player current + historical estimate)
+  const peakMarketValue = useMemo(() => {
+    if (!player) return 0;
+    return player.marketValue;
+  }, [player]);
+
+  // Club primary color
+  const clubAccentColor = currentClub?.primaryColor ?? '#10B981';
+
   if (!gameState || !player || !currentClub || !careerStats) return null;
 
   const { currentSeason } = gameState;
@@ -153,9 +199,10 @@ export default function CareerHub() {
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
+      <style>{PULSING_DOT_STYLE}</style>
 
       {/* =========================================
-          HERO SECTION - Player Overview
+          1. CAREER SUMMARY HERO CARD
           ========================================= */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -163,18 +210,60 @@ export default function CareerHub() {
         transition={{ duration: 0.5 }}
       >
         <Card className="relative overflow-hidden bg-[#161b22] border border-[#30363d]">
+          {/* Border-left accent */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-1"
+            style={{ background: clubAccentColor }}
+          />
 
-          <CardContent className="relative p-5">
-            <div className="flex items-center gap-4 mb-5">
-              {/* Overall Badge */}
+          <CardContent className="relative p-5 pl-6">
+            <div className="flex items-start gap-4 mb-5">
+              {/* Club Logo Circle */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
+                className="flex-shrink-0"
+              >
+                <div
+                  className="w-14 h-14 rounded-lg flex items-center justify-center font-bold text-sm text-white border-2"
+                  style={{
+                    borderColor: clubAccentColor,
+                    background: clubAccentColor,
+                  }}
+                >
+                  {getClubInitials(currentClub.name)}
+                </div>
+              </motion.div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className="font-bold text-lg text-white truncate">{player.name}</h3>
+                  {/* Current Season Badge */}
+                  <Badge className="text-[9px] px-1.5 py-0 h-4 bg-emerald-950/50 text-emerald-400 border border-emerald-800/40 flex-shrink-0">
+                    S{currentSeason}
+                  </Badge>
+                </div>
+                <p className="text-sm text-[#8b949e]">
+                  {currentClub.name} · {player.position}
+                </p>
+                <p className="text-xs text-[#484f58]">
+                  {getLeagueById(currentClub.league)?.name ?? currentClub.league} · {player.nationality}
+                </p>
+              </div>
+            </div>
+
+            {/* OVR / POT Row */}
+            <div className="flex items-center gap-4 mb-5">
+              {/* OVR Badge */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
                 className="relative"
               >
                 <div
-                  className="w-16 h-16 rounded-lg flex items-center justify-center font-black text-2xl border-2 "
+                  className="w-14 h-14 rounded-lg flex items-center justify-center font-black text-xl border-2"
                   style={{
                     borderColor: getOverallColor(player.overall),
                     color: getOverallColor(player.overall),
@@ -183,37 +272,43 @@ export default function CareerHub() {
                 >
                   {player.overall}
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-[#161b22] border border-[#30363d] rounded-md px-1 py-0.5 text-[8px] text-[#8b949e]">
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-[#161b22] border border-[#30363d] rounded px-1.5 py-0 text-[7px] text-[#8b949e] uppercase tracking-wider">
                   OVR
                 </div>
               </motion.div>
 
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-lg text-white truncate">{player.name}</h3>
-                <p className="text-sm text-[#8b949e]">{player.nationality} · {player.position}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm">{currentClub.logo}</span>
-                  <span className="text-xs text-[#c9d1d9] truncate">{currentClub.name}</span>
-                  <span className="text-xs text-[#8b949e]">·</span>
-                  <span className="text-xs text-[#8b949e]">Age {player.age}</span>
-                </div>
-              </div>
+              {/* Arrow */}
+              <ArrowRight className="h-4 w-4 text-[#484f58] flex-shrink-0" />
 
-              {/* Potential Arrow */}
+              {/* POT Badge */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="flex flex-col items-center"
+                transition={{ delay: 0.4 }}
+                className="relative"
               >
-                <TrendingUp className="h-3 w-3 text-emerald-400 mb-1" />
-                <span className="text-xs font-bold text-emerald-400">{player.potential}</span>
-                <span className="text-[8px] text-[#8b949e]">POT</span>
+                <div className="w-14 h-14 rounded-lg flex items-center justify-center font-black text-xl border-2 border-emerald-700 text-emerald-400 bg-emerald-950/30">
+                  {player.potential}
+                </div>
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-[#161b22] border border-[#30363d] rounded px-1.5 py-0 text-[7px] text-emerald-500 uppercase tracking-wider">
+                  POT
+                </div>
               </motion.div>
+
+              {/* Player Info */}
+              <div className="flex-1 min-w-0 text-right">
+                <p className="text-xs text-[#8b949e]">Age {player.age}</p>
+                <p className="text-xs text-[#484f58]">
+                  {playerTeamLevel === 'u18' ? 'Youth' : playerTeamLevel === 'u21' ? 'U21' : 'Senior'}
+                </p>
+                <p className="text-[10px] text-emerald-400 font-medium">
+                  {formatCurrency(player.marketValue, 'M')}
+                </p>
+              </div>
             </div>
 
             {/* Animated Stat Counters */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               {[
                 { label: 'Goals', value: careerStats.totalGoals, color: 'text-emerald-400' },
                 { label: 'Assists', value: careerStats.totalAssists, color: 'text-blue-400' },
@@ -225,7 +320,7 @@ export default function CareerHub() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 + i * 0.08 }}
-                  className="text-center bg-[#21262d]  rounded-lg p-2 border border-[#30363d]"
+                  className="text-center bg-[#21262d] rounded-lg p-2 border border-[#30363d]"
                 >
                   <p className={`text-lg font-bold ${stat.color}`}>
                     <AnimatedNumber value={stat.value} />
@@ -239,18 +334,151 @@ export default function CareerHub() {
       </motion.div>
 
       {/* =========================================
-          CONTRACT INFORMATION CARD
+          2. CAREER HIGHLIGHTS SECTION
+          ========================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15 }}
+      >
+        <Card className="bg-[#161b22] border border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
+              <Star className="h-3 w-3" /> Career Highlights
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <div className="grid grid-cols-3 gap-2">
+              {/* Best Season */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <Activity className="h-3 w-3 text-amber-400" />
+                  <span className="text-[9px] text-[#8b949e]">Best Season</span>
+                </div>
+                <p className="text-sm font-bold text-amber-400">
+                  {records?.bestRating.value > 0 ? records.bestRating.value.toFixed(1) : '-'}
+                </p>
+                <p className="text-[8px] text-[#484f58]">Avg Rating</p>
+              </motion.div>
+
+              {/* Most Goals */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.25 }}
+                className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <Target className="h-3 w-3 text-emerald-400" />
+                  <span className="text-[9px] text-[#8b949e]">Most Goals</span>
+                </div>
+                <p className="text-sm font-bold text-emerald-400">
+                  {records?.mostGoals.value ?? 0}
+                </p>
+                <p className="text-[8px] text-[#484f58]">In a Season</p>
+              </motion.div>
+
+              {/* Most Assists */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <Zap className="h-3 w-3 text-blue-400" />
+                  <span className="text-[9px] text-[#8b949e]">Most Assists</span>
+                </div>
+                <p className="text-sm font-bold text-blue-400">
+                  {records?.mostAssists.value ?? 0}
+                </p>
+                <p className="text-[8px] text-[#484f58]">In a Season</p>
+              </motion.div>
+
+              {/* Total Trophies */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35 }}
+                className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <Trophy className="h-3 w-3 text-amber-400" />
+                  <span className="text-[9px] text-[#8b949e]">Trophies</span>
+                </div>
+                <p className="text-sm font-bold text-amber-400">
+                  {careerStats.trophies.length}
+                </p>
+                <p className="text-[8px] text-[#484f58]">Career Total</p>
+              </motion.div>
+
+              {/* Market Value */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <DollarSign className="h-3 w-3 text-emerald-400" />
+                  <span className="text-[9px] text-[#8b949e]">Value</span>
+                </div>
+                <p className="text-sm font-bold text-emerald-400">
+                  {formatCurrency(player.marketValue, 'M')}
+                </p>
+                <p className="text-[8px] text-[#484f58]">Current</p>
+              </motion.div>
+
+              {/* Best Finish */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.45 }}
+                className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <Medal className="h-3 w-3" style={{ color: records?.bestLeaguePos.value ? getPositionColor(records.bestLeaguePos.value) : '#64748B' }} />
+                  <span className="text-[9px] text-[#8b949e]">Best Finish</span>
+                </div>
+                <p className="text-sm font-bold" style={{ color: records?.bestLeaguePos.value && records.bestLeaguePos.value < 99 ? getPositionColor(records.bestLeaguePos.value) : '#64748B' }}>
+                  {records?.bestLeaguePos.value && records.bestLeaguePos.value < 99 ? getOrdinal(records.bestLeaguePos.value) : '-'}
+                </p>
+                <p className="text-[8px] text-[#484f58]">League Position</p>
+              </motion.div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* =========================================
+          3. CONTRACT STATUS CARD (ENHANCED)
           ========================================= */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        <Card className="bg-[#161b22]  border-[#30363d] overflow-hidden">
+        <Card className="bg-[#161b22] border border-[#30363d] overflow-hidden">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
-              <FileText className="h-3 w-3" /> Contract Details
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
+                <FileText className="h-3 w-3" /> Contract Details
+              </CardTitle>
+              {/* Contract Type Badge */}
+              <Badge className={`text-[9px] px-1.5 py-0 h-4 ${
+                playerTeamLevel === 'u18' ? 'bg-cyan-950/50 text-cyan-400 border border-cyan-800/40' :
+                playerTeamLevel === 'u21' ? 'bg-blue-950/50 text-blue-400 border border-blue-800/40' :
+                'bg-emerald-950/50 text-emerald-400 border border-emerald-800/40'
+              }`}>
+                <Briefcase className="h-2.5 w-2.5 mr-1" />
+                {playerTeamLevel === 'u18' ? 'Youth' : playerTeamLevel === 'u21' ? 'U21' : 'Senior'}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="space-y-3">
@@ -268,6 +496,42 @@ export default function CareerHub() {
                   <span className={`text-xs font-medium ${getContractStatus(contract.yearsRemaining).color}`}>
                     {getContractStatus(contract.yearsRemaining).label}
                   </span>
+                </div>
+              </div>
+
+              {/* Visual Contract Timeline Bar */}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[10px] text-[#8b949e]">Contract Timeline</span>
+                  <span className="text-[10px] text-[#8b949e]">{contract.yearsRemaining} yr(s) remaining</span>
+                </div>
+                <div className="relative h-6 bg-[#21262d] rounded-md border border-[#30363d] overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.max(8, (contract.yearsRemaining / 5) * 100)}%` }}
+                    transition={{ duration: 1, delay: 0.5 }}
+                    className={`absolute inset-y-0 left-0 rounded-md ${
+                      contract.yearsRemaining <= 1 ? 'bg-red-500/30 border-r-2 border-red-500' :
+                      contract.yearsRemaining <= 2 ? 'bg-amber-500/30 border-r-2 border-amber-500' :
+                      'bg-emerald-500/30 border-r-2 border-emerald-500'
+                    }`}
+                  />
+                  {/* Year markers */}
+                  <div className="relative h-full flex items-center">
+                    {Array.from({ length: Math.min(contract.yearsRemaining, 5) }, (_, i) => (
+                      <div
+                        key={i}
+                        className="absolute top-0 bottom-0 w-px bg-[#30363d]"
+                        style={{ left: `${((i + 1) / 5) * 100}%` }}
+                      />
+                    ))}
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] text-[#8b949e] font-medium">
+                      Now
+                    </span>
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-[#484f58]">
+                      {contract.yearsRemaining > 0 ? `${contract.yearsRemaining}yr` : 'End'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -303,7 +567,7 @@ export default function CareerHub() {
                      contract.performanceBonuses![k as keyof typeof contract.performanceBonuses]! > 0
               ) && (
                 <div className="bg-[#21262d] rounded-lg p-2.5 border border-[#30363d]">
-                  <p className="text-[10px] text-[#8b949e] uppercase mb-1.5">Performance Bonuses</p>
+                  <p className="text-[10px] text-[#8b949e] uppercase mb-1.5">Performance Clauses</p>
                   <div className="flex flex-wrap gap-1.5">
                     {contract.performanceBonuses.goalsBonus != null && contract.performanceBonuses.goalsBonus > 0 && (
                       <Badge variant="outline" className="text-[10px] bg-emerald-950/30 border-emerald-800/40 text-emerald-400">
@@ -324,96 +588,108 @@ export default function CareerHub() {
                 </div>
               )}
 
-              {/* Contract Progress Bar */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] text-[#8b949e]">Contract Duration</span>
-                  <span className="text-[10px] text-[#8b949e]">{contract.yearsRemaining} yr(s) left</span>
-                </div>
-                <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.max(5, (contract.yearsRemaining / 5) * 100)}%` }}
-                    transition={{ duration: 1, delay: 0.5 }}
-                    className={`h-full rounded-full ${
-                      contract.yearsRemaining <= 1 ? 'bg-red-500' :
-                      contract.yearsRemaining <= 2 ? 'bg-amber-500' :
-                      'bg-emerald-500'
-                    }`}
-                  />
-                </div>
+              {/* Performance Clause Indicator */}
+              <div className="flex items-center gap-2 bg-[#21262d] rounded-lg px-2.5 py-2 border border-[#30363d]">
+                <div className={`w-2 h-2 rounded-sm ${
+                  contract.yearsRemaining <= 1 ? 'bg-red-500' :
+                  contract.yearsRemaining <= 2 ? 'bg-amber-500' :
+                  'bg-emerald-500'
+                }`} />
+                <span className="text-[10px] text-[#8b949e]">
+                  {contract.yearsRemaining <= 1
+                    ? 'Contract expiring soon — consider negotiating an extension'
+                    : contract.yearsRemaining <= 2
+                    ? 'Approaching renewal window — prepare for talks'
+                    : 'Contract security — focus on performance targets'
+                  }
+                </span>
               </div>
+
+              {/* Negotiate Extension Button */}
+              <Button
+                onClick={() => setScreen('transfer_negotiation')}
+                className="w-full h-9 bg-emerald-900/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800/40 text-xs font-medium"
+              >
+                <Handshake className="h-3.5 w-3.5 mr-1.5" />
+                Negotiate Extension
+              </Button>
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
       {/* =========================================
-          CAREER TIMELINE
+          4. CAREER JOURNEY TIMELINE
           ========================================= */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       >
-        <Card className="bg-[#161b22]  border-[#30363d]">
+        <Card className="bg-[#161b22] border border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
             <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
-              <Calendar className="h-3 w-3" /> Career Timeline
+              <Calendar className="h-3 w-3" /> Career Journey
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            {seasons.length === 0 ? (
+            {seasons.length === 0 && currentSeason <= 1 ? (
               <div className="text-center py-6">
                 <Calendar className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
                 <p className="text-sm text-[#484f58]">No completed seasons yet</p>
-                <p className="text-xs text-[#30363d]">Your career timeline will appear here</p>
+                <p className="text-xs text-[#30363d]">Your career journey will appear here</p>
               </div>
             ) : (
-              <div className="relative">
-                {/* Timeline line */}
-                <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-[#30363d]" />
+              <div className="relative max-h-96 overflow-y-auto custom-scrollbar">
+                {/* Timeline vertical line */}
+                <div className="absolute left-[11px] top-0 bottom-0 w-px bg-[#30363d]" />
 
                 <div className="space-y-0">
+                  {/* Completed seasons */}
                   {seasons.map((s, i) => {
                     const posColor = getPositionColor(s.leaguePosition);
+                    const isLastSeason = i === seasons.length - 1;
+                    const seasonAwardsList = awardsBySeason[s.number] ?? [];
+
                     return (
                       <motion.div
                         key={i}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.1 + i * 0.1 }}
-                        className="relative flex items-start gap-3 pb-4 last:pb-0"
+                        transition={{ delay: 0.1 + i * 0.08 }}
+                        className="relative flex items-start gap-3 pb-3"
                       >
                         {/* Timeline Node */}
-                        <div className="relative z-10 flex-shrink-0 mt-1">
+                        <div className="relative z-10 flex-shrink-0 mt-1.5">
                           <div
-                            className="w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center"
+                            className="w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center"
                             style={{
                               borderColor: posColor,
-                              background: s.leaguePosition === 1 ? `${posColor}30` : 'rgba(15,23,42,0.8)',
+                              background: s.leaguePosition === 1 ? `${posColor}30` : '#161b22',
                             }}
                           >
                             {s.leaguePosition === 1 ? (
-                              <Crown className="h-2 w-2" style={{ color: posColor }} />
+                              <Crown className="h-2.5 w-2.5" style={{ color: posColor }} />
                             ) : (
-                              <div className="w-1.5 h-1.5 rounded-full" style={{ background: posColor }} />
+                              <div className="w-1.5 h-1.5 rounded-sm" style={{ background: posColor }} />
                             )}
                           </div>
                         </div>
 
                         {/* Season Card */}
                         <div className="flex-1 bg-[#21262d] rounded-lg p-2.5 border border-[#30363d] hover:border-slate-600/50 transition-colors">
-                          <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-[#c9d1d9]">S{s.number}</span>
-                              <span className="text-[10px] text-[#8b949e]">{s.year}</span>
+                              <span className="text-xs font-bold text-[#c9d1d9]">Season {s.number}</span>
+                              <span className="text-[10px] text-[#484f58]">{s.year}</span>
                             </div>
                             <Badge className={`text-[9px] px-1.5 py-0 h-4 ${getPositionBg(s.leaguePosition)}`}>
                               {getOrdinal(s.leaguePosition)}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-3 text-[11px]">
+
+                          {/* Stats Row */}
+                          <div className="flex items-center gap-3 text-[11px] mb-1.5">
                             <span className="text-[#8b949e] flex items-center gap-1">
                               <Target className="h-2.5 w-2.5 text-emerald-500" /> {s.playerStats.goals}G
                             </span>
@@ -427,13 +703,303 @@ export default function CareerHub() {
                               <Calendar className="h-2.5 w-2.5" /> {s.playerStats.appearances} apps
                             </span>
                           </div>
+
+                          {/* Season Awards */}
+                          {seasonAwardsList.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {seasonAwardsList.map((award, ai) => (
+                                <Badge
+                                  key={ai}
+                                  className="text-[8px] px-1.5 py-0 h-3.5 bg-amber-950/30 text-amber-400 border border-amber-800/30"
+                                >
+                                  <Award className="h-2 w-2 mr-0.5" />
+                                  {award.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     );
                   })}
+
+                  {/* Current Season Node (pulsing) */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1 + seasons.length * 0.08 }}
+                    className="relative flex items-start gap-3 pb-3"
+                  >
+                    <div className="relative z-10 flex-shrink-0 mt-1.5">
+                      <div
+                        className="w-[22px] h-[22px] rounded-md border-2 border-emerald-500 bg-[#161b22] flex items-center justify-center"
+                        style={{ animation: 'pulse-emerald 2s infinite' }}
+                      >
+                        <div className="w-2 h-2 rounded-sm bg-emerald-500" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1 bg-[#21262d] rounded-lg p-2.5 border border-emerald-800/40">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-xs font-bold text-emerald-400">Season {currentSeason}</span>
+                        <Badge className="text-[8px] px-1.5 py-0 h-3.5 bg-emerald-950/50 text-emerald-400 border border-emerald-800/40">
+                          Current
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px]">
+                        <span className="text-[#8b949e] flex items-center gap-1">
+                          <Target className="h-2.5 w-2.5 text-emerald-500" /> {player.seasonStats.goals}G
+                        </span>
+                        <span className="text-[#8b949e] flex items-center gap-1">
+                          <Zap className="h-2.5 w-2.5 text-blue-500" /> {player.seasonStats.assists}A
+                        </span>
+                        <span className="text-[#8b949e] flex items-center gap-1">
+                          <Activity className="h-2.5 w-2.5 text-amber-500" /> {player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating.toFixed(1) : '-'}
+                        </span>
+                        <span className="text-[#8b949e] flex items-center gap-1">
+                          <Calendar className="h-2.5 w-2.5" /> {player.seasonStats.appearances} apps
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Future Seasons (empty circles) */}
+                  {contract.yearsRemaining > 0 && Array.from({ length: Math.min(contract.yearsRemaining - 1, 3) }, (_, i) => (
+                    <motion.div
+                      key={`future-${i}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.1 + (seasons.length + 1 + i) * 0.06 }}
+                      className="relative flex items-start gap-3 pb-3"
+                    >
+                      <div className="relative z-10 flex-shrink-0 mt-1.5">
+                        <div className="w-[22px] h-[22px] rounded-md border border-[#30363d] bg-[#161b22] flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-sm bg-[#30363d]" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-[10px] text-[#30363d]">Season {currentSeason + i + 1}</span>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* =========================================
+          5. CAREER GROWTH CHART (OVR Progression)
+          ========================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.35 }}
+      >
+        <Card className="bg-[#161b22] border border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
+                <TrendingUp className="h-3 w-3" /> Performance Progression
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] text-emerald-400 flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm bg-emerald-500" /> Rating
+                </span>
+                {player.overall < player.potential && (
+                  <span className="text-[9px] text-amber-400 flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-sm border border-amber-400 bg-transparent" /> Potential
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            {(() => {
+              // Build data points from seasons
+              const allSeasonsData = seasons.map(s => ({
+                season: s.number,
+                rating: s.playerStats.averageRating || 0,
+              }));
+
+              // Add current season in-progress data
+              if (player.seasonStats.averageRating > 0) {
+                allSeasonsData.push({
+                  season: currentSeason,
+                  rating: player.seasonStats.averageRating,
+                });
+              }
+
+              const validData = allSeasonsData.filter(d => d.rating > 0);
+
+              if (validData.length === 0) {
+                return (
+                  <div className="text-center py-4">
+                    <TrendingUp className="h-8 w-8 text-[#30363d] mx-auto mb-2" />
+                    <p className="text-sm text-[#484f58]">Play matches to see your progression</p>
+                  </div>
+                );
+              }
+
+              if (validData.length === 1) {
+                // Single point with potential arrow
+                const data = validData[0];
+                return (
+                  <div className="h-28 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-4 mb-2">
+                        <div className="text-center">
+                          <div className="w-10 h-10 rounded-lg bg-emerald-950/40 border border-emerald-800/40 flex items-center justify-center">
+                            <span className="text-sm font-bold text-emerald-400">{data.rating.toFixed(1)}</span>
+                          </div>
+                          <span className="text-[8px] text-[#484f58] block mt-1">Avg Rating</span>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-[#30363d]" />
+                        <div className="text-center">
+                          <div className="w-10 h-10 rounded-lg bg-amber-950/40 border border-amber-800/40 flex items-center justify-center">
+                            <span className="text-sm font-bold text-amber-400">{player.potential}</span>
+                          </div>
+                          <span className="text-[8px] text-[#484f58] block mt-1">Potential</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-[#484f58]">OVR: {player.overall} → POT: {player.potential}</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Multiple data points - draw chart
+              const minR = Math.min(...validData.map(d => d.rating)) - 0.3;
+              const maxR = Math.max(...validData.map(d => d.rating)) + 0.3;
+              const range = maxR - minR || 1;
+              const chartW = 300;
+              const chartH = 120;
+              const paddingX = 30;
+              const paddingY = 15;
+              const plotW = chartW - paddingX * 2;
+              const plotH = chartH - paddingY * 2;
+
+              const points = validData.map((d, i) => {
+                const x = paddingX + (validData.length > 1 ? (i / (validData.length - 1)) * plotW : plotW / 2);
+                const y = paddingY + plotH - ((d.rating - minR) / range) * plotH;
+                return { ...d, x, y };
+              });
+
+              const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+              const fillPath = `${linePath} L${points[points.length - 1].x},${chartH - paddingY} L${points[0].x},${chartH - paddingY} Z`;
+
+              // Potential target line
+              const potentialRating = player.overall + (player.potential - player.overall) * 0.5;
+              const potY = paddingY + plotH - ((Math.min(potentialRating, maxR) - minR) / range) * plotH;
+
+              return (
+                <div className="h-36 relative">
+                  <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-full" preserveAspectRatio="none">
+                    {/* Grid lines */}
+                    {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => (
+                      <line key={idx} x1={paddingX} y1={paddingY + pct * plotH} x2={chartW - paddingX} y2={paddingY + pct * plotH} stroke="#30363d" strokeWidth="0.5" />
+                    ))}
+
+                    {/* Y-axis labels */}
+                    {[0, 0.5, 1].map((pct, idx) => {
+                      const val = minR + (1 - pct) * range;
+                      return (
+                        <text key={idx} x={paddingX - 4} y={paddingY + pct * plotH + 3} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="monospace">
+                          {val.toFixed(1)}
+                        </text>
+                      );
+                    })}
+
+                    {/* Fill area */}
+                    <motion.path
+                      d={fillPath}
+                      fill="#10B981"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.1 }}
+                      transition={{ duration: 1, delay: 0.5 }}
+                    />
+
+                    {/* Potential dashed line */}
+                    {player.overall < player.potential && (
+                      <motion.line
+                        x1={paddingX}
+                        y1={potY}
+                        x2={chartW - paddingX}
+                        y2={potY}
+                        stroke="#F59E0B"
+                        strokeWidth="1"
+                        strokeDasharray="4 3"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.4 }}
+                        transition={{ delay: 1 }}
+                      />
+                    )}
+
+                    {/* Main line */}
+                    <motion.path
+                      d={linePath}
+                      fill="none"
+                      stroke="#10B981"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: 1.2, delay: 0.5 }}
+                    />
+
+                    {/* Dots */}
+                    {points.map((p, i) => {
+                      const isCurrent = i === points.length - 1;
+                      return (
+                        <motion.circle
+                          key={i}
+                          cx={p.x}
+                          cy={p.y}
+                          r={isCurrent ? 4 : 2.5}
+                          fill={isCurrent ? '#10B981' : '#161b22'}
+                          stroke="#10B981"
+                          strokeWidth={isCurrent ? 2 : 1.5}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.8 + i * 0.1 }}
+                        />
+                      );
+                    })}
+
+                    {/* Current point label */}
+                    {(() => {
+                      const last = points[points.length - 1];
+                      return (
+                        <motion.text
+                          x={last.x}
+                          y={last.y - 8}
+                          textAnchor="middle"
+                          fill="#10B981"
+                          fontSize="8"
+                          fontWeight="bold"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 1.2 }}
+                        >
+                          {last.rating.toFixed(1)}
+                        </motion.text>
+                      );
+                    })()}
+                  </svg>
+
+                  {/* X-axis labels */}
+                  <div className="flex justify-between px-6 -mt-1">
+                    {validData.map((d, i) => (
+                      <span key={i} className={`text-[8px] ${i === validData.length - 1 ? 'text-emerald-500 font-medium' : 'text-[#484f58]'}`}>
+                        S{d.season}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </motion.div>
@@ -446,7 +1012,7 @@ export default function CareerHub() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <Card className="bg-[#161b22]  border-[#30363d]">
+        <Card className="bg-[#161b22] border border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
             <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
               <BarChart3 className="h-3 w-3" /> Stats Deep Dive
@@ -465,102 +1031,19 @@ export default function CareerHub() {
                       <motion.div
                         key={i}
                         className="flex-1 flex flex-col items-center justify-end h-full"
-                        initial={{ height: 0 }}
-                        animate={{ height: '100%' }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         transition={{ delay: 0.5 + i * 0.08 }}
                       >
                         <span className="text-[9px] text-[#8b949e] mb-0.5">{s.playerStats.goals}</span>
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: `${Math.max(4, heightPct)}%` }}
-                          transition={{ duration: 0.6, delay: 0.5 + i * 0.08, ease: 'easeOut' }}
-                          className="w-full rounded-t-sm bg-emerald-500 min-h-[4px]"
+                        <div
+                          className="w-full rounded-t-sm bg-emerald-500"
+                          style={{ height: `${Math.max(4, heightPct)}%` }}
                         />
                         <span className="text-[8px] text-[#484f58] mt-0.5">S{s.number}</span>
                       </motion.div>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {/* Rating Progression Sparkline */}
-            {seasons.length > 1 && (
-              <div>
-                <p className="text-[10px] text-[#8b949e] uppercase mb-2">Rating Progression</p>
-                <div className="h-12 relative">
-                  <svg viewBox="0 0 300 50" className="w-full h-full" preserveAspectRatio="none">
-                    {/* Grid lines */}
-                    {[0, 0.25, 0.5, 0.75, 1].map((y, idx) => (
-                      <line key={idx} x1="0" y1={y * 50} x2="300" y2={y * 50} stroke="#334155" strokeWidth="0.5" strokeDasharray="2 2" />
-                    ))}
-
-                    {/* Rating line */}
-                    {(() => {
-                      const ratings = seasons.map(s => s.playerStats.averageRating || 0).filter(r => r > 0);
-                      if (ratings.length < 2) return null;
-                      const minR = Math.min(...ratings) - 0.5;
-                      const maxR = Math.max(...ratings) + 0.5;
-                      const range = maxR - minR || 1;
-                      const points = ratings.map((r, i) => {
-                        const x = (i / (ratings.length - 1)) * 280 + 10;
-                        const y = 45 - ((r - minR) / range) * 40;
-                        return `${x},${y}`;
-                      }).join(' ');
-
-                      // Fill area
-                      const fillPoints = `10,45 ${points} ${(ratings.length - 1) / (ratings.length - 1) * 280 + 10},45`;
-
-                      return (
-                        <g>
-                          <motion.path
-                            d={`M ${fillPoints} Z`}
-                            fill="#10B981"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.15 }}
-                            transition={{ duration: 1, delay: 0.6 }}
-                          />
-                          <motion.polyline
-                            points={points}
-                            fill="none"
-                            stroke="#10B981"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            initial={{ pathLength: 0, opacity: 0 }}
-                            animate={{ pathLength: 1, opacity: 1 }}
-                            transition={{ duration: 1.2, delay: 0.6 }}
-                          />
-                          {/* Dots */}
-                          {ratings.map((r, i) => {
-                            const x = (i / (ratings.length - 1)) * 280 + 10;
-                            const y = 45 - ((r - minR) / range) * 40;
-                            return (
-                              <motion.circle
-                                key={i}
-                                cx={x}
-                                cy={y}
-                                r="2.5"
-                                fill="#0F172A"
-                                stroke="#10B981"
-                                strokeWidth="1.5"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 1 + i * 0.1 }}
-                              />
-                            );
-                          })}
-
-                        </g>
-                      );
-                    })()}
-                  </svg>
-                  {/* Season labels */}
-                  <div className="flex justify-between mt-0.5 px-1">
-                    {seasons.filter(s => s.playerStats.averageRating > 0).map((s, i) => (
-                      <span key={i} className="text-[8px] text-[#484f58]">S{s.number}</span>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}
@@ -655,7 +1138,7 @@ export default function CareerHub() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
-        <Card className="bg-[#161b22]  border-[#30363d]">
+        <Card className="bg-[#161b22] border border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
@@ -690,7 +1173,7 @@ export default function CareerHub() {
               </TabsList>
 
               <TabsContent value={achievementFilter} className="mt-0">
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto custom-scrollbar">
                   <AnimatePresence mode="popLayout">
                     {filteredAchievements.map((a, i) => {
                       const rarity = RARITY_CONFIG[a.rarity] || RARITY_CONFIG.common;
@@ -708,12 +1191,8 @@ export default function CareerHub() {
                               : 'bg-[#21262d] border-[#30363d]'
                           } transition-colors`}
                         >
-                          {/* Rarity indicator */}
-
                           {/* Icon */}
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${
-                            a.unlocked ? 'bg-[#21262d]' : 'bg-[#21262d]'
-                          }`}>
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 bg-[#21262d]`}>
                             {a.unlocked ? a.icon : <Lock className="h-4 w-4 text-[#484f58]" />}
                           </div>
 
@@ -771,7 +1250,7 @@ export default function CareerHub() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
-        <Card className="bg-[#161b22]  border-[#30363d]">
+        <Card className="bg-[#161b22] border border-[#30363d]">
           <CardHeader className="pb-2 pt-3 px-4">
             <CardTitle className="text-xs text-[#8b949e] uppercase flex items-center gap-2">
               <Flame className="h-3 w-3" /> Current Season · S{currentSeason}
@@ -824,7 +1303,7 @@ export default function CareerHub() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
         onClick={() => setScreen('analytics')}
-        className="w-full bg-[#161b22]  border border-[#30363d] rounded-lg p-4 flex items-center justify-between hover:bg-[#21262d] hover:border-emerald-800/40 transition-all group"
+        className="w-full bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-center justify-between hover:bg-[#21262d] hover:border-emerald-800/40 transition-all group"
       >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-emerald-950/40 border border-emerald-800/30 flex items-center justify-center">

@@ -616,7 +616,9 @@ export type GameScreen =
   | 'match_stats_comparison'
   | 'career_milestones'
   | 'press_conference'
-  | 'achievements_system';
+  | 'achievements_system'
+  | 'team_selection'
+  | 'career_journal';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

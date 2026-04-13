@@ -30,13 +30,23 @@ import {
   GraduationCap,
   MessageCircle,
   Moon,
+  Sun,
   Trophy,
   Bell,
   BellOff,
+  ChevronRight,
+  BarChart3,
+  BookOpen,
+  Award,
+  Calendar,
+  Clock,
+  Lock,
+  HardDrive,
+  FileDown,
 } from 'lucide-react';
 import { getLeagueById, getSeasonMatchdays } from '@/lib/game/clubsData';
 import { getSaveSlots, deleteSave as persistDeleteSave } from '@/services/persistenceService';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ============================================================
@@ -63,19 +73,6 @@ const notificationTypeIcons: Record<string, string> = {
   contract: '\uD83D\uDCDD',
   training: '\uD83D\uDCAA',
   career: 'Career',
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.06,
-    },
-  },
-};
-
-const staggerItem = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
 // ============================================================
@@ -202,10 +199,39 @@ function OptionCard({
           animate={{ opacity: 1 }}
           className="flex items-center gap-1 mt-2"
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <div className="w-1.5 h-1.5 rounded-sm bg-emerald-400" />
           <span className="text-[10px] text-emerald-400 font-medium">Active</span>
         </motion.div>
       )}
+    </button>
+  );
+}
+
+// ============================================================
+// Quick Link Row Component
+// ============================================================
+
+function QuickLinkRow({
+  icon: Icon,
+  label,
+  screen,
+}: {
+  icon: React.ElementType;
+  label: string;
+  screen: string;
+}) {
+  const setScreen = useGameStore(state => state.setScreen);
+  return (
+    <button
+      type="button"
+      onClick={() => setScreen(screen as Parameters<typeof setScreen>[0])}
+      className="w-full flex items-center gap-3 p-3 rounded-lg bg-[#21262d] hover:bg-[#292e36] transition-colors group"
+    >
+      <div className="flex items-center justify-center w-9 h-9 bg-[#161b22] rounded-lg flex-shrink-0">
+        <Icon className="h-4 w-4 text-emerald-400" />
+      </div>
+      <span className="text-sm text-[#c9d1d9] font-medium flex-1 text-left">{label}</span>
+      <ChevronRight className="h-4 w-4 text-[#484f58] group-hover:text-[#8b949e] transition-colors" />
     </button>
   );
 }
@@ -227,6 +253,7 @@ export default function SettingsPanel() {
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
   const [animSpeed, setAnimSpeed] = useState<'off' | 'normal' | 'fast'>('normal');
+  const [darkTheme, setDarkTheme] = useState(true);
 
   // ---- Gameplay Settings State ----
   const [simSpeed, setSimSpeed] = useState<'1x' | '2x' | '4x'>('1x');
@@ -236,6 +263,12 @@ export default function SettingsPanel() {
   // ---- Audio Settings State ----
   const [sfxVolume, setSfxVolume] = useState([70]);
   const [musicVolume, setMusicVolume] = useState([50]);
+
+  // ---- Notification Toggles State ----
+  const [notifMatchReminders, setNotifMatchReminders] = useState(true);
+  const [notifTransferNews, setNotifTransferNews] = useState(true);
+  const [notifAchievementAlerts, setNotifAchievementAlerts] = useState(true);
+  const [notifTrainingReminders, setNotifTrainingReminders] = useState(true);
 
   // ---- Notification section open state ----
   const [notifOpen, setNotifOpen] = useState(true);
@@ -345,6 +378,51 @@ export default function SettingsPanel() {
     }
   }, []);
 
+  const handleExportAllData = useCallback(() => {
+    try {
+      const state = useGameStore.getState();
+      const allData = {
+        exportedAt: new Date().toISOString(),
+        version: '1.0',
+        gameState: state.gameState,
+        notifications: state.notifications,
+        screen: state.screen,
+      };
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `elite_striker_all_data_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSaveMessage('All data exported successfully!');
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch {
+      setSaveMessage('Failed to export data.');
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
+  }, []);
+
+  const handleClearCache = useCallback(() => {
+    try {
+      // Clear non-essential cached data
+      const keysToKeep = ['elite_striker_store'];
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && !keysToKeep.includes(key)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      setSaveMessage(`Cache cleared! (${keysToRemove.length} items removed)`);
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch {
+      setSaveMessage('Failed to clear cache.');
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
+  }, []);
+
   const handleClearAllData = useCallback(() => {
     if (
       window.confirm(
@@ -365,6 +443,37 @@ export default function SettingsPanel() {
       setTimeout(() => setSaveMessage(null), 3000);
     }
   }, []);
+
+  // ---- Computed Values (before early return, computed safely) ----
+
+  const _currentSeason = gameState?.currentSeason ?? 1;
+  const _currentWeek = gameState?.currentWeek ?? 1;
+  const _currentClubLeague = gameState?.currentClub?.league ?? '';
+
+  const careerStartedDate = useMemo(() => {
+    const createdAt = gameState?.createdAt;
+    if (createdAt) {
+      try {
+        return new Date(createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        });
+      } catch {
+        // fall through
+      }
+    }
+    return 'Today';
+  }, [gameState?.createdAt]);
+
+  const playtimeHours = useMemo(() => {
+    const pt = gameState?.playTime || 0;
+    const mins = Math.floor(pt / 60);
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }, [gameState?.playTime]);
 
   if (!gameState) return null;
 
@@ -415,7 +524,7 @@ export default function SettingsPanel() {
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4">
-      {/* ===== Header ===== */}
+      {/* ===== Header with Logo/Name/Version ===== */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } }}
@@ -434,9 +543,11 @@ export default function SettingsPanel() {
             <div className="flex items-center justify-center w-8 h-8 bg-[#161b22] border border-[#30363d] rounded-lg">
               <Settings className="h-4 w-4 text-emerald-400" />
             </div>
-            <h1 className="text-lg font-bold text-[#c9d1d9] tracking-tight">Settings</h1>
+            <div>
+              <h1 className="text-lg font-bold text-[#c9d1d9] tracking-tight">Settings</h1>
+              <p className="text-[10px] text-[#484f58] font-medium tracking-wider uppercase">Elite Striker v1.0</p>
+            </div>
           </div>
-          <div className="mt-2 h-0.5 w-14 bg-emerald-500 rounded-sm" />
         </div>
         {unreadCount > 0 && (
           <Badge className="bg-red-600 text-white text-xs px-2 py-0.5">
@@ -445,7 +556,7 @@ export default function SettingsPanel() {
         )}
       </motion.div>
 
-      {/* ===== Current Career Info ===== */}
+      {/* ===== Player Profile Summary Card ===== */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.08, ease: 'easeOut' } }}
@@ -453,22 +564,45 @@ export default function SettingsPanel() {
         <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
             <User className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="text-xs font-medium text-[#8b949e] uppercase tracking-wide">Current Career</span>
+            <span className="text-xs font-medium text-[#8b949e] uppercase tracking-wide">Player Profile</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-lg bg-[#21262d] flex items-center justify-center text-lg">
+            <div className="w-12 h-12 rounded-lg bg-[#21262d] flex items-center justify-center text-xl border border-[#30363d]">
               {currentClub.logo}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-[#c9d1d9] truncate">{player.name}</p>
+              <p className="font-bold text-sm text-[#c9d1d9] truncate">{player.name}</p>
               <p className="text-xs text-[#8b949e]">{currentClub.name} &bull; {player.position}</p>
             </div>
-            <div className="text-right">
-              <p className="text-xs font-medium text-[#c9d1d9]">S{currentSeason}</p>
-              <p className="text-xs text-[#8b949e]">Wk {currentWeek}/{getSeasonMatchdays(currentClub.league)}</p>
+            <div className="text-right flex-shrink-0">
+              <p className="text-xl font-black text-emerald-400">{player.overall}</p>
+              <p className="text-[10px] text-[#484f58] font-medium">OVR</p>
             </div>
           </div>
-          <div className="flex gap-2 mt-3">
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="flex items-center gap-2 text-xs text-[#8b949e] bg-[#21262d] rounded-lg px-2.5 py-2">
+              <Calendar className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-[#484f58]">Season</p>
+                <p className="font-semibold text-[#c9d1d9]">S{currentSeason} Wk {currentWeek}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[#8b949e] bg-[#21262d] rounded-lg px-2.5 py-2">
+              <Clock className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-[#484f58]">Playtime</p>
+                <p className="font-semibold text-[#c9d1d9]">{playtimeHours}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[#8b949e] bg-[#21262d] rounded-lg px-2.5 py-2">
+              <BookOpen className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-[#484f58]">Started</p>
+                <p className="font-semibold text-[#c9d1d9] text-[10px]">{careerStartedDate}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-2">
             {leagueInfo && (
               <div className="flex-1 flex items-center gap-2 text-xs text-[#8b949e] bg-[#21262d] rounded-lg px-2.5 py-2">
                 <Trophy className="h-3 w-3 text-emerald-400 flex-shrink-0" />
@@ -483,12 +617,50 @@ export default function SettingsPanel() {
         </div>
       </motion.div>
 
-      {/* ===== Display Settings ===== */}
+      {/* ===== Quick Links Section ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.12, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-2">
+          <div className="flex items-start gap-3 mb-1">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <ChevronRight className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Quick Links</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">Jump to key sections</p>
+            </div>
+          </div>
+          <Separator className="bg-[#21262d]" />
+          <QuickLinkRow icon={Award} label="View Achievements" screen="achievements_system" />
+          <QuickLinkRow icon={BarChart3} label="View Statistics" screen="career_statistics" />
+          <QuickLinkRow icon={BookOpen} label="Career Journal" screen="career_milestones" />
+        </div>
+      </motion.div>
+
+      {/* ===== Theme Settings ===== */}
       <SettingsCard
         icon={Monitor}
+        title="Theme"
+        description="Customize the look and feel"
+        delay={0.16}
+      >
+        <SettingToggle
+          icon={darkTheme ? Moon : Sun}
+          label={darkTheme ? 'Dark Theme' : 'Light Theme'}
+          description={darkTheme ? 'Currently using dark color scheme' : 'Currently using light color scheme'}
+          checked={darkTheme}
+          onCheckedChange={setDarkTheme}
+        />
+      </SettingsCard>
+
+      {/* ===== Display Settings ===== */}
+      <SettingsCard
+        icon={Sparkles}
         title="Display"
         description="Control visual animations and layout"
-        delay={0.14}
+        delay={0.2}
       >
         <div className="space-y-2">
           <div className="flex items-center gap-2 mb-2">
@@ -514,19 +686,6 @@ export default function SettingsPanel() {
         <Separator className="bg-[#21262d]" />
 
         <SettingToggle
-          icon={Moon}
-          label="Dark Theme"
-          description="Application uses dark color scheme"
-          checked={true}
-          onCheckedChange={() => {
-            // Dark theme is the default and only theme
-          }}
-          disabled={true}
-        />
-
-        <Separator className="bg-[#21262d]" />
-
-        <SettingToggle
           icon={Gamepad2}
           label="Compact Mode"
           description="Smaller text and tighter spacing"
@@ -540,7 +699,7 @@ export default function SettingsPanel() {
         icon={Gamepad2}
         title="Gameplay"
         description="Match simulation and gameplay preferences"
-        delay={0.22}
+        delay={0.26}
       >
         {/* Simulation Speed */}
         <div className="space-y-2">
@@ -582,12 +741,58 @@ export default function SettingsPanel() {
         />
       </SettingsCard>
 
+      {/* ===== Notifications Settings ===== */}
+      <SettingsCard
+        icon={Bell}
+        title="Notifications"
+        description="Control which notifications you receive"
+        delay={0.32}
+      >
+        <SettingToggle
+          icon={Bell}
+          label="Match Reminders"
+          description="Get notified before upcoming matches"
+          checked={notifMatchReminders}
+          onCheckedChange={setNotifMatchReminders}
+        />
+
+        <Separator className="bg-[#21262d]" />
+
+        <SettingToggle
+          icon={Shield}
+          label="Transfer News"
+          description="Updates on transfer rumors and deals"
+          checked={notifTransferNews}
+          onCheckedChange={setNotifTransferNews}
+        />
+
+        <Separator className="bg-[#21262d]" />
+
+        <SettingToggle
+          icon={Trophy}
+          label="Achievement Alerts"
+          description="Notifications when you unlock achievements"
+          checked={notifAchievementAlerts}
+          onCheckedChange={setNotifAchievementAlerts}
+        />
+
+        <Separator className="bg-[#21262d]" />
+
+        <SettingToggle
+          icon={Sparkles}
+          label="Training Reminders"
+          description="Reminders to complete training sessions"
+          checked={notifTrainingReminders}
+          onCheckedChange={setNotifTrainingReminders}
+        />
+      </SettingsCard>
+
       {/* ===== Audio Settings ===== */}
       <SettingsCard
         icon={Volume2}
         title="Audio"
         description="Sound effects and music volume"
-        delay={0.30}
+        delay={0.38}
       >
         <div className="flex items-center gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-1">
           <AlertTriangle className="h-3.5 w-3.5 text-amber-400 flex-shrink-0" />
@@ -630,7 +835,7 @@ export default function SettingsPanel() {
         icon={Database}
         title="Save & Data"
         description="Manage your career saves and data"
-        delay={0.38}
+        delay={0.44}
       >
         <div className="grid grid-cols-2 gap-2">
           <Button
@@ -706,10 +911,37 @@ export default function SettingsPanel() {
         </AnimatePresence>
       </SettingsCard>
 
-      {/* ===== Notifications ===== */}
+      {/* ===== Data & Privacy ===== */}
+      <SettingsCard
+        icon={Lock}
+        title="Data & Privacy"
+        description="Manage cached data and exports"
+        delay={0.5}
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={handleClearCache}
+            variant="outline"
+            className="h-11 border-[#30363d] text-[#c9d1d9] hover:bg-[#21262d] hover:text-white font-medium rounded-lg text-xs gap-2"
+          >
+            <HardDrive className="h-4 w-4" />
+            Clear Cache
+          </Button>
+          <Button
+            onClick={handleExportAllData}
+            variant="outline"
+            className="h-11 border-[#30363d] text-[#c9d1d9] hover:bg-[#21262d] hover:text-white font-medium rounded-lg text-xs gap-2"
+          >
+            <FileDown className="h-4 w-4" />
+            Export All Data
+          </Button>
+        </div>
+      </SettingsCard>
+
+      {/* ===== Notifications Feed ===== */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.46, ease: 'easeOut' } }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.56, ease: 'easeOut' } }}
       >
         <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
           <button
@@ -721,7 +953,7 @@ export default function SettingsPanel() {
               <Bell className="h-4 w-4 text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-semibold text-[#c9d1d9]">Notifications</span>
+              <span className="text-sm font-semibold text-[#c9d1d9]">Notification Feed</span>
               <p className="text-xs text-[#8b949e] mt-0.5">
                 {unreadCount > 0
                   ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
@@ -776,7 +1008,7 @@ export default function SettingsPanel() {
                             }`}
                             onClick={() => markNotificationRead(notification.id)}
                           >
-                            <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${notificationTypeColors[notification.type] || 'bg-slate-600'}`} />
+                            <div className={`w-1.5 h-1.5 rounded-sm mt-2 flex-shrink-0 ${notificationTypeColors[notification.type] || 'bg-slate-600'}`} />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs">
@@ -818,7 +1050,7 @@ export default function SettingsPanel() {
         icon={Info}
         title="About"
         description="Elite Striker v1.0"
-        delay={0.54}
+        delay={0.62}
       >
         <div className="space-y-3">
           <div className="text-center py-3">
@@ -855,7 +1087,7 @@ export default function SettingsPanel() {
 
           <div className="flex items-center justify-center gap-2 text-xs text-[#484f58]">
             <span>43 Components</span>
-            <span className="w-1 h-1 rounded-full bg-[#30363d]" />
+            <span className="w-1 h-1 rounded-sm bg-[#30363d]" />
             <span>33 Screens</span>
           </div>
 

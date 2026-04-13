@@ -24,6 +24,9 @@ import SeasonTrainingFocusModal from '@/components/game/SeasonTrainingFocusModal
 import SeasonPreview from '@/components/game/SeasonPreview';
 import { PlayerAttributes, Achievement, SquadStatus, SeasonPlayerStats, LeagueStanding, MatchResult, PlayerTeamLevel, SeasonTrainingFocusArea } from '@/lib/game/types';
 
+// Track season previews already shown (persists across Dashboard remounts)
+const shownSeasonPreviews = new Set<number>();
+
 // Season end data type for the modal
 interface SeasonEndData {
   seasonNumber: number;
@@ -111,7 +114,7 @@ export default function Dashboard() {
   const [showSeasonPreview, setShowSeasonPreview] = useState(false);
 
   // Ref to track if season preview has been shown this session
-  const seasonPreviewRef = useRef(false);
+  const seasonPreviewRef = useRef(false); // kept for training focus logic
 
   // Refs to track previous values for season-end detection
   const prevSeasonsLengthRef = useRef(0);
@@ -325,17 +328,21 @@ export default function Dashboard() {
     }
   }, [shouldAutoShowFocus]);
 
-  // Auto-show season preview when week === 1 (only once per session until conditions change)
+  // Auto-show season preview when week === 1 (only once per season, persists across remounts)
   useEffect(() => {
     if (!gameState) return;
-    if (gameState.currentWeek === 1 && !seasonPreviewRef.current) {
-      seasonPreviewRef.current = true;
+    const seasonKey = gameState.currentSeason;
+    if (gameState.currentWeek === 1 && !shownSeasonPreviews.has(seasonKey)) {
+      shownSeasonPreviews.add(seasonKey);
       setTimeout(() => setShowSeasonPreview(true), 300);
     }
     if (gameState.currentWeek > 1) {
-      seasonPreviewRef.current = false;
+      // Allow preview to show again for a new season if we haven't seen it yet
+      if (!shownSeasonPreviews.has(seasonKey)) {
+        shownSeasonPreviews.add(seasonKey);
+      }
     }
-  }, [gameState?.currentWeek, gameState]);
+  }, [gameState?.currentWeek, gameState?.currentSeason, gameState]);
 
   if (!gameState) return null;
 

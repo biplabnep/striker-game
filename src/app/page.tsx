@@ -52,6 +52,8 @@ import MatchStatsComparison from '@/components/game/MatchStatsComparison';
 import CareerMilestones from '@/components/game/CareerMilestones';
 import PressConferenceEnhanced from '@/components/game/PressConferenceEnhanced';
 import AchievementsSystem from '@/components/game/AchievementsSystem';
+import CareerJournal from '@/components/game/CareerJournal';
+import TeamSelection from '@/components/game/TeamSelection';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
@@ -101,6 +103,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   career_milestones: CareerMilestones,
   press_conference: PressConferenceEnhanced,
   achievements_system: AchievementsSystem,
+  team_selection: TeamSelection,
+  career_journal: CareerJournal,
 };
 
 const gameScreens: GameScreen[] = [
@@ -117,6 +121,8 @@ const gameScreens: GameScreen[] = [
   'career_milestones',
   'press_conference',
   'achievements_system',
+  'team_selection',
+  'career_journal',
 ];
 
 export default function Home() {
