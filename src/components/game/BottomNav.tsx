@@ -81,6 +81,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'career_retirement', icon: <Hourglass className="h-5 w-5" />, label: 'Retirement' },
       { screen: 'facilities_upgrades', icon: <Building2 className="h-5 w-5" />, label: 'Facilities' },
       { screen: 'loan_system', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Loans' },
+      { screen: 'loan_system_enhanced', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Loans+' },
       { screen: 'jersey_number', icon: <Shirt className="h-5 w-5" />, label: 'Jersey' },
       { screen: 'sponsor_system', icon: <Gem className="h-5 w-5" />, label: 'Sponsors' },
       { screen: 'trophy_cabinet', icon: <Trophy className="h-5 w-5" />, label: 'Trophies' },
@@ -107,6 +108,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'player_agent_hub_enhanced', icon: <Briefcase className="h-5 w-5" />, label: 'Agent Hub+' },
       { screen: 'international_expansion', icon: <Globe className="h-5 w-5" />, label: 'International' },
       { screen: 'player_comparison_enhanced', icon: <GitCompareArrows className="h-5 w-5" />, label: 'Compare+' },
+      { screen: 'dream_transfer_enhanced', icon: <Sparkles className="h-5 w-5" />, label: 'Dream Transfer+' },
     ],
   },
   {

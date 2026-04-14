@@ -686,7 +686,9 @@ export type GameScreen =
   | 'international_expansion'
   | 'youth_academy_deep_dive'
   | 'player_comparison_enhanced'
-  | 'referee_system_enhanced';
+  | 'referee_system_enhanced'
+  | 'dream_transfer_enhanced'
+  | 'loan_system_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

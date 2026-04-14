@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -293,6 +293,42 @@ export default function SkillChallenges() {
               transition={{ delay: 0.35 }}
             >
               <RewardShowcase />
+            </motion.div>
+
+            {/* --- SVG Data Visualizations --- */}
+
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.38 }}>
+              {challengeCompletionRing()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.40 }}>
+              {skillCategoryDonut()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }}>
+              {difficultyBars()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 }}>
+              {dailyStreakTimeline()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.46 }}>
+              {bestScoresRadar()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.48 }}>
+              {xpProgressionArea()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.50 }}>
+              {rewardRarityDonut()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.52 }}>
+              {timePerChallengeBars()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.54 }}>
+              {performanceTrendLine()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.56 }}>
+              {leaderboardGauge()}
+            </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.58 }}>
+              {successRateScatter()}
             </motion.div>
           </motion.div>
         )}
@@ -2204,6 +2240,686 @@ function RewardShowcase() {
           Open Reward Shop
           <ChevronRight className="h-3 w-3 ml-1" />
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG Visualization Helpers & Data
+// ============================================================
+
+function svgPoints(coords: { x: number; y: number }[]): string {
+  return coords.map(c => `${c.x},${c.y}`).join(' ');
+}
+
+function donutArc(r: number, startFrac: number, sizeFrac: number): { dashArray: string; dashOffset: number } {
+  const circ = 2 * Math.PI * r;
+  const segLen = sizeFrac * circ;
+  return { dashArray: `${segLen} ${circ - segLen}`, dashOffset: -startFrac * circ };
+}
+
+const CATEGORY_DONUT_DATA = [
+  { name: 'Shooting', value: 28, color: '#22c55e' },
+  { name: 'Passing', value: 22, color: '#3b82f6' },
+  { name: 'Dribbling', value: 18, color: '#f59e0b' },
+  { name: 'Defending', value: 14, color: '#ef4444' },
+  { name: 'Speed', value: 18, color: '#a855f7' },
+];
+
+const DIFFICULTY_BAR_DATA = [
+  { name: 'Easy', rate: 92, color: '#22c55e' },
+  { name: 'Medium', rate: 74, color: '#f59e0b' },
+  { name: 'Hard', rate: 48, color: '#f97316' },
+  { name: 'Expert', rate: 21, color: '#ef4444' },
+];
+
+const STREAK_TIMELINE = [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1];
+
+const RADAR_SCORES = [
+  { name: 'Shooting', value: 85 },
+  { name: 'Passing', value: 72 },
+  { name: 'Dribbling', value: 60 },
+  { name: 'Defending', value: 45 },
+  { name: 'Speed', value: 78 },
+];
+
+const XP_SESSIONS = [120, 180, 250, 200, 310, 280, 350, 420];
+
+const RARITY_DONUT_DATA = [
+  { name: 'Common', value: 45, color: '#8b949e' },
+  { name: 'Rare', value: 30, color: '#3b82f6' },
+  { name: 'Epic', value: 18, color: '#a855f7' },
+  { name: 'Legendary', value: 7, color: '#f59e0b' },
+];
+
+const TIME_CHALLENGE_DATA = [
+  { name: 'Free Kick', time: 2.3, color: '#22c55e' },
+  { name: 'Dribbling', time: 4.1, color: '#f59e0b' },
+  { name: 'Crossing', time: 3.5, color: '#a855f7' },
+  { name: 'Penalty', time: 1.8, color: '#3b82f6' },
+  { name: 'Volley', time: 3.0, color: '#ef4444' },
+];
+
+const TREND_DATA = [180, 220, 195, 280, 310, 290, 350, 380, 420, 410];
+
+const SCATTER_POINTS = [
+  { attempt: 1, score: 65, pass: true },
+  { attempt: 2, score: 40, pass: false },
+  { attempt: 3, score: 78, pass: true },
+  { attempt: 4, score: 55, pass: true },
+  { attempt: 5, score: 30, pass: false },
+  { attempt: 6, score: 82, pass: true },
+  { attempt: 7, score: 48, pass: false },
+  { attempt: 8, score: 90, pass: true },
+  { attempt: 9, score: 72, pass: true },
+  { attempt: 10, score: 60, pass: true },
+  { attempt: 11, score: 35, pass: false },
+  { attempt: 12, score: 88, pass: true },
+  { attempt: 13, score: 50, pass: true },
+  { attempt: 14, score: 42, pass: false },
+  { attempt: 15, score: 95, pass: true },
+];
+
+// ============================================================
+// SVG 1: Challenge Completion Rate Ring
+// ============================================================
+
+function challengeCompletionRing(): React.JSX.Element {
+  const pct = 73;
+  const cx = 80;
+  const cy = 80;
+  const r = 58;
+  const circ = 2 * Math.PI * r;
+  const dashOff = circ * (1 - pct / 100);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-emerald-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Completion Rate</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 160 160" className="w-full" style={{ maxHeight: 160 }}>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth="12" />
+          <circle
+            cx={cx} cy={cy} r={r}
+            fill="none" stroke="#22c55e" strokeWidth="12"
+            strokeDasharray={circ} strokeDashoffset={dashOff}
+            strokeLinecap="butt" opacity="0.85"
+          />
+          <text x={cx} y={cy - 6} textAnchor="middle" fill="#c9d1d9" fontSize="26" fontWeight="800">{pct}%</text>
+          <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="9">Overall</text>
+        </svg>
+        <div className="flex justify-center gap-4 mt-1 text-[10px] text-[#8b949e]">
+          <span>28/38 done</span>
+          <span className="text-emerald-400 font-semibold">+5 this week</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 2: Skill Category Distribution Donut
+// ============================================================
+
+function skillCategoryDonut(): React.JSX.Element {
+  const cx = 80;
+  const cy = 80;
+  const r = 50;
+  const totalVal = CATEGORY_DONUT_DATA.reduce((sum, d) => sum + d.value, 0);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-blue-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Category Distribution</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 160 160" className="w-full" style={{ maxHeight: 160 }}>
+          {CATEGORY_DONUT_DATA.map((d, i) => {
+            const startFrac = CATEGORY_DONUT_DATA.slice(0, i).reduce((acc, prev) => acc + prev.value, 0) / totalVal;
+            const sizeFrac = d.value / totalVal;
+            const arc = donutArc(r, startFrac, sizeFrac);
+            return (
+              <circle
+                key={i}
+                cx={cx} cy={cy} r={r}
+                fill="none" stroke={d.color} strokeWidth="16"
+                strokeDasharray={arc.dashArray} strokeDashoffset={arc.dashOffset}
+                strokeLinecap="butt" opacity="0.8"
+              />
+            );
+          })}
+          <circle cx={cx} cy={cy} r={r - 18} fill="#161b22" />
+          <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="700">{totalVal}</text>
+          <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize="8">Total</text>
+        </svg>
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
+          {CATEGORY_DONUT_DATA.map((d, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: d.color }} />
+              <span className="text-[9px] text-[#8b949e]">{d.name}</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 3: Challenge Difficulty Bars
+// ============================================================
+
+function difficultyBars(): React.JSX.Element {
+  const barH = 18;
+  const gap = 10;
+  const barAreaW = 190;
+  const startX = 60;
+  const startY = 20;
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Difficulty Completion</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 280 110" className="w-full" style={{ maxHeight: 120 }}>
+          {DIFFICULTY_BAR_DATA.map((d, i) => {
+            const y = startY + i * (barH + gap);
+            const barW = (d.rate / 100) * barAreaW;
+            return (
+              <g key={i}>
+                <text x={startX - 8} y={y + barH / 2 + 4} textAnchor="end" fill="#8b949e" fontSize="10" fontWeight="600">{d.name}</text>
+                <rect x={startX} y={y} width={barAreaW} height={barH} rx="3" fill="#21262d" />
+                <rect x={startX} y={y} width={barW} height={barH} rx="3" fill={d.color} opacity="0.8" />
+                <text x={startX + barW + 6} y={y + barH / 2 + 4} fill="#c9d1d9" fontSize="10" fontWeight="700">{d.rate}%</text>
+              </g>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 4: Daily Streak Timeline
+// ============================================================
+
+function dailyStreakTimeline(): React.JSX.Element {
+  const pad = 20;
+  const usableW = 260;
+  const stepX = usableW / (STREAK_TIMELINE.length - 1);
+  const cy = 40;
+  const completedDays = STREAK_TIMELINE.reduce((cnt, d) => cnt + (d ? 1 : 0), 0);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Flame className="h-4 w-4 text-orange-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">14-Day Streak</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 300 80" className="w-full" style={{ maxHeight: 90 }}>
+          <line x1={pad} y1={cy} x2={pad + usableW} y2={cy} stroke="#30363d" strokeWidth="2" />
+          {STREAK_TIMELINE.map((done, i) => {
+            const x = pad + i * stepX;
+            return (
+              <g key={i}>
+                <circle cx={x} cy={cy} r={done ? 7 : 5} fill={done ? '#22c55e' : '#ef4444'} opacity={done ? 0.9 : 0.5} />
+                {done && (
+                  <text x={x} y={cy + 1} textAnchor="middle" dominantBaseline="central" fill="#161b22" fontSize="8" fontWeight="800">✓</text>
+                )}
+                <text x={x} y={cy + 20} textAnchor="middle" fill="#484f58" fontSize="7">D{i + 1}</text>
+              </g>
+            );
+          })}
+        </svg>
+        <div className="flex justify-between mt-1 text-[10px] text-[#8b949e]">
+          <span>{completedDays}/{STREAK_TIMELINE.length} days completed</span>
+          <span className="text-emerald-400 font-semibold">{Math.round((completedDays / STREAK_TIMELINE.length) * 100)}%</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 5: Best Scores Radar
+// ============================================================
+
+function bestScoresRadar(): React.JSX.Element {
+  const cx = 100;
+  const cy = 85;
+  const maxR = 60;
+  const numAxes = RADAR_SCORES.length;
+
+  const getRadarPoint = (idx: number, val: number) => {
+    const angle = (2 * Math.PI * idx) / numAxes - Math.PI / 2;
+    const rv = (val / 100) * maxR;
+    return { x: cx + rv * Math.cos(angle), y: cy + rv * Math.sin(angle) };
+  };
+
+  const gridPts = (frac: number): string => {
+    return svgPoints(
+      Array.from({ length: numAxes }, (_, i) => getRadarPoint(i, frac * 100))
+    );
+  };
+
+  const dataPts = RADAR_SCORES.map((d, i) => getRadarPoint(i, d.value));
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Best Scores Radar</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 200 200" className="w-full" style={{ maxHeight: 200 }}>
+          {[0.25, 0.5, 0.75, 1].map(f => (
+            <polygon key={f} points={gridPts(f)} fill="none" stroke="#21262d" strokeWidth="0.5" />
+          ))}
+          {RADAR_SCORES.map((_, i) => {
+            const pt = getRadarPoint(i, 100);
+            return <line key={i} x1={cx} y1={cy} x2={pt.x} y2={pt.y} stroke="#21262d" strokeWidth="0.5" />;
+          })}
+          <polygon points={svgPoints(dataPts)} fill="rgba(59,130,246,0.15)" stroke="#3b82f6" strokeWidth="1.5" />
+          {RADAR_SCORES.map((d, i) => {
+            const pt = dataPts[i];
+            const outerPt = getRadarPoint(i, 100);
+            const isRight = outerPt.x >= cx;
+            const isBelow = outerPt.y >= cy;
+            return (
+              <g key={i}>
+                <circle cx={pt.x} cy={pt.y} r="3" fill="#3b82f6" />
+                <text
+                  x={outerPt.x + (isRight ? 8 : -8)}
+                  y={outerPt.y + (isBelow ? 14 : -6)}
+                  textAnchor={isRight ? 'start' : 'end'}
+                  fill="#8b949e" fontSize="8" fontWeight="600"
+                >
+                  {d.name}
+                </text>
+                <text
+                  x={outerPt.x + (isRight ? 8 : -8)}
+                  y={outerPt.y + (isBelow ? 24 : 4)}
+                  textAnchor={isRight ? 'start' : 'end'}
+                  fill="#c9d1d9" fontSize="7" fontWeight="700"
+                >
+                  {d.value}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 6: XP Progression Area Chart
+// ============================================================
+
+function xpProgressionArea(): React.JSX.Element {
+  const padL = 30;
+  const padR = 15;
+  const padT = 10;
+  const padB = 25;
+  const w = 270;
+  const h = 100;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const maxXp = XP_SESSIONS.reduce((maxVal, v) => Math.max(maxVal, v), 0);
+
+  const coords = XP_SESSIONS.map((xp, i) => ({
+    x: padL + (i / Math.max(1, XP_SESSIONS.length - 1)) * chartW,
+    y: padT + chartH - (xp / maxXp) * chartH,
+  }));
+
+  const areaCoords = [
+    { x: coords[0].x, y: padT + chartH },
+    ...coords,
+    { x: coords[coords.length - 1].x, y: padT + chartH },
+  ];
+
+  const totalXp = XP_SESSIONS.reduce((sum, v) => sum + v, 0);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">XP Progression</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 300 140" className="w-full" style={{ maxHeight: 150 }}>
+          {[0, 0.25, 0.5, 0.75, 1].map(f => {
+            const gy = padT + chartH - f * chartH;
+            return <line key={f} x1={padL} y1={gy} x2={w - padR} y2={gy} stroke="#21262d" strokeWidth="0.5" />;
+          })}
+          <polygon points={svgPoints(areaCoords)} fill="rgba(34,197,94,0.15)" stroke="none" />
+          <polyline points={svgPoints(coords)} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round" />
+          {XP_SESSIONS.map((_, i) => (
+            <g key={i}>
+              <circle cx={coords[i].x} cy={coords[i].y} r="3" fill="#22c55e" />
+              <text x={coords[i].x} y={padT + chartH + 14} textAnchor="middle" fill="#484f58" fontSize="7">S{i + 1}</text>
+            </g>
+          ))}
+          <text x={padL - 4} y={padT + 4} textAnchor="end" fill="#484f58" fontSize="7">{maxXp}</text>
+          <text x={padL - 4} y={padT + chartH + 4} textAnchor="end" fill="#484f58" fontSize="7">0</text>
+        </svg>
+        <div className="text-center text-[10px] text-[#8b949e] mt-1">
+          Total XP: <span className="text-emerald-400 font-bold">{totalXp}</span> across {XP_SESSIONS.length} sessions
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 7: Reward Rarity Distribution Donut
+// ============================================================
+
+function rewardRarityDonut(): React.JSX.Element {
+  const cx = 80;
+  const cy = 80;
+  const r = 50;
+  const totalVal = RARITY_DONUT_DATA.reduce((sum, d) => sum + d.value, 0);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Gift className="h-4 w-4 text-purple-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Reward Rarity</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 160 160" className="w-full" style={{ maxHeight: 160 }}>
+          {RARITY_DONUT_DATA.map((d, i) => {
+            const startFrac = RARITY_DONUT_DATA.slice(0, i).reduce((acc, prev) => acc + prev.value, 0) / totalVal;
+            const sizeFrac = d.value / totalVal;
+            const arc = donutArc(r, startFrac, sizeFrac);
+            return (
+              <circle
+                key={i}
+                cx={cx} cy={cy} r={r}
+                fill="none" stroke={d.color} strokeWidth="18"
+                strokeDasharray={arc.dashArray} strokeDashoffset={arc.dashOffset}
+                strokeLinecap="butt" opacity="0.8"
+              />
+            );
+          })}
+          <circle cx={cx} cy={cy} r={r - 20} fill="#161b22" />
+          <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="12" fontWeight="700">{totalVal}</text>
+          <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize="8">Rewards</text>
+        </svg>
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
+          {RARITY_DONUT_DATA.map((d, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: d.color }} />
+              <span className="text-[9px] text-[#8b949e]">{d.name} ({d.value})</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 8: Time Spent per Challenge Bars
+// ============================================================
+
+function timePerChallengeBars(): React.JSX.Element {
+  const barH = 16;
+  const gap = 8;
+  const barAreaW = 160;
+  const startX = 65;
+  const startY = 15;
+  const maxTime = TIME_CHALLENGE_DATA.reduce((maxVal, d) => Math.max(maxVal, d.time), 0);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Gauge className="h-4 w-4 text-cyan-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Avg Time / Challenge</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 270 120" className="w-full" style={{ maxHeight: 130 }}>
+          {TIME_CHALLENGE_DATA.map((d, i) => {
+            const y = startY + i * (barH + gap);
+            const barW = (d.time / maxTime) * barAreaW;
+            return (
+              <g key={i}>
+                <text x={startX - 6} y={y + barH / 2 + 4} textAnchor="end" fill="#8b949e" fontSize="9" fontWeight="500">{d.name}</text>
+                <rect x={startX} y={y} width={barAreaW} height={barH} rx="3" fill="#21262d" />
+                <rect x={startX} y={y} width={barW} height={barH} rx="3" fill={d.color} opacity="0.8" />
+                <text x={startX + barW + 6} y={y + barH / 2 + 4} fill="#c9d1d9" fontSize="9" fontWeight="600">{d.time}s</text>
+              </g>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 9: Performance Trend Line
+// ============================================================
+
+function performanceTrendLine(): React.JSX.Element {
+  const padL = 30;
+  const padR = 15;
+  const padT = 10;
+  const padB = 25;
+  const w = 270;
+  const h = 100;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const maxScore = TREND_DATA.reduce((maxVal, v) => Math.max(maxVal, v), 0);
+  const minScore = TREND_DATA.reduce((minVal, v) => Math.min(minVal, v), 0);
+  const scoreRange = maxScore - minScore || 1;
+
+  const coords = TREND_DATA.map((score, i) => ({
+    x: padL + (i / Math.max(1, TREND_DATA.length - 1)) * chartW,
+    y: padT + chartH - ((score - minScore) / scoreRange) * chartH,
+  }));
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Score Trend</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 300 140" className="w-full" style={{ maxHeight: 150 }}>
+          {[0, 0.25, 0.5, 0.75, 1].map(f => {
+            const gy = padT + chartH - f * chartH;
+            return <line key={f} x1={padL} y1={gy} x2={w - padR} y2={gy} stroke="#21262d" strokeWidth="0.5" />;
+          })}
+          <polyline
+            points={svgPoints(coords)}
+            fill="none" stroke="#f59e0b" strokeWidth="2"
+            strokeLinejoin="round" strokeLinecap="round"
+          />
+          {TREND_DATA.map((_, i) => (
+            <g key={i}>
+              <circle cx={coords[i].x} cy={coords[i].y} r="3.5" fill="#f59e0b" />
+              <circle cx={coords[i].x} cy={coords[i].y} r="1.5" fill="#161b22" />
+              <text x={coords[i].x} y={padT + chartH + 14} textAnchor="middle" fill="#484f58" fontSize="6">#{i + 1}</text>
+            </g>
+          ))}
+          <text x={padL - 4} y={padT + 4} textAnchor="end" fill="#484f58" fontSize="7">{maxScore}</text>
+          <text x={padL - 4} y={padT + chartH + 4} textAnchor="end" fill="#484f58" fontSize="7">{minScore}</text>
+        </svg>
+        <div className="text-center text-[10px] text-[#8b949e] mt-1">
+          Latest: <span className="text-amber-400 font-bold">{TREND_DATA[TREND_DATA.length - 1]}</span> pts
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 10: Leaderboard Position Gauge
+// ============================================================
+
+function leaderboardGauge(): React.JSX.Element {
+  const percentile = 65;
+  const cx = 100;
+  const cy = 110;
+  const r = 75;
+  const needleR = 60;
+  const gaugeAngle = Math.PI * (1 - percentile / 100);
+  const needleX = cx + needleR * Math.cos(gaugeAngle);
+  const needleY = cy - needleR * Math.sin(gaugeAngle);
+  const arcPath = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+  const arcLen = Math.PI * r;
+  const segLen = (percentile / 100) * arcLen;
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Crown className="h-4 w-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Leaderboard Rank</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 200 145" className="w-full" style={{ maxHeight: 155 }}>
+          <path d={arcPath} fill="none" stroke="#21262d" strokeWidth="14" strokeLinecap="butt" />
+          <path
+            d={arcPath} fill="none" stroke="#22c55e" strokeWidth="14"
+            strokeLinecap="butt" strokeDasharray={`${segLen} ${arcLen}`} opacity="0.7"
+          />
+          {[0, 25, 50, 75, 100].map(val => {
+            const tickAngle = Math.PI * (1 - val / 100);
+            const innerR = r - 10;
+            const outerR = r + 4;
+            return (
+              <line
+                key={val}
+                x1={cx + innerR * Math.cos(tickAngle)}
+                y1={cy - innerR * Math.sin(tickAngle)}
+                x2={cx + outerR * Math.cos(tickAngle)}
+                y2={cy - outerR * Math.sin(tickAngle)}
+                stroke="#484f58" strokeWidth="1"
+              />
+            );
+          })}
+          {[0, 50, 100].map(val => {
+            const labelAngle = Math.PI * (1 - val / 100);
+            const labelR = r + 14;
+            return (
+              <text
+                key={val}
+                x={cx + labelR * Math.cos(labelAngle)}
+                y={cy - labelR * Math.sin(labelAngle) + 3}
+                textAnchor="middle" fill="#484f58" fontSize="8"
+              >
+                {val}
+              </text>
+            );
+          })}
+          <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+          <circle cx={cx} cy={cy} r="4" fill="#f59e0b" />
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="800">Top {percentile}%</text>
+        </svg>
+        <div className="text-center text-[10px] text-[#8b949e] mt-1">
+          Rank #4 of 10 — <span className="text-emerald-400 font-semibold">Top 40%</span> of leaderboard
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// SVG 11: Challenge Success Rate Scatter
+// ============================================================
+
+function successRateScatter(): React.JSX.Element {
+  const padL = 30;
+  const padR = 15;
+  const padT = 10;
+  const padB = 25;
+  const w = 270;
+  const h = 110;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const maxAttempt = SCATTER_POINTS.reduce((maxVal, d) => Math.max(maxVal, d.attempt), 0);
+  const passCount = SCATTER_POINTS.reduce((cnt, d) => cnt + (d.pass ? 1 : 0), 0);
+
+  const dotCoords = SCATTER_POINTS.map(d => ({
+    x: padL + ((d.attempt - 1) / Math.max(1, maxAttempt - 1)) * chartW,
+    y: padT + chartH - (d.score / 100) * chartH,
+  }));
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d]">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Award className="h-4 w-4 text-emerald-400" />
+          <h3 className="text-sm font-semibold text-[#c9d1d9]">Success Rate Scatter</h3>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <svg viewBox="0 0 300 150" className="w-full" style={{ maxHeight: 160 }}>
+          {[0, 0.25, 0.5, 0.75, 1].map(f => {
+            const gy = padT + chartH - f * chartH;
+            return <line key={`h${f}`} x1={padL} y1={gy} x2={w - padR} y2={gy} stroke="#21262d" strokeWidth="0.5" />;
+          })}
+          <line
+            x1={padL} y1={padT + chartH * 0.5}
+            x2={w - padR} y2={padT + chartH * 0.5}
+            stroke="#ef4444" strokeWidth="0.5" strokeDasharray="4 4" opacity="0.5"
+          />
+          <text x={w - padR + 2} y={padT + chartH * 0.5 + 3} fill="#ef4444" fontSize="6" opacity="0.7">Pass</text>
+          {SCATTER_POINTS.map((d, i) => (
+            <circle
+              key={i}
+              cx={dotCoords[i].x} cy={dotCoords[i].y} r="4"
+              fill={d.pass ? '#22c55e' : '#ef4444'} opacity={d.pass ? 0.8 : 0.6}
+            />
+          ))}
+          <text x={padL - 4} y={padT + 4} textAnchor="end" fill="#484f58" fontSize="7">100</text>
+          <text x={padL - 4} y={padT + chartH + 4} textAnchor="end" fill="#484f58" fontSize="7">0</text>
+          <text x={padL + chartW / 2} y={h - 4} textAnchor="middle" fill="#484f58" fontSize="7">Attempts</text>
+        </svg>
+        <div className="flex justify-between mt-1 text-[10px] text-[#8b949e]">
+          <span>{passCount}/{SCATTER_POINTS.length} passed</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-sm bg-emerald-500" />
+              <span>Pass</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-sm bg-red-500" />
+              <span>Fail</span>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -22,6 +22,7 @@ import {
   Skull,
   Star,
 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // ── Animation Constants ─────────────────────────────────────
 const D = 0.04;
@@ -572,6 +573,89 @@ export default function CareerRetirement() {
 
   const cs = player.careerStats;
 
+  // ── SVG Derived Data ────────────────────────────────────
+  const seasonHistory = gameState.seasons.slice(-8);
+  const yearsPlayed = Math.max(0, player.age - 18);
+  const maxCareerYears = 22;
+
+  const achievementsSegments = [
+    { label: 'Trophies', value: cs.trophies.length, color: '#fbbf24' },
+    { label: 'Goals', value: Math.min(cs.totalGoals, 100), color: '#22c55e' },
+    { label: 'Caps', value: gameState.internationalCareer?.caps ?? 0, color: '#3b82f6' },
+    { label: 'Assists', value: Math.min(cs.totalAssists, 80), color: '#06b6d4' },
+    { label: 'Awards', value: gameState.achievements.reduce((cnt, ach) => cnt + (ach.unlocked ? 1 : 0), 0), color: '#a855f7' },
+  ];
+  const achievementsTotal = achievementsSegments.reduce((segSum, seg) => segSum + seg.value, 0);
+
+  const peakRating = seasonHistory.reduce((peakVal, s) => Math.max(peakVal, s.playerStats.averageRating), 0);
+
+  const goalsPerSeason = seasonHistory.map(s => s.playerStats.goals);
+  const assistsPerSeason = seasonHistory.map(s => s.playerStats.assists);
+
+  const careerValueMetrics = [
+    { label: 'Market Value', player: Math.round(player.marketValue / 1e6), great: 100, color: '#22c55e' },
+    { label: 'Wages (K/w)', player: Math.round(player.contract.weeklyWage / 1000), great: 200, color: '#3b82f6' },
+    { label: 'Trophies', player: cs.trophies.length, great: 25, color: '#fbbf24' },
+    { label: 'Int. Caps', player: gameState.internationalCareer?.caps ?? 0, great: 100, color: '#f97316' },
+    { label: 'Goals', player: cs.totalGoals, great: 400, color: '#ef4444' },
+  ];
+
+  const readinessAxes = [
+    { label: 'Physical', value: player.fitness, color: '#ef4444' },
+    { label: 'Mental', value: player.morale, color: '#a855f7' },
+    { label: 'Financial', value: Math.min(100, (player.marketValue / 50e6) * 100), color: '#22c55e' },
+    { label: 'Social', value: player.reputation, color: '#3b82f6' },
+    { label: 'Legacy', value: Math.min(100, player.overall), color: '#fbbf24' },
+  ];
+
+  const seasonRatings = seasonHistory.map(s => s.playerStats.averageRating);
+
+  const postRetirementOptions = [
+    { label: 'Management', score: Math.round(player.overall * 0.7 + player.morale * 0.3), color: '#a855f7' },
+    { label: 'Punditry', score: Math.round(player.reputation * 0.8 + player.overall * 0.2), color: '#06b6d4' },
+    { label: 'Coaching', score: Math.round(player.overall * 0.6 + player.fitness * 0.4), color: '#22c55e' },
+    { label: 'Ambassador', score: Math.round(Math.min(100, player.reputation * 0.9 + cs.trophies.length * 2)), color: '#fbbf24' },
+  ];
+
+  const hofProbability = Math.min(99, Math.round([
+    cs.totalAppearances >= 300 ? 30 : (cs.totalAppearances / 300) * 30,
+    cs.totalGoals >= 100 ? 25 : (cs.totalGoals / 100) * 25,
+    cs.trophies.length >= 5 ? 25 : (cs.trophies.length / 5) * 25,
+    player.overall >= 85 ? 20 : (player.overall / 85) * 20,
+  ].reduce((hofSum, val) => hofSum + val, 0)));
+
+  const legacyMetrics = [
+    { label: 'Goals', values: [
+      { name: 'Player', value: cs.totalGoals, color: '#22c55e' },
+      { name: 'Club Legend', value: Math.max(cs.totalGoals, Math.round(cs.totalGoals * 1.5)), color: '#fbbf24' },
+      { name: 'All-Time Great', value: Math.max(cs.totalGoals, Math.round(cs.totalGoals * 2.5)), color: '#ef4444' },
+    ]},
+    { label: 'Assists', values: [
+      { name: 'Player', value: cs.totalAssists, color: '#22c55e' },
+      { name: 'Club Legend', value: Math.max(cs.totalAssists, Math.round(cs.totalAssists * 1.8)), color: '#fbbf24' },
+      { name: 'All-Time Great', value: Math.max(cs.totalAssists, Math.round(cs.totalAssists * 3)), color: '#ef4444' },
+    ]},
+    { label: 'Trophies', values: [
+      { name: 'Player', value: cs.trophies.length, color: '#22c55e' },
+      { name: 'Club Legend', value: Math.max(cs.trophies.length, cs.trophies.length * 2), color: '#fbbf24' },
+      { name: 'All-Time Great', value: Math.max(cs.trophies.length, cs.trophies.length * 4), color: '#ef4444' },
+    ]},
+    { label: 'Appearances', values: [
+      { name: 'Player', value: cs.totalAppearances, color: '#22c55e' },
+      { name: 'Club Legend', value: Math.max(cs.totalAppearances, Math.round(cs.totalAppearances * 1.3)), color: '#fbbf24' },
+      { name: 'All-Time Great', value: Math.max(cs.totalAppearances, Math.round(cs.totalAppearances * 2)), color: '#ef4444' },
+    ]},
+    { label: 'Rating', values: [
+      { name: 'Player', value: player.overall, color: '#22c55e' },
+      { name: 'Club Legend', value: 88, color: '#fbbf24' },
+      { name: 'All-Time Great', value: 95, color: '#ef4444' },
+    ]},
+  ];
+
+  // SVG helper: convert [x,y] pairs to points string (rule 9)
+  const svgPts = (pairs: [number, number][]): string =>
+    pairs.map(([px, py]) => `${px},${py}`).join(' ');
+
   const handleAcceptRetirement = () => {
     setShowModal(false);
     // Mark as pending (actual retirement flow not implemented yet)
@@ -613,6 +697,538 @@ export default function CareerRetirement() {
   const injuryColor = totalInjuries > 10 ? '#ef4444' : totalInjuries > 5 ? '#f59e0b' : '#22c55e';
   const seasonsColor = seasonsRemaining >= 4 ? '#22c55e' : seasonsRemaining >= 2 ? '#f59e0b' : '#ef4444';
   const declineColor = declineRate === 'None' ? '#22c55e' : declineRate === 'Gradual' ? '#22c55e' : declineRate === 'Moderate' ? '#f59e0b' : '#ef4444';
+
+  // ── SVG Sub-Components (rule 13: camelCase, called as {fnName()}) ──
+
+  // ── SVG 1: Career Length Ring ───────────────────────────
+  function careerLengthRingSvg(): React.JSX.Element {
+    const ringSize = 140;
+    const cx = ringSize / 2;
+    const cy = ringSize / 2;
+    const radius = 54;
+    const stroke = 10;
+    const circumference = 2 * Math.PI * radius;
+    const ratio = Math.min(1, yearsPlayed / maxCareerYears);
+    const dashOffset = circumference * (1 - ratio);
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Career Length</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="flex items-center gap-4">
+            <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} className="shrink-0">
+              <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#21262d" strokeWidth={stroke} />
+              <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#22c55e" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} />
+              <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="22" fontWeight="900" className="tabular-nums">{yearsPlayed}</text>
+              <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="8">of {maxCareerYears} yrs</text>
+            </svg>
+            <div className="space-y-1.5 min-w-0">
+              <div className="text-[10px] text-[#484f58]">Started at age 18</div>
+              <div className="text-[10px] text-[#484f58]">Current: <span className="text-[#c9d1d9] font-bold">{player.age}</span></div>
+              <div className="text-[10px] text-[#484f58]">Remaining: <span className="text-emerald-400 font-bold">{Math.max(0, maxCareerYears - yearsPlayed)}</span></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 2: Career Achievements Donut ────────────────────
+  function achievementsDonutSvg(): React.JSX.Element {
+    const donutSize = 160;
+    const cx = donutSize / 2;
+    const cy = donutSize / 2;
+    const outerR = 58;
+    const innerR = 38;
+    const fullAngle = 2 * Math.PI;
+    const startOffset = -Math.PI / 2;
+
+    type DonutSeg = { label: string; value: number; color: string; startA: number; endA: number };
+
+    const donutSegs = achievementsSegments.reduce<DonutSeg[]>((acc, seg, idx) => {
+      const prevEnd = acc.length > 0 ? acc[acc.length - 1].endA : startOffset;
+      const segAngle = achievementsTotal > 0 ? (seg.value / achievementsTotal) * fullAngle : 0;
+      return [...acc, { label: seg.label, value: seg.value, color: seg.color, startA: prevEnd, endA: prevEnd + segAngle }];
+    }, []);
+
+    const donutArc = (sA: number, eA: number, rO: number, rI: number): string => {
+      const x1 = cx + rO * Math.cos(sA);
+      const y1 = cy + rO * Math.sin(sA);
+      const x2 = cx + rO * Math.cos(eA);
+      const y2 = cy + rO * Math.sin(eA);
+      const x3 = cx + rI * Math.cos(eA);
+      const y3 = cy + rI * Math.sin(eA);
+      const x4 = cx + rI * Math.cos(sA);
+      const y4 = cy + rI * Math.sin(sA);
+      const lg = (eA - sA) > Math.PI ? 1 : 0;
+      return `M ${x1} ${y1} A ${rO} ${rO} 0 ${lg} 1 ${x2} ${y2} L ${x3} ${y3} A ${rI} ${rI} 0 ${lg} 0 ${x4} ${y4} Z`;
+    };
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Achievements Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="flex items-center gap-4">
+            <svg width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`} className="shrink-0">
+              <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke="#21262d" strokeWidth={outerR - innerR} />
+              {donutSegs.filter(ds => ds.endA > ds.startA).map((ds, i) => (
+                <path key={i} d={donutArc(ds.startA, ds.endA, outerR, innerR)} fill={ds.color} opacity="0.85" />
+              ))}
+              <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="18" fontWeight="900" className="tabular-nums">{achievementsTotal}</text>
+              <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize="7">Total Score</text>
+            </svg>
+            <div className="space-y-1 min-w-0">
+              {achievementsSegments.map((seg, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-2 h-2 shrink-0" style={{ backgroundColor: seg.color }} />
+                  <span className="text-[9px] text-[#8b949e]">{seg.label}</span>
+                  <span className="text-[9px] text-[#c9d1d9] font-bold ml-auto tabular-nums">{seg.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 3: Peak Performance Gauge ──────────────────────
+  function peakPerformanceGaugeSvg(): React.JSX.Element {
+    const gaugeSize = 180;
+    const cx = gaugeSize / 2;
+    const cy = gaugeSize - 30;
+    const radius = 70;
+    const sw = 12;
+    const startA = Math.PI;
+    const endA = 0;
+    const totalA = startA - endA;
+    const bgP = describeArc(cx, cy, radius, startA, endA);
+    const filledEndA = startA - (peakRating / 10) * totalA;
+    const fillP = peakRating > 0 ? describeArc(cx, cy, radius, startA, Math.max(endA, filledEndA)) : '';
+    const peakColor = peakRating >= 7.5 ? '#22c55e' : peakRating >= 6.0 ? '#f59e0b' : '#ef4444';
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Peak Season Rating</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 flex flex-col items-center">
+          <svg width={gaugeSize} height={gaugeSize} viewBox={`0 0 ${gaugeSize} ${gaugeSize}`} className="overflow-visible">
+            <path d={bgP} fill="none" stroke="#21262d" strokeWidth={sw} strokeLinecap="round" />
+            {fillP && <path d={fillP} fill="none" stroke={peakColor} strokeWidth={sw} strokeLinecap="round" />}
+            {[0, 4, 6, 8, 10].map((tick) => {
+              const tAngle = startA - (tick / 10) * totalA;
+              const ir = radius + sw / 2 + 4;
+              const or = radius + sw / 2 + 8;
+              const tx1 = cx + ir * Math.cos(tAngle);
+              const ty1 = cy + ir * Math.sin(tAngle);
+              const tx2 = cx + or * Math.cos(tAngle);
+              const ty2 = cy + or * Math.sin(tAngle);
+              return (
+                <g key={tick}>
+                  <line x1={tx1} y1={ty1} x2={tx2} y2={ty2} stroke="#484f58" strokeWidth="1" />
+                  {tick % 2 === 0 && (
+                    <text x={cx + (radius + sw / 2 + 16) * Math.cos(tAngle)} y={cy + (radius + sw / 2 + 16) * Math.sin(tAngle) + 3} textAnchor="middle" fill="#484f58" fontSize="7">{tick}</text>
+                  )}
+                </g>
+              );
+            })}
+            <text x={cx} y={cy - 22} textAnchor="middle" fill={peakColor} fontSize="24" fontWeight="900" className="tabular-nums">{peakRating.toFixed(1)}</text>
+            <text x={cx} y={cy - 8} textAnchor="middle" fill="#8b949e" fontSize="8">Peak Avg</text>
+          </svg>
+          <span className="text-[9px] mt-1 px-2 py-0.5 border" style={{ borderRadius: 4, borderColor: peakColor + '40', color: peakColor, backgroundColor: peakColor + '15' }}>
+            {peakRating >= 8 ? 'World Class' : peakRating >= 7 ? 'Excellent' : peakRating >= 6 ? 'Good' : 'Developing'}
+          </span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 4: Goals per Season Area Chart ─────────────────
+  function goalsPerSeasonAreaSvg(): React.JSX.Element {
+    const cw = 300;
+    const ch = 130;
+    const pd = { t: 10, r: 10, b: 22, l: 28 };
+    const pw = cw - pd.l - pd.r;
+    const ph = ch - pd.t - pd.b;
+    const maxG = Math.max(1, goalsPerSeason.reduce((mx, g) => Math.max(mx, g), 0));
+    const n = goalsPerSeason.length;
+
+    const tx = (i: number) => pd.l + (n > 1 ? (i / (n - 1)) * pw : pw / 2);
+    const ty = (v: number) => pd.t + ph - (v / maxG) * ph;
+
+    const dataPairs: [number, number][] = goalsPerSeason.map((g, i) => [tx(i), ty(g)]);
+    const areaPairs: [number, number][] = [...dataPairs, [tx(n - 1), pd.t + ph], [tx(0), pd.t + ph]];
+    const lineStr = svgPts(dataPairs);
+    const areaStr = svgPts(areaPairs);
+    const gridVals = [maxG * 0.25, maxG * 0.5, maxG * 0.75, maxG].map(v => Math.round(v));
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Goals per Season</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <svg viewBox={`0 0 ${cw} ${ch}`} className="w-full">
+            {gridVals.map((gv) => {
+              const gy = ty(gv);
+              return (
+                <g key={gv}>
+                  <line x1={pd.l} y1={gy} x2={cw - pd.r} y2={gy} stroke="#21262d" strokeWidth="0.5" strokeDasharray="2,2" />
+                  <text x={pd.l - 3} y={gy + 3} textAnchor="end" fill="#484f58" fontSize="6">{gv}</text>
+                </g>
+              );
+            })}
+            <polygon points={areaStr} fill="#22c55e" opacity="0.15" />
+            <polyline points={lineStr} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinejoin="round" />
+            {dataPairs.map(([px, py], i) => (
+              <circle key={i} cx={px} cy={py} r="2.5" fill="#22c55e" opacity="0.9" />
+            ))}
+            {seasonHistory.map((s, i) => (
+              <text key={i} x={tx(i)} y={ch - 6} textAnchor="middle" fill="#484f58" fontSize="6">S{s.number}</text>
+            ))}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 5: Assists per Season Line Chart ───────────────
+  function assistsPerSeasonLineSvg(): React.JSX.Element {
+    const cw = 300;
+    const ch = 130;
+    const pd = { t: 10, r: 10, b: 22, l: 28 };
+    const pw = cw - pd.l - pd.r;
+    const ph = ch - pd.t - pd.b;
+    const maxA = Math.max(1, assistsPerSeason.reduce((mx, a) => Math.max(mx, a), 0));
+    const n = assistsPerSeason.length;
+
+    const tx = (i: number) => pd.l + (n > 1 ? (i / (n - 1)) * pw : pw / 2);
+    const ty = (v: number) => pd.t + ph - (v / maxA) * ph;
+
+    const dataPairs: [number, number][] = assistsPerSeason.map((a, i) => [tx(i), ty(a)]);
+    const lineStr = svgPts(dataPairs);
+    const gridVals = [maxA * 0.25, maxA * 0.5, maxA * 0.75, maxA].map(v => Math.round(v));
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Assists per Season</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <svg viewBox={`0 0 ${cw} ${ch}`} className="w-full">
+            {gridVals.map((gv) => {
+              const gy = ty(gv);
+              return (
+                <g key={gv}>
+                  <line x1={pd.l} y1={gy} x2={cw - pd.r} y2={gy} stroke="#21262d" strokeWidth="0.5" strokeDasharray="2,2" />
+                  <text x={pd.l - 3} y={gy + 3} textAnchor="end" fill="#484f58" fontSize="6">{gv}</text>
+                </g>
+              );
+            })}
+            <polyline points={lineStr} fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeLinejoin="round" />
+            {dataPairs.map(([px, py], i) => (
+              <g key={i}>
+                <circle cx={px} cy={py} r="2.5" fill="#06b6d4" opacity="0.9" />
+                <text x={px} y={py - 6} textAnchor="middle" fill="#06b6d4" fontSize="7" fontWeight="600">{assistsPerSeason[i]}</text>
+              </g>
+            ))}
+            {seasonHistory.map((s, i) => (
+              <text key={i} x={tx(i)} y={ch - 6} textAnchor="middle" fill="#484f58" fontSize="6">S{s.number}</text>
+            ))}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 6: Career Value Bars ───────────────────────────
+  function careerValueBarsSvg(): React.JSX.Element {
+    const bw = 300;
+    const bh = 150;
+    const barH = 12;
+    const gap = 22;
+    const labelW = 60;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Career Value vs All-Time Greats</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <svg viewBox={`0 0 ${bw} ${bh}`} className="w-full">
+            {careerValueMetrics.map((m, i) => {
+              const y = 8 + i * gap;
+              const maxBar = m.great;
+              const pw = Math.min(((bw - labelW - 40) * m.player) / maxBar, bw - labelW - 40);
+              const gw = bw - labelW - 40;
+              return (
+                <g key={i}>
+                  <text x={labelW - 4} y={y + barH / 2 + 3} textAnchor="end" fill="#8b949e" fontSize="7">{m.label}</text>
+                  <rect x={labelW} y={y} width={gw} height={barH} fill="#21262d" rx="2" />
+                  <rect x={labelW} y={y} width={pw} height={barH} fill={m.color} opacity="0.8" rx="2" />
+                  <text x={labelW + pw + 4} y={y + barH / 2 + 3} fill="#c9d1d9" fontSize="7" fontWeight="600">{m.player}</text>
+                  <text x={labelW + gw + 4} y={y + barH / 2 + 3} fill="#484f58" fontSize="5">/ {m.great}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 7: Retirement Readiness Radar ──────────────────
+  function retirementReadinessRadarSvg(): React.JSX.Element {
+    const radarSize = 180;
+    const cx = radarSize / 2;
+    const cy = radarSize / 2;
+    const maxR = 60;
+    const axes = readinessAxes;
+    const n = axes.length;
+    const angleStep = (2 * Math.PI) / n;
+
+    const toPt = (idx: number, val: number): [number, number] => {
+      const angle = -Math.PI / 2 + idx * angleStep;
+      const r = (val / 100) * maxR;
+      return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+    };
+
+    const gridRings = [25, 50, 75, 100];
+    const gridPairs = gridRings.map(ringVal =>
+      axes.reduce<[number, number][]>((acc, _, idx) => [...acc, toPt(idx, ringVal)], [])
+    );
+    const dataPairs = axes.reduce<[number, number][]>((acc, ax, idx) => [...acc, toPt(idx, ax.value)], []);
+    const dataStr = svgPts(dataPairs);
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Retirement Readiness</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 flex items-center gap-3">
+          <svg width={radarSize} height={radarSize} viewBox={`0 0 ${radarSize} ${radarSize}`} className="shrink-0">
+            {gridPairs.map((gp, gi) => (
+              <polygon key={gi} points={svgPts(gp)} fill="none" stroke="#21262d" strokeWidth="0.5" />
+            ))}
+            {axes.map((ax, ai) => {
+              const edgePt = toPt(ai, 100);
+              return (
+                <g key={ai}>
+                  <line x1={cx} y1={cy} x2={edgePt[0]} y2={edgePt[1]} stroke="#21262d" strokeWidth="0.5" />
+                  <text x={edgePt[0] + (edgePt[0] > cx ? 8 : -8)} y={edgePt[1] + 3} textAnchor={edgePt[0] > cx ? 'start' : 'end'} fill="#8b949e" fontSize="6">{ax.label}</text>
+                </g>
+              );
+            })}
+            <polygon points={dataStr} fill="#22c55e" opacity="0.15" />
+            <polyline points={dataStr} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinejoin="round" />
+            {dataPairs.map(([dpx, dpy], di) => (
+              <circle key={di} cx={dpx} cy={dpy} r="3" fill={axes[di].color} />
+            ))}
+          </svg>
+          <div className="space-y-1 min-w-0">
+            {axes.map((ax, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-2 h-2 shrink-0" style={{ backgroundColor: ax.color }} />
+                <span className="text-[9px] text-[#8b949e]">{ax.label}</span>
+                <span className="text-[9px] text-[#c9d1d9] font-bold ml-auto tabular-nums">{Math.round(ax.value)}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 8: Season Rating Trend ─────────────────────────
+  function seasonRatingTrendSvg(): React.JSX.Element {
+    const cw = 300;
+    const ch = 130;
+    const pd = { t: 10, r: 10, b: 22, l: 28 };
+    const pw = cw - pd.l - pd.r;
+    const ph = ch - pd.t - pd.b;
+    const maxR = 10;
+    const minR = 0;
+    const n = seasonRatings.length;
+
+    const tx = (i: number) => pd.l + (n > 1 ? (i / (n - 1)) * pw : pw / 2);
+    const ty = (v: number) => pd.t + ph - ((v - minR) / (maxR - minR)) * ph;
+
+    const dataPairs: [number, number][] = seasonRatings.map((r, i) => [tx(i), ty(r)]);
+    const lineStr = svgPts(dataPairs);
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Season Rating Trend</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <svg viewBox={`0 0 ${cw} ${ch}`} className="w-full">
+            {[2, 4, 6, 8, 10].map((rv) => {
+              const gy = ty(rv);
+              return (
+                <g key={rv}>
+                  <line x1={pd.l} y1={gy} x2={cw - pd.r} y2={gy} stroke="#21262d" strokeWidth="0.5" strokeDasharray="2,2" />
+                  <text x={pd.l - 3} y={gy + 3} textAnchor="end" fill="#484f58" fontSize="6">{rv}</text>
+                </g>
+              );
+            })}
+            {/* 7.0 reference line */}
+            <line x1={pd.l} y1={ty(7)} x2={cw - pd.r} y2={ty(7)} stroke="#f59e0b" strokeWidth="0.5" strokeDasharray="4,2" opacity="0.5" />
+            <text x={cw - pd.r + 2} y={ty(7) + 3} fill="#f59e0b" fontSize="5" opacity="0.7">7.0</text>
+            <polyline points={lineStr} fill="none" stroke="#a855f7" strokeWidth="1.5" strokeLinejoin="round" />
+            {dataPairs.map(([rpx, rpy], i) => (
+              <g key={i}>
+                <circle cx={rpx} cy={rpy} r="2.5" fill={seasonRatings[i] >= 7 ? '#22c55e' : seasonRatings[i] >= 6 ? '#f59e0b' : '#ef4444'} />
+                <text x={rpx} y={rpy - 6} textAnchor="middle" fill="#c9d1d9" fontSize="6" fontWeight="600">{seasonRatings[i].toFixed(1)}</text>
+              </g>
+            ))}
+            {seasonHistory.map((s, i) => (
+              <text key={i} x={tx(i)} y={ch - 6} textAnchor="middle" fill="#484f58" fontSize="6">S{s.number}</text>
+            ))}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 9: Post-Retirement Options Bars ────────────────
+  function postRetirementBarsSvg(): React.JSX.Element {
+    const bw = 300;
+    const bh = 140;
+    const barH = 16;
+    const gap = 28;
+    const labelW = 70;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Post-Retirement Suitability</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <svg viewBox={`0 0 ${bw} ${bh}`} className="w-full">
+            {postRetirementOptions.map((opt, i) => {
+              const y = 10 + i * gap;
+              const maxW = bw - labelW - 36;
+              const fillW = Math.min((maxW * Math.min(100, opt.score)) / 100, maxW);
+              return (
+                <g key={i}>
+                  <text x={labelW - 4} y={y + barH / 2 + 3} textAnchor="end" fill="#8b949e" fontSize="8">{opt.label}</text>
+                  <rect x={labelW} y={y} width={maxW} height={barH} fill="#21262d" rx="2" />
+                  <rect x={labelW} y={y} width={fillW} height={barH} fill={opt.color} opacity="0.8" rx="2" />
+                  <text x={labelW + fillW + 5} y={y + barH / 2 + 3} fill="#c9d1d9" fontSize="8" fontWeight="700">{opt.score}%</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 10: Hall of Fame Probability Ring ──────────────
+  function hofProbabilityRingSvg(): React.JSX.Element {
+    const ringSize = 140;
+    const cx = ringSize / 2;
+    const cy = ringSize / 2;
+    const radius = 54;
+    const stroke = 10;
+    const circumference = 2 * Math.PI * radius;
+    const ratio = hofProbability / 100;
+    const dashOffset = circumference * (1 - ratio);
+    const hofColor = hofProbability >= 70 ? '#fbbf24' : hofProbability >= 40 ? '#f59e0b' : '#ef4444';
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Hall of Fame Probability</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="flex items-center gap-4">
+            <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} className="shrink-0">
+              <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#21262d" strokeWidth={stroke} />
+              <circle cx={cx} cy={cy} r={radius} fill="none" stroke={hofColor} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} />
+              <text x={cx} y={cy - 4} textAnchor="middle" fill={hofColor} fontSize="22" fontWeight="900" className="tabular-nums">{hofProbability}%</text>
+              <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="8">HoF Chance</text>
+            </svg>
+            <div className="space-y-1.5 min-w-0">
+              <div className="text-[10px] text-[#484f58]">Apps: <span className="text-[#c9d1d9] font-bold">{cs.totalAppearances}</span></div>
+              <div className="text-[10px] text-[#484f58]">Goals: <span className="text-[#c9d1d9] font-bold">{cs.totalGoals}</span></div>
+              <div className="text-[10px] text-[#484f58]">Trophies: <span className="text-[#c9d1d9] font-bold">{cs.trophies.length}</span></div>
+              <div className="text-[10px] text-[#484f58]">Status: <span className="font-bold" style={{ color: hofColor }}>{hofEligible ? 'Eligible' : 'Not Yet'}</span></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── SVG 11: Legacy Score Bars ──────────────────────────
+  function legacyScoreBarsSvg(): React.JSX.Element {
+    const lw = 300;
+    const lh = 190;
+    const groupH = 32;
+    const labelW = 56;
+    const barAreaW = lw - labelW - 16;
+    const barH = 5;
+    const barGap = 3;
+    const legendItems = [
+      { name: 'Player', color: '#22c55e' },
+      { name: 'Club Legend', color: '#fbbf24' },
+      { name: 'All-Time Great', color: '#ef4444' },
+    ];
+
+    // Compute max per metric
+    const maxPerMetric = legacyMetrics.map(m =>
+      m.values.reduce((mx, v) => Math.max(mx, v.value), 0)
+    );
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d]">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Legacy Comparison</CardTitle>
+            <div className="flex items-center gap-2">
+              {legendItems.map((lg, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5" style={{ backgroundColor: lg.color }} />
+                  <span className="text-[7px] text-[#484f58]">{lg.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <svg viewBox={`0 0 ${lw} ${lh}`} className="w-full">
+            {legacyMetrics.map((m, mi) => {
+              const yStart = 4 + mi * groupH;
+              const maxVal = maxPerMetric[mi] || 1;
+              return (
+                <g key={mi}>
+                  <text x={labelW - 4} y={yStart + groupH / 2 + 2} textAnchor="end" fill="#8b949e" fontSize="7">{m.label}</text>
+                  {m.values.map((v, vi) => {
+                    const bY = yStart + vi * (barH + barGap);
+                    const bW = Math.max(1, (barAreaW * v.value) / maxVal);
+                    return (
+                      <g key={vi}>
+                        <rect x={labelW} y={bY} width={barAreaW} height={barH} fill="#21262d" rx="1" />
+                        <rect x={labelW} y={bY} width={bW} height={barH} fill={v.color} opacity="0.75" rx="1" />
+                        <text x={labelW + bW + 3} y={bY + barH - 0.5} fill={v.color} fontSize="5.5" fontWeight="600">{v.value}</text>
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="bg-[#0d1117] min-h-screen pb-20">
@@ -842,6 +1458,70 @@ export default function CareerRetirement() {
             </motion.div>
           </section>
         )}
+
+        {/* ═══ 8. DATA VISUALIZATIONS ═══ */}
+        <section>
+          <motion.div className="flex items-center gap-2 mb-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 17 }}>
+            <TrendingDown className="h-4 w-4 text-emerald-400" />
+            <h2 className="text-sm font-bold text-[#c9d1d9]">Career Analytics</h2>
+          </motion.div>
+          <div className="space-y-3">
+            {/* Row: Career Length Ring + Peak Performance Gauge */}
+            <div className="grid grid-cols-2 gap-3">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 18 }}>
+                {careerLengthRingSvg()}
+              </motion.div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 19 }}>
+                {peakPerformanceGaugeSvg()}
+              </motion.div>
+            </div>
+
+            {/* Achievements Donut */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 20 }}>
+              {achievementsDonutSvg()}
+            </motion.div>
+
+            {/* Goals per Season + Assists per Season */}
+            <div className="grid grid-cols-2 gap-3">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 21 }}>
+                {goalsPerSeasonAreaSvg()}
+              </motion.div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 22 }}>
+                {assistsPerSeasonLineSvg()}
+              </motion.div>
+            </div>
+
+            {/* Season Rating Trend */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 23 }}>
+              {seasonRatingTrendSvg()}
+            </motion.div>
+
+            {/* Career Value Bars */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 24 }}>
+              {careerValueBarsSvg()}
+            </motion.div>
+
+            {/* Retirement Readiness Radar */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 25 }}>
+              {retirementReadinessRadarSvg()}
+            </motion.div>
+
+            {/* Post-Retirement Options Bars */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 26 }}>
+              {postRetirementBarsSvg()}
+            </motion.div>
+
+            {/* HoF Probability Ring */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 27 }}>
+              {hofProbabilityRingSvg()}
+            </motion.div>
+
+            {/* Legacy Score Bars */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ ...A, delay: D * 28 }}>
+              {legacyScoreBarsSvg()}
+            </motion.div>
+          </div>
+        </section>
 
         {/* Retirement Decision Modal */}
         <AnimatePresence>
