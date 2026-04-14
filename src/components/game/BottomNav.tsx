@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail, UserCog, ShieldAlert, CloudSun, AlarmClock, FileSignature, Music, Warehouse, Syringe, IdCard, Brain, Share2, Plane } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail, UserCog, ShieldAlert, CloudSun, AlarmClock, FileSignature, Music, Warehouse, Syringe, IdCard, Brain, Share2, Plane, Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -103,6 +103,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'virtual_trophy_tour', icon: <Gem className="h-5 w-5" />, label: 'Trophy Tour' },
       { screen: 'coach_career_path', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach Path' },
       { screen: 'pre_season_tour', icon: <Plane className="h-5 w-5" />, label: 'Pre-Season Tour' },
+      { screen: 'player_agent_hub_enhanced', icon: <Briefcase className="h-5 w-5" />, label: 'Agent Hub+' },
     ],
   },
   {
@@ -116,6 +117,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'fan_engagement', icon: <HeartHandshake className="h-5 w-5" />, label: 'Fans' },
       { screen: 'rival_system', icon: <Crosshair className="h-5 w-5" />, label: 'Rivals' },
       { screen: 'stadium_builder', icon: <Building2 className="h-5 w-5" />, label: 'Stadium' },
+      { screen: 'stadium_atmosphere', icon: <Volume2 className="h-5 w-5" />, label: 'Atmosphere' },
       { screen: 'scouting_network', icon: <Binoculars className="h-5 w-5" />, label: 'Scouting' },
       { screen: 'youth_development', icon: <Baby className="h-5 w-5" />, label: 'Youth Dev' },
       { screen: 'board_room', icon: <Landmark className="h-5 w-5" />, label: 'Board Room' },

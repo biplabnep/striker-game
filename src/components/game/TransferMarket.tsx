@@ -10,7 +10,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Search, Filter, Star, ArrowRight, Users, DollarSign,
   BookmarkPlus, BookmarkCheck, TrendingUp, X, Eye,
-  ShoppingCart, Briefcase, ChevronDown, ChevronUp, ShoppingCart as CartIcon
+  ShoppingCart, Briefcase, ChevronDown, ChevronUp, ShoppingCart as CartIcon,
+  Activity
 } from 'lucide-react';
 import { getClubsByLeague, getLeagueById, ENRICHED_CLUBS } from '@/lib/game/clubsData';
 import { NATIONALITIES, POSITIONS, generatePlayerName, POSITION_WEIGHTS } from '@/lib/game/playerData';
@@ -628,14 +629,40 @@ function generateMarketRumors(season: number, week: number): TransferRumor[] {
 }
 
 // ============================================================
+// Helper: compute hex polygon points string for radar charts
+// ============================================================
+function computeHexPoints(cx: number, cy: number, r: number, n: number): string {
+  return Array.from({ length: n }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+    const px = cx + r * Math.cos(angle);
+    const py = cy + r * Math.sin(angle);
+    return `${px.toFixed(1)},${py.toFixed(1)}`;
+  }).join(' ');
+}
+
+// ============================================================
+// Helper: compute polyline points string from data array
+// ============================================================
+function computePolylinePoints(data: number[], w: number, h: number, padY: number): string {
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  return data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = padY + h - 2 * padY - ((v - min) / range) * (h - 2 * padY);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+
+// ============================================================
 // TransferMarket Component
 // ============================================================
 export default function TransferMarket() {
-  const gameState = useGameStore(state => state.gameState);
-  const currentSeason = gameState?.currentSeason ?? 1;
-  const currentWeek = gameState?.currentWeek ?? 1;
-  const currentClub = gameState?.currentClub;
-  const transferBudget = currentClub?.budget ?? 50_000_000;
+  const gameState = useGameStore(state => state.gameState) ?? {};
+  const currentSeason = (gameState as unknown as { currentSeason?: number }).currentSeason ?? 1;
+  const currentWeek = (gameState as unknown as { currentWeek?: number }).currentWeek ?? 1;
+  const currentClub = (gameState as unknown as { currentClub?: { budget?: number } }).currentClub ?? {};
+  const transferBudget = (currentClub as unknown as { budget?: number }).budget ?? 50_000_000;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [positionFilter, setPositionFilter] = useState<PositionFilter>('All');
@@ -760,6 +787,577 @@ export default function TransferMarket() {
     }
   }, [bidPlayer, bidAmount]);
 
+  // ========================================================
+  // SVG 1: Transfer Budget Gauge
+  // ========================================================
+  const renderTransferBudgetGauge = () => {
+    const pct = budgetInM > 0 ? Math.min(100, Math.round((shortlistTotalValue / budgetInM) * 100)) : 35;
+    const gaugePct = pct === 0 ? 5 : pct;
+
+    const angle = Math.PI * (1 - gaugePct / 100);
+    const endX = 100 + 80 * Math.cos(angle);
+    const endY = 110 - 80 * Math.sin(angle);
+
+    const arcD = gaugePct >= 99
+      ? 'M 20 110 A 80 80 0 0 1 180 110'
+      : `M 20 110 A 80 80 0 0 1 ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+
+    const gaugeColor = gaugePct > 80 ? '#f87171' : gaugePct > 50 ? '#fbbf24' : '#10b981';
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Transfer Budget Gauge</p>
+          <p className="text-[9px] text-[#484f58]">{formatPrice(budgetInM)} remaining</p>
+        </div>
+        <div className="p-3 flex flex-col items-center">
+          <svg viewBox="0 0 200 130" className="w-full max-w-[200px]">
+            <path d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="#21262d" strokeWidth="12" strokeLinecap="round" />
+            <path d={arcD} fill="none" stroke={gaugeColor} strokeWidth="12" strokeLinecap="round" />
+            <text x="100" y="105" textAnchor="middle" fill="#c9d1d9" fontSize="20" fontWeight="bold">{gaugePct}%</text>
+            <text x="100" y="120" textAnchor="middle" fill="#484f58" fontSize="8">utilized</text>
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 2: Market Value Distribution Donut
+  // ========================================================
+  const renderMarketValueDistributionDonut = () => {
+    const counts = allPlayers.reduce<[number, number, number, number]>((acc, p) => {
+      if (p.askingPrice < 5) acc[0]++;
+      else if (p.askingPrice < 20) acc[1]++;
+      else if (p.askingPrice < 50) acc[2]++;
+      else acc[3]++;
+      return acc;
+    }, [0, 0, 0, 0]);
+
+    const total = counts.reduce((s, c) => s + c, 0);
+    if (total === 0) return null;
+    const donutLabels = ['< €5M', '€5-20M', '€20-50M', '€50M+'];
+    const donutColors = ['#10b981', '#38bdf8', '#fbbf24', '#f87171'];
+
+    const cx = 100, cy = 100, r = 60, ir = 38;
+
+    // Compute cumulative end angles using reduce
+    const cumEndAngles = counts.reduce<number[]>((acc, count, i) => {
+      const prevAngle = i === 0 ? -Math.PI / 2 : acc[i - 1];
+      const sliceAngle = (count / total) * Math.PI * 2;
+      acc.push(prevAngle + sliceAngle);
+      return acc;
+    }, []);
+
+    // Build segment paths using reduce
+    const segments = counts.reduce<{ path: string; color: string; label: string; count: number }[]>((acc, count, i) => {
+      if (count === 0) return acc;
+      const startAngle = i === 0 ? -Math.PI / 2 : cumEndAngles[i - 1];
+      const endAngle = cumEndAngles[i];
+      const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+
+      const osX = cx + r * Math.cos(startAngle);
+      const osY = cy + r * Math.sin(startAngle);
+      const oeX = cx + r * Math.cos(endAngle);
+      const oeY = cy + r * Math.sin(endAngle);
+      const ieX = cx + ir * Math.cos(endAngle);
+      const ieY = cy + ir * Math.sin(endAngle);
+      const isX = cx + ir * Math.cos(startAngle);
+      const isY = cy + ir * Math.sin(startAngle);
+
+      const path = `M ${osX.toFixed(1)} ${osY.toFixed(1)} A ${r} ${r} 0 ${largeArc} 1 ${oeX.toFixed(1)} ${oeY.toFixed(1)} L ${ieX.toFixed(1)} ${ieY.toFixed(1)} A ${ir} ${ir} 0 ${largeArc} 0 ${isX.toFixed(1)} ${isY.toFixed(1)} Z`;
+      acc.push({ path, color: donutColors[i], label: donutLabels[i], count });
+      return acc;
+    }, []);
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Market Value Distribution</p>
+          <p className="text-[9px] text-[#484f58]">{allPlayers.length} players by price tier</p>
+        </div>
+        <div className="p-3 flex flex-col items-center">
+          <svg viewBox="0 0 200 120" className="w-full max-w-[200px]">
+            {segments.map((seg, i) => (
+              <path key={i} d={seg.path} fill={seg.color} opacity={0.8} />
+            ))}
+            <circle cx={100} cy={100} r={ir - 2} fill="#161b22" />
+            <text x="100" y="97" textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="bold">{total}</text>
+            <text x="100" y="110" textAnchor="middle" fill="#484f58" fontSize="7">players</text>
+          </svg>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {segments.map((seg, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: seg.color }} />
+                <span className="text-[8px] text-[#8b949e]">{seg.label} ({seg.count})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 3: Transfer Activity Trend (Area Chart)
+  // ========================================================
+  const renderTransferActivityTrend = () => {
+    const trendData = [12, 18, 8, 22, 15, 28, 20, 25];
+    const trendLabels = ['S1', 'W1', 'S2', 'W2', 'S3', 'W3', 'S4', 'W4'];
+    const areaW = 300, areaH = 80;
+    const areaPadY = 5;
+
+    const linePointsStr = computePolylinePoints(trendData, areaW, areaH, areaPadY);
+    const areaPointsStr = `0,${areaH} ${linePointsStr} ${areaW},${areaH}`;
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Transfer Activity Trend</p>
+          <p className="text-[9px] text-[#484f58]">Transfers per window over 8 seasons</p>
+        </div>
+        <div className="p-3">
+          <svg viewBox={`0 0 ${areaW} ${areaH + 20}`} className="w-full">
+            <polygon points={areaPointsStr} fill="#10b981" opacity={0.1} />
+            <polyline points={linePointsStr} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            {trendData.map((v, i) => {
+              const x = (i / (trendData.length - 1)) * areaW;
+              const yMin = Math.min(...trendData);
+              const yMax = Math.max(...trendData);
+              const yRange = yMax - yMin || 1;
+              const y = areaPadY + areaH - 2 * areaPadY - ((v - yMin) / yRange) * (areaH - 2 * areaPadY);
+              return (
+                <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="3" fill="#10b981" />
+              );
+            })}
+            {trendLabels.map((label, i) => {
+              const x = (i / (trendLabels.length - 1)) * areaW;
+              return (
+                <text key={i} x={x.toFixed(1)} y={areaH + 12} textAnchor="middle" fill="#484f58" fontSize="7">{label}</text>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 4: Position Demand Bars
+  // ========================================================
+  const renderPositionDemandBars = () => {
+    const demandPositions = ['GK', 'DEF', 'MID', 'FWD', 'CF', 'CAM'];
+    const demandColors = ['#fbbf24', '#38bdf8', '#10b981', '#f87171', '#a78bfa', '#f472b6'];
+
+    const demandCounts = allPlayers.reduce<number[]>((acc, p) => {
+      if (p.position === 'GK') acc[0]++;
+      else if (['CB', 'LB', 'RB'].includes(p.position)) acc[1]++;
+      else if (['CDM', 'CM', 'LM', 'RM'].includes(p.position)) acc[2]++;
+      else if (['LW', 'RW', 'ST'].includes(p.position)) acc[3]++;
+      else if (p.position === 'CF') acc[4]++;
+      else if (p.position === 'CAM') acc[5]++;
+      return acc;
+    }, [0, 0, 0, 0, 0, 0]);
+
+    const demandMax = Math.max(...demandCounts, 1);
+    const dbH = 14;
+    const dbGap = 6;
+    const dbLabelW = 28;
+    const dbBarMaxW = 100;
+    const dbSvgH = demandPositions.length * (dbH + dbGap) + 10;
+    const dbSvgW = dbLabelW + dbBarMaxW + 30;
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Position Demand</p>
+          <p className="text-[9px] text-[#484f58]">Available players by position</p>
+        </div>
+        <div className="p-3">
+          <svg viewBox={`0 0 ${dbSvgW} ${dbSvgH}`} className="w-full">
+            {demandPositions.map((pos, i) => {
+              const y = i * (dbH + dbGap) + 5;
+              const barW = Math.max(2, (demandCounts[i] / demandMax) * dbBarMaxW);
+              return (
+                <g key={pos}>
+                  <text x={dbLabelW - 4} y={y + dbH / 2 + 3} textAnchor="end" fill="#8b949e" fontSize="9" fontWeight="500">{pos}</text>
+                  <rect x={dbLabelW} y={y} width={barW} height={dbH} rx={3} fill={demandColors[i]} opacity={0.8} />
+                  <text x={dbLabelW + barW + 4} y={y + dbH / 2 + 3} fill="#c9d1d9" fontSize="9" fontWeight="bold">{demandCounts[i]}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 5: Top Targets Comparison Radar
+  // ========================================================
+  const renderTopTargetsComparisonRadar = () => {
+    const sortedTargets = [...allPlayers].sort((a, b) => b.overall - a.overall);
+    const topTargets = sortedTargets.slice(0, 3);
+    const radarAxes = ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'];
+    const radarColors = ['#10b981', '#38bdf8', '#fbbf24'];
+    const rcx = 100, rcy = 100, rr = 70;
+    const radarN = radarAxes.length;
+
+    const gridHexes = [0.25, 0.5, 0.75, 1.0].map(scale => computeHexPoints(rcx, rcy, rr * scale, radarN));
+
+    const attrKeys = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'] as const;
+    const playerRadarPaths = topTargets.map(player => {
+      return attrKeys.map((key, i) => {
+        const val = player.attributes[key] / 99;
+        const angle = (Math.PI * 2 * i) / radarN - Math.PI / 2;
+        const px = rcx + rr * val * Math.cos(angle);
+        const py = rcy + rr * val * Math.sin(angle);
+        return `${px.toFixed(1)},${py.toFixed(1)}`;
+      }).join(' ');
+    });
+
+    const radarAxisLabels = radarAxes.map((label, i) => {
+      const angle = (Math.PI * 2 * i) / radarN - Math.PI / 2;
+      const lx = rcx + (rr + 14) * Math.cos(angle);
+      const ly = rcy + (rr + 14) * Math.sin(angle);
+      return { x: lx, y: ly, label };
+    });
+
+    const axisLineEnds = Array.from({ length: radarN }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / radarN - Math.PI / 2;
+      return { x: rcx + rr * Math.cos(angle), y: rcy + rr * Math.sin(angle) };
+    });
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Top Targets Comparison</p>
+          <p className="text-[9px] text-[#484f58]">Top 3 targets by attribute</p>
+        </div>
+        <div className="p-3 flex flex-col items-center">
+          <svg viewBox="0 0 200 215" className="w-full max-w-[200px]">
+            {gridHexes.map((pts, i) => (
+              <polygon key={`gr-${i}`} points={pts} fill="none" stroke="#21262d" strokeWidth="0.5" />
+            ))}
+            {axisLineEnds.map((end, i) => (
+              <line key={`ax-${i}`} x1={rcx} y1={rcy} x2={end.x.toFixed(1)} y2={end.y.toFixed(1)} stroke="#21262d" strokeWidth="0.5" />
+            ))}
+            {playerRadarPaths.map((pts, i) => (
+              <polygon key={`pl-${i}`} points={pts} fill={radarColors[i]} opacity={0.15} stroke={radarColors[i]} strokeWidth="1.5" />
+            ))}
+            {radarAxisLabels.map((a, i) => (
+              <text key={`rl-${i}`} x={a.x.toFixed(1)} y={(a.y + 3).toFixed(1)} textAnchor="middle" fill="#8b949e" fontSize="8" fontWeight="500">{a.label}</text>
+            ))}
+          </svg>
+          <div className="flex gap-3 mt-1">
+            {topTargets.map((p, i) => (
+              <div key={p.id} className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: radarColors[i] }} />
+                <span className="text-[8px] text-[#8b949e] truncate max-w-[60px]">{p.name.split(' ')[1] ?? p.name.split(' ')[0]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 6: Transfer Window Timeline
+  // ========================================================
+  const renderTransferWindowTimeline = () => {
+    const windowItems = [
+      { label: 'Summer 2024', transfers: 18, status: 'closed' as const },
+      { label: 'Winter 2025', transfers: 12, status: windowStatus ? ('current' as const) : ('closed' as const) },
+      { label: 'Summer 2025', transfers: 0, status: 'upcoming' as const },
+    ];
+
+    const tlW = 300;
+    const tlSpacing = tlW / (windowItems.length + 1);
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Transfer Window Timeline</p>
+          <p className="text-[9px] text-[#484f58]">Upcoming and recent windows</p>
+        </div>
+        <div className="p-3">
+          <svg viewBox="0 0 300 70" className="w-full">
+            <line x1="30" y1="25" x2="270" y2="25" stroke="#21262d" strokeWidth="2" />
+            {windowItems.map((win, i) => {
+              const wx = tlSpacing * (i + 1);
+              const dotColor = win.status === 'current' ? '#10b981' : win.status === 'upcoming' ? '#38bdf8' : '#484f58';
+              const dotR = win.status === 'current' ? 6 : 4;
+              return (
+                <g key={i}>
+                  <circle cx={wx.toFixed(1)} cy="25" r={dotR} fill={dotColor} />
+                  <text x={wx.toFixed(1)} y="15" textAnchor="middle" fill="#c9d1d9" fontSize="8" fontWeight="500">{win.label}</text>
+                  <text x={wx.toFixed(1)} y="45" textAnchor="middle" fill="#8b949e" fontSize="8">{win.transfers} transfers</text>
+                  {win.status === 'current' && (
+                    <>
+                      <rect x={(wx - 18).toFixed(1)} y="52" width="36" height="12" rx={3} fill="#10b981" opacity={0.15} stroke="#10b981" strokeWidth="0.5" />
+                      <text x={wx.toFixed(1)} y="61" textAnchor="middle" fill="#10b981" fontSize="7" fontWeight="bold">OPEN</text>
+                    </>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 7: Squad Gaps Hex Radar
+  // ========================================================
+  const renderSquadGapsHexRadar = () => {
+    const squadGaps = [65, 72, 55, 40, 80, 68];
+    const squadLabels = ['GK', 'DEF', 'MID', 'FWD', 'CF', 'CAM'];
+    const scx = 100, scy = 100, sr = 70;
+    const sn = squadLabels.length;
+
+    const squadGridHexes = [0.25, 0.5, 0.75, 1.0].map(scale => computeHexPoints(scx, scy, sr * scale, sn));
+
+    const squadGapPoints = squadGaps.map((val, i) => {
+      const normalized = val / 100;
+      const angle = (Math.PI * 2 * i) / sn - Math.PI / 2;
+      const px = scx + sr * normalized * Math.cos(angle);
+      const py = scy + sr * normalized * Math.sin(angle);
+      return `${px.toFixed(1)},${py.toFixed(1)}`;
+    }).join(' ');
+
+    const squadAxisEnds = Array.from({ length: sn }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / sn - Math.PI / 2;
+      return { x: scx + sr * Math.cos(angle), y: scy + sr * Math.sin(angle) };
+    });
+
+    const squadLabelPositions = squadLabels.map((label, i) => {
+      const angle = (Math.PI * 2 * i) / sn - Math.PI / 2;
+      const lx = scx + (sr + 14) * Math.cos(angle);
+      const ly = scy + (sr + 14) * Math.sin(angle);
+      return { x: lx, y: ly, label, val: squadGaps[i] };
+    });
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Squad Gaps Analysis</p>
+          <p className="text-[9px] text-[#484f58]">Squad depth by position</p>
+        </div>
+        <div className="p-3 flex flex-col items-center">
+          <svg viewBox="0 0 200 215" className="w-full max-w-[200px]">
+            {squadGridHexes.map((pts, i) => (
+              <polygon key={`sg-${i}`} points={pts} fill="none" stroke="#21262d" strokeWidth="0.5" />
+            ))}
+            {squadAxisEnds.map((end, i) => (
+              <line key={`sa-${i}`} x1={scx} y1={scy} x2={end.x.toFixed(1)} y2={end.y.toFixed(1)} stroke="#21262d" strokeWidth="0.5" />
+            ))}
+            <polygon points={squadGapPoints} fill="#f87171" opacity={0.15} stroke="#f87171" strokeWidth="1.5" />
+            {squadLabelPositions.map((a, i) => {
+              const gapColor = a.val < 50 ? '#f87171' : a.val < 70 ? '#fbbf24' : '#10b981';
+              return (
+                <text key={`sl-${i}`} x={a.x.toFixed(1)} y={(a.y + 3).toFixed(1)} textAnchor="middle" fill={gapColor} fontSize="8" fontWeight="bold">{a.label} {a.val}</text>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 8: Transfer Spending Trend Line
+  // ========================================================
+  const renderTransferSpendingTrendLine = () => {
+    const spendingData = [45, 32, 68, 55, 78, 42];
+    const spendingLabels = ["S1 '22", "W1 '22", "S2 '22", "S1 '23", "W1 '23", "S2 '23"];
+    const spW = 300, spH = 80, spPadY = 5;
+
+    const spLinePointsStr = computePolylinePoints(spendingData, spW, spH, spPadY);
+
+    const spMin = Math.min(...spendingData);
+    const spMax = Math.max(...spendingData);
+    const spRange = spMax - spMin || 1;
+
+    const dotPositions = spendingData.map((v, i) => {
+      const x = (i / (spendingData.length - 1)) * spW;
+      const y = spPadY + spH - 2 * spPadY - ((v - spMin) / spRange) * (spH - 2 * spPadY);
+      return { x, y, v };
+    });
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Transfer Spending Trend</p>
+          <p className="text-[9px] text-[#484f58]">Spending per window (€M)</p>
+        </div>
+        <div className="p-3">
+          <svg viewBox={`0 0 ${spW} ${spH + 20}`} className="w-full">
+            <polyline points={spLinePointsStr} fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            {dotPositions.map((dot, i) => (
+              <g key={i}>
+                <circle cx={dot.x.toFixed(1)} cy={dot.y.toFixed(1)} r="3" fill="#38bdf8" />
+                <text x={dot.x.toFixed(1)} y={(dot.y - 6).toFixed(1)} textAnchor="middle" fill="#38bdf8" fontSize="7">€{dot.v}M</text>
+              </g>
+            ))}
+            {spendingLabels.map((label, i) => {
+              const x = (i / (spendingLabels.length - 1)) * spW;
+              return (
+                <text key={i} x={x.toFixed(1)} y={spH + 12} textAnchor="middle" fill="#484f58" fontSize="7">{label}</text>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 9: Agent Negotiation Quality Ring
+  // ========================================================
+  const renderAgentNegotiationQualityRing = () => {
+    const successRate = 72;
+    const failureRate = 28;
+    const nCx = 80, nCy = 80, nR = 60;
+
+    const nStartAngle = -Math.PI / 2;
+    const nEndAngle = nStartAngle + (2 * Math.PI * successRate / 100);
+
+    const nsX = nCx + nR * Math.cos(nStartAngle);
+    const nsY = nCy + nR * Math.sin(nStartAngle);
+    const neX = nCx + nR * Math.cos(nEndAngle);
+    const neY = nCy + nR * Math.sin(nEndAngle);
+
+    const nLargeArc = (successRate / 100) > 0.5 ? 1 : 0;
+    const nArcPath = `M ${nsX.toFixed(1)} ${nsY.toFixed(1)} A ${nR} ${nR} 0 ${nLargeArc} 1 ${neX.toFixed(1)} ${neY.toFixed(1)}`;
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Negotiation Quality</p>
+          <p className="text-[9px] text-[#484f58]">Agent success rate</p>
+        </div>
+        <div className="p-3 flex flex-col items-center">
+          <svg viewBox="0 0 160 160" className="w-full max-w-[120px]">
+            <circle cx={nCx} cy={nCy} r={nR} fill="none" stroke="#21262d" strokeWidth="10" />
+            <path d={nArcPath} fill="none" stroke="#10b981" strokeWidth="10" strokeLinecap="round" />
+            <text x={nCx} y={nCy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="24" fontWeight="bold">{successRate}%</text>
+            <text x={nCx} y={nCy + 12} textAnchor="middle" fill="#484f58" fontSize="8">success</text>
+          </svg>
+          <div className="flex gap-4 mt-2">
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm bg-emerald-500" />
+              <span className="text-[9px] text-[#8b949e]">Accepted {successRate}%</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm bg-red-400" />
+              <span className="text-[9px] text-[#8b949e]">Rejected {failureRate}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 10: Scouted Players Scatter
+  // ========================================================
+  const renderScoutedPlayersScatter = () => {
+    const scoutedPlayers = allPlayers.slice(0, 12);
+    const catColorMap: Record<string, string> = {
+      GK: '#fbbf24',
+      DEF: '#38bdf8',
+      MID: '#10b981',
+      FWD: '#f87171',
+    };
+
+    const scW = 280, scH = 100, scPadX = 20, scPadY = 10;
+    const scMinAge = 17, scMaxAge = 36;
+    const scMinOvr = 50, scMaxOvr = 95;
+
+    const scatterDots = scoutedPlayers.map(p => {
+      const cat = getPositionCategory(p.position);
+      const px = scPadX + ((p.age - scMinAge) / (scMaxAge - scMinAge)) * (scW - 2 * scPadX);
+      const py = scH - ((p.overall - scMinOvr) / (scMaxOvr - scMinOvr)) * (scH - scPadY);
+      return { x: px, y: py, color: catColorMap[cat] ?? '#484f58', id: p.id, cat };
+    });
+
+    const catEntries = Object.entries(catColorMap);
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Scouted Players</p>
+          <p className="text-[9px] text-[#484f58]">Age vs Overall Rating</p>
+        </div>
+        <div className="p-3">
+          <svg viewBox={`0 0 ${scW} ${scH + 30}`} className="w-full">
+            <line x1={scPadX} y1={scPadY} x2={scPadX} y2={scH} stroke="#21262d" strokeWidth="1" />
+            <line x1={scPadX} y1={scH} x2={scW - scPadX} y2={scH} stroke="#21262d" strokeWidth="1" />
+            <text x={scW / 2} y={scH + 15} textAnchor="middle" fill="#484f58" fontSize="7">Age →</text>
+            <text x={6} y={scPadY + 4} textAnchor="start" fill="#484f58" fontSize="7">OVR</text>
+            {scatterDots.map(dot => (
+              <circle key={dot.id} cx={dot.x.toFixed(1)} cy={dot.y.toFixed(1)} r="4" fill={dot.color} opacity={0.8} />
+            ))}
+            {catEntries.map(([cat, color], i) => (
+              <g key={cat}>
+                <circle cx={scPadX + i * 50} cy={scH + 25} r="3" fill={color} />
+                <text x={scPadX + i * 50 + 5} y={scH + 28} fill="#8b949e" fontSize="7">{cat}</text>
+              </g>
+            ))}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================================
+  // SVG 11: Transfer History Butterfly Chart
+  // ========================================================
+  const renderTransferHistoryButterflyChart = () => {
+    const bfSeasons = ['S1', 'S2', 'S3', 'S4'];
+    const bfIns = [42, 65, 38, 55];
+    const bfOuts = [28, 35, 52, 40];
+    const bfMaxVal = Math.max(...bfIns, ...bfOuts, 1);
+
+    const bfBarH = 14;
+    const bfGap = 12;
+    const bfMidX = 150;
+    const bfBarMaxW = 80;
+    const bfSvgH = bfSeasons.length * (bfBarH + bfGap) + 30;
+
+    return (
+      <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+        <div className="px-3 py-2 border-b border-[#30363d]">
+          <p className="text-xs font-semibold text-[#c9d1d9]">Transfer History</p>
+          <p className="text-[9px] text-[#484f58]">Ins vs Outs by season (€M)</p>
+        </div>
+        <div className="p-3">
+          <svg viewBox={`0 0 300 ${bfSvgH}`} className="w-full">
+            <line x1={bfMidX} y1="5" x2={bfMidX} y2={bfSvgH - 20} stroke="#30363d" strokeWidth="1" />
+            {bfSeasons.map((season, i) => {
+              const by = i * (bfBarH + bfGap) + 10;
+              const inW = Math.max(2, (bfIns[i] / bfMaxVal) * bfBarMaxW);
+              const outW = Math.max(2, (bfOuts[i] / bfMaxVal) * bfBarMaxW);
+              return (
+                <g key={season}>
+                  <text x={bfMidX} y={by - 3} textAnchor="middle" fill="#c9d1d9" fontSize="8" fontWeight="bold">{season}</text>
+                  <rect x={bfMidX - inW} y={by} width={inW} height={bfBarH} rx={3} fill="#10b981" opacity={0.7} />
+                  <text x={bfMidX - inW - 3} y={by + bfBarH / 2 + 3} textAnchor="end" fill="#10b981" fontSize="8" fontWeight="bold">€{bfIns[i]}M</text>
+                  <rect x={bfMidX + 2} y={by} width={outW} height={bfBarH} rx={3} fill="#f87171" opacity={0.7} />
+                  <text x={bfMidX + outW + 6} y={by + bfBarH / 2 + 3} fill="#f87171" fontSize="8" fontWeight="bold">€{bfOuts[i]}M</text>
+                </g>
+              );
+            })}
+            <text x={bfMidX - 50} y={bfSvgH - 5} textAnchor="end" fill="#10b981" fontSize="7">● Incoming</text>
+            <text x={bfMidX + 50} y={bfSvgH - 5} textAnchor="start" fill="#f87171" fontSize="7">● Outgoing</text>
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9]">
       {/* Header */}
@@ -857,6 +1455,10 @@ export default function TransferMarket() {
           <TabsTrigger value="recent" className="flex-1 text-xs data-[state=active]:bg-[#21262d] data-[state=active]:text-emerald-400">
             <ArrowRight className="h-3 w-3 mr-1" />
             Recent
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-1 text-xs data-[state=active]:bg-[#21262d] data-[state=active]:text-emerald-400">
+            <Activity className="h-3 w-3 mr-1" />
+            Analytics
           </TabsTrigger>
         </TabsList>
 
@@ -1333,6 +1935,44 @@ export default function TransferMarket() {
                 <p className="text-xs font-bold text-amber-400 mt-1">{formatPrice(transfer.fee)}</p>
               </motion.div>
             ))}
+          </div>
+        </TabsContent>
+
+        {/* Analytics Tab — 11 SVG Data Visualizations */}
+        <TabsContent value="analytics">
+          <div className="space-y-3 pb-4">
+            {/* Row 1: Budget Gauge + Donut */}
+            <div className="grid grid-cols-2 gap-2">
+              {renderTransferBudgetGauge()}
+              {renderMarketValueDistributionDonut()}
+            </div>
+
+            {/* Row 2: Transfer Activity Trend (full width) */}
+            {renderTransferActivityTrend()}
+
+            {/* Row 3: Position Demand + Top Targets Radar */}
+            <div className="grid grid-cols-2 gap-2">
+              {renderPositionDemandBars()}
+              {renderTopTargetsComparisonRadar()}
+            </div>
+
+            {/* Row 4: Transfer Window Timeline (full width) */}
+            {renderTransferWindowTimeline()}
+
+            {/* Row 5: Squad Gaps + Negotiation Ring */}
+            <div className="grid grid-cols-2 gap-2">
+              {renderSquadGapsHexRadar()}
+              {renderAgentNegotiationQualityRing()}
+            </div>
+
+            {/* Row 6: Spending Trend Line (full width) */}
+            {renderTransferSpendingTrendLine()}
+
+            {/* Row 7: Scouted Players Scatter (full width) */}
+            {renderScoutedPlayersScatter()}
+
+            {/* Row 8: Butterfly Chart (full width) */}
+            {renderTransferHistoryButterflyChart()}
           </div>
         </TabsContent>
       </Tabs>
