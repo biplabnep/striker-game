@@ -379,6 +379,33 @@ function MiniJerseySVG({ primary, secondary, pattern }: { primary: string; secon
 }
 
 // -----------------------------------------------------------
+// Match Score Badge sub-component
+// -----------------------------------------------------------
+function hexPoints(radius: number, cx: number, cy: number, sides: number): string {
+  return Array.from({ length: sides }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+    return `${cx + radius * Math.cos(angle)},${cy + radius * Math.sin(angle)}`;
+  }).join(' ');
+}
+
+function MatchScoreBadge({ radarPlayerData, radarLegendaryData }: { radarPlayerData: { value: number }[]; radarLegendaryData: { value: number }[] }): React.JSX.Element {
+  const avgPlayer = radarPlayerData.reduce((s, d) => s + d.value, 0) / radarPlayerData.length;
+  const avgLegend = radarLegendaryData.reduce((s, d) => s + d.value, 0) / radarLegendaryData.length;
+  const score = Math.round(Math.min(99, Math.max(1, (avgPlayer / avgLegend) * 100)));
+  const scoreColor = score >= 90 ? '#22c55e' : score >= 70 ? '#eab308' : '#ef4444';
+  return (
+    <div className="flex items-center gap-1">
+      <svg viewBox="0 0 48 48" style={{ width: 24, height: 24 }} xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="#21262d" strokeWidth="4" />
+        <circle cx="24" cy="24" r="20" fill="none" stroke={scoreColor} strokeWidth="4" strokeDasharray={`${(score / 100) * 125.7} 125.7`} strokeLinecap="round" strokeOpacity="0.8" />
+        <text x="24" y="27" textAnchor="middle" fill={scoreColor} fontSize="12" fontWeight="800" fontFamily="Arial, sans-serif">{score}</text>
+      </svg>
+      <span className="text-[9px] font-bold" style={{ color: scoreColor }}>{score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : 'Average'}</span>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------
 export default function KitCustomization() {
@@ -462,9 +489,9 @@ export default function KitCustomization() {
     return best;
   }, [kitHistory]);
 
-  if (!gameState) return null;
+  // GUARD_PLACEHOLDER
 
-  const { player, currentClub } = gameState;
+  const { player, currentClub } = gameState ?? { player: {} as any, currentClub: {} as any };
 
   const isTaken = takenNumbers.includes(selectedNumber);
   const isRetired = retiredNumbers.includes(selectedNumber);
@@ -480,6 +507,102 @@ export default function KitCustomization() {
     setToast(`Jersey number changed to ${selectedNumber}!`);
     setTimeout(() => setToast(null), 2500);
   };
+
+  // ── SVG Data: Attribute Compatibility Radar ──
+  const radarPlayerData = ATTR_KEYS.map((key) => ({
+    label: ATTR_SHORT[key],
+    value: statValue(key) / 100,
+    color: ATTR_BAR_COLOR[key],
+  }));
+
+  // Simulated legendary comparison data based on selected number
+  const radarLegendaryData = useMemo(() => {
+    const num = selectedNumber;
+    const base = num <= 5 ? 85 : num <= 8 ? 78 : 82;
+    return ATTR_KEYS.map((key) => {
+      const offset = key === 'defending' ? (num <= 5 ? 12 : -8)
+        : key === 'shooting' ? (num >= 9 ? 10 : -5)
+        : key === 'pace' ? (num === 7 || num === 11 ? 8 : -3)
+        : (seedHash(key + String(num)) % 16) - 8;
+      return {
+        label: ATTR_SHORT[key],
+        value: Math.max(0.4, Math.min(1, (base + offset) / 100)),
+      };
+    });
+  }, [selectedNumber]);
+
+  // ── SVG Data: Position Number Popularity ──
+  const positionPopularity = useMemo(() => {
+    const num = selectedNumber;
+    const gk = num === 1 ? 95 : num <= 3 ? 15 : 3;
+    const def = (num >= 2 && num <= 5) ? 60 + (5 - Math.abs(num - 3.5)) * 8 : 8 + (num === 4 ? 25 : 0);
+    const mid = (num >= 6 && num <= 8) ? 55 + (8 - Math.abs(num - 7)) * 10 : 5 + (num === 10 ? 30 : 0);
+    const fwd = (num >= 9 && num <= 11) ? 50 + (11 - Math.abs(num - 10)) * 10 : 3 + (num === 14 ? 20 : 0);
+    return [
+      { label: 'GK', value: Math.min(98, gk), color: '#eab308' },
+      { label: 'DEF', value: Math.min(98, def), color: '#3b82f6' },
+      { label: 'MID', value: Math.min(98, mid), color: '#22c55e' },
+      { label: 'FWD', value: Math.min(98, fwd), color: '#ef4444' },
+    ];
+  }, [selectedNumber]);
+
+  // ── SVG Data: Pattern Popularity (via .reduce()) ──
+  const patternPopularity = useMemo(() => {
+    return FAMOUS_KITS.reduce<Record<string, number>>((acc, kit) => {
+      const p = kit.pattern === 'sleeves' ? 'none' : kit.pattern;
+      acc[p] = (acc[p] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, []);
+
+  const patternDonutSegments = useMemo(() => {
+    const entries = Object.entries(patternPopularity);
+    const total = entries.reduce((sum, [, count]) => sum + count, 0);
+    const colors = ['#3b82f6', '#ef4444', '#22c55e', '#eab308', '#a855f7', '#f97316', '#06b6d4'];
+    return entries.reduce<Array<{ id: string; label: string; count: number; startAngle: number; sweepAngle: number; color: string }>>((acc, [pattern, count], i) => {
+      const prevCumulative = acc.reduce((s, seg) => s + seg.sweepAngle, 0);
+      const sweepAngle = (count / total) * 360;
+      acc.push({
+        id: pattern,
+        label: KIT_PATTERNS.find((kp) => kp.id === pattern)?.label ?? pattern,
+        count,
+        startAngle: prevCumulative,
+        sweepAngle,
+        color: colors[i % colors.length],
+      });
+      return acc;
+    }, []);
+  }, [patternPopularity]);
+
+  // ── SVG Data: Sleeve style fan preference (simulated) ──
+  const sleevePreferenceData = [
+    { label: 'Short', value: 62, color: '#22c55e' },
+    { label: 'Long', value: 24, color: '#3b82f6' },
+    { label: 'Sleeveless', value: 14, color: '#f97316' },
+  ];
+
+  // ── SVG Data: Collar style ratings (simulated) ──
+  const collarRatingData = [
+    { label: 'V-Neck', value: 88, color: '#22c55e' },
+    { label: 'Round', value: 72, color: '#3b82f6' },
+    { label: 'Collar', value: 55, color: '#a855f7' },
+    { label: 'Polo', value: 45, color: '#f97316' },
+  ];
+
+  // ── SVG Data: Color harmony ──
+  const colorHarmonyType = useMemo(() => {
+    const hueDiff = Math.abs(
+      parseInt(primaryColor.slice(1, 3), 16) - parseInt(secondaryColor.slice(1, 3), 16)
+    );
+    const satDiff = Math.abs(
+      parseInt(primaryColor.slice(3, 5), 16) - parseInt(secondaryColor.slice(3, 5), 16)
+    );
+    if (hueDiff > 200 || hueDiff < 55) return 'Complementary';
+    if (hueDiff < 90 && satDiff < 60) return 'Analogous';
+    return 'Triadic';
+  }, [primaryColor, secondaryColor]);
+
+  if (!gameState) return null;
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
@@ -560,6 +683,81 @@ export default function KitCustomization() {
         </div>
       </motion.div>
 
+      {/* ─── SVG 11: Attribute Compatibility Radar ─── */}
+      <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Compass className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] font-bold text-[#c9d1d9]">Number #{selectedNumber} Attribute Match</span>
+          </div>
+          <span className="text-[8px] text-[#484f58]">vs Legendary Avg</span>
+        </div>
+        {/* Match score summary */}
+        <div className="flex items-center gap-2">
+          <div className="text-[9px] text-[#8b949e]">Match Score:</div>
+          <MatchScoreBadge radarPlayerData={radarPlayerData} radarLegendaryData={radarLegendaryData} />
+        </div>
+        <svg viewBox="0 0 240 160" style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+          {[12, 24, 36, 48].map((r, ri) => (
+            <polygon key={ri} points={hexPoints(r, 120, 80, 6)} fill="none" stroke="#c9d1d9" strokeWidth="0.5" fillOpacity={0.06} />
+          ))}
+          {/* Axis lines */}
+          {ATTR_KEYS.map((key, i) => {
+            const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+            const ex = 120 + 48 * Math.cos(angle);
+            const ey = 80 + 48 * Math.sin(angle);
+            return (
+              <line key={key} x1="120" y1="80" x2={ex} y2={ey} stroke="#30363d" strokeWidth="0.5" />
+            );
+          })}
+          {/* Legendary comparison polygon */}
+          <polygon
+            points={radarLegendaryData.map((d, i) => {
+              const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+              return `${120 + d.value * 48 * Math.cos(angle)},${80 + d.value * 48 * Math.sin(angle)}`;
+            }).join(' ')}
+            fill="#fbbf24"
+            fillOpacity="0.06"
+            stroke="#fbbf24"
+            strokeWidth="1"
+            strokeOpacity="0.4"
+          />
+          {/* Player attribute polygon */}
+          <polygon
+            points={radarPlayerData.map((d, i) => {
+              const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+              return `${120 + d.value * 48 * Math.cos(angle)},${80 + d.value * 48 * Math.sin(angle)}`;
+            }).join(' ')}
+            fill="#22c55e"
+            fillOpacity="0.1"
+            stroke="#22c55e"
+            strokeWidth="1.2"
+            strokeOpacity="0.7"
+          />
+          {/* Player dots and labels */}
+          {radarPlayerData.map((d, i) => {
+            const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+            const px = 120 + d.value * 48 * Math.cos(angle);
+            const py = 80 + d.value * 48 * Math.sin(angle);
+            const lx = 120 + 56 * Math.cos(angle);
+            const ly = 80 + 56 * Math.sin(angle);
+            return (
+              <g key={d.label}>
+                <circle cx={px} cy={py} r="2.5" fill={d.color} stroke="#0d1117" strokeWidth="0.5" />
+                <text x={lx} y={ly - 3} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontWeight="700" fontFamily="Arial, sans-serif">{d.label}</text>
+                <text x={lx} y={ly + 5} textAnchor="middle" fill="#484f58" fontSize="5" fontFamily="Arial, sans-serif">{Math.round(d.value * 100)}</text>
+              </g>
+            );
+          })}
+          {/* Legend */}
+          <rect x="8" y="148" width="6" height="6" rx="1" fill="#22c55e" fillOpacity="0.7" />
+          <text x="17" y="154" fill="#8b949e" fontSize="6" fontFamily="Arial, sans-serif">Your Stats</text>
+          <rect x="65" y="148" width="6" height="6" rx="1" fill="#fbbf24" fillOpacity="0.5" />
+          <text x="74" y="154" fill="#8b949e" fontSize="6" fontFamily="Arial, sans-serif">Legendary #{selectedNumber} Avg</text>
+          <text x="175" y="154" fill="#30363d" fontSize="5" fontFamily="Arial, sans-serif">Higher is better</text>
+        </svg>
+      </div>
+
       {/* ─── Jersey Number Selection ─── */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -583,6 +781,35 @@ export default function KitCustomization() {
               {pos.label} ({pos.range})
             </Badge>
           ))}
+        </div>
+
+        {/* ─── SVG 2: Position Number Popularity ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-2.5 space-y-1.5">
+          <div className="text-[9px] font-bold text-[#8b949e] mb-1">Number {selectedNumber} Popularity by Position</div>
+          <svg viewBox="0 0 240 78" style={{ width: '100%', maxWidth: 280 }} xmlns="http://www.w3.org/2000/svg">
+            {positionPopularity.map((seg, i) => {
+              const y = 4 + i * 18;
+              const barWidth = Math.max(1, (seg.value / 100) * 155);
+              const isHigh = seg.value >= 60;
+              return (
+                <g key={seg.label}>
+                  {/* Position label with icon dot */}
+                  <circle cx="4" cy={y + 6} r="3" fill={seg.color} fillOpacity={isHigh ? 0.7 : 0.25} />
+                  <text x="10" y={y + 9} fill={seg.color} fontSize="7" fontWeight="700" fontFamily="Arial, sans-serif">{seg.label}</text>
+                  {/* Background bar */}
+                  <rect x="28" y={y + 1} width="155" height="9" rx="2" fill="#21262d" />
+                  {/* Filled bar */}
+                  <rect x="28" y={y + 1} width={barWidth} height="9" rx="2" fill={seg.color} fillOpacity={isHigh ? 0.7 : 0.35} />
+                  {/* Popularity text */}
+                  <text x="188" y={y + 9} fill={isHigh ? '#c9d1d9' : '#484f58'} fontSize="7" fontWeight="700" fontFamily="Arial, sans-serif">{seg.value}%</text>
+                  {/* Trend indicator */}
+                  <text x="212" y={y + 9} fill={isHigh ? '#22c55e' : '#484f58'} fontSize="5" fontFamily="Arial, sans-serif">
+                    {seg.value >= 80 ? '▲ Hot' : seg.value >= 50 ? '● Avg' : '▽ Low'}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
         </div>
 
         {/* Number grid - 5 columns */}
@@ -737,6 +964,82 @@ export default function KitCustomization() {
             ))}
           </div>
         </div>
+
+        {/* ─── SVG 4: Color Harmony Wheel ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-bold text-[#8b949e]">Color Harmony</span>
+            <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">{colorHarmonyType}</span>
+          </div>
+          <svg viewBox="0 0 120 120" style={{ width: 100, height: 100 }} xmlns="http://www.w3.org/2000/svg">
+            {/* Outer ring segments - 12 hue segments */}
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((seg) => {
+              const startAngle = (seg * 30) - 90;
+              const endAngle = ((seg + 1) * 30) - 90;
+              const largeArc = 0;
+              const outerR = 48;
+              const innerR = 38;
+              const x1o = 60 + outerR * Math.cos((startAngle * Math.PI) / 180);
+              const y1o = 60 + outerR * Math.sin((startAngle * Math.PI) / 180);
+              const x2o = 60 + outerR * Math.cos((endAngle * Math.PI) / 180);
+              const y2o = 60 + outerR * Math.sin((endAngle * Math.PI) / 180);
+              const x1i = 60 + innerR * Math.cos((endAngle * Math.PI) / 180);
+              const y1i = 60 + innerR * Math.sin((endAngle * Math.PI) / 180);
+              const x2i = 60 + innerR * Math.cos((startAngle * Math.PI) / 180);
+              const y2i = 60 + innerR * Math.sin((startAngle * Math.PI) / 180);
+              const hue = seg * 30;
+              return (
+                <path
+                  key={seg}
+                  d={`M${x1o},${y1o} A${outerR},${outerR} 0 ${largeArc},1 ${x2o},${y2o} L${x1i},${y1i} A${innerR},${innerR} 0 ${largeArc},0 ${x2i},${y2i} Z`}
+                  fill={`hsl(${hue}, 70%, 50%)`}
+                  fillOpacity="0.35"
+                  stroke="#161b22"
+                  strokeWidth="0.5"
+                />
+              );
+            })}
+            {/* Inner decorative ring */}
+            <circle cx="60" cy="60" r="36" fill="none" stroke="#30363d" strokeWidth="0.3" />
+            {/* Inner circle */}
+            <circle cx="60" cy="60" r="22" fill="#0d1117" stroke="#30363d" strokeWidth="0.5" />
+            {/* Primary color indicator */}
+            <circle cx="60" cy="22" r="5" fill={primaryColor} stroke="#c9d1d9" strokeWidth="1" />
+            {/* Secondary color indicator */}
+            <circle cx="96" cy="60" r="5" fill={secondaryColor} stroke="#c9d1d9" strokeWidth="1" />
+            {/* Triadic indicator (third color) */}
+            <circle cx="42" cy="91" r="4" fill={colorHarmonyType === 'Triadic' ? '#a855f7' : '#30363d'} stroke={colorHarmonyType === 'Triadic' ? '#c9d1d9' : '#21262d'} strokeWidth="0.5" opacity={colorHarmonyType === 'Triadic' ? 1 : 0.4} />
+            {/* Connector line between primary and secondary */}
+            <line x1="60" y1="22" x2="96" y2="60" stroke="#8b949e" strokeWidth="0.5" strokeDasharray="2,2" />
+            {/* Connector line to triadic point */}
+            <line x1="60" y1="22" x2="42" y2="91" stroke="#a855f7" strokeWidth="0.3" strokeDasharray="1,2" opacity={colorHarmonyType === 'Triadic' ? 0.6 : 0.2} />
+            <line x1="96" y1="60" x2="42" y2="91" stroke="#a855f7" strokeWidth="0.3" strokeDasharray="1,2" opacity={colorHarmonyType === 'Triadic' ? 0.6 : 0.2} />
+            {/* Center label */}
+            <text x="60" y="58" textAnchor="middle" fill="#8b949e" fontSize="5" fontFamily="Arial, sans-serif">Primary</text>
+            <text x="60" y="65" textAnchor="middle" fill="#8b949e" fontSize="5" fontFamily="Arial, sans-serif">+ Secondary</text>
+          </svg>
+          <div className="flex flex-col gap-1.5 flex-1">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded border border-[#484f58]" style={{ backgroundColor: primaryColor }} />
+              <div>
+                <div className="text-[8px] font-bold text-[#c9d1d9]">Primary</div>
+                <div className="text-[7px] text-[#484f58] font-mono">{primaryColor}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded border border-[#484f58]" style={{ backgroundColor: secondaryColor }} />
+              <div>
+                <div className="text-[8px] font-bold text-[#c9d1d9]">Secondary</div>
+                <div className="text-[7px] text-[#484f58] font-mono">{secondaryColor}</div>
+              </div>
+            </div>
+            <div className="text-[7px] text-[#484f58] leading-tight mt-0.5">
+              {colorHarmonyType === 'Complementary' && 'High contrast pairing — great for visibility and bold designs.'}
+              {colorHarmonyType === 'Analogous' && 'Harmonious neighbors — creates a cohesive, elegant look.'}
+              {colorHarmonyType === 'Triadic' && 'Balanced triad — vibrant and evenly spaced on the wheel.'}
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {/* ─── Kit Design Studio ─── */}
@@ -802,6 +1105,54 @@ export default function KitCustomization() {
           </div>
         </div>
 
+        {/* ─── SVG 7: Pattern Popularity Donut ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-3 space-y-1.5">
+          <div className="text-[9px] font-bold text-[#8b949e]">Pattern Usage in Famous Kits</div>
+          <div className="flex items-center gap-3">
+            <svg viewBox="0 0 80 80" style={{ width: 80, height: 80 }} xmlns="http://www.w3.org/2000/svg">
+              {patternDonutSegments.map((seg) => {
+                const startRad = ((seg.startAngle - 90) * Math.PI) / 180;
+                const endRad = ((seg.startAngle + seg.sweepAngle - 90) * Math.PI) / 180;
+                const outerR = 34;
+                const innerR = 20;
+                const x1o = 40 + outerR * Math.cos(startRad);
+                const y1o = 40 + outerR * Math.sin(startRad);
+                const x2o = 40 + outerR * Math.cos(endRad);
+                const y2o = 40 + outerR * Math.sin(endRad);
+                const x1i = 40 + innerR * Math.cos(endRad);
+                const y1i = 40 + innerR * Math.sin(endRad);
+                const x2i = 40 + innerR * Math.cos(startRad);
+                const y2i = 40 + innerR * Math.sin(startRad);
+                const largeArc = seg.sweepAngle > 180 ? 1 : 0;
+                return (
+                  <path
+                    key={seg.id}
+                    d={`M${x1o},${y1o} A${outerR},${outerR} 0 ${largeArc},1 ${x2o},${y2o} L${x1i},${y1i} A${innerR},${innerR} 0 ${largeArc},0 ${x2i},${y2i} Z`}
+                    fill={seg.color}
+                    fillOpacity="0.7"
+                    stroke="#0d1117"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+              {/* Center text */}
+              <text x="40" y="38" textAnchor="middle" fill="#c9d1d9" fontSize="8" fontWeight="700" fontFamily="Arial, sans-serif">
+                {FAMOUS_KITS.length}
+              </text>
+              <text x="40" y="46" textAnchor="middle" fill="#484f58" fontSize="5" fontFamily="Arial, sans-serif">kits</text>
+            </svg>
+            <div className="flex flex-col gap-1 flex-1">
+              {patternDonutSegments.map((seg) => (
+                <div key={seg.id} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: seg.color }} />
+                  <span className="text-[8px] text-[#8b949e] flex-1">{seg.label}</span>
+                  <span className="text-[8px] font-mono text-[#c9d1d9]">{seg.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Sleeve style */}
         <div>
           <div className="text-[10px] text-[#8b949e] font-medium mb-2">Sleeve Style</div>
@@ -822,6 +1173,42 @@ export default function KitCustomization() {
           </div>
         </div>
 
+        {/* ─── SVG 8: Sleeve Style Preference Bars ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[9px] font-bold text-[#8b949e]">Fan Sleeve Preference</div>
+            <div className="text-[7px] text-[#484f58]">Global Survey</div>
+          </div>
+          <svg viewBox="0 0 240 68" style={{ width: '100%', maxWidth: 280 }} xmlns="http://www.w3.org/2000/svg">
+            {sleevePreferenceData.map((item, idx) => {
+              const yBase = 4 + idx * 20;
+              const barWidth = Math.max(1, (item.value / 100) * 155);
+              const isSelected = SLEEVE_STYLES[idx] === selectedSleeve;
+              return (
+                <g key={item.label}>
+                  {/* Label */}
+                  <text x="0" y={yBase + 9} fill={isSelected ? '#22c55e' : '#8b949e'} fontSize="7" fontWeight="600" fontFamily="Arial, sans-serif">{item.label}</text>
+                  {/* Selected indicator */}
+                  {isSelected && (
+                    <text x="44" y={yBase + 9} fill="#22c55e" fontSize="5" fontFamily="Arial, sans-serif">●</text>
+                  )}
+                  {/* Background bar */}
+                  <rect x="50" y={yBase + 1} width="155" height="10" rx="2" fill="#21262d" />
+                  {/* Filled bar */}
+                  <rect x="50" y={yBase + 1} width={barWidth} height="10" rx="2" fill={item.color} fillOpacity={isSelected ? 0.8 : 0.55} />
+                  {/* Percentage text */}
+                  <text x="210" y={yBase + 10} fill={isSelected ? '#22c55e' : '#c9d1d9'} fontSize="7" fontWeight="700" fontFamily="Arial, sans-serif">{item.value}%</text>
+                  {/* Mini rank badge */}
+                  <rect x={barWidth + 52} y={yBase + 2} width="16" height="8" rx="2" fill={item.color} fillOpacity="0.15" />
+                  <text x={barWidth + 60} y={yBase + 9} textAnchor="middle" fill={item.color} fontSize="5" fontWeight="600" fontFamily="Arial, sans-serif">
+                    {idx === 0 ? '1st' : idx === 1 ? '2nd' : '3rd'}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
         {/* Collar style */}
         <div>
           <div className="text-[10px] text-[#8b949e] font-medium mb-2">Collar Style</div>
@@ -840,6 +1227,47 @@ export default function KitCustomization() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ─── SVG 9: Collar Style Ratings ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[9px] font-bold text-[#8b949e]">Collar Style Ratings</div>
+            <div className="text-[7px] text-[#484f58]">Expert Reviews</div>
+          </div>
+          <svg viewBox="0 0 240 80" style={{ width: '100%', maxWidth: 280 }} xmlns="http://www.w3.org/2000/svg">
+            {collarRatingData.map((item, idx) => {
+              const yBase = 4 + idx * 18;
+              const barWidth = Math.max(1, (item.value / 100) * 155);
+              const isSelected = COLLAR_STYLES[idx] === selectedCollar;
+              const ratingLabel = item.value >= 80 ? 'Excellent' : item.value >= 60 ? 'Good' : 'Fair';
+              const ratingColor = item.value >= 80 ? '#22c55e' : item.value >= 60 ? '#eab308' : '#ef4444';
+              return (
+                <g key={item.label}>
+                  {/* Label */}
+                  <text x="0" y={yBase + 8} fill={isSelected ? '#22c55e' : '#8b949e'} fontSize="7" fontWeight="600" fontFamily="Arial, sans-serif">{item.label}</text>
+                  {/* Selected indicator */}
+                  {isSelected && (
+                    <text x="42" y={yBase + 8} fill="#22c55e" fontSize="5" fontFamily="Arial, sans-serif">●</text>
+                  )}
+                  {/* Background bar */}
+                  <rect x="50" y={yBase + 1} width="155" height="8" rx="2" fill="#21262d" />
+                  {/* Filled bar */}
+                  <rect x="50" y={yBase + 1} width={barWidth} height="8" rx="2" fill={item.color} fillOpacity={isSelected ? 0.8 : 0.55} />
+                  {/* Score text */}
+                  <text x="210" y={yBase + 9} fill={isSelected ? '#22c55e' : '#c9d1d9'} fontSize="7" fontWeight="700" fontFamily="Arial, sans-serif">{item.value}</text>
+                  {/* Rating label */}
+                  <text x={210 + (item.value >= 100 ? 14 : 10)} y={yBase + 9} fill={ratingColor} fontSize="5" fontWeight="600" fontFamily="Arial, sans-serif">{ratingLabel}</text>
+                  {/* Star indicators */}
+                  {[0, 1, 2, 3, 4].map((starIdx) => (
+                    <g key={starIdx}>
+                      <circle cx={230 + starIdx * 3} cy={yBase + 5} r="0.8" fill={starIdx < Math.round(item.value / 20) ? '#fbbf24' : '#21262d'} />
+                    </g>
+                  ))}
+                </g>
+              );
+            })}
+          </svg>
         </div>
 
         {/* Apply Design button */}
@@ -866,6 +1294,52 @@ export default function KitCustomization() {
           <Compass className="h-4 w-4 text-emerald-400" />
           <h3 className="text-sm font-bold text-[#c9d1d9]">Kit Collection Gallery</h3>
           <span className="text-[10px] text-[#484f58]">Famous Kits</span>
+        </div>
+
+        {/* ─── SVG 5: Kit Collection Progress Ring ─── */}
+        <div className="flex items-center gap-3 bg-[#0d1117] rounded-lg p-2.5">
+          <svg viewBox="0 0 56 56" style={{ width: 56, height: 56 }} xmlns="http://www.w3.org/2000/svg">
+            {/* Decorative outer dots */}
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
+              const rad = (deg * Math.PI) / 180;
+              const dx = 28 + 26 * Math.cos(rad);
+              const dy = 28 + 26 * Math.sin(rad);
+              return <circle key={i} cx={dx} cy={dy} r="0.6" fill="#30363d" />;
+            })}
+            {/* Background ring */}
+            <circle cx="28" cy="28" r="22" fill="none" stroke="#21262d" strokeWidth="4" />
+            {/* Progress ring */}
+            <circle
+              cx="28"
+              cy="28"
+              r="22"
+              fill="none"
+              stroke="#22c55e"
+              strokeWidth="4"
+              strokeDasharray={`${(kitHistory.length / 12) * 138.2} 138.2`}
+              strokeLinecap="round"
+              strokeOpacity="0.8"
+            />
+            {/* Progress endpoint dot */}
+            {(() => {
+              const progress = kitHistory.length / 12;
+              const angle = (progress * 360 - 90) * Math.PI / 180;
+              const dx = 28 + 22 * Math.cos(angle);
+              const dy = 28 + 22 * Math.sin(angle);
+              return <circle key="endpoint" cx={dx} cy={dy} r="2" fill="#22c55e" stroke="#0d1117" strokeWidth="0.5" />;
+            })()}
+            {/* Center text */}
+            <text x="28" y="26" textAnchor="middle" fill="#c9d1d9" fontSize="10" fontWeight="800" fontFamily="Arial, sans-serif">
+              {kitHistory.length}
+            </text>
+            <text x="28" y="35" textAnchor="middle" fill="#484f58" fontSize="6" fontFamily="Arial, sans-serif">
+              / 12
+            </text>
+          </svg>
+          <div>
+            <div className="text-[10px] font-bold text-[#c9d1d9]">Collection Progress</div>
+            <div className="text-[8px] text-[#8b949e]">{Math.round((kitHistory.length / 12) * 100)}% of famous kits discovered</div>
+          </div>
         </div>
 
         {/* Horizontal scrollable gallery */}
@@ -912,6 +1386,65 @@ export default function KitCustomization() {
             </div>
           ))}
         </div>
+
+        {/* ─── SVG 6: Famous Kit Comparison Matrix ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[9px] font-bold text-[#8b949e]">Kit Attribute Matrix</div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0.5">
+                <div className="w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: '#22c55e' }} />
+                <span className="text-[6px] text-[#484f58]">High</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <div className="w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: '#eab308' }} />
+                <span className="text-[6px] text-[#484f58]">Mid</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <div className="w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
+                <span className="text-[6px] text-[#484f58]">Low</span>
+              </div>
+            </div>
+          </div>
+          <svg viewBox="0 0 240 100" style={{ width: '100%', maxWidth: 280 }} xmlns="http://www.w3.org/2000/svg">
+            {/* Grid lines */}
+            <line x1="80" y1="4" x2="80" y2="94" stroke="#21262d" strokeWidth="0.5" />
+            <line x1="140" y1="4" x2="140" y2="94" stroke="#21262d" strokeWidth="0.5" />
+            <line x1="200" y1="4" x2="200" y2="94" stroke="#21262d" strokeWidth="0.5" />
+            {/* Column headers */}
+            <text x="90" y="10" textAnchor="middle" fill="#c9d1d9" fontSize="6" fontWeight="700" fontFamily="Arial, sans-serif">Home</text>
+            <text x="150" y="10" textAnchor="middle" fill="#c9d1d9" fontSize="6" fontWeight="700" fontFamily="Arial, sans-serif">Away</text>
+            <text x="210" y="10" textAnchor="middle" fill="#c9d1d9" fontSize="6" fontWeight="700" fontFamily="Arial, sans-serif">GK</text>
+            {/* Row headers and cells */}
+            {[
+              { label: 'Classic', cells: [{ v: 85, c: '#22c55e' }, { v: 72, c: '#3b82f6' }, { v: 40, c: '#eab308' }] },
+              { label: 'Modern', cells: [{ v: 65, c: '#eab308' }, { v: 88, c: '#22c55e' }, { v: 55, c: '#eab308' }] },
+              { label: 'Retro', cells: [{ v: 92, c: '#22c55e' }, { v: 60, c: '#eab308' }, { v: 78, c: '#22c55e' }] },
+              { label: 'Special', cells: [{ v: 45, c: '#eab308' }, { v: 38, c: '#ef4444' }, { v: 30, c: '#ef4444' }] },
+            ].map((row, ri) => {
+              const yBase = 16 + ri * 20;
+              return (
+                <g key={row.label}>
+                  <text x="4" y={yBase + 10} fill="#c9d1d9" fontSize="7" fontWeight="700" fontFamily="Arial, sans-serif">{row.label}</text>
+                  {row.cells.map((cell, ci) => {
+                    const cx = 82 + ci * 60;
+                    const barW = Math.max(1, (cell.v / 100) * 50);
+                    return (
+                      <g key={ci}>
+                        <rect x={cx} y={yBase} width="50" height="16" rx="3" fill="#21262d" />
+                        <rect x={cx} y={yBase} width={barW} height="16" rx="3" fill={cell.c} fillOpacity="0.25" />
+                        {/* Score number */}
+                        <text x={cx + 25} y={yBase + 10} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontWeight="700" fontFamily="Arial, sans-serif">{cell.v}</text>
+                        {/* Mini bar indicator */}
+                        <rect x={cx + 2} y={yBase + 13} width={barW - 4} height="1.5" rx="0.5" fill={cell.c} fillOpacity="0.5" />
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
       </motion.div>
 
       {/* ─── Kit Statistics & History ─── */}
@@ -949,6 +1482,85 @@ export default function KitCustomization() {
             </div>
           </div>
         )}
+
+        {/* ─── SVG 3: Kit Win Rate Comparison ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[9px] font-bold text-[#8b949e]">Win Rate by Kit Season</div>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: '#fbbf24' }} />
+              <span className="text-[6px] text-[#484f58]">Lucky</span>
+            </div>
+          </div>
+          {/* Average win rate summary */}
+          {(() => {
+            const avgWR = kitHistory.length > 0
+              ? Math.round(kitHistory.reduce((sum, k) => sum + (k.wins / k.matches) * 100, 0) / kitHistory.length)
+              : 0;
+            const totalWins = kitHistory.reduce((sum, k) => sum + k.wins, 0);
+            const totalMatches = kitHistory.reduce((sum, k) => sum + k.matches, 0);
+            return (
+              <div className="flex items-center gap-3 mb-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-[7px] text-[#484f58]">Career WR:</span>
+                  <span className="text-[8px] font-bold text-[#c9d1d9]">{avgWR}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[7px] text-[#484f58]">Record:</span>
+                  <span className="text-[8px] font-mono text-emerald-400">{totalWins}W</span>
+                  <span className="text-[8px] font-mono text-[#484f58]">/</span>
+                  <span className="text-[8px] font-mono text-[#8b949e]">{totalMatches}M</span>
+                </div>
+              </div>
+            );
+          })()}
+          <svg viewBox="0 0 240 96" style={{ width: '100%', maxWidth: 280 }} xmlns="http://www.w3.org/2000/svg">
+            {/* Average line */}
+            {(() => {
+              const avgWR = kitHistory.length > 0
+                ? Math.round(kitHistory.reduce((sum, k) => sum + (k.wins / k.matches) * 100, 0) / kitHistory.length)
+                : 0;
+              const avgX = 22 + (avgWR / 100) * 155;
+              return (
+                <line x1={avgX} y1="2" x2={avgX} y2={90} stroke="#8b949e" strokeWidth="0.5" strokeDasharray="2,2" opacity="0.3" />
+              );
+            })()}
+            {kitHistory.map((kit, i) => {
+              const winRate = Math.round((kit.wins / kit.matches) * 100);
+              const y = 4 + i * 17;
+              const barWidth = Math.max(1, (winRate / 100) * 155);
+              const isLucky = luckyKit?.season === kit.season && luckyKit?.club === kit.club;
+              return (
+                <g key={kit.season + '-' + kit.club}>
+                  {/* Season label */}
+                  <text x="0" y={y + 8} fill={isLucky ? '#fbbf24' : '#8b949e'} fontSize="6" fontWeight="600" fontFamily="Arial, sans-serif">
+                    S{kit.season}
+                  </text>
+                  {/* Background bar */}
+                  <rect x="22" y={y} width="155" height="11" rx="2" fill="#21262d" />
+                  {/* Filled bar */}
+                  <rect x="22" y={y} width={barWidth} height="11" rx="2" fill={isLucky ? '#fbbf24' : '#22c55e'} fillOpacity={isLucky ? 0.8 : 0.55} />
+                  {/* Club name inside bar */}
+                  <text x="24" y={y + 8} fill="#ffffff" fontSize="4" fontWeight="600" fontFamily="Arial, sans-serif" opacity="0.5">
+                    {kit.club.length > 12 ? kit.club.slice(0, 12) : kit.club}
+                  </text>
+                  {/* Win rate percentage */}
+                  <text x="182" y={y + 8} fill={isLucky ? '#fbbf24' : '#c9d1d9'} fontSize="6" fontWeight="700" fontFamily="Arial, sans-serif">
+                    {winRate}%
+                  </text>
+                  {/* Win/Match record */}
+                  <text x="205" y={y + 8} fill="#484f58" fontSize="5" fontFamily="Arial, sans-serif">
+                    {kit.wins}W/{kit.matches}M
+                  </text>
+                  {/* Lucky indicator */}
+                  {isLucky && (
+                    <text x="235" y={y + 8} fill="#fbbf24" fontSize="5" fontFamily="Arial, sans-serif">★</text>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
 
         {/* Kit history timeline (horizontal scroll) */}
         <div>
@@ -989,6 +1601,59 @@ export default function KitCustomization() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* ─── SVG 10: Career Kit Evolution Timeline ─── */}
+        <div className="bg-[#0d1117] rounded-lg p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[9px] font-bold text-[#8b949e]">Career Kit Evolution</div>
+            <div className="text-[7px] text-[#484f58]">{kitHistory.length} kits worn</div>
+          </div>
+          <svg viewBox="0 0 240 88" style={{ width: '100%', maxWidth: 280 }} xmlns="http://www.w3.org/2000/svg">
+            {/* Base timeline line */}
+            <line x1="20" y1="58" x2="220" y2="58" stroke="#30363d" strokeWidth="2" strokeLinecap="round" />
+            {/* Arrow at end */}
+            <polygon points="222,58 216,55 216,61" fill="#30363d" />
+            {kitHistory.map((kit, i) => {
+              const x = kitHistory.length === 1 ? 120 : 20 + (i / (kitHistory.length - 1)) * 200;
+              const isLucky = luckyKit?.season === kit.season && luckyKit?.club === kit.club;
+              const winRate = Math.round((kit.wins / kit.matches) * 100);
+              return (
+                <g key={kit.season + '-evo-' + i}>
+                  {/* Vertical connector */}
+                  <line x1={x} y1="40" x2={x} y2="54" stroke={isLucky ? '#fbbf24' : '#484f58'} strokeWidth="1" />
+                  {/* Jersey card background */}
+                  <rect x={x - 11} y="4" width="22" height="32" rx="3" fill={kit.primary} fillOpacity="0.12" stroke={kit.primary} strokeWidth="0.5" strokeOpacity="0.4" />
+                  {/* Mini jersey body silhouette */}
+                  <path d={`${x - 6},10 L${x - 9},16 L${x - 7},17 L${x - 7},30 L${x + 7},30 L${x + 7},17 L${x + 9},16 L${x + 6},10`} fill={kit.primary} fillOpacity="0.5" stroke={kit.secondary} strokeWidth="0.4" strokeOpacity="0.4" />
+                  {/* Season number on mini jersey */}
+                  <text x={x} y="24" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="800" fontFamily="Arial, sans-serif" opacity="0.8">
+                    {String(kit.season).slice(-1)}
+                  </text>
+                  {/* Secondary color accent line on jersey */}
+                  <line x1={x - 7} y1="11" x2={x + 7} y2="11" stroke={kit.secondary} strokeWidth="0.5" opacity="0.4" />
+                  {/* Dot on timeline */}
+                  <circle cx={x} cy="58" r={isLucky ? 4 : 3} fill={isLucky ? '#fbbf24' : kit.primary} stroke="#0d1117" strokeWidth="1" />
+                  {/* Lucky indicator star */}
+                  {isLucky && (
+                    <text x={x} y="40" textAnchor="middle" fill="#fbbf24" fontSize="7" fontFamily="Arial, sans-serif">★</text>
+                  )}
+                  {/* Season label */}
+                  <text x={x} y="70" textAnchor="middle" fill={isLucky ? '#fbbf24' : '#c9d1d9'} fontSize="5" fontWeight="600" fontFamily="Arial, sans-serif">
+                    S{kit.season}
+                  </text>
+                  {/* Win rate label */}
+                  <text x={x} y="78" textAnchor="middle" fill={winRate >= 60 ? '#22c55e' : '#484f58'} fontSize="4" fontFamily="Arial, sans-serif">
+                    {winRate}%WR
+                  </text>
+                  {/* Club name (abbreviated) */}
+                  <text x={x} y="85" textAnchor="middle" fill="#30363d" fontSize="3.5" fontFamily="Arial, sans-serif">
+                    {kit.club.length > 8 ? kit.club.slice(0, 8) : kit.club}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
         </div>
 
         {/* Total kits collected progress */}
@@ -1146,6 +1811,51 @@ export default function KitCustomization() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ─── SVG 1: Jersey Number History Timeline ─── */}
+          <div className="bg-[#0d1117] rounded-lg p-2.5 space-y-1.5">
+            <div className="text-[9px] font-bold text-[#8b949e] mb-1">Number Changes Timeline</div>
+            <svg viewBox="0 0 240 72" style={{ width: '100%', maxWidth: 280 }} xmlns="http://www.w3.org/2000/svg">
+              {/* Timeline base line */}
+              <line x1="24" y1="34" x2="216" y2="34" stroke="#30363d" strokeWidth="2" strokeLinecap="round" />
+              {/* Current season marker arrow */}
+              <polygon points="220,34 214,31 214,37" fill="#30363d" />
+              {numberHistory.map((entry, i) => {
+                const total = numberHistory.length;
+                const x = total === 1 ? 120 : 24 + (i / (total - 1)) * 192;
+                const isCurrent = entry.number === selectedNumber;
+                return (
+                  <g key={entry.season + '-tl-' + i}>
+                    {/* Connector to dot */}
+                    <line x1={x} y1="18" x2={x} y2="30" stroke={isCurrent ? '#22c55e' : '#484f58'} strokeWidth="1" />
+                    {/* Number badge background */}
+                    <rect x={x - 12} y="2" width="24" height="16" rx="3" fill={isCurrent ? '#22c55e' : '#21262d'} fillOpacity={isCurrent ? 0.2 : 1} stroke={isCurrent ? '#22c55e' : '#30363d'} strokeWidth="0.5" />
+                    {/* Number value */}
+                    <text x={x} y="13" textAnchor="middle" fill={isCurrent ? '#22c55e' : '#c9d1d9'} fontSize="8" fontWeight="800" fontFamily="Arial, sans-serif">
+                      #{entry.number}
+                    </text>
+                    {/* Timeline dot */}
+                    <circle cx={x} cy="34" r={isCurrent ? 4 : 3} fill={isCurrent ? '#22c55e' : '#484f58'} stroke="#0d1117" strokeWidth="1" />
+                    {/* Current indicator */}
+                    {isCurrent && (
+                      <text x={x} y="18" textAnchor="middle" fill="#22c55e" fontSize="5" fontFamily="Arial, sans-serif">▼</text>
+                    )}
+                    {/* Season label */}
+                    <text x={x} y="47" textAnchor="middle" fill={isCurrent ? '#22c55e' : '#8b949e'} fontSize="5" fontWeight="600" fontFamily="Arial, sans-serif">
+                      Season {entry.season}
+                    </text>
+                    {/* Games and club label */}
+                    <text x={x} y="55" textAnchor="middle" fill="#484f58" fontSize="4" fontFamily="Arial, sans-serif">
+                      {entry.games} games
+                    </text>
+                    <text x={x} y="63" textAnchor="middle" fill="#30363d" fontSize="3.5" fontFamily="Arial, sans-serif">
+                      {entry.club.length > 12 ? entry.club.slice(0, 12) + '…' : entry.club}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
           </div>
         </motion.div>
       )}

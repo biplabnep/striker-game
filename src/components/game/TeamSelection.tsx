@@ -847,6 +847,79 @@ export default function TeamSelection() {
     }));
   }, []);
 
+  // ============================================================
+  // Computed data for SVG visualizations
+  // ============================================================
+
+  // OVR Distribution (for horizontal bar chart)
+  const ovrDistribution = useMemo(() => {
+    if (!teamData) return [];
+    return teamData.starters.reduce<{ label: string; count: number; color: string }[]>(
+      (dist, p) => {
+        const idx = p.ovr >= 90 ? 0 : p.ovr >= 85 ? 1 : p.ovr >= 80 ? 2 : p.ovr >= 75 ? 3 : 4;
+        dist[idx].count += 1;
+        return dist;
+      },
+      [
+        { label: '90+', count: 0, color: '#34d399' },
+        { label: '85-89', count: 0, color: '#3b82f6' },
+        { label: '80-84', count: 0, color: '#fbbf24' },
+        { label: '75-79', count: 0, color: '#f97316' },
+        { label: '<75', count: 0, color: '#f87171' },
+      ],
+    );
+  }, [teamData]);
+
+  // Positional Balance (for hex radar)
+  const positionalBalance = useMemo(() => {
+    if (!teamData) return [];
+    const starters = teamData.starters;
+    const DEF_POS = ['CB', 'LB', 'RB'];
+    const MID_POS = ['CM', 'CDM', 'CAM', 'LM', 'RM'];
+    const FWD_POS = ['ST', 'CF', 'LW', 'RW'];
+    const defCount = starters.filter(p => DEF_POS.includes(p.position)).length;
+    const midCount = starters.filter(p => MID_POS.includes(p.position)).length;
+    const fwdCount = starters.filter(p => FWD_POS.includes(p.position)).length;
+    const gkCount = starters.filter(p => p.position === 'GK').length;
+    const lCount = starters.filter(p => ['LB', 'LM', 'LW'].includes(p.position)).length;
+    const rCount = starters.filter(p => ['RB', 'RM', 'RW'].includes(p.position)).length;
+    return [
+      { label: 'GK', value: gkCount, max: 1 },
+      { label: 'DEF', value: defCount, max: 5 },
+      { label: 'MID', value: midCount, max: 5 },
+      { label: 'FWD', value: fwdCount, max: 4 },
+      { label: 'L', value: lCount, max: 3 },
+      { label: 'R', value: rCount, max: 3 },
+    ];
+  }, [teamData]);
+
+  // Fitness Distribution (for donut chart)
+  const fitnessDistribution = useMemo(() => {
+    if (!fitnessData) return [];
+    return fitnessData.reduce<{ label: string; count: number; color: string }[]>(
+      (dist, p) => {
+        if (p.fitness > 85) dist[0].count += 1;
+        else if (p.fitness >= 60) dist[1].count += 1;
+        else dist[2].count += 1;
+        return dist;
+      },
+      [
+        { label: 'High Fitness', count: 0, color: '#34d399' },
+        { label: 'Medium', count: 0, color: '#fbbf24' },
+        { label: 'Low Risk', count: 0, color: '#f87171' },
+      ],
+    );
+  }, [fitnessData]);
+
+  // Best defenders for danger player comparison
+  const bestDefenders = useMemo(() => {
+    if (!teamData) return [];
+    return [...teamData.starters]
+      .filter(p => ['CB', 'LB', 'RB', 'CDM', 'CM'].includes(p.position))
+      .sort((a, b) => b.ovr - a.ovr)
+      .slice(0, 3);
+  }, [teamData]);
+
   // No game state fallback
   if (!gameState || !teamData || !teamStats) {
     return (
@@ -922,6 +995,40 @@ export default function TeamSelection() {
                 </button>
               ))}
             </div>
+          </motion.div>
+
+          {/* ============================================ */}
+          {/* SVG #5: Formation Comparison Bars             */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="size-4 text-emerald-400" />
+                <SectionTitle>Formation Effectiveness</SectionTitle>
+              </div>
+              <svg viewBox="0 0 280 150" style={{ width: '100%', maxWidth: 280 }}>
+                {ALL_FORMATIONS.map((f, i) => {
+                  const eff = Number(getFormationStrength(f, teamStats.avgOvr));
+                  const maxEff = 100;
+                  const barWidth = Math.max(4, (eff / maxEff) * 180);
+                  const isActive = formation === f;
+                  const barColor = isActive ? '#34d399' : '#30363d';
+                  const textColor = isActive ? '#34d399' : '#8b949e';
+                  return (
+                    <g key={f}>
+                      <text x="48" y={22 + i * 26} textAnchor="end" fill={textColor} fontSize="10" fontWeight={isActive ? '700' : '500'}>
+                        {f}
+                      </text>
+                      <rect x="52" y={14 + i * 26} width={180} height="14" rx="4" fill="#21262d" />
+                      <rect x="52" y={14 + i * 26} width={barWidth} height="14" rx="4" fill={barColor} />
+                      <text x={56 + barWidth} y={24 + i * 26} fill={textColor} fontSize="9" fontWeight="600">
+                        {eff}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </InfoCard>
           </motion.div>
 
           {/* ============================================ */}
@@ -1146,6 +1253,120 @@ export default function TeamSelection() {
           </motion.div>
 
           {/* ============================================ */}
+          {/* SVG #3: Team OVR Distribution Bars           */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="size-4 text-emerald-400" />
+                <SectionTitle>OVR Distribution</SectionTitle>
+              </div>
+              <svg viewBox="0 0 280 145" style={{ width: '100%', maxWidth: 280 }}>
+                {ovrDistribution.map((bucket, i) => {
+                  const maxCount = 11;
+                  const barW = Math.max(4, (bucket.count / maxCount) * 180);
+                  return (
+                    <g key={bucket.label}>
+                      <text x="48" y={20 + i * 26} textAnchor="end" fill="#8b949e" fontSize="10" fontWeight="500">
+                        {bucket.label}
+                      </text>
+                      <rect x="52" y={12 + i * 26} width={180} height="14" rx="4" fill="#21262d" />
+                      <rect x="52" y={12 + i * 26} width={barW} height="14" rx="4" fill={bucket.color} />
+                      <text x={56 + barW} y={22 + i * 26} fill={bucket.color} fontSize="9" fontWeight="600">
+                        {bucket.count}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </InfoCard>
+          </motion.div>
+
+          {/* ============================================ */}
+          {/* SVG #4: Positional Balance Hex Radar          */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-2">
+              <SectionTitle>Positional Balance</SectionTitle>
+              {(() => {
+                const cx = 140;
+                const cy = 85;
+                const r = 60;
+                const axes = positionalBalance.length;
+                const axisAngles = positionalBalance.map((_, i) => ((2 * Math.PI) / axes) * i - Math.PI / 2);
+                const gridLevels = [0.33, 0.66, 1.0];
+                const dataPoints = positionalBalance.map((d, i) => {
+                  const a = axisAngles[i];
+                  const v = d.max > 0 ? d.value / d.max : 0;
+                  return `${cx + r * v * Math.cos(a)},${cy + r * v * Math.sin(a)}`;
+                }).join(' ');
+                return (
+                  <svg viewBox="0 0 280 180" style={{ width: '100%', maxWidth: 280 }}>
+                    {/* Grid hexagons */}
+                    {gridLevels.map((level, li) => {
+                      const pts = axisAngles.map(a =>
+                        `${cx + r * level * Math.cos(a)},${cy + r * level * Math.sin(a)}`
+                      ).join(' ');
+                      return (
+                        <polygon
+                          key={`grid-${li}`}
+                          points={pts}
+                          fill="none"
+                          stroke="#30363d"
+                          strokeWidth="1"
+                        />
+                      );
+                    })}
+                    {/* Axis lines */}
+                    {axisAngles.map((a, i) => (
+                      <line
+                        key={`axis-${i}`}
+                        x1={cx} y1={cy}
+                        x2={cx + r * Math.cos(a)}
+                        y2={cy + r * Math.sin(a)}
+                        stroke="#30363d"
+                        strokeWidth="1"
+                      />
+                    ))}
+                    {/* Data polygon */}
+                    <polygon
+                      points={dataPoints}
+                      fill="#34d399"
+                      fillOpacity="0.15"
+                      stroke="#34d399"
+                      strokeWidth="2"
+                    />
+                    {/* Data points + labels */}
+                    {positionalBalance.map((d, i) => {
+                      const a = axisAngles[i];
+                      const v = d.max > 0 ? d.value / d.max : 0;
+                      const px = cx + r * v * Math.cos(a);
+                      const py = cy + r * v * Math.sin(a);
+                      const lx = cx + (r + 18) * Math.cos(a);
+                      const ly = cy + (r + 18) * Math.sin(a);
+                      return (
+                        <g key={d.label}>
+                          <circle cx={px} cy={py} r="3" fill="#34d399" />
+                          <text
+                            x={lx}
+                            y={ly + 3}
+                            textAnchor="middle"
+                            fill="#8b949e"
+                            fontSize="9"
+                            fontWeight="600"
+                          >
+                            {d.label}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                );
+              })()}
+            </InfoCard>
+          </motion.div>
+
+          {/* ============================================ */}
           {/* A. Team Chemistry Visualizer                 */}
           {/* ============================================ */}
           <motion.div variants={staggerChild}>
@@ -1235,6 +1456,120 @@ export default function TeamSelection() {
                 ))}
               </div>
 
+              {/* SVG #1: Chemistry Radar */}
+              {(() => {
+                const cx = 100;
+                const cy = 100;
+                const r = 70;
+                const numAxes = 5;
+                const axisAngles = Array.from({ length: numAxes }, (_, i) =>
+                  ((2 * Math.PI) / numAxes) * i - Math.PI / 2
+                );
+                const gridLevels = [0.25, 0.5, 0.75, 1.0];
+                const factors = chemistryData!.factors;
+                const dataPoints = factors.map((f, i) => {
+                  const a = axisAngles[i];
+                  const v = f.value / 100;
+                  return `${cx + r * v * Math.cos(a)},${cy + r * v * Math.sin(a)}`;
+                }).join(' ');
+                return (
+                  <div className="flex justify-center py-1">
+                    <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 200 }}>
+                      {/* Grid pentagons */}
+                      {gridLevels.map((level, li) => {
+                        const pts = axisAngles.map(a =>
+                          `${cx + r * level * Math.cos(a)},${cy + r * level * Math.sin(a)}`
+                        ).join(' ');
+                        return (
+                          <polygon
+                            key={`chem-grid-${li}`}
+                            points={pts}
+                            fill="none"
+                            stroke="#30363d"
+                            strokeWidth="1"
+                          />
+                        );
+                      })}
+                      {/* Axis lines */}
+                      {axisAngles.map((a, i) => (
+                        <line
+                          key={`chem-axis-${i}`}
+                          x1={cx} y1={cy}
+                          x2={cx + r * Math.cos(a)}
+                          y2={cy + r * Math.sin(a)}
+                          stroke="#30363d"
+                          strokeWidth="1"
+                        />
+                      ))}
+                      {/* Data polygon */}
+                      <polygon
+                        points={dataPoints}
+                        fill="#34d399"
+                        fillOpacity="0.12"
+                        stroke="#34d399"
+                        strokeWidth="2"
+                      />
+                      {/* Data points + labels */}
+                      {factors.map((f, i) => {
+                        const a = axisAngles[i];
+                        const v = f.value / 100;
+                        const px = cx + r * v * Math.cos(a);
+                        const py = cy + r * v * Math.sin(a);
+                        const lx = cx + (r + 16) * Math.cos(a);
+                        const ly = cy + (r + 16) * Math.sin(a);
+                        return (
+                          <g key={`chem-pt-${i}`}>
+                            <circle cx={px} cy={py} r="3" fill={getChemistryColor(f.value)} />
+                            <text
+                              x={lx}
+                              y={ly + 3}
+                              textAnchor="middle"
+                              fill="#8b949e"
+                              fontSize="8"
+                              fontWeight="600"
+                            >
+                              {f.name.slice(0, 4)}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              })()}
+
+              {/* SVG #2: Chemistry Overall Ring */}
+              <div className="flex justify-center py-1">
+                <svg viewBox="0 0 120 120" style={{ width: 100 }}>
+                  {(() => {
+                    const circ = 2 * Math.PI * 45;
+                    const pct = chemistryData!.overall / 100;
+                    const dashLen = pct * circ;
+                    const ringColor = getChemistryColor(chemistryData!.overall);
+                    return (
+                      <>
+                        <circle cx="60" cy="60" r="45" fill="none" stroke="#21262d" strokeWidth="10" />
+                        <circle
+                          cx="60" cy="60" r="45"
+                          fill="none"
+                          stroke={ringColor}
+                          strokeWidth="10"
+                          strokeLinecap="round"
+                          strokeDasharray={`${dashLen} ${circ - dashLen}`}
+                          strokeDashoffset={circ / 4}
+                        />
+                        <text x="60" y="56" textAnchor="middle" fill={ringColor} fontSize="22" fontWeight="bold">
+                          {chemistryData!.overall}
+                        </text>
+                        <text x="60" y="72" textAnchor="middle" fill="#8b949e" fontSize="9" fontWeight="500">
+                          Overall
+                        </text>
+                      </>
+                    );
+                  })()}
+                </svg>
+              </div>
+
               {/* Description */}
               <p className={`text-[10px] ${TEXT_SECONDARY} text-center`}>
                 {chemistryData!.overall >= 75
@@ -1308,6 +1643,50 @@ export default function TeamSelection() {
                 </div>
               </div>
 
+              {/* SVG #6: Opponent Formation Pitch (tactical view) */}
+              <div className="flex justify-center py-1">
+                <svg viewBox="0 0 200 260" style={{ width: '100%', maxWidth: 180 }}>
+                  {/* Pitch background */}
+                  <rect x="0" y="0" width="200" height="260" rx="8" fill="#1a3a2a" />
+                  {/* Pitch lines */}
+                  <rect x="8" y="8" width="184" height="244" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+                  <line x1="8" y1="130" x2="192" y2="130" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+                  <circle cx="100" cy="130" r="24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+                  <circle cx="100" cy="130" r="2" fill="rgba(255,255,255,0.2)" />
+                  <rect x="40" y="8" width="120" height="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+                  <rect x="40" y="212" width="120" height="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+                  {/* Formation label */}
+                  <text x="100" y="254" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="700">
+                    {opponentData!.formation}
+                  </text>
+                  {/* Player dots */}
+                  {opponentData!.players.map((p, i) => (
+                    <g key={`opp-pitch-${i}`}>
+                      <circle
+                        cx={p.x * 1.8}
+                        cy={p.y * 2.4}
+                        r="10"
+                        fill="#f87171"
+                        fillOpacity="0.2"
+                        stroke="#f87171"
+                        strokeOpacity="0.5"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={p.x * 1.8}
+                        y={p.y * 2.4 + 3.5}
+                        textAnchor="middle"
+                        fill="#fca5a5"
+                        fontSize="8"
+                        fontWeight="700"
+                      >
+                        {p.ovr}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+
               {/* 3 key opponent stats */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="text-center p-2 bg-[#21262d] rounded-md">
@@ -1322,6 +1701,82 @@ export default function TeamSelection() {
                   <div className={`text-[9px] uppercase ${TEXT_SECONDARY}`}>Style</div>
                   <div className="text-[11px] font-bold text-[#c9d1d9]">{opponentData!.playStyle}</div>
                 </div>
+              </div>
+
+              {/* SVG #7: Match Difficulty Gauge */}
+              <div className="flex justify-center py-1">
+                <svg viewBox="0 0 280 140" style={{ width: '100%', maxWidth: 280 }}>
+                  {(() => {
+                    const gaugeCx = 140;
+                    const gaugeCy = 105;
+                    const gaugeR = 80;
+                    // Semicircular gauge from left (180°) to right (0°)
+                    const zones = [
+                      { label: 'Easy', startAngle: 180, endAngle: 225, color: '#34d399' },
+                      { label: 'Medium', startAngle: 225, endAngle: 270, color: '#fbbf24' },
+                      { label: 'Hard', startAngle: 270, endAngle: 315, color: '#f97316' },
+                      { label: 'Extreme', startAngle: 315, endAngle: 360, color: '#f87171' },
+                    ];
+                    const diff = opponentData!.avgOvr - teamStats.avgOvr;
+                    const needleAngle = diff <= -8 ? 195 : diff <= -3 ? 247 : diff <= 3 ? 292 : 340;
+                    const needleRad = (needleAngle * Math.PI) / 180;
+                    const nx = gaugeCx + (gaugeR - 12) * Math.cos(needleRad);
+                    const ny = gaugeCy - (gaugeR - 12) * Math.sin(needleRad);
+                    return (
+                      <>
+                        {/* Background arc */}
+                        <path
+                          d={`M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 0 1 ${gaugeCx + gaugeR} ${gaugeCy}`}
+                          fill="none"
+                          stroke="#21262d"
+                          strokeWidth="18"
+                          strokeLinecap="round"
+                        />
+                        {/* Zone arcs */}
+                        {zones.map(zone => {
+                          const startRad = (zone.startAngle * Math.PI) / 180;
+                          const endRad = (zone.endAngle * Math.PI) / 180;
+                          const x1 = gaugeCx + gaugeR * Math.cos(startRad);
+                          const y1 = gaugeCy - gaugeR * Math.sin(startRad);
+                          const x2 = gaugeCx + gaugeR * Math.cos(endRad);
+                          const y2 = gaugeCy - gaugeR * Math.sin(endRad);
+                          const largeArc = zone.endAngle - zone.startAngle > 180 ? 1 : 0;
+                          return (
+                            <path
+                              key={zone.label}
+                              d={`M ${x1} ${y1} A ${gaugeR} ${gaugeR} 0 ${largeArc} 1 ${x2} ${y2}`}
+                              fill="none"
+                              stroke={zone.color}
+                              strokeWidth="18"
+                              strokeLinecap="butt"
+                              opacity="0.6"
+                            />
+                          );
+                        })}
+                        {/* Needle */}
+                        <line
+                          x1={gaugeCx} y1={gaugeCy}
+                          x2={nx} y2={ny}
+                          stroke="#ffffff"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                        />
+                        <circle cx={gaugeCx} cy={gaugeCy} r="5" fill="#161b22" stroke="#ffffff" strokeWidth="2" />
+                        {/* Labels */}
+                        <text x={gaugeCx - gaugeR} y={gaugeCy + 16} textAnchor="middle" fill="#34d399" fontSize="8" fontWeight="600">Easy</text>
+                        <text x={gaugeCx} y={gaugeCy - gaugeR - 6} textAnchor="middle" fill="#f97316" fontSize="8" fontWeight="600">Hard</text>
+                        <text x={gaugeCx + gaugeR} y={gaugeCy + 16} textAnchor="middle" fill="#f87171" fontSize="8" fontWeight="600">Extreme</text>
+                        {/* Difficulty label */}
+                        <text x={gaugeCx} y={gaugeCy + 30} textAnchor="middle" fill={difficulty.color} fontSize="14" fontWeight="bold">
+                          {difficulty.label}
+                        </text>
+                        <text x={gaugeCx} y={gaugeCy + 42} textAnchor="middle" fill="#8b949e" fontSize="9">
+                          {teamStats.avgOvr} vs {opponentData!.avgOvr} OVR
+                        </text>
+                      </>
+                    );
+                  })()}
+                </svg>
               </div>
 
               {/* Danger Players */}
@@ -1352,6 +1807,52 @@ export default function TeamSelection() {
                     <span className="text-xs font-bold text-red-400 tabular-nums">{p.ovr}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* SVG #8: Danger Player vs Best Defenders Comparison */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Shield className="size-3 text-emerald-400" />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${TEXT_SECONDARY}`}>
+                    Key Matchups
+                  </span>
+                </div>
+                <svg viewBox="0 0 280 90" style={{ width: '100%', maxWidth: 280 }}>
+                  {opponentData!.dangerPlayers.map((dp, i) => {
+                    const defender = bestDefenders[i];
+                    const defenderOvr = defender ? defender.ovr : 0;
+                    const maxBar = 100;
+                    const oppBarW = Math.max(4, (dp.ovr / maxBar) * 100);
+                    const defBarW = Math.max(4, (defenderOvr / maxBar) * 100);
+                    const yPos = 12 + i * 26;
+                    return (
+                      <g key={`matchup-${i}`}>
+                        {/* Opponent bar (right-aligned, goes left) */}
+                        <text x="52" y={yPos + 9} textAnchor="end" fill="#f87171" fontSize="8" fontWeight="600">
+                          {dp.name.split(' ').pop()}
+                        </text>
+                        <rect x="54" y={yPos} width={100} height="12" rx="3" fill="#21262d" />
+                        <rect x={54 + 100 - oppBarW} y={yPos} width={oppBarW} height="12" rx="3" fill="#f87171" fillOpacity="0.7" />
+                        <text x={52 + 100 - oppBarW} y={yPos + 9} textAnchor="end" fill="#fca5a5" fontSize="7" fontWeight="700">
+                          {dp.ovr}
+                        </text>
+                        {/* VS label */}
+                        <text x="155" y={yPos + 9} textAnchor="middle" fill="#484f58" fontSize="7" fontWeight="700">
+                          VS
+                        </text>
+                        {/* Defender bar */}
+                        <rect x="164" y={yPos} width={100} height="12" rx="3" fill="#21262d" />
+                        <rect x="164" y={yPos} width={defBarW} height="12" rx="3" fill="#34d399" fillOpacity="0.7" />
+                        <text x={168 + defBarW} y={yPos + 9} fill="#6ee7b7" fontSize="7" fontWeight="700">
+                          {defenderOvr || '-'}
+                        </text>
+                        <text x="266" y={yPos + 9} textAnchor="start" fill="#34d399" fontSize="8" fontWeight="600">
+                          {defender ? defender.name.split(' ').pop() : '---'}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
               </div>
             </InfoCard>
           </motion.div>
@@ -1423,6 +1924,67 @@ export default function TeamSelection() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* SVG #9: Fitness Distribution Donut */}
+              <div className="flex justify-center py-2">
+                <svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 200 }}>
+                  {(() => {
+                    const cx = 70;
+                    const cy = 60;
+                    const outerR = 45;
+                    const innerR = 28;
+                    const total = fitnessDistribution.reduce((s, seg) => s + seg.count, 0) || 1;
+                    const segments = fitnessDistribution.reduce<Array<{ label: string; count: number; color: string; startAngle: number; endAngle: number; angle: number }>>(
+                      (acc, seg) => {
+                        const prevEnd = acc.length > 0 ? acc[acc.length - 1].endAngle : -Math.PI / 2;
+                        const angle = (seg.count / total) * 2 * Math.PI;
+                        acc.push({ ...seg, startAngle: prevEnd, endAngle: prevEnd + angle, angle });
+                        return acc;
+                      },
+                      [],
+                    );
+                    return (
+                      <>
+                        {/* Donut segments */}
+                        {segments.map(seg => {
+                          if (seg.count === 0) return null;
+                          const x1o = cx + outerR * Math.cos(seg.startAngle);
+                          const y1o = cy + outerR * Math.sin(seg.startAngle);
+                          const x2o = cx + outerR * Math.cos(seg.endAngle);
+                          const y2o = cy + outerR * Math.sin(seg.endAngle);
+                          const x1i = cx + innerR * Math.cos(seg.endAngle);
+                          const y1i = cy + innerR * Math.sin(seg.endAngle);
+                          const x2i = cx + innerR * Math.cos(seg.startAngle);
+                          const y2i = cy + innerR * Math.sin(seg.startAngle);
+                          const largeArc = seg.angle > Math.PI ? 1 : 0;
+                          return (
+                            <path
+                              key={seg.label}
+                              d={`M ${x1o} ${y1o} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x2i} ${y2i} Z`}
+                              fill={seg.color}
+                              fillOpacity="0.75"
+                            />
+                          );
+                        })}
+                        {/* Center label */}
+                        <circle cx={cx} cy={cy} r={innerR - 2} fill="#161b22" />
+                        <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="bold">
+                          {avgFitness}%
+                        </text>
+                        <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize="7">Avg Fit</text>
+                        {/* Legend */}
+                        {segments.map((seg, li) => (
+                          <g key={`legend-${seg.label}`}>
+                            <rect x="140" y={20 + li * 28} width="10" height="10" rx="2" fill={seg.color} />
+                            <text x="155" y={29 + li * 28} fill="#c9d1d9" fontSize="9" fontWeight="500">{seg.label}</text>
+                            <text x="195" y={29 + li * 28} textAnchor="end" fill={seg.color} fontSize="9" fontWeight="700">{seg.count}</text>
+                          </g>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </svg>
               </div>
 
               {/* Rotation recommendation */}
@@ -1520,6 +2082,40 @@ export default function TeamSelection() {
                 })}
               </div>
 
+              {/* SVG #10: Set Piece Assignment Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {setPieceData!.roles.map((role) => {
+                  const rIdx = setPieceOffsets[role.id] || 0;
+                  const assigned = role.eligible[rIdx] || role.eligible[0];
+                  if (!assigned) return null;
+                  const roleColors: Record<string, string> = {
+                    corner: '#34d399',
+                    freekick: '#3b82f6',
+                    penalty: '#fbbf24',
+                    captain: '#f97316',
+                  };
+                  const color = roleColors[role.id] ?? '#8b949e';
+                  return (
+                    <svg key={`sp-grid-${role.id}`} viewBox="0 0 130 60" style={{ width: '100%' }}>
+                      <rect x="0" y="0" width="130" height="60" rx="6" fill="#21262d" />
+                      <rect x="0" y="0" width="130" height="60" rx="6" fill="none" stroke={color} strokeWidth="1" strokeOpacity="0.4" />
+                      <text x="65" y="14" textAnchor="middle" fill={color} fontSize="8" fontWeight="700">
+                        {role.label.toUpperCase()}
+                      </text>
+                      <text x="65" y="30" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="600">
+                        {assigned.name.split(' ').pop()}
+                      </text>
+                      <text x="65" y="44" textAnchor="middle" fill="#8b949e" fontSize="8">
+                        {role.attribute} · OVR {assigned.ovr}
+                      </text>
+                      <text x="65" y="56" textAnchor="middle" fill={color} fontSize="7" fontWeight="700">
+                        {assigned.position}
+                      </text>
+                    </svg>
+                  );
+                })}
+              </div>
+
               <p className={`text-[10px] ${TEXT_SECONDARY}`}>
                 Tap "Change" to cycle through eligible players for each set piece role. Captain is set from the Starting XI panel.
               </p>
@@ -1592,6 +2188,54 @@ export default function TeamSelection() {
                   Tap any player in the Starting XI to set them as captain.
                 </p>
               </div>
+
+              {/* SVG #11: Team Strength vs Opponent */}
+              {(() => {
+                const teamOvr = teamStats.avgOvr;
+                const oppOvr = opponentData!.avgOvr;
+                // Derive stats deterministically from OVR and team data
+                const seed = hashString(gameState!.currentClub.name + 'strength_cmp');
+                const srng = createSeededRandom(seed);
+                const teamSpeed = Math.round(teamOvr * 0.88 + (srng() - 0.5) * 4);
+                const teamShooting = Math.round(teamOvr * 0.92 + (srng() - 0.5) * 4);
+                const teamDefense = Math.round(teamOvr * 0.90 + (srng() - 0.5) * 4);
+                const oppSpeed = Math.round(oppOvr * 0.88 + (srng() - 0.5) * 4);
+                const oppShooting = Math.round(oppOvr * 0.92 + (srng() - 0.5) * 4);
+                const oppDefense = Math.round(oppOvr * 0.90 + (srng() - 0.5) * 4);
+                const statCategories = [
+                  { label: 'OVR', team: teamOvr, opp: oppOvr },
+                  { label: 'SPD', team: teamSpeed, opp: oppSpeed },
+                  { label: 'SHT', team: teamShooting, opp: oppShooting },
+                  { label: 'DEF', team: teamDefense, opp: oppDefense },
+                ];
+                const maxStat = 100;
+                return (
+                  <svg viewBox="0 0 280 110" style={{ width: '100%', maxWidth: 280 }}>
+                    {/* Header */}
+                    <text x="80" y="12" textAnchor="end" fill="#34d399" fontSize="9" fontWeight="700">YOUR TEAM</text>
+                    <text x="140" y="12" textAnchor="middle" fill="#484f58" fontSize="8">VS</text>
+                    <text x="200" y="12" textAnchor="start" fill="#f87171" fontSize="9" fontWeight="700">OPPONENT</text>
+                    {/* Stat rows */}
+                    {statCategories.map((cat, i) => {
+                      const y = 28 + i * 22;
+                      const teamBarW = Math.max(4, (cat.team / maxStat) * 58);
+                      const oppBarW = Math.max(4, (cat.opp / maxStat) * 58);
+                      return (
+                        <g key={cat.label}>
+                          {/* Stat label */}
+                          <text x="140" y={y + 9} textAnchor="middle" fill="#8b949e" fontSize="9" fontWeight="600">{cat.label}</text>
+                          {/* Team bar (grows from center-left) */}
+                          <rect x={78 - teamBarW} y={y} width={teamBarW} height="14" rx="3" fill="#34d399" fillOpacity="0.6" />
+                          <text x={76 - teamBarW} y={y + 10} textAnchor="end" fill="#6ee7b7" fontSize="8" fontWeight="700">{cat.team}</text>
+                          {/* Opponent bar (grows from center-right) */}
+                          <rect x="142" y={y} width={oppBarW} height="14" rx="3" fill="#f87171" fillOpacity="0.6" />
+                          <text x={146 + oppBarW} y={y + 10} fill="#fca5a5" fontSize="8" fontWeight="700">{cat.opp}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                );
+              })()}
 
               {/* Pre-match briefing link */}
               <button

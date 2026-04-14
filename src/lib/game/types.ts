@@ -674,7 +674,9 @@ export type GameScreen =
   | 'press_scrum'
   | 'injury_simulator'
   | 'player_bio_generator'
-  | 'set_piece_trainer';
+  | 'set_piece_trainer'
+  | 'player_psychology'
+  | 'social_media_hub';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

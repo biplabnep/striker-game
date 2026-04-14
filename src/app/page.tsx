@@ -110,6 +110,8 @@ import PressScrum from '@/components/game/PressScrum';
 import InjurySimulator from '@/components/game/InjurySimulator';
 import PlayerBioGenerator from '@/components/game/PlayerBioGenerator';
 import SetPieceTrainer from '@/components/game/SetPieceTrainer';
+import PlayerPsychology from '@/components/game/PlayerPsychology';
+import SocialMediaHub from '@/components/game/SocialMediaHub';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -215,6 +217,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   injury_simulator: InjurySimulator,
   player_bio_generator: PlayerBioGenerator,
   set_piece_trainer: SetPieceTrainer,
+  player_psychology: PlayerPsychology,
+  social_media_hub: SocialMediaHub,
 };
 
 const gameScreens: GameScreen[] = [
@@ -288,6 +292,8 @@ const gameScreens: GameScreen[] = [
   'injury_simulator',
   'player_bio_generator',
   'set_piece_trainer',
+  'player_psychology',
+  'social_media_hub',
 ];
 
 export default function Home() {

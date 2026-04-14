@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
-import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail, UserCog, ShieldAlert, CloudSun, AlarmClock, FileSignature, Music, Warehouse, Syringe, IdCard } from 'lucide-react';
+import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail, UserCog, ShieldAlert, CloudSun, AlarmClock, FileSignature, Music, Warehouse, Syringe, IdCard, Brain, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
@@ -142,6 +142,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'social_media_feed', icon: <MessageCircle className="h-5 w-5" />, label: 'Social Hub' },
       { screen: 'press_scrum', icon: <Newspaper className="h-5 w-5" />, label: 'Press Scrum' },
       { screen: 'in_game_mail', icon: <Mail className="h-5 w-5" />, label: 'Mail' },
+      { screen: 'social_media_hub', icon: <Share2 className="h-5 w-5" />, label: 'Media Hub' },
     ],
   },
   {
@@ -152,6 +153,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'injury_report', icon: <Activity className="h-5 w-5" />, label: 'Injuries' },
       { screen: 'injury_recovery', icon: <Stethoscope className="h-5 w-5" />, label: 'Recovery' },
       { screen: 'injury_simulator', icon: <Syringe className="h-5 w-5" />, label: 'Simulator' },
+      { screen: 'player_psychology', icon: <Brain className="h-5 w-5" />, label: 'Psychology' },
     ],
   },
   {
