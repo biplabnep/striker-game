@@ -211,7 +211,7 @@ interface ContractNegotiationProps {
 // Main Component
 // ============================================================
 
-export default function ContractNegotiation({ open, onClose }: ContractNegotiationProps) {
+export default function ContractNegotiation({ open, onClose }: ContractNegotiationProps): React.JSX.Element {
   const gameState = useGameStore(state => state.gameState);
   const negotiateContract = useGameStore(state => state.negotiateContract);
   const addNotification = useGameStore(state => state.addNotification);
@@ -391,11 +391,119 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
     return rounds[rounds.length - 1].clubOffer;
   }, [rounds]);
 
-  // Can the player negotiate? (≤ 2 years remaining)
+  // Can the player negotiate? (<= 2 years remaining)
   const canNegotiate = useMemo(() => {
     if (!gameState) return false;
     return gameState.player.contract.yearsRemaining <= 2;
   }, [gameState]);
+
+  // Computed: wage progression data points (4 years)
+  const wageProgressionData = useMemo(() => {
+    if (!gameState) return [];
+    const base = gameState.player.contract.weeklyWage;
+    const growthRate = 1.0 + (gameState.player.age <= 26 ? 0.08 : gameState.player.age <= 30 ? 0.04 : 0.01);
+    return [
+      { year: 'Y1', wage: base },
+      { year: 'Y2', wage: Math.round(base * growthRate * 10) / 10 },
+      { year: 'Y3', wage: Math.round(base * growthRate * growthRate * 10) / 10 },
+      { year: 'Y4', wage: Math.round(base * growthRate * growthRate * growthRate * 10) / 10 },
+    ];
+  }, [gameState]);
+
+  // Computed: negotiation leverage score (0-100)
+  const leverageScore = useMemo(() => {
+    if (!gameState) return 50;
+    const p = gameState.player;
+    let score = 50;
+    score += (p.overall - 70) * 0.5;
+    score += (p.reputation - 50) * 0.3;
+    if (p.squadStatus === 'starter') score += 15;
+    else if (p.squadStatus === 'rotation') score += 5;
+    if (p.contract.yearsRemaining <= 1) score -= 10;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }, [gameState]);
+
+  // Computed: club budget allocation segments
+  const budgetAllocation = useMemo(() => {
+    if (!gameState) return [];
+    const fin = Math.max(1, gameState.currentClub.finances);
+    return [
+      { label: 'Wages', value: 55, color: '#34d399' },
+      { label: 'Transfers', value: Math.round(fin * 0.25), color: '#60a5fa' },
+      { label: 'Facilities', value: Math.round(fin * 0.12), color: '#fbbf24' },
+      { label: 'Youth', value: Math.round(fin * 0.08), color: '#c084fc' },
+    ];
+  }, [gameState]);
+
+  // Computed: market value comparison bars
+  const marketComparisons = useMemo(() => {
+    if (!gameState) return [];
+    const mv = gameState.player.marketValue;
+    return [
+      { label: 'You', value: mv, color: '#34d399' },
+      { label: 'League Avg', value: Math.round(mv * 0.75 * 100) / 100, color: '#60a5fa' },
+      { label: 'Position Avg', value: Math.round(mv * 0.9 * 100) / 100, color: '#c084fc' },
+      { label: 'Club Budget', value: Math.round(mv * 1.8 * 100) / 100, color: '#fbbf24' },
+    ];
+  }, [gameState]);
+
+  // Computed: radar chart data (current vs new offer)
+  const radarData = useMemo(() => {
+    if (!gameState || !currentClubOffer) return { current: [0,0,0,0,0,0], offered: [0,0,0,0,0,0] };
+    const curr = gameState.player.contract;
+    const maxWage = Math.max(curr.weeklyWage, currentClubOffer.weeklyWage, 1);
+    const maxLength = Math.max(curr.yearsRemaining, currentClubOffer.yearsRemaining, 1);
+    const maxBonus = Math.max(
+      curr.signingBonus ?? 0,
+      currentClubOffer.signingBonus ?? 0,
+      1
+    );
+    const maxRelease = Math.max(
+      curr.releaseClause ?? 0,
+      currentClubOffer.releaseClause ?? 0,
+      1
+    );
+    return {
+      current: [
+        curr.weeklyWage / maxWage * 100,
+        curr.yearsRemaining / maxLength * 100,
+        (curr.signingBonus ?? 0) / maxBonus * 100,
+        (curr.releaseClause ?? 0) / maxRelease * 100,
+        40,
+        70,
+      ],
+      offered: [
+        currentClubOffer.weeklyWage / maxWage * 100,
+        currentClubOffer.yearsRemaining / maxLength * 100,
+        currentClubOffer.signingBonus / maxBonus * 100,
+        (currentClubOffer.releaseClause ?? 0) / maxRelease * 100,
+        65,
+        55,
+      ],
+    };
+  }, [gameState, currentClubOffer]);
+
+  // Computed: negotiation quality score
+  const negotiationQuality = useMemo(() => {
+    if (!outcome) return 0;
+    if (outcome === 'accepted') return 90;
+    if (outcome === 'counter_accepted') return 75 + currentRound * 5;
+    if (outcome === 'rejected_by_player') return 30;
+    return 15;
+  }, [outcome, currentRound]);
+
+  // Computed: peer wages for market comparison
+  const peerWages = useMemo(() => {
+    if (!gameState || !finalOffer) return [];
+    const pw = finalOffer.weeklyWage;
+    return [
+      { name: 'Peer A', wage: Math.round(pw * 1.3 * 10) / 10 },
+      { name: 'Peer B', wage: Math.round(pw * 0.95 * 10) / 10 },
+      { name: 'You', wage: pw, isPlayer: true },
+      { name: 'Peer C', wage: Math.round(pw * 0.8 * 10) / 10 },
+      { name: 'Peer D', wage: Math.round(pw * 0.65 * 10) / 10 },
+    ];
+  }, [gameState, finalOffer]);
 
   // Get years remaining color
   const getYearsColor = (years: number) => {
@@ -416,9 +524,14 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
     return 'bg-emerald-600';
   };
 
-  if (!gameState || !canNegotiate) return null;
+  if (!gameState || !canNegotiate) return null as unknown as React.JSX.Element;
 
   const { player, currentClub } = gameState;
+
+  // --- SVG helper values derived once ---
+  const svgChartPadding = 8;
+  const svgChartWidth = 260;
+  const svgChartHeight = 120;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) { onClose(); } }}>
@@ -518,6 +631,217 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 </CardContent>
               </Card>
 
+              {/* ===== SVG #1: Wage Progression Chart ===== */}
+              {wageProgressionData.length > 0 && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Wage Progression</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <svg viewBox={`0 0 ${svgChartWidth + svgChartPadding * 2} ${svgChartHeight + svgChartPadding * 2}`} style={{ width: '100%', maxWidth: 280 }}>
+                      {(() => {
+                        const maxVal = Math.max(...wageProgressionData.map(d => d.wage), 1);
+                        const plotW = svgChartWidth;
+                        const plotH = svgChartHeight;
+                        const stepX = plotW / (wageProgressionData.length - 1);
+                        return (
+                          <>
+                            {/* Grid lines */}
+                            {[0, 1, 2, 3, 4].map(gi => (
+                              <line
+                                key={`grid-${gi}`}
+                                x1={svgChartPadding}
+                                y1={svgChartPadding + (plotH / 4) * gi}
+                                x2={svgChartPadding + plotW}
+                                y2={svgChartPadding + (plotH / 4) * gi}
+                                stroke="#21262d"
+                                strokeWidth={1}
+                              />
+                            ))}
+                            {/* Data line */}
+                            <polyline
+                              fill="none"
+                              stroke="#34d399"
+                              strokeWidth={2}
+                              points={wageProgressionData.map((d, i) =>
+                                `${svgChartPadding + i * stepX},${svgChartPadding + plotH - (d.wage / maxVal) * plotH}`
+                              ).join(' ')}
+                            />
+                            {/* Data points */}
+                            {wageProgressionData.map((d, i) => (
+                              <circle
+                                key={`dot-${i}`}
+                                cx={svgChartPadding + i * stepX}
+                                cy={svgChartPadding + plotH - (d.wage / maxVal) * plotH}
+                                r={4}
+                                fill="#34d399"
+                                stroke="#0d1117"
+                                strokeWidth={2}
+                              />
+                            ))}
+                            {/* Labels */}
+                            {wageProgressionData.map((d, i) => (
+                              <text
+                                key={`label-${i}`}
+                                x={svgChartPadding + i * stepX}
+                                y={svgChartHeight + svgChartPadding * 2 - 2}
+                                textAnchor="middle"
+                                fill="#8b949e"
+                                fontSize={9}
+                              >
+                                {d.year}
+                              </text>
+                            ))}
+                            {/* Value labels */}
+                            {wageProgressionData.map((d, i) => (
+                              <text
+                                key={`val-${i}`}
+                                x={svgChartPadding + i * stepX}
+                                y={svgChartPadding + plotH - (d.wage / maxVal) * plotH - 8}
+                                textAnchor="middle"
+                                fill="#c9d1d9"
+                                fontSize={8}
+                              >
+                                {formatCurrency(d.wage, 'K')}
+                              </text>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ===== SVG #2: Negotiation Leverage Gauge ===== */}
+              <Card className="bg-[#161b22] border-[#30363d]">
+                <CardHeader className="pb-1 pt-3 px-4">
+                  <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Negotiation Leverage</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3 flex flex-col items-center">
+                  <svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 220 }}>
+                    {(() => {
+                      const cx = 100;
+                      const cy = 100;
+                      const radius = 80;
+                      const angle = Math.PI;
+                      const leverVal = leverageScore;
+                      const leverAngle = angle * (leverVal / 100);
+                      // Red segment: 0-33
+                      const redEnd = angle * 0.33;
+                      const amberEnd = angle * 0.66;
+                      // Arc helper for SVG arc path
+                      const arcPath = (startA: number, endA: number) => {
+                        const x1 = cx + radius * Math.cos(Math.PI - startA);
+                        const y1 = cy - radius * Math.sin(Math.PI - startA);
+                        const x2 = cx + radius * Math.cos(Math.PI - endA);
+                        const y2 = cy - radius * Math.sin(Math.PI - endA);
+                        const large = endA - startA > Math.PI ? 1 : 0;
+                        return `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2} Z`;
+                      };
+                      return (
+                        <>
+                          {/* Background track */}
+                          <path
+                            d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+                            fill="none"
+                            stroke="#21262d"
+                            strokeWidth={12}
+                          />
+                          {/* Red segment (0-33) */}
+                          <path d={arcPath(0, Math.min(redEnd, leverAngle))} fill="#ef4444" fillOpacity={0.2} stroke="#ef4444" strokeWidth={1} />
+                          {/* Amber segment (33-66) */}
+                          {leverAngle > redEnd && (
+                            <path d={arcPath(redEnd, Math.min(amberEnd, leverAngle))} fill="#f59e0b" fillOpacity={0.2} stroke="#f59e0b" strokeWidth={1} />
+                          )}
+                          {/* Green segment (66-100) */}
+                          {leverAngle > amberEnd && (
+                            <path d={arcPath(amberEnd, leverAngle)} fill="#34d399" fillOpacity={0.2} stroke="#34d399" strokeWidth={1} />
+                          )}
+                          {/* Needle */}
+                          {(() => {
+                            const needleAngle = Math.PI - leverAngle;
+                            const nx = cx + (radius - 15) * Math.cos(needleAngle);
+                            const ny = cy - (radius - 15) * Math.sin(needleAngle);
+                            return (
+                              <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#c9d1d9" strokeWidth={2} />
+                            );
+                          })()}
+                          {/* Center dot */}
+                          <circle cx={cx} cy={cy} r={6} fill="#21262d" stroke="#c9d1d9" strokeWidth={2} />
+                          {/* Score text */}
+                          <text x={cx} y={cy - 18} textAnchor="middle" fill="#c9d1d9" fontSize={18} fontWeight="bold">{leverVal}</text>
+                          {/* Min/Max labels */}
+                          <text x={cx - radius + 5} y={cy + 16} textAnchor="start" fill="#8b949e" fontSize={8}>Weak</text>
+                          <text x={cx + radius - 5} y={cy + 16} textAnchor="end" fill="#8b949e" fontSize={8}>Strong</text>
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </CardContent>
+              </Card>
+
+              {/* ===== SVG #3: Club Budget Allocation Donut ===== */}
+              {budgetAllocation.length > 0 && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Club Budget Allocation</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <div className="flex items-center gap-4">
+                      <svg viewBox="0 0 120 120" style={{ width: 90, height: 90, flexShrink: 0 }}>
+                        {(() => {
+                          const cx = 60;
+                          const cy = 60;
+                          const outerR = 50;
+                          const innerR = 30;
+                          const total = budgetAllocation.reduce((sum, seg) => sum + seg.value, 0) || 1;
+                          const donutPaths = budgetAllocation.reduce<{ accAngle: number; paths: Array<{ key: number; d: string; color: string }> }>(
+                            (acc, seg, idx) => {
+                              const segAngle = (seg.value / total) * Math.PI * 2;
+                              const startAngle = acc.accAngle;
+                              const endAngle = acc.accAngle + segAngle;
+                              const x1o = cx + outerR * Math.cos(startAngle);
+                              const y1o = cy + outerR * Math.sin(startAngle);
+                              const x2o = cx + outerR * Math.cos(endAngle);
+                              const y2o = cy + outerR * Math.sin(endAngle);
+                              const x1i = cx + innerR * Math.cos(endAngle);
+                              const y1i = cy + innerR * Math.sin(endAngle);
+                              const x2i = cx + innerR * Math.cos(startAngle);
+                              const y2i = cy + innerR * Math.sin(startAngle);
+                              const large = segAngle > Math.PI ? 1 : 0;
+                              const path = `M ${x1o} ${y1o} A ${outerR} ${outerR} 0 ${large} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${innerR} ${innerR} 0 ${large} 0 ${x2i} ${y2i} Z`;
+                              return { accAngle: endAngle, paths: [...acc.paths, { key: idx, d: path, color: seg.color }] };
+                            },
+                            { accAngle: -Math.PI / 2, paths: [] }
+                          );
+                          return (
+                            <>
+                              {donutPaths.paths.map((p) => (
+                                <path key={p.key} d={p.d} fill={p.color} fillOpacity={0.8} />
+                              ))}
+                              {/* Center label */}
+                              <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize={11} fontWeight="bold">Budget</text>
+                              <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize={8}>{currentClub.finances}/100</text>
+                            </>
+                          );
+                        })()}
+                      </svg>
+                      {/* Legend */}
+                      <div className="flex flex-col gap-1.5">
+                        {budgetAllocation.map((seg, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: seg.color }} />
+                            <span className="text-[10px] text-[#8b949e]">{seg.label}</span>
+                            <span className="text-[10px] text-[#c9d1d9] font-semibold">{seg.value}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Expiring Warning */}
               {player.contract.yearsRemaining <= 1 && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-2">
@@ -586,6 +910,50 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                     />
                   ))}
                 </div>
+              </div>
+
+              {/* ===== SVG #5: Negotiation Round Timeline ===== */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                <svg viewBox="0 0 280 50" style={{ width: '100%' }}>
+                  {[1, 2, 3].map(r => {
+                    const xPos = 40 + (r - 1) * 100;
+                    const isCompleted = r < currentRound;
+                    const isCurrent = r === currentRound;
+                    const dotColor = isCompleted ? '#34d399' : isCurrent ? '#f59e0b' : '#30363d';
+                    const lineColor = r < 3 ? (r < currentRound ? '#34d399' : '#30363d') : '#30363d';
+                    return (
+                      <g key={`round-${r}`}>
+                        {/* Connecting line */}
+                        {r < 3 && (
+                          <line
+                            x1={xPos + 14}
+                            y1={22}
+                            x2={xPos + 86}
+                            y2={22}
+                            stroke={lineColor}
+                            strokeWidth={2}
+                          />
+                        )}
+                        {/* Circle */}
+                        <circle cx={xPos} cy={22} r={12} fill={dotColor} fillOpacity={isCompleted || isCurrent ? 0.2 : 0.1} stroke={dotColor} strokeWidth={2} />
+                        {/* Status icon */}
+                        {isCompleted && (
+                          <text x={xPos} y={26} textAnchor="middle" fill="#34d399" fontSize={11} fontWeight="bold">&#10003;</text>
+                        )}
+                        {isCurrent && (
+                          <circle cx={xPos} cy={22} r={4} fill="#f59e0b" />
+                        )}
+                        {!isCompleted && !isCurrent && (
+                          <circle cx={xPos} cy={22} r={3} fill="#30363d" />
+                        )}
+                        {/* Label */}
+                        <text x={xPos} y={44} textAnchor="middle" fill={isCurrent ? '#f59e0b' : '#8b949e'} fontSize={9}>
+                          Round {r}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
               </div>
 
               {/* Club's Offer Card */}
@@ -668,6 +1036,41 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                 </CardContent>
               </Card>
 
+              {/* ===== SVG #4: Market Value Comparison Bars ===== */}
+              {marketComparisons.length > 0 && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Market Value Comparison</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <svg viewBox="0 0 280 100" style={{ width: '100%' }}>
+                      {(() => {
+                        const barMaxW = 160;
+                        const maxVal = Math.max(...marketComparisons.map(c => c.value), 1);
+                        return marketComparisons.map((comp, idx) => {
+                          const barW = Math.max(4, (comp.value / maxVal) * barMaxW);
+                          const yPos = 12 + idx * 22;
+                          return (
+                            <g key={`bar-${idx}`}>
+                              {/* Label */}
+                              <text x={0} y={yPos + 11} fill="#8b949e" fontSize={9}>{comp.label}</text>
+                              {/* Bar background */}
+                              <rect x={70} y={yPos} width={barMaxW} height={14} rx={3} fill="#21262d" />
+                              {/* Bar fill */}
+                              <rect x={70} y={yPos} width={barW} height={14} rx={3} fill={comp.color} fillOpacity={0.8} />
+                              {/* Value */}
+                              <text x={70 + barMaxW + 6} y={yPos + 11} fill="#c9d1d9" fontSize={9}>
+                                {formatCurrency(comp.value, 'M')}
+                              </text>
+                            </g>
+                          );
+                        });
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Action Buttons */}
               <div className="space-y-2">
                 <Button
@@ -694,7 +1097,7 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                   className="w-full h-11 border-[#30363d] text-[#8b949e] hover:bg-[#21262d] rounded-lg"
                 >
                   <XCircle className="mr-2 h-4 w-4" />
-                  Reject & Walk Away
+                  Reject &amp; Walk Away
                 </Button>
               </div>
             </motion.div>
@@ -711,6 +1114,39 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
               <div className="flex items-center gap-2">
                 <ArrowRight className="h-4 w-4 text-amber-400" />
                 <h3 className="font-bold text-sm">Your Counter-Offer</h3>
+              </div>
+
+              {/* ===== SVG #5 (also shown in counter): Negotiation Round Timeline ===== */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                <svg viewBox="0 0 280 50" style={{ width: '100%' }}>
+                  {[1, 2, 3].map(r => {
+                    const xPos = 40 + (r - 1) * 100;
+                    const isCompleted = r < currentRound;
+                    const isCurrent = r === currentRound;
+                    const dotColor = isCompleted ? '#34d399' : isCurrent ? '#f59e0b' : '#30363d';
+                    const lineColor = r < 3 ? (r < currentRound ? '#34d399' : '#30363d') : '#30363d';
+                    return (
+                      <g key={`counter-round-${r}`}>
+                        {r < 3 && (
+                          <line x1={xPos + 14} y1={22} x2={xPos + 86} y2={22} stroke={lineColor} strokeWidth={2} />
+                        )}
+                        <circle cx={xPos} cy={22} r={12} fill={dotColor} fillOpacity={isCompleted || isCurrent ? 0.2 : 0.1} stroke={dotColor} strokeWidth={2} />
+                        {isCompleted && (
+                          <text x={xPos} y={26} textAnchor="middle" fill="#34d399" fontSize={11} fontWeight="bold">&#10003;</text>
+                        )}
+                        {isCurrent && (
+                          <circle cx={xPos} cy={22} r={4} fill="#f59e0b" />
+                        )}
+                        {!isCompleted && !isCurrent && (
+                          <circle cx={xPos} cy={22} r={3} fill="#30363d" />
+                        )}
+                        <text x={xPos} y={44} textAnchor="middle" fill={isCurrent ? '#f59e0b' : '#8b949e'} fontSize={9}>
+                          Round {r}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
               </div>
 
               {/* Wage Slider */}
@@ -738,6 +1174,46 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                       </span>
                       <span className="text-[10px] text-[#484f58]">{formatCurrency(wageMax, 'K')}</span>
                     </div>
+                  </div>
+
+                  {/* ===== SVG #6: Wage Demand Spectrum ===== */}
+                  <div>
+                    <span className="text-[10px] text-[#8b949e] uppercase tracking-wider block mb-1.5">Demand Spectrum</span>
+                    <svg viewBox="0 0 260 36" style={{ width: '100%' }}>
+                      {(() => {
+                        const barX = 0;
+                        const barY = 6;
+                        const barW = 260;
+                        const barH = 14;
+                        const range = wageMax - wageMin || 1;
+                        const minPct = 0;
+                        const currentPct = (player.contract.weeklyWage - wageMin) / range;
+                        const offerPct = (currentClubOffer.weeklyWage - wageMin) / range;
+                        const demandPct = (counterWage - wageMin) / range;
+                        const maxPct = 1;
+                        return (
+                          <>
+                            {/* Background zones */}
+                            <rect x={barX} y={barY} width={barW * 0.25} height={barH} rx={3} fill="#ef4444" fillOpacity={0.2} />
+                            <rect x={barX + barW * 0.25} y={barY} width={barW * 0.25} height={barH} rx={0} fill="#f59e0b" fillOpacity={0.2} />
+                            <rect x={barX + barW * 0.5} y={barY} width={barW * 0.25} height={barH} rx={0} fill="#34d399" fillOpacity={0.15} />
+                            <rect x={barX + barW * 0.75} y={barY} width={barW * 0.25} height={barH} rx={3} fill="#ef4444" fillOpacity={0.15} />
+                            {/* Current wage marker */}
+                            <line x1={barX + barW * currentPct} y1={barY - 2} x2={barX + barW * currentPct} y2={barY + barH + 2} stroke="#8b949e" strokeWidth={2} />
+                            <text x={barX + barW * currentPct} y={barY - 4} textAnchor="middle" fill="#8b949e" fontSize={7}>Current</text>
+                            {/* Club offer marker */}
+                            <line x1={barX + barW * offerPct} y1={barY - 2} x2={barX + barW * offerPct} y2={barY + barH + 2} stroke="#34d399" strokeWidth={2} />
+                            <text x={barX + barW * offerPct} y={barY + barH + 12} textAnchor="middle" fill="#34d399" fontSize={7}>Offer</text>
+                            {/* Demand marker */}
+                            <line x1={barX + barW * demandPct} y1={barY - 2} x2={barX + barW * demandPct} y2={barY + barH + 2} stroke="#f59e0b" strokeWidth={2} strokeDasharray="3 2" />
+                            <text x={barX + barW * demandPct} y={barY - 4} textAnchor="middle" fill="#f59e0b" fontSize={7}>Demand</text>
+                            {/* Labels */}
+                            <text x={barX} y={barY + barH + 12} textAnchor="start" fill="#484f58" fontSize={7}>{formatCurrency(wageMin, 'K')}</text>
+                            <text x={barX + barW} y={barY + barH + 12} textAnchor="end" fill="#484f58" fontSize={7}>{formatCurrency(wageMax, 'K')}</text>
+                          </>
+                        );
+                      })()}
+                    </svg>
                   </div>
 
                   {/* Contract Length Dropdown */}
@@ -786,6 +1262,102 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* ===== SVG #7: Offer Comparison Radar ===== */}
+              <Card className="bg-[#161b22] border-[#30363d]">
+                <CardHeader className="pb-1 pt-3 px-4">
+                  <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Offer Comparison</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3 flex flex-col items-center">
+                  <svg viewBox="0 0 220 200" style={{ width: '100%', maxWidth: 220 }}>
+                    {(() => {
+                      const cx = 110;
+                      const cy = 95;
+                      const maxR = 75;
+                      const axes = ['Wage', 'Length', 'Bonus', 'Release', 'Bonuses', 'Security'];
+                      const n = axes.length;
+                      const angleStep = (Math.PI * 2) / n;
+                      const currentVals = radarData.current;
+                      const offeredVals = radarData.offered;
+
+                      const getPoint = (axisIdx: number, val: number) => {
+                        const angle = -Math.PI / 2 + axisIdx * angleStep;
+                        const r = (val / 100) * maxR;
+                        return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+                      };
+
+                      return (
+                        <>
+                          {/* Grid rings */}
+                          {[20, 40, 60, 80, 100].map(ringPct => {
+                            const rr = (ringPct / 100) * maxR;
+                            const pts = axes.map((_, ai) => {
+                              const a = -Math.PI / 2 + ai * angleStep;
+                              return `${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`;
+                            }).join(' ');
+                            return <polygon key={`ring-${ringPct}`} points={pts} fill="none" stroke="#21262d" strokeWidth={1} />;
+                          })}
+                          {/* Axis lines */}
+                          {axes.map((_, ai) => {
+                            const a = -Math.PI / 2 + ai * angleStep;
+                            return (
+                              <line key={`axis-${ai}`} x1={cx} y1={cy} x2={cx + maxR * Math.cos(a)} y2={cy + maxR * Math.sin(a)} stroke="#21262d" strokeWidth={1} />
+                            );
+                          })}
+                          {/* Axis labels */}
+                          {axes.map((label, ai) => {
+                            const a = -Math.PI / 2 + ai * angleStep;
+                            const lx = cx + (maxR + 16) * Math.cos(a);
+                            const ly = cy + (maxR + 16) * Math.sin(a);
+                            return (
+                              <text key={`axis-label-${ai}`} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize={8}>
+                                {label}
+                              </text>
+                            );
+                          })}
+                          {/* Current contract polygon */}
+                          <polygon
+                            points={currentVals.map((v, i) => {
+                              const p = getPoint(i, v);
+                              return `${p.x},${p.y}`;
+                            }).join(' ')}
+                            fill="#8b949e"
+                            fillOpacity={0.1}
+                            stroke="#8b949e"
+                            strokeWidth={1.5}
+                          />
+                          {/* New offer polygon */}
+                          <polygon
+                            points={offeredVals.map((v, i) => {
+                              const p = getPoint(i, v);
+                              return `${p.x},${p.y}`;
+                            }).join(' ')}
+                            fill="#34d399"
+                            fillOpacity={0.15}
+                            stroke="#34d399"
+                            strokeWidth={1.5}
+                          />
+                          {/* Data points current */}
+                          {currentVals.map((v, i) => {
+                            const p = getPoint(i, v);
+                            return <circle key={`curr-dot-${i}`} cx={p.x} cy={p.y} r={3} fill="#8b949e" />;
+                          })}
+                          {/* Data points offered */}
+                          {offeredVals.map((v, i) => {
+                            const p = getPoint(i, v);
+                            return <circle key={`off-dot-${i}`} cx={p.x} cy={p.y} r={3} fill="#34d399" />;
+                          })}
+                          {/* Legend */}
+                          <line x1={20} y1={190} x2={36} y2={190} stroke="#8b949e" strokeWidth={2} />
+                          <text x={40} y={193} fill="#8b949e" fontSize={8}>Current</text>
+                          <line x1={110} y1={190} x2={126} y2={190} stroke="#34d399" strokeWidth={2} />
+                          <text x={130} y={193} fill="#34d399" fontSize={8}>New Offer</text>
+                        </>
+                      );
+                    })()}
+                  </svg>
                 </CardContent>
               </Card>
 
@@ -950,6 +1522,253 @@ export default function ContractNegotiation({ open, onClose }: ContractNegotiati
                         <span className="text-xs text-amber-400">{formatCurrency(finalOffer.releaseClause, 'M')}</span>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ===== SVG #8: Signing Bonus Calculator ===== */}
+              {(outcome === 'accepted' || outcome === 'counter_accepted') && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Total Contract Value</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    {(() => {
+                      const baseWagesTotal = finalOffer.weeklyWage * 52 * finalOffer.yearsRemaining;
+                      const signingBonusTotal = finalOffer.signingBonus;
+                      const potentialBonuses = (finalOffer.performanceBonuses.goalsBonus ?? 0) * 10 +
+                        (finalOffer.performanceBonuses.assistBonus ?? 0) * 8 +
+                        (finalOffer.performanceBonuses.cleanSheetBonus ?? 0) * 12;
+                      const grandTotal = baseWagesTotal + signingBonusTotal + potentialBonuses;
+                      const maxVal = grandTotal || 1;
+                      const segs = [
+                        { label: 'Base Wages', value: baseWagesTotal, color: '#34d399' },
+                        { label: 'Signing Bonus', value: signingBonusTotal, color: '#60a5fa' },
+                        { label: 'Potential Bonuses', value: potentialBonuses, color: '#fbbf24' },
+                      ];
+                      const barW = 240;
+                      const segRects = segs.reduce<Array<{ key: string; x: number; width: number; color: string; label: string; value: number }>>(
+                        (acc, seg, si) => {
+                          const sw = Math.max(2, (seg.value / maxVal) * barW);
+                          const sx = 10 + acc.reduce((w, item) => w + item.width, 0);
+                          return [...acc, { key: `seg-${si}`, x: sx, width: sw, color: seg.color, label: seg.label, value: seg.value }];
+                        },
+                        []
+                      );
+                      return (
+                        <>
+                          <svg viewBox={`0 0 ${barW + 20} 70`} style={{ width: '100%' }}>
+                            {/* Stacked horizontal bar */}
+                            {segRects.map((sr) => (
+                              <g key={sr.key}>
+                                <rect x={sr.x} y={8} width={sr.width} height={20} rx={0} fill={sr.color} fillOpacity={0.85}>
+                                  <title>{sr.label}: {formatCurrency(sr.value, 'K')}</title>
+                                </rect>
+                              </g>
+                            ))}
+                            {/* Total text */}
+                            <text x={10} y={52} fill="#c9d1d9" fontSize={11} fontWeight="bold">
+                              Total: {formatCurrency(grandTotal, 'M')}
+                            </text>
+                          </svg>
+                          {/* Legend */}
+                          <div className="flex flex-wrap gap-3 mt-2">
+                            {segs.map((seg, si) => (
+                              <div key={`legend-${si}`} className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: seg.color }} />
+                                <span className="text-[10px] text-[#8b949e]">{seg.label}</span>
+                                <span className="text-[10px] text-[#c9d1d9]">{formatCurrency(seg.value, 'K')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ===== SVG #9: Negotiation Quality Ring ===== */}
+              <Card className="bg-[#161b22] border-[#30363d]">
+                <CardHeader className="pb-1 pt-3 px-4">
+                  <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Negotiation Quality</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3 flex flex-col items-center">
+                  <svg viewBox="0 0 120 120" style={{ width: 90, height: 90 }}>
+                    {(() => {
+                      const cx = 60;
+                      const cy = 60;
+                      const r = 48;
+                      const strokeW = 10;
+                      const quality = negotiationQuality;
+                      const circumference = 2 * Math.PI * r;
+                      const filled = circumference * (quality / 100);
+                      const qualityColor = quality >= 70 ? '#34d399' : quality >= 40 ? '#f59e0b' : '#ef4444';
+                      return (
+                        <>
+                          {/* Background ring */}
+                          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth={strokeW} />
+                          {/* Progress ring */}
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={r}
+                            fill="none"
+                            stroke={qualityColor}
+                            strokeWidth={strokeW}
+                            strokeDasharray={`${filled} ${circumference}`}
+                            strokeDashoffset={circumference * 0.25}
+                            strokeLinecap="round"
+                          />
+                          {/* Score text */}
+                          <text x={cx} y={cy - 4} textAnchor="middle" fill={qualityColor} fontSize={20} fontWeight="bold">{quality}</text>
+                          <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize={8}>/ 100</text>
+                          {/* Label */}
+                          <text x={cx} y={cy + r + 18} textAnchor="middle" fill="#8b949e" fontSize={8}>
+                            {quality >= 70 ? 'Excellent' : quality >= 40 ? 'Fair' : 'Poor'}
+                          </text>
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </CardContent>
+              </Card>
+
+              {/* ===== SVG #10: Contract Comparison Market ===== */}
+              {peerWages.length > 0 && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Position Wage Comparison</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <svg viewBox="0 0 280 120" style={{ width: '100%' }}>
+                      {(() => {
+                        const barMaxW = 150;
+                        const maxWage = Math.max(...peerWages.map(p => p.wage), 1);
+                        return peerWages.map((peer, idx) => {
+                          const bw = Math.max(4, (peer.wage / maxWage) * barMaxW);
+                          const yp = 8 + idx * 22;
+                          return (
+                            <g key={`peer-${idx}`}>
+                              <text x={0} y={yp + 12} fill={peer.isPlayer ? '#34d399' : '#8b949e'} fontSize={9} fontWeight={peer.isPlayer ? 'bold' : 'normal'}>
+                                {peer.name}
+                              </text>
+                              <rect x={65} y={yp} width={barMaxW} height={15} rx={3} fill="#21262d" />
+                              <rect x={65} y={yp} width={bw} height={15} rx={3}
+                                fill={peer.isPlayer ? '#34d399' : '#60a5fa'}
+                                fillOpacity={peer.isPlayer ? 0.9 : 0.6}
+                              />
+                              <text x={65 + barMaxW + 6} y={yp + 12} fill={peer.isPlayer ? '#34d399' : '#c9d1d9'} fontSize={9} fontWeight={peer.isPlayer ? 'bold' : 'normal'}>
+                                {formatCurrency(peer.wage, 'K')}
+                              </text>
+                            </g>
+                          );
+                        });
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ===== SVG #11: Future Earnings Projection ===== */}
+              {(outcome === 'accepted' || outcome === 'counter_accepted') && (
+                <Card className="bg-[#161b22] border-[#30363d]">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs text-[#8b949e] uppercase tracking-wider">Future Earnings Projection</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    {(() => {
+                      const years = finalOffer.yearsRemaining;
+                      const weeklyWage = finalOffer.weeklyWage;
+                      const yearlyData: Array<{ year: string; earnings: number }> = [];
+                      for (let yi = 1; yi <= years; yi++) {
+                        const yearEarnings = weeklyWage * 52 * yi;
+                        yearlyData.push({ year: `Y${yi}`, earnings: yearEarnings });
+                      }
+                      const maxEarnings = Math.max(...yearlyData.map(d => d.earnings), 1);
+                      const totalEarnings = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].earnings : 0;
+                      const chartW = 240;
+                      const chartH = 80;
+                      const pad = 10;
+                      const stepX = chartW / Math.max(yearlyData.length - 1, 1);
+                      return (
+                        <>
+                          <svg viewBox={`0 0 ${chartW + pad * 2} ${chartH + pad * 2 + 20}`} style={{ width: '100%' }}>
+                            {/* Grid lines */}
+                            {[0, 1, 2, 3, 4].map(gi => (
+                              <line
+                                key={`earn-grid-${gi}`}
+                                x1={pad}
+                                y1={pad + (chartH / 4) * gi}
+                                x2={pad + chartW}
+                                y2={pad + (chartH / 4) * gi}
+                                stroke="#21262d"
+                                strokeWidth={1}
+                              />
+                            ))}
+                            {/* Area fill */}
+                            {yearlyData.length > 1 && (
+                              <polygon
+                                points={
+                                  yearlyData.map((d, i) =>
+                                    `${pad + i * stepX},${pad + chartH - (d.earnings / maxEarnings) * chartH}`
+                                  ).join(' ') +
+                                  ` ${pad + (yearlyData.length - 1) * stepX},${pad + chartH} ${pad},${pad + chartH}`
+                                }
+                                fill="#34d399"
+                                fillOpacity={0.12}
+                              />
+                            )}
+                            {/* Area line */}
+                            {yearlyData.length > 1 && (
+                              <polyline
+                                fill="none"
+                                stroke="#34d399"
+                                strokeWidth={2}
+                                points={yearlyData.map((d, i) =>
+                                  `${pad + i * stepX},${pad + chartH - (d.earnings / maxEarnings) * chartH}`
+                                ).join(' ')}
+                              />
+                            )}
+                            {/* Data points and year labels */}
+                            {yearlyData.map((d, i) => (
+                              <g key={`earn-${i}`}>
+                                <circle
+                                  cx={pad + i * stepX}
+                                  cy={pad + chartH - (d.earnings / maxEarnings) * chartH}
+                                  r={4}
+                                  fill="#34d399"
+                                  stroke="#0d1117"
+                                  strokeWidth={2}
+                                />
+                                <text
+                                  x={pad + i * stepX}
+                                  y={pad + chartH + 14}
+                                  textAnchor="middle"
+                                  fill="#8b949e"
+                                  fontSize={8}
+                                >
+                                  {d.year}
+                                </text>
+                                <text
+                                  x={pad + i * stepX}
+                                  y={pad + chartH - (d.earnings / maxEarnings) * chartH - 8}
+                                  textAnchor="middle"
+                                  fill="#c9d1d9"
+                                  fontSize={7}
+                                >
+                                  {formatCurrency(d.earnings, 'M')}
+                                </text>
+                              </g>
+                            ))}
+                            {/* Total label */}
+                            <text x={pad + chartW} y={pad + chartH + 26} textAnchor="end" fill="#34d399" fontSize={9} fontWeight="bold">
+                              Total: {formatCurrency(totalEarnings, 'M')}
+                            </text>
+                          </svg>
+                        </>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               )}

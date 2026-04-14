@@ -672,7 +672,9 @@ export type GameScreen =
   | 'fan_chants'
   | 'virtual_trophy_room'
   | 'press_scrum'
-  | 'injury_simulator';
+  | 'injury_simulator'
+  | 'player_bio_generator'
+  | 'set_piece_trainer';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

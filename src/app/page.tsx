@@ -108,6 +108,8 @@ import VirtualTrophyRoom from '@/components/game/VirtualTrophyRoom';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
 import PressScrum from '@/components/game/PressScrum';
 import InjurySimulator from '@/components/game/InjurySimulator';
+import PlayerBioGenerator from '@/components/game/PlayerBioGenerator';
+import SetPieceTrainer from '@/components/game/SetPieceTrainer';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -211,6 +213,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   virtual_trophy_room: VirtualTrophyRoom,
   press_scrum: PressScrum,
   injury_simulator: InjurySimulator,
+  player_bio_generator: PlayerBioGenerator,
+  set_piece_trainer: SetPieceTrainer,
 };
 
 const gameScreens: GameScreen[] = [
@@ -282,6 +286,8 @@ const gameScreens: GameScreen[] = [
   'virtual_trophy_room',
   'press_scrum',
   'injury_simulator',
+  'player_bio_generator',
+  'set_piece_trainer',
 ];
 
 export default function Home() {

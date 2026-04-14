@@ -824,6 +824,75 @@ export default function MediaInterview() {
             </div>
           </div>
 
+
+          {/* SVG 1: Media Presence Gauge */}
+          <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-semibold text-[#c9d1d9]">Media Presence Score</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 280 }}>
+                {[{ start: 0, end: 20, color: '#ef4444' },
+                  { start: 20, end: 40, color: '#f97316' },
+                  { start: 40, end: 60, color: '#eab308' },
+                  { start: 60, end: 80, color: '#22c55e' },
+                  { start: 80, end: 100, color: '#10b981' }
+                ].map((zone, i) => {
+                  const angle1 = Math.PI - (zone.start / 100) * Math.PI;
+                  const angle2 = Math.PI - (zone.end / 100) * Math.PI;
+                  const x1 = 100 + 80 * Math.cos(angle1);
+                  const y1 = 100 - 80 * Math.sin(angle1);
+                  const x2 = 100 + 80 * Math.cos(angle2);
+                  const y2 = 100 - 80 * Math.sin(angle2);
+                  const largeArc = zone.end - zone.start > 50 ? 1 : 0;
+                  return (
+                    <path
+                      key={i}
+                      d={`M ${x1} ${y1} A 80 80 0 ${largeArc} 0 ${x2} ${y2}`}
+                      fill="none"
+                      stroke={zone.color}
+                      strokeWidth="12"
+                      strokeLinecap="butt"
+                      fillOpacity={0.2}
+                      strokeOpacity={0.5}
+                    />
+                  );
+                })}
+                <line x1="20" y1="100" x2="180" y2="100" stroke="#30363d" strokeWidth="1" />
+                <line x1="100" y1="100" x2="100" y2="18" stroke="#30363d" strokeWidth="1" strokeDasharray="3 3" />
+                {[0, 25, 50, 75, 100].map((tick) => {
+                  const angle = Math.PI - (tick / 100) * Math.PI;
+                  const tlx = 100 + 94 * Math.cos(angle);
+                  const tly = 100 - 94 * Math.sin(angle);
+                  return (
+                    <g key={tick}>
+                      <text x={tlx} y={tly} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize="8">
+                        {tick}
+                      </text>
+                    </g>
+                  );
+                })}
+                {(() => {
+                  const baseScore = gameState?.player?.reputation ?? 50;
+                  const score = Math.max(0, Math.min(100, baseScore + (seed % 30) - 10));
+                  const needleAngle = Math.PI - (score / 100) * Math.PI;
+                  const nx = 100 + 60 * Math.cos(needleAngle);
+                  const ny = 100 - 60 * Math.sin(needleAngle);
+                  return (
+                    <g>
+                      <line x1="100" y1="100" x2={nx} y2={ny} stroke="#c9d1d9" strokeWidth="2.5" strokeLinecap="round" />
+                      <circle cx="100" cy="100" r="5" fill="#c9d1d9" />
+                    </g>
+                  );
+                })()}
+                <text x="100" y="115" textAnchor="middle" fill="#8b949e" fontSize="9">
+                  Media Visibility
+                </text>
+              </svg>
+            </div>
+          </div>
+
           {/* Media Relationship Tracker */}
           <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
@@ -913,6 +982,74 @@ export default function MediaInterview() {
                 );
               })}
             </div>
+
+            {/* SVG 2: Question Difficulty Donut */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3 space-y-1.5">
+              <span className="text-[10px] text-[#8b949e] font-medium">Question Difficulty Mix</span>
+              <div className="flex items-center gap-3">
+                <svg viewBox="0 0 100 100" style={{ width: 72, height: 72 }}>
+                  {(() => {
+                    const easyCount = questions.reduce((acc, q) => {
+                      const hasEasy = q.responses.some(r => r.effects.reputation >= 2 && r.effects.morale >= 1);
+                      return acc + (hasEasy ? 1 : 0);
+                    }, 0);
+                    const hardCount = questions.reduce((acc, q) => {
+                      const hasHard = q.responses.some(r => r.effects.risk >= 2);
+                      return acc + (hasHard ? 1 : 0);
+                    }, 0);
+                    const medCount = questions.length - easyCount - hardCount;
+                    const total = questions.length || 1;
+                    const segments = [
+                      { count: easyCount, color: '#22c55e', label: 'Easy' },
+                      { count: medCount, color: '#3b82f6', label: 'Medium' },
+                      { count: hardCount, color: '#ef4444', label: 'Hard' },
+                    ];
+                    let currentAngle = -90;
+                    return segments.map((seg, i) => {
+                      const pct = seg.count / total;
+                      if (pct === 0) return null;
+                      const angle = pct * 360;
+                      const startRad = (currentAngle * Math.PI) / 180;
+                      const endRad = ((currentAngle + angle) * Math.PI) / 180;
+                      const x1 = 50 + 35 * Math.cos(startRad);
+                      const y1 = 50 + 35 * Math.sin(startRad);
+                      const x2 = 50 + 35 * Math.cos(endRad);
+                      const y2 = 50 + 35 * Math.sin(endRad);
+                      const largeArc = angle > 180 ? 1 : 0;
+                      currentAngle += angle;
+                      return (
+                        <path
+                          key={seg.label}
+                          d={`M 50 50 L ${x1} ${y1} A 35 35 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                          fill={seg.color}
+                          fillOpacity={0.75}
+                          stroke="#161b22"
+                          strokeWidth="2"
+                        />
+                      );
+                    });
+                  })()}
+                  <circle cx="50" cy="50" r="18" fill="#161b22" />
+                  <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fill="#c9d1d9" fontSize="11" fontWeight="bold">
+                    {questions.length}
+                  </text>
+                </svg>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+                    <span className="text-[10px] text-[#8b949e]">Easy</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-sm bg-sky-500" />
+                    <span className="text-[10px] text-[#8b949e]">Medium</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-sm bg-red-500" />
+                    <span className="text-[10px] text-[#8b949e]">Hard</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -968,6 +1105,48 @@ export default function MediaInterview() {
               />
             </div>
 
+
+            {/* SVG 3: Reputation Impact Bars */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Cumulative Impact</span>
+              <svg viewBox="0 0 260 80" style={{ width: '100%', maxWidth: 280 }}>
+                {(() => {
+                  const cumRep = answers.reduce((acc, a) => acc + a.effects.reputation, 0);
+                  const cumMor = answers.reduce((acc, a) => acc + a.effects.morale, 0);
+                  const cumRisk = answers.reduce((acc, a) => acc + a.effects.risk, 0);
+                  const maxVal = Math.max(Math.abs(cumRep), Math.abs(cumMor), Math.abs(cumRisk), 10);
+                  const bars: { label: string; value: number; color: string; y: number }[] = [
+                    { label: 'REP', value: cumRep, color: '#22c55e', y: 12 },
+                    { label: 'MOR', value: cumMor, color: '#3b82f6', y: 38 },
+                    { label: 'RSK', value: cumRisk, color: '#ef4444', y: 64 },
+                  ];
+                  return bars.map((bar, i) => {
+                    const centerX = 140;
+                    const barW = Math.max(2, (Math.abs(bar.value) / maxVal) * 100);
+                    const x = bar.value >= 0 ? centerX : centerX - barW;
+                    return (
+                      <g key={bar.label}>
+                        <text x="8" y={bar.y} fill="#8b949e" fontSize="8" dominantBaseline="central">{bar.label}</text>
+                        <line x1={centerX} y1={bar.y - 8} x2={centerX} y2={bar.y + 8} stroke="#30363d" strokeWidth="1" />
+                        <rect
+                          x={x}
+                          y={bar.y - 6}
+                          width={barW}
+                          height={12}
+                          rx={3}
+                          fill={bar.color}
+                          fillOpacity={0.7}
+                        />
+                        <text x="260" y={bar.y} textAnchor="end" fill="#c9d1d9" fontSize="9" fontWeight="bold" dominantBaseline="central">
+                          {bar.value > 0 ? '+' : ''}{bar.value}
+                        </text>
+                      </g>
+                    );
+                  });
+                })()}
+              </svg>
+            </div>
+
             {/* Fan Reaction */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-2">
@@ -975,6 +1154,62 @@ export default function MediaInterview() {
                 <span className="text-xs font-semibold text-[#c9d1d9]">Fan Reaction</span>
               </div>
               <p className="text-xs text-[#c9d1d9] leading-relaxed">{selectedAnswer.fanReaction}</p>
+            </div>
+
+
+            {/* SVG 4: Tone Distribution Hex Radar */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Tone Usage Radar</span>
+              <svg viewBox="0 0 200 180" style={{ width: '100%', maxWidth: 280 }}>
+                {(() => {
+                  const cx = 100;
+                  const cy = 95;
+                  const r = 70;
+                  const axisAngles = [0, 1, 2, 3, 4, 5].map((i) => (-Math.PI / 2) + (i * 2 * Math.PI) / 6);
+                  const hexPoints = (radius: number) =>
+                    axisAngles.map(a => `${cx + radius * Math.cos(a)},${cy + radius * Math.sin(a)}`).join(' ');
+                  const toneCounts = [0, 1, 2].map(t => answers.filter(a => ['confident', 'neutral', 'cautious'][t] === a.tone).length);
+                  const maxCount = Math.max(...toneCounts, 1);
+                  const dataPoints = toneCounts.map((count, i) => {
+                    const halfIdx = i < 3 ? i : i - 3;
+                    const dr = (count / maxCount) * r;
+                    return `${cx + dr * Math.cos(axisAngles[i])},${cy + dr * Math.sin(axisAngles[i])}`;
+                  }).join(' ');
+                  return (
+                    <g>
+                      <polygon points={hexPoints(r * 0.33)} fill="none" stroke="#30363d" strokeWidth="0.5" />
+                      <polygon points={hexPoints(r * 0.66)} fill="none" stroke="#30363d" strokeWidth="0.5" />
+                      <polygon points={hexPoints(r)} fill="none" stroke="#30363d" strokeWidth="0.5" />
+                      {axisAngles.map((angle, i) => (
+                        <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke="#30363d" strokeWidth="0.5" />
+                      ))}
+                      <polygon points={dataPoints} fill="#10b981" fillOpacity={0.2} stroke="#10b981" strokeWidth="1.5" />
+                      {toneCounts.map((count, i) => {
+                        const dr = (count / maxCount) * r;
+                        return (
+                          <circle
+                            key={`dot-${i}`}
+                            cx={cx + dr * Math.cos(axisAngles[i])}
+                            cy={cy + dr * Math.sin(axisAngles[i])}
+                            r="3"
+                            fill="#10b981"
+                          />
+                        );
+                      })}
+                      {axisAngles.map((angle, i) => {
+                        const lx = cx + (r + 14) * Math.cos(angle);
+                        const ly = cy + (r + 14) * Math.sin(angle);
+                        const shortLabels = ['C-P', 'N-P', 'U-P', 'C-M', 'N-M', 'U-M'];
+                        return (
+                          <text key={`label-${i}`} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize="7">
+                            {shortLabels[i]}
+                          </text>
+                        );
+                      })}
+                    </g>
+                  );
+                })()}
+              </svg>
             </div>
 
             {/* Next Button */}
@@ -1021,6 +1256,37 @@ export default function MediaInterview() {
               <p className="text-[10px] text-[#8b949e]">Based on {answers.length} answers</p>
             </div>
 
+
+            {/* SVG 5: Media Relationship Bars */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-sky-400" />
+                <span className="text-xs font-semibold text-[#c9d1d9]">Outlet Affinity Scores</span>
+              </div>
+              <svg viewBox="0 0 260 110" style={{ width: '100%', maxWidth: 280 }}>
+                {outletRelationships.map((outlet, i) => {
+                  const y = 10 + i * 20;
+                  const barW = (outlet.affinity / 100) * 170;
+                  const relColor = outlet.relationship === 'friendly' ? '#22c55e'
+                    : outlet.relationship === 'neutral' ? '#3b82f6'
+                    : outlet.relationship === 'cool' ? '#f59e0b'
+                    : '#ef4444';
+                  return (
+                    <g key={outlet.outlet}>
+                      <text x="0" y={y + 10} fill="#8b949e" fontSize="8" dominantBaseline="central">
+                        {outlet.icon} {outlet.outlet}
+                      </text>
+                      <rect x="82" y={y + 2} width="170" height="14" rx={3} fill="#21262d" />
+                      <rect x="82" y={y + 2} width={barW} height="14" rx={3} fill={relColor} fillOpacity={0.7} />
+                      <text x="258" y={y + 10} textAnchor="end" fill="#c9d1d9" fontSize="8" fontWeight="bold" dominantBaseline="central">
+                        {outlet.affinity}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
             {/* Total Effects */}
             <div className="grid grid-cols-3 gap-2">
               <EffectCard label="Reputation" value={totals.reputation} icon={<Star className="w-3.5 h-3.5" />} />
@@ -1028,13 +1294,82 @@ export default function MediaInterview() {
               <EffectCard label="Risk" value={totals.risk} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
             </div>
 
+
+            {/* SVG 6: Press Conference Quality Ring */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2 flex flex-col items-center">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Conference Quality</span>
+              <svg viewBox="0 0 120 120" style={{ width: 100, height: 100 }}>
+                {(() => {
+                  const gradeMap: Record<string, number> = { A: 92, B: 78, C: 60, D: 40, F: 18 };
+                  const pct = gradeMap[grade] ?? 50;
+                  const r = 45;
+                  const circ = 2 * Math.PI * r;
+                  const offset = circ - (pct / 100) * circ;
+                  const ringColor = pct >= 80 ? '#22c55e' : pct >= 60 ? '#3b82f6' : pct >= 40 ? '#f59e0b' : '#ef4444';
+                  return (
+                    <g>
+                      <circle cx="60" cy="60" r={r} fill="none" stroke="#21262d" strokeWidth="8" />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r={r}
+                        fill="none"
+                        stroke={ringColor}
+                        strokeWidth="8"
+                        strokeDasharray={circ}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        fillOpacity={0}
+                      />
+                      <text x="60" y="55" textAnchor="middle" dominantBaseline="central" fill="#c9d1d9" fontSize="22" fontWeight="bold">
+                        {pct}
+                      </text>
+                      <text x="60" y="75" textAnchor="middle" fill="#8b949e" fontSize="9">
+                        / 100
+                      </text>
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+
             {/* Generated Headline */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <Newspaper className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-semibold text-[#c9d1d9]">Tomorrow&apos;s Headline</span>
+                <span className="text-xs font-semibold text-[#c9d1d9]">Tomorrow{"'"}s Headline</span>
               </div>
               <p className="text-sm font-bold text-[#c9d1d9] leading-relaxed">{headline}</p>
+            </div>
+
+
+            {/* SVG 7: Headline Sentiment Analysis */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Headline Sentiment Breakdown</span>
+              <svg viewBox="0 0 260 50" style={{ width: '100%', maxWidth: 280 }}>
+                {(() => {
+                  const posCount = answers.filter(a => a.sentiment === 'positive').length;
+                  const neuCount = answers.filter(a => a.sentiment === 'neutral').length;
+                  const negCount = answers.filter(a => a.sentiment === 'negative').length;
+                  const total = answers.length || 1;
+                  const posW = (posCount / total) * 240;
+                  const neuW = (neuCount / total) * 240;
+                  const negW = (negCount / total) * 240;
+                  return (
+                    <g>
+                      <rect x="10" y="10" width={posW} height="16" rx={4} fill="#22c55e" fillOpacity={0.7} />
+                      <rect x={10 + posW} y="10" width={neuW} height="16" rx={0} fill="#6b7280" fillOpacity={0.7} />
+                      <rect x={10 + posW + neuW} y="10" width={negW} height="16" rx={4} fill="#ef4444" fillOpacity={0.7} />
+                      {posCount > 0 && <text x={10 + posW / 2} y="19" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" dominantBaseline="central">{Math.round((posCount/total)*100)}%</text>}
+                      {neuCount > 0 && <text x={10 + posW + neuW / 2} y="19" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" dominantBaseline="central">{Math.round((neuCount/total)*100)}%</text>}
+                      {negCount > 0 && <text x={10 + posW + neuW + negW / 2} y="19" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" dominantBaseline="central">{Math.round((negCount/total)*100)}%</text>}
+                      <text x="10" y="42" fill="#22c55e" fontSize="7" dominantBaseline="central">Positive ({posCount})</text>
+                      <text x="95" y="42" fill="#6b7280" fontSize="7" dominantBaseline="central">Neutral ({neuCount})</text>
+                      <text x="175" y="42" fill="#ef4444" fontSize="7" dominantBaseline="central">Negative ({negCount})</text>
+                    </g>
+                  );
+                })()}
+              </svg>
             </div>
 
             {/* Social Media Reaction Montage */}
@@ -1061,6 +1396,42 @@ export default function MediaInterview() {
                     <p className="text-xs text-[#8b949e] leading-relaxed">{tweet.content}</p>
                   </motion.div>
                 ))}
+              </div>
+            </div>
+
+
+            {/* SVG 8: Fan Reaction Meter */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Overall Fan Reaction</span>
+              <div className="flex items-end justify-center gap-4">
+                <svg viewBox="0 0 160 120" style={{ width: '100%', maxWidth: 200 }}>
+                  {(() => {
+                    const repTotal = answers.reduce((s, a) => s + a.effects.reputation, 0);
+                    const morTotal = answers.reduce((s, a) => s + a.effects.morale, 0);
+                    const fanScore = Math.max(-100, Math.min(100, repTotal * 4 + morTotal * 2));
+                    const clamped = (fanScore + 100) / 200;
+                    const meterH = clamped * 90;
+                    const meterColor = fanScore >= 30 ? '#22c55e' : fanScore >= 0 ? '#3b82f6' : fanScore >= -30 ? '#f59e0b' : '#ef4444';
+                    const emojiLabel = fanScore >= 50 ? 'LOVED' : fanScore >= 20 ? 'HAPPY' : fanScore >= 0 ? 'OK' : fanScore >= -20 ? 'WORRIED' : 'ANGRY';
+                    return (
+                      <g>
+                        <rect x="30" y="5" width="100" height="100" rx={8} fill="#21262d" />
+                        <rect x="34" y={9 + (100 - meterH)} width="92" height={meterH} rx={6} fill={meterColor} fillOpacity={0.3} />
+                        <rect x="34" y={9 + (100 - meterH)} width="92" height="6" rx={3} fill={meterColor} />
+                        <line x1="30" y1="55" x2="130" y2="55" stroke="#30363d" strokeWidth="1" strokeDasharray="2 2" />
+                        <text x="80" y={9 + (100 - meterH) - 4} textAnchor="middle" fill={meterColor} fontSize="14" fontWeight="bold">
+                          {fanScore > 0 ? '+' : ''}{fanScore}
+                        </text>
+                        <text x="80" y="112" textAnchor="middle" fill="#8b949e" fontSize="8">
+                          {emojiLabel}
+                        </text>
+                        <text x="22" y="12" textAnchor="end" fill="#22c55e" fontSize="6">+100</text>
+                        <text x="22" y="58" textAnchor="end" fill="#6b7280" fontSize="6">  0</text>
+                        <text x="22" y="108" textAnchor="end" fill="#ef4444" fontSize="6">-100</text>
+                      </g>
+                    );
+                  })()}
+                </svg>
               </div>
             </div>
 
@@ -1091,6 +1462,82 @@ export default function MediaInterview() {
               </div>
             </div>
 
+
+            {/* SVG 9: Interview History Timeline */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Recent Interview History</span>
+              <svg viewBox="0 0 260 90" style={{ width: '100%', maxWidth: 280 }}>
+                {(() => {
+                  const historyData: { week: string; score: number; color: string }[] = [];
+                  const baseRng = seededRng(seed + 555);
+                  for (let idx = 0; idx < 5; idx++) {
+                    const w = Math.max(1, (gameState?.currentWeek ?? 10) - (4 - idx));
+                    const sc = Math.floor(baseRng() * 100);
+                    const col = sc >= 70 ? '#22c55e' : sc >= 45 ? '#3b82f6' : sc >= 25 ? '#f59e0b' : '#ef4444';
+                    historyData.push({ week: `W${w}`, score: sc, color: col });
+                  }
+                  return (
+                    <g>
+                      <line x1="30" y1="45" x2="240" y2="45" stroke="#30363d" strokeWidth="2" />
+                      {historyData.map((evt, i) => {
+                        const x = 40 + i * 50;
+                        const isCurrent = i === historyData.length - 1;
+                        return (
+                          <g key={`hist-${i}`}>
+                            <circle cx={x} cy="45" r={isCurrent ? 7 : 5} fill={evt.color} fillOpacity={isCurrent ? 1 : 0.6} stroke={isCurrent ? '#c9d1d9' : 'none'} strokeWidth="2" />
+                            <text x={x} y="30" textAnchor="middle" fill="#8b949e" fontSize="7">{evt.week}</text>
+                            <text x={x} y="68" textAnchor="middle" fill="#c9d1d9" fontSize="8" fontWeight="bold">{evt.score}</text>
+                            {i < historyData.length - 1 && (
+                              <line x1={x + 8} y1="45" x2={x + 42} y2="45" stroke="#30363d" strokeWidth="2" />
+                            )}
+                          </g>
+                        );
+                      })}
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+
+
+            {/* SVG 10: Answer Quality Scatter */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Answer Quality Map</span>
+              <svg viewBox="0 0 200 140" style={{ width: '100%', maxWidth: 280 }}>
+                {(() => {
+                  const maxRep = Math.max(...answers.map(a => a.effects.reputation), 5);
+                  const maxMor = Math.max(...answers.map(a => a.effects.morale), 5);
+                  const plotW = 150;
+                  const plotH = 100;
+                  const ox = 35;
+                  const oy = 10;
+                  return (
+                    <g>
+                      <line x1={ox} y1={oy} x2={ox} y2={oy + plotH} stroke="#30363d" strokeWidth="1" />
+                      <line x1={ox} y1={oy + plotH} x2={ox + plotW} y2={oy + plotH} stroke="#30363d" strokeWidth="1" />
+                      <line x1={ox} y1={oy + plotH / 2} x2={ox + plotW} y2={oy + plotH / 2} stroke="#21262d" strokeWidth="0.5" strokeDasharray="3 3" />
+                      <line x1={ox + plotW / 2} y1={oy} x2={ox + plotW / 2} y2={oy + plotH} stroke="#21262d" strokeWidth="0.5" strokeDasharray="3 3" />
+                      <text x={ox + plotW / 2} y={oy + plotH + 18} textAnchor="middle" fill="#8b949e" fontSize="7">Reputation</text>
+                      <text x="8" y={oy + plotH / 2} textAnchor="middle" fill="#8b949e" fontSize="7" dominantBaseline="central">Morale</text>
+                      {answers.map((a, i) => {
+                        const px = ox + (Math.max(0, a.effects.reputation) / maxRep) * plotW;
+                        const py = oy + plotH - (Math.max(0, a.effects.morale) / maxMor) * plotH;
+                        const dotColor = a.tone === 'confident' ? '#22c55e' : a.tone === 'neutral' ? '#3b82f6' : '#f59e0b';
+                        return (
+                          <circle key={`scatter-${i}`} cx={px} cy={py} r="5" fill={dotColor} fillOpacity={0.8} stroke="#161b22" strokeWidth="1.5" />
+                        );
+                      })}
+                    </g>
+                  );
+                })()}
+              </svg>
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-emerald-500" /><span className="text-[9px] text-[#8b949e]">Confident</span></div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-sky-500" /><span className="text-[9px] text-[#8b949e]">Neutral</span></div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-amber-500" /><span className="text-[9px] text-[#8b949e]">Cautious</span></div>
+              </div>
+            </div>
+
             {/* Updated Media Relationships */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2">
@@ -1102,6 +1549,72 @@ export default function MediaInterview() {
                   <OutletBar key={o.outlet} outlet={o} />
                 ))}
               </div>
+            </div>
+
+
+            {/* SVG 11: Context Trend Chart */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-[#8b949e] font-medium uppercase tracking-wider">Performance by Context</span>
+              <svg viewBox="0 0 260 120" style={{ width: '100%', maxWidth: 280 }}>
+                {(() => {
+                  const trendRng = seededRng(seed + 333);
+                  const contexts: { label: string; color: string; values: number[] }[] = [
+                    { label: 'Pre-Match', color: '#22c55e', values: [] },
+                    { label: 'Post-Match', color: '#3b82f6', values: [] },
+                    { label: 'Transfer', color: '#f59e0b', values: [] },
+                  ];
+                  for (let s = 0; s < 5; s++) {
+                    contexts[0].values.push(40 + Math.floor(trendRng() * 40));
+                    contexts[1].values.push(30 + Math.floor(trendRng() * 50));
+                    contexts[2].values.push(25 + Math.floor(trendRng() * 45));
+                  }
+                  const chartX = 30;
+                  const chartY = 5;
+                  const chartW = 210;
+                  const chartH = 85;
+                  const xStep = chartW / 4;
+                  return (
+                    <g>
+                      <line x1={chartX} y1={chartY} x2={chartX} y2={chartY + chartH} stroke="#30363d" strokeWidth="0.5" />
+                      <line x1={chartX} y1={chartY + chartH} x2={chartX + chartW} y2={chartY + chartH} stroke="#30363d" strokeWidth="0.5" />
+                      {[0, 1, 2, 3, 4].map((s) => (
+                        <text key={`xtick-${s}`} x={chartX + s * xStep} y={chartY + chartH + 14} textAnchor="middle" fill="#8b949e" fontSize="7">
+                          W{s + 1}
+                        </text>
+                      ))}
+                      {[0, 25, 50, 75].map((v) => {
+                        const yy = chartY + chartH - (v / 100) * chartH;
+                        return (
+                          <g key={`yline-${v}`}>
+                            <line x1={chartX} y1={yy} x2={chartX + chartW} y2={yy} stroke="#21262d" strokeWidth="0.5" strokeDasharray="2 3" />
+                            <text x={chartX - 4} y={yy} textAnchor="end" fill="#484f58" fontSize="6" dominantBaseline="central">{v}</text>
+                          </g>
+                        );
+                      })}
+                      {contexts.map((ctx) => {
+                        const points = ctx.values.map((v, i) =>
+                          `${chartX + i * xStep},${chartY + chartH - (v / 100) * chartH}`
+                        ).join(' ');
+                        return (
+                          <polyline
+                            key={ctx.label}
+                            points={points}
+                            fill="none"
+                            stroke={ctx.color}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            fillOpacity={0}
+                          />
+                        );
+                      })}
+                      <text x="95" y={chartY + chartH + 26} textAnchor="start" fill="#22c55e" fontSize="7">Pre</text>
+                      <text x="120" y={chartY + chartH + 26} textAnchor="start" fill="#3b82f6" fontSize="7">Post</text>
+                      <text x="148" y={chartY + chartH + 26} textAnchor="start" fill="#f59e0b" fontSize="7">Transfer</text>
+                    </g>
+                  );
+                })()}
+              </svg>
             </div>
 
             {/* Done Button */}
