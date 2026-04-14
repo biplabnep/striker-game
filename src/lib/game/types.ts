@@ -676,7 +676,9 @@ export type GameScreen =
   | 'player_bio_generator'
   | 'set_piece_trainer'
   | 'player_psychology'
-  | 'social_media_hub';
+  | 'social_media_hub'
+  | 'virtual_trophy_tour'
+  | 'coach_career_path';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

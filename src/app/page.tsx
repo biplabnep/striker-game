@@ -112,6 +112,8 @@ import PlayerBioGenerator from '@/components/game/PlayerBioGenerator';
 import SetPieceTrainer from '@/components/game/SetPieceTrainer';
 import PlayerPsychology from '@/components/game/PlayerPsychology';
 import SocialMediaHub from '@/components/game/SocialMediaHub';
+import VirtualTrophyTour from '@/components/game/VirtualTrophyTour';
+import CoachCareer from '@/components/game/CoachCareer';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -219,6 +221,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   set_piece_trainer: SetPieceTrainer,
   player_psychology: PlayerPsychology,
   social_media_hub: SocialMediaHub,
+  virtual_trophy_tour: VirtualTrophyTour,
+  coach_career_path: CoachCareer,
 };
 
 const gameScreens: GameScreen[] = [
@@ -294,6 +298,8 @@ const gameScreens: GameScreen[] = [
   'set_piece_trainer',
   'player_psychology',
   'social_media_hub',
+  'virtual_trophy_tour',
+  'coach_career_path',
 ];
 
 export default function Home() {

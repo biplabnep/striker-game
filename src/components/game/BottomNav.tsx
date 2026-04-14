@@ -99,6 +99,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'player_agent_contract', icon: <FileSignature className="h-5 w-5" />, label: 'Agent Deal' },
       { screen: 'fan_chants', icon: <Music className="h-5 w-5" />, label: 'Fan Chants' },
       { screen: 'virtual_trophy_room', icon: <Warehouse className="h-5 w-5" />, label: 'Trophy Room' },
+      { screen: 'virtual_trophy_tour', icon: <Gem className="h-5 w-5" />, label: 'Trophy Tour' },
+      { screen: 'coach_career_path', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach Path' },
     ],
   },
   {

@@ -425,6 +425,80 @@ const SPEED_INTERVALS: Record<SimSpeed, number> = {
 };
 
 // -----------------------------------------------------------
+// SVG Helper Functions (avoid .map().join() in JSX attributes)
+// -----------------------------------------------------------
+function svgRadarPath(values: number[], cx: number, cy: number, maxR: number): string {
+  const n = values.length;
+  const step = (2 * Math.PI) / n;
+  const start = -Math.PI / 2;
+  const coords = values.map((v, i) => {
+    const a = start + i * step;
+    const r = (v / 100) * maxR;
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  });
+  return coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ') + ' Z';
+}
+
+function svgHexGridPaths(cx: number, cy: number, maxR: number, levels: number, sides: number): string[] {
+  const step = (2 * Math.PI) / sides;
+  const start = -Math.PI / 2;
+  const paths: string[] = [];
+  for (let l = 1; l <= levels; l++) {
+    const r = (l / levels) * maxR;
+    const pts = Array.from({ length: sides }, (_, i) => {
+      const a = start + i * step;
+      return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+    });
+    paths.push(pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') + ' Z');
+  }
+  for (let i = 0; i < sides; i++) {
+    const a = start + i * step;
+    paths.push(`M ${cx.toFixed(1)} ${cy.toFixed(1)} L ${(cx + maxR * Math.cos(a)).toFixed(1)} ${(cy + maxR * Math.sin(a)).toFixed(1)}`);
+  }
+  return paths;
+}
+
+function svgGaugeArc(cx: number, cy: number, radius: number, pct: number): string {
+  const startA = Math.PI;
+  const endA = Math.PI - pct * Math.PI;
+  const x1 = cx + radius * Math.cos(startA);
+  const y1 = cy + radius * Math.sin(startA);
+  const x2 = cx + radius * Math.cos(endA);
+  const y2 = cy + radius * Math.sin(endA);
+  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${radius} ${radius} 0 ${pct > 0.5 ? 1 : 0} 0 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+
+function svgPieSlice(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+  const x2 = cx + r * Math.cos(endAngle);
+  const y2 = cy + r * Math.sin(endAngle);
+  const large = (endAngle - startAngle) > Math.PI ? 1 : 0;
+  return `M ${cx} ${cy} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z`;
+}
+
+function svgMomentumLine(data: number[], baseY: number, startX: number, stepX: number, scaleY: number): string {
+  return data.map((v, i) => {
+    const x = startX + i * stepX;
+    const y = baseY - v * scaleY;
+    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(' ');
+}
+
+function svgMomentumArea(data: number[], baseY: number, startX: number, stepX: number, scaleY: number, above: boolean): string {
+  if (data.length === 0) return '';
+  const pts = data.map((v, i) => {
+    const x = startX + i * stepX;
+    const val = above ? Math.max(0, v) : Math.min(0, v);
+    const y = baseY - val * scaleY;
+    return { x, y };
+  });
+  const lastX = pts[pts.length - 1].x;
+  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+    + ` L ${lastX.toFixed(1)} ${baseY} L ${startX.toFixed(1)} ${baseY} Z`;
+}
+
+// -----------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------
 export default function MatchDay() {
@@ -670,6 +744,108 @@ export default function MatchDay() {
   const cycleSpeed = () => {
     setSimSpeed(prev => (prev === 1 ? 2 : prev === 2 ? 4 : 1) as SimSpeed);
   };
+
+  // Pre-match analytics data (for Match Preview Analytics section)
+  const preMatchAnalytics = useMemo(() => {
+    if (!gameState) return null;
+    const gs = gameState;
+    const club = gs.currentClub;
+    const fixture = gs.upcomingFixtures.find(f => !f.played && (f.homeClubId === club.id || f.awayClubId === club.id));
+    if (!fixture) return null;
+    const opp = getClubById(fixture.homeClubId === club.id ? fixture.awayClubId : fixture.homeClubId);
+    if (!opp) return null;
+    const home = fixture.homeClubId === club.id;
+
+    // 1. H2H record (real or synthetic)
+    const h2hMatches = gs.recentResults.filter(r =>
+      (r.homeClub.id === club.id || r.awayClub.id === club.id) &&
+      (r.homeClub.id === opp.id || r.awayClub.id === opp.id)
+    );
+    const h2hW = h2hMatches.filter(r => {
+      const mg = r.homeClub.id === club.id ? r.homeScore : r.awayScore;
+      const tg = r.homeClub.id === club.id ? r.awayScore : r.homeScore;
+      return mg > tg;
+    }).length;
+    const h2hD = h2hMatches.filter(r => r.homeScore === r.awayScore).length;
+    const h2hL = h2hMatches.length - h2hW - h2hD;
+    const qd = club.squadQuality - opp.squadQuality;
+    const h2h = h2hMatches.length > 0
+      ? { wins: h2hW, draws: h2hD, losses: h2hL, total: h2hMatches.length }
+      : { wins: Math.max(0, Math.round(3 + qd * 0.15)), draws: 2, losses: Math.max(0, Math.round(3 - qd * 0.15)), total: 0 };
+
+    // 2. Win probability
+    const wp = calculateWinProbability(club.squadQuality, opp.squadQuality, home);
+
+    // 3. Radar comparison (synthetic star player stats)
+    const hs = [0, 7, 11, 13, 17, 19].map(s => 60 + Math.round(seededRandom(club.squadQuality * s) * 35));
+    hs[5] = Math.min(99, club.squadQuality);
+    const as_ = [0, 7, 11, 13, 17, 19].map(s => 60 + Math.round(seededRandom(opp.squadQuality * s + 1) * 35));
+    as_[5] = Math.min(99, opp.squadQuality);
+    const radar = {
+      home: { pace: hs[0], shooting: hs[1], passing: hs[2], defending: hs[3], physical: hs[4], overall: hs[5] },
+      away: { pace: as_[0], shooting: as_[1], passing: as_[2], defending: as_[3], physical: as_[4], overall: as_[5] },
+    };
+
+    // 4. Recent form (5 results, padded with synthetic if needed)
+    const getForm = (clubId: string): string[] => {
+      const res = gs.recentResults.filter(r => r.homeClub.id === clubId || r.awayClub.id === clubId).slice(0, 5);
+      const f = res.map(r => {
+        const mg = r.homeClub.id === clubId ? r.homeScore : r.awayScore;
+        const tg = r.homeClub.id === clubId ? r.awayScore : r.homeScore;
+        return mg > tg ? 'W' : mg < tg ? 'L' : 'D';
+      });
+      while (f.length < 5) f.push(seededRandom(clubId.length * 100 + clubId.charCodeAt(0) * 10 + f.length) > 0.5 ? 'W' : 'D');
+      return f;
+    };
+
+    // 5. Match importance (0-100 based on week and reputation gap)
+    const imp = Math.min(100, Math.max(20, Math.round(30 + gs.currentWeek * 1.2 + Math.abs(club.reputation - opp.reputation) * 0.4)));
+
+    // 6. Expected goals
+    const hXG = Math.max(0.3, parseFloat((1.3 + qd * 0.025 + (home ? 0.3 : 0)).toFixed(1)));
+    const aXG = Math.max(0.3, parseFloat((1.3 - qd * 0.025 + (home ? 0 : 0.3)).toFixed(1)));
+
+    return { h2h, winProb: wp, radar, form: { home: getForm(club.id), away: getForm(opp.id) }, importance: imp, xG: { home: hXG, away: aXG }, clubName: club.shortName || club.name, oppName: opp.shortName || opp.name };
+  }, [gameState]);
+
+  // Post-match analysis data
+  const postMatchAnalysis = useMemo(() => {
+    if (!lastResult || !matchStats) return null;
+    const seed = lastResult.week * 100 + lastResult.homeScore * 10 + lastResult.awayScore;
+
+    // 10. Rating distribution (synthetic)
+    const ratings = Array.from({ length: 18 }, (_, i) => 5.5 + seededRandom(seed + i * 3) * 4);
+    const homeWon = lastResult.homeScore > lastResult.awayScore;
+    ratings.forEach((r, i) => {
+      if (homeWon && seededRandom(seed + i * 7 + 50) > 0.7) ratings[i] += 1;
+      if (!homeWon && seededRandom(seed + i * 7 + 50) > 0.7) ratings[i] -= 0.5;
+    });
+    const bins = [0, 0, 0, 0];
+    ratings.forEach(r => { if (r < 7) bins[0]++; else if (r < 8) bins[1]++; else if (r < 9) bins[2]++; else bins[3]++; });
+
+    // 11. Passing network positions (synthetic)
+    const homeNet = {
+      positions: [{ x: 40, y: 100 }, { x: 100, y: 35 }, { x: 100, y: 165 }, { x: 170, y: 55 }, { x: 170, y: 145 }, { x: 230, y: 100 }],
+      connections: [[0, 1], [0, 2], [0, 5], [1, 3], [2, 4], [3, 5], [4, 5], [1, 4], [3, 4]],
+    };
+    const awayNet = {
+      positions: [{ x: 270, y: 100 }, { x: 330, y: 35 }, { x: 330, y: 165 }, { x: 400, y: 55 }, { x: 400, y: 145 }, { x: 460, y: 100 }],
+      connections: [[0, 1], [0, 2], [0, 5], [1, 3], [2, 4], [3, 5], [4, 5], [1, 4], [3, 4]],
+    };
+
+    return {
+      possession: matchStats.homePossession,
+      shotData: {
+        homeShots: matchStats.homeShots, awayShots: matchStats.awayShots,
+        homeOnTarget: matchStats.homeShotsOnTarget, awayOnTarget: matchStats.awayShotsOnTarget,
+        homeCorners: matchStats.homeCorners, awayCorners: matchStats.awayCorners,
+        homeKeyPasses: Math.max(2, Math.round(matchStats.homeShotsOnTarget * 1.4 + seededRandom(seed + 200) * 3)),
+        awayKeyPasses: Math.max(2, Math.round(matchStats.awayShotsOnTarget * 1.4 + seededRandom(seed + 201) * 3)),
+      },
+      ratingDist: bins,
+      homeNet, awayNet,
+    };
+  }, [lastResult, matchStats]);
 
   if (!gameState) return null;
 
@@ -1607,6 +1783,225 @@ export default function MatchDay() {
           </div>
         </motion.div>
 
+        {/* Match Analysis - 5 SVG Visualizations */}
+        {postMatchAnalysis && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.55, duration: 0.3 }}
+          className="space-y-3"
+        >
+          <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
+            <div className="px-4 pt-3 pb-2 border-b border-[#30363d]">
+              <span className="text-[10px] text-[#8b949e] font-semibold flex items-center gap-1.5">
+                <BarChart3 className="w-3 h-3" /> Match Analysis
+              </span>
+            </div>
+            <div className="p-4 space-y-4">
+
+              {/* Row 1: Possession Pie + Shot Accuracy Comparison */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* 7. SVG Possession & Territory Pie */}
+                <Card className="bg-[#21262d] border-[#30363d]">
+                  <CardContent className="p-3">
+                    <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Possession</p>
+                    <svg viewBox="0 0 160 100" className="w-full">
+                      {(() => {
+                        const homePct = postMatchAnalysis.possession;
+                        const awayPct = 100 - homePct;
+                        const homeAngle = (homePct / 100) * 2 * Math.PI;
+                        const awayAngle = (awayPct / 100) * 2 * Math.PI;
+                        const startAngle = -Math.PI / 2;
+                        const homeSlice = svgPieSlice(80, 50, 40, startAngle, startAngle + homeAngle);
+                        const awaySlice = svgPieSlice(80, 50, 40, startAngle + homeAngle, startAngle + homeAngle + awayAngle);
+                        const midHome = startAngle + homeAngle / 2;
+                        const midAway = startAngle + homeAngle + awayAngle / 2;
+                        const lxH = 80 + 26 * Math.cos(midHome);
+                        const lyH = 50 + 26 * Math.sin(midHome);
+                        const lxA = 80 + 26 * Math.cos(midAway);
+                        const lyA = 50 + 26 * Math.sin(midAway);
+                        return (
+                          <>
+                            <path d={homeSlice} fill="#10b981" fillOpacity="0.35" stroke="#0d1117" strokeWidth="2" />
+                            <path d={awaySlice} fill="#ef4444" fillOpacity="0.25" stroke="#0d1117" strokeWidth="2" />
+                            <circle cx="80" cy="50" r="16" fill="#21262d" />
+                            <text x={lxH} y={lyH + 3} fill="#c9d1d9" fontSize="8" fontWeight="bold" textAnchor="middle">{homePct}%</text>
+                            <text x={lxA} y={lyA + 3} fill="#c9d1d9" fontSize="8" fontWeight="bold" textAnchor="middle">{awayPct}%</text>
+                            <text x="20" y="88" fill="#10b981" fontSize="7">HOME</text>
+                            <text x="110" y="88" fill="#ef4444" fontSize="7">AWAY</text>
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+
+                {/* 8. SVG Shot Accuracy Comparison */}
+                <Card className="bg-[#21262d] border-[#30363d]">
+                  <CardContent className="p-3">
+                    <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Shots & Chances</p>
+                    <svg viewBox="0 0 160 100" className="w-full">
+                      {(() => {
+                        const sd = postMatchAnalysis.shotData;
+                        const maxVal = Math.max(sd.homeShots, sd.awayShots, sd.homeOnTarget, sd.awayOnTarget, sd.homeKeyPasses, sd.awayKeyPasses, sd.homeCorners, sd.awayCorners, 1);
+                        const groups = [
+                          { label: 'Shots', h: sd.homeShots, a: sd.awayShots },
+                          { label: 'On Tgt', h: sd.homeOnTarget, a: sd.awayOnTarget },
+                          { label: 'K. Pass', h: sd.homeKeyPasses, a: sd.awayKeyPasses },
+                          { label: 'Corners', h: sd.homeCorners, a: sd.awayCorners },
+                        ];
+                        const barMaxW = 32;
+                        const barH = 14;
+                        return (
+                          <>
+                            {groups.map((g, i) => {
+                              const hW = Math.max(2, (g.h / maxVal) * barMaxW);
+                              const aW = Math.max(2, (g.a / maxVal) * barMaxW);
+                              const y = 14 + i * 22;
+                              return (
+                                <g key={g.label}>
+                                  <text x="2" y={y + 10} fill="#8b949e" fontSize="6">{g.label}</text>
+                                  <rect x="36" y={y} width={hW} height={barH} fill="#10b981" fillOpacity="0.3" rx="2" />
+                                  <text x={38 + hW} y={y + 10} fill="#10b981" fontSize="6" fontWeight="bold">{g.h}</text>
+                                  <rect x="88" y={y} width={aW} height={barH} fill="#ef4444" fillOpacity="0.3" rx="2" />
+                                  <text x={90 + aW} y={y + 10} fill="#ef4444" fontSize="6" fontWeight="bold">{g.a}</text>
+                                </g>
+                              );
+                            })}
+                            <text x="36" y="8" fill="#10b981" fontSize="5">H</text>
+                            <text x="88" y="8" fill="#ef4444" fontSize="5">A</text>
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* 9. SVG Momentum Swing Chart */}
+              <Card className="bg-[#21262d] border-[#30363d]">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider">Momentum Swing</p>
+                    <div className="flex items-center gap-2 text-[7px]">
+                      <span className="flex items-center gap-1 text-emerald-400"><span className="w-2 h-2 rounded-sm bg-emerald-400 inline-block" /> Home</span>
+                      <span className="flex items-center gap-1 text-red-400"><span className="w-2 h-2 rounded-sm bg-red-400 inline-block" /> Away</span>
+                    </div>
+                  </div>
+                  <svg viewBox="0 0 400 110" className="w-full">
+                    {(() => {
+                      const data = momentumData;
+                      if (data.length === 0) return null;
+                      const baseY = 55;
+                      const startX = 10;
+                      const stepX = (380) / Math.max(data.length - 1, 1);
+                      const scaleY = 0.5;
+                      const abovePath = svgMomentumArea(data, baseY, startX, stepX, scaleY, true);
+                      const belowPath = svgMomentumArea(data, baseY, startX, stepX, scaleY, false);
+                      const linePath = svgMomentumLine(data, baseY, startX, stepX, scaleY);
+                      return (
+                        <>
+                          <rect x="5" y="5" width="390" height="100" fill="#0d1117" rx="4" />
+                          <line x1="10" y1={baseY} x2="390" y2={baseY} stroke="#30363d" strokeWidth="0.5" />
+                          <line x1="200" y1="8" x2="200" y2="102" stroke="#30363d" strokeWidth="0.5" strokeDasharray="3,3" />
+                          <path d={abovePath} fill="#10b981" fillOpacity="0.15" />
+                          <path d={belowPath} fill="#ef4444" fillOpacity="0.15" />
+                          <path d={linePath} fill="none" stroke="#10b981" strokeWidth="1.2" strokeLinejoin="round" />
+                          <text x="12" y="106" fill="#484f58" fontSize="6" fontFamily="monospace">0&apos;</text>
+                          <text x="192" y="106" fill="#484f58" fontSize="6" fontFamily="monospace">45&apos;</text>
+                          <text x="375" y="106" fill="#484f58" fontSize="6" fontFamily="monospace">90&apos;</text>
+                          <text x="395" y="12" fill="#10b981" fontSize="5" fontWeight="bold">H</text>
+                          <text x="395" y="100" fill="#ef4444" fontSize="5" fontWeight="bold">A</text>
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </CardContent>
+              </Card>
+
+              {/* Row 2: Rating Distribution + Passing Network */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* 10. SVG Match Rating Distribution */}
+                <Card className="bg-[#21262d] border-[#30363d]">
+                  <CardContent className="p-3">
+                    <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Rating Distribution</p>
+                    <svg viewBox="0 0 160 90" className="w-full">
+                      {(() => {
+                        const bins = postMatchAnalysis.ratingDist;
+                        const maxVal = Math.max(...bins, 1);
+                        const labels = ['6-7', '7-8', '8-9', '9+'];
+                        const colors = ['#f59e0b', '#38bdf8', '#10b981', '#34d399'];
+                        const barMaxH = 50;
+                        const barW = 24;
+                        return (
+                          <>
+                            {bins.map((val, i) => {
+                              const h = Math.max(2, (val / maxVal) * barMaxH);
+                              const x = 12 + i * 36;
+                              return (
+                                <g key={labels[i]}>
+                                  <rect x={x} y={65 - h} width={barW} height={h} fill={colors[i]} fillOpacity="0.25" rx="2" />
+                                  <rect x={x} y={65 - h} width={barW} height={h} fill="none" stroke={colors[i]} strokeWidth="0.6" rx="2" />
+                                  <text x={x + barW / 2} y={62 - h} fill={colors[i]} fontSize="7" fontWeight="bold" textAnchor="middle">{val}</text>
+                                  <text x={x + barW / 2} y="80" fill="#8b949e" fontSize="6" textAnchor="middle">{labels[i]}</text>
+                                </g>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+
+                {/* 11. SVG Passing Network Mini Diagram */}
+                <Card className="bg-[#21262d] border-[#30363d]">
+                  <CardContent className="p-3">
+                    <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Passing Network</p>
+                    <svg viewBox="0 0 160 100" className="w-full">
+                      {(() => {
+                        const hn = postMatchAnalysis.homeNet;
+                        const an = postMatchAnalysis.awayNet;
+                        const scaleX = 160 / 500;
+                        const scaleY = 100 / 200;
+                        return (
+                          <>
+                            <rect x="1" y="1" width="158" height="98" fill="#0d1117" rx="3" />
+                            <line x1="80" y1="2" x2="80" y2="98" stroke="#30363d" strokeWidth="0.5" strokeDasharray="2,2" />
+                            {hn.connections.map((c, i) => {
+                              const x1 = hn.positions[c[0]].x * scaleX;
+                              const y1 = hn.positions[c[0]].y * scaleY;
+                              const x2 = hn.positions[c[1]].x * scaleX;
+                              const y2 = hn.positions[c[1]].y * scaleY;
+                              return <line key={`hc-${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#10b981" strokeWidth="0.5" strokeOpacity="0.4" />;
+                            })}
+                            {an.connections.map((c, i) => {
+                              const x1 = an.positions[c[0]].x * scaleX;
+                              const y1 = an.positions[c[0]].y * scaleY;
+                              const x2 = an.positions[c[1]].x * scaleX;
+                              const y2 = an.positions[c[1]].y * scaleY;
+                              return <line key={`ac-${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#38bdf8" strokeWidth="0.5" strokeOpacity="0.4" />;
+                            })}
+                            {hn.positions.map((p, i) => (
+                              <circle key={`hp-${i}`} cx={p.x * scaleX} cy={p.y * scaleY} r="3.5" fill="#10b981" fillOpacity="0.7" stroke="#0d1117" strokeWidth="1" />
+                            ))}
+                            {an.positions.map((p, i) => (
+                              <circle key={`ap-${i}`} cx={p.x * scaleX} cy={p.y * scaleY} r="3.5" fill="#38bdf8" fillOpacity="0.7" stroke="#0d1117" strokeWidth="1" />
+                            ))}
+                            <text x="40" y="95" fill="#10b981" fontSize="5" fontWeight="bold" textAnchor="middle">HOME</text>
+                            <text x="120" y="95" fill="#38bdf8" fontSize="5" fontWeight="bold" textAnchor="middle">AWAY</text>
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        )}
+
         {/* Post-Match Actions - Horizontal Row */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -2265,6 +2660,232 @@ export default function MatchDay() {
 
           {/* Weather Conditions */}
           <WeatherSystem season={gameState.currentSeason} week={currentWeek} />
+
+          {/* Match Preview Analytics - 6 SVG Visualizations */}
+          {preMatchAnalytics && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.36, duration: 0.3 }}
+            className="space-y-3"
+          >
+            <div className="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
+              <div className="px-4 pt-3 pb-2 border-b border-[#30363d]">
+                <span className="text-[10px] text-[#8b949e] font-semibold flex items-center gap-1.5">
+                  <BarChart3 className="w-3 h-3" /> Match Preview Analytics
+                </span>
+              </div>
+              <div className="p-4 space-y-4">
+
+                {/* Row 1: H2H Bars + Win Probability Gauges */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* 1. SVG Head-to-Head Record Bars */}
+                  <Card className="bg-[#21262d] border-[#30363d]">
+                    <CardContent className="p-3">
+                      <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">H2H Record</p>
+                      <svg viewBox="0 0 160 90" className="w-full">
+                        {(() => {
+                          const maxVal = Math.max(preMatchAnalytics.h2h.wins, preMatchAnalytics.h2h.draws, preMatchAnalytics.h2h.losses, 1);
+                          const bars: Array<{ label: string; val: number; color: string }> = [
+                            { label: 'W', val: preMatchAnalytics.h2h.wins, color: '#10b981' },
+                            { label: 'D', val: preMatchAnalytics.h2h.draws, color: '#f59e0b' },
+                            { label: 'L', val: preMatchAnalytics.h2h.losses, color: '#ef4444' },
+                          ];
+                          return (
+                            <>
+                              {bars.map((b, i) => {
+                                const barW = Math.max(2, (b.val / maxVal) * 120);
+                                return (
+                                  <g key={b.label}>
+                                    <text x="8" y={22 + i * 25} fill="#8b949e" fontSize="8" fontWeight="bold">{b.label}</text>
+                                    <rect x="24" y={13 + i * 25} width={barW} height="14" fill={b.color} fillOpacity="0.25" rx="3" />
+                                    <rect x="24" y={13 + i * 25} width={barW} height="14" fill="none" stroke={b.color} strokeWidth="0.5" strokeOpacity="0.5" rx="3" />
+                                    <text x={28 + barW} y={23 + i * 25} fill={b.color} fontSize="8" fontWeight="bold">{b.val}</text>
+                                  </g>
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </CardContent>
+                  </Card>
+
+                  {/* 2. SVG Win Probability Gauges */}
+                  <Card className="bg-[#21262d] border-[#30363d]">
+                    <CardContent className="p-3">
+                      <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Win Probability</p>
+                      <svg viewBox="0 0 160 90" className="w-full">
+                        {(() => {
+                          const homePct = preMatchAnalytics.winProb.win / 100;
+                          const awayPct = preMatchAnalytics.winProb.loss / 100;
+                          const bgArc = svgGaugeArc(40, 70, 35, 1);
+                          const homeArc = svgGaugeArc(40, 70, 35, homePct);
+                          const awayBgArc = svgGaugeArc(120, 70, 35, 1);
+                          const awayArc = svgGaugeArc(120, 70, 35, awayPct);
+                          return (
+                            <>
+                              <path d={bgArc} fill="none" stroke="#30363d" strokeWidth="6" strokeLinecap="round" />
+                              <path d={homeArc} fill="none" stroke="#10b981" strokeWidth="6" strokeLinecap="round" />
+                              <text x="40" y="58" fill="#c9d1d9" fontSize="10" fontWeight="bold" textAnchor="middle">{preMatchAnalytics.winProb.win}%</text>
+                              <text x="40" y="82" fill="#10b981" fontSize="7" fontWeight="bold" textAnchor="middle">{preMatchAnalytics.clubName}</text>
+                              <path d={awayBgArc} fill="none" stroke="#30363d" strokeWidth="6" strokeLinecap="round" />
+                              <path d={awayArc} fill="none" stroke="#ef4444" strokeWidth="6" strokeLinecap="round" />
+                              <text x="120" y="58" fill="#c9d1d9" fontSize="10" fontWeight="bold" textAnchor="middle">{preMatchAnalytics.winProb.loss}%</text>
+                              <text x="120" y="82" fill="#ef4444" fontSize="7" fontWeight="bold" textAnchor="middle">{preMatchAnalytics.oppName}</text>
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* 3. SVG Key Player Comparison Radar */}
+                <Card className="bg-[#21262d] border-[#30363d]">
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[9px] text-[#8b949e] font-semibold uppercase tracking-wider">Star Player Comparison</p>
+                      <div className="flex items-center gap-2 text-[8px]">
+                        <span className="flex items-center gap-1 text-emerald-400"><span className="w-2 h-2 rounded-sm bg-emerald-400 inline-block" /> {preMatchAnalytics.clubName}</span>
+                        <span className="flex items-center gap-1 text-rose-400"><span className="w-2 h-2 rounded-sm bg-rose-400 inline-block" /> {preMatchAnalytics.oppName}</span>
+                      </div>
+                    </div>
+                    <svg viewBox="0 0 300 180" className="w-full">
+                      {(() => {
+                        const cx = 150;
+                        const cy = 95;
+                        const maxR = 70;
+                        const labels = ['PAC', 'SHO', 'PAS', 'DEF', 'PHY', 'OVR'];
+                        const homeVals = [preMatchAnalytics.radar.home.pace, preMatchAnalytics.radar.home.shooting, preMatchAnalytics.radar.home.passing, preMatchAnalytics.radar.home.defending, preMatchAnalytics.radar.home.physical, preMatchAnalytics.radar.home.overall];
+                        const awayVals = [preMatchAnalytics.radar.away.pace, preMatchAnalytics.radar.away.shooting, preMatchAnalytics.radar.away.passing, preMatchAnalytics.radar.away.defending, preMatchAnalytics.radar.away.physical, preMatchAnalytics.radar.away.overall];
+                        const gridPaths = svgHexGridPaths(cx, cy, maxR, 4, 6);
+                        const homePath = svgRadarPath(homeVals, cx, cy, maxR);
+                        const awayPath = svgRadarPath(awayVals, cx, cy, maxR);
+                        const angleStep = (2 * Math.PI) / 6;
+                        const startAngle = -Math.PI / 2;
+                        return (
+                          <>
+                            {gridPaths.map((p, i) => (
+                              <path key={i} d={p} fill="none" stroke={i < 4 ? "#21262d" : "#30363d"} strokeWidth={i < 4 ? 0.5 : 0.3} />
+                            ))}
+                            <path d={homePath} fill="#10b981" fillOpacity="0.15" stroke="#10b981" strokeWidth="1.5" />
+                            <path d={awayPath} fill="#ef4444" fillOpacity="0.1" stroke="#ef4444" strokeWidth="1" strokeDasharray="3,2" />
+                            {labels.map((label, i) => {
+                              const a = startAngle + i * angleStep;
+                              const lx = cx + (maxR + 14) * Math.cos(a);
+                              const ly = cy + (maxR + 14) * Math.sin(a);
+                              return <text key={label} x={lx} y={ly + 3} fill="#8b949e" fontSize="7" fontWeight="bold" textAnchor="middle">{label}</text>;
+                            })}
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </CardContent>
+                </Card>
+
+                {/* Row 2: Form Comparison + Importance Meter + xG */}
+                <div className="grid grid-cols-3 gap-3">
+                  {/* 4. SVG Recent Form Comparison */}
+                  <Card className="bg-[#21262d] border-[#30363d]">
+                    <CardContent className="p-3">
+                      <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Recent Form</p>
+                      <svg viewBox="0 0 120 70" className="w-full">
+                        <text x="5" y="10" fill="#10b981" fontSize="7" fontWeight="bold">H</text>
+                        <text x="5" y="40" fill="#ef4444" fontSize="7" fontWeight="bold">A</text>
+                        {preMatchAnalytics.form.home.map((r, i) => {
+                          const color = r === 'W' ? '#10b981' : r === 'D' ? '#f59e0b' : '#ef4444';
+                          return <circle key={`hf-${i}`} cx={25 + i * 18} cy="8" r="6" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="0.7" />;
+                        })}
+                        {preMatchAnalytics.form.away.map((r, i) => {
+                          const color = r === 'W' ? '#10b981' : r === 'D' ? '#f59e0b' : '#ef4444';
+                          return <circle key={`af-${i}`} cx={25 + i * 18} cy="38" r="6" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="0.7" />;
+                        })}
+                        {preMatchAnalytics.form.home.map((r, i) => {
+                          return <text key={`hft-${i}`} x={25 + i * 18} y="11" fill="#c9d1d9" fontSize="6" fontWeight="bold" textAnchor="middle">{r}</text>;
+                        })}
+                        {preMatchAnalytics.form.away.map((r, i) => {
+                          return <text key={`aft-${i}`} x={25 + i * 18} y="41" fill="#c9d1d9" fontSize="6" fontWeight="bold" textAnchor="middle">{r}</text>;
+                        })}
+                        {[0, 1, 2, 3, 4].map(i => (
+                          <text key={`mt-${i}`} x={25 + i * 18} y="65" fill="#484f58" fontSize="5" textAnchor="middle">{i + 1}</text>
+                        ))}
+                      </svg>
+                    </CardContent>
+                  </Card>
+
+                  {/* 5. SVG Match Importance Meter */}
+                  <Card className="bg-[#21262d] border-[#30363d]">
+                    <CardContent className="p-3">
+                      <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Importance</p>
+                      <svg viewBox="0 0 120 70" className="w-full">
+                        {(() => {
+                          const pct = preMatchAnalytics.importance / 100;
+                          const barH = Math.max(4, pct * 46);
+                          const color = pct > 0.8 ? '#ef4444' : pct > 0.6 ? '#f59e0b' : '#10b981';
+                          const label = pct > 0.8 ? 'CRITICAL' : pct > 0.6 ? 'HIGH' : pct > 0.4 ? 'MEDIUM' : 'LOW';
+                          return (
+                            <>
+                              <rect x="20" y="8" width="36" height="48" fill="#0d1117" rx="4" stroke="#30363d" strokeWidth="0.5" />
+                              <rect x="24" y={52 - barH} width="28" height={barH} fill={color} fillOpacity="0.3" rx="2" />
+                              <rect x="24" y={52 - barH} width="28" height={barH} fill="none" stroke={color} strokeWidth="0.7" rx="2" />
+                              <text x="38" y="6" fill="#c9d1d9" fontSize="8" fontWeight="bold" textAnchor="middle">{preMatchAnalytics.importance}</text>
+                              <text x="72" y="28" fill={color} fontSize="7" fontWeight="bold">{label}</text>
+                              <text x="72" y="40" fill="#484f58" fontSize="6">/ 100</text>
+                              {[0, 1, 2, 3].map(i => (
+                                <line key={i} x1="20" y1={20 + i * 12} x2="56" y2={20 + i * 12} stroke="#30363d" strokeWidth="0.3" />
+                              ))}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </CardContent>
+                  </Card>
+
+                  {/* 6. SVG Expected Goals Projection */}
+                  <Card className="bg-[#21262d] border-[#30363d]">
+                    <CardContent className="p-3">
+                      <p className="text-[9px] text-[#8b949e] font-semibold mb-2 uppercase tracking-wider">Expected Goals</p>
+                      <svg viewBox="0 0 120 70" className="w-full">
+                        {(() => {
+                          const homeXG = preMatchAnalytics.xG.home;
+                          const awayXG = preMatchAnalytics.xG.away;
+                          const totalXG = homeXG + awayXG;
+                          const maxVal = Math.max(homeXG, awayXG, totalXG, 0.5);
+                          const barMaxH = 44;
+                          const groups = [
+                            { label: 'H', val: homeXG, color: '#10b981' },
+                            { label: 'A', val: awayXG, color: '#ef4444' },
+                            { label: 'T', val: totalXG, color: '#38bdf8' },
+                          ];
+                          return (
+                            <>
+                              {groups.map((g, i) => {
+                                const h = Math.max(3, (g.val / maxVal) * barMaxH);
+                                const x = 12 + i * 38;
+                                return (
+                                  <g key={g.label}>
+                                    <rect x={x} y={55 - h} width="26" height={h} fill={g.color} fillOpacity="0.2" rx="3" />
+                                    <rect x={x} y={55 - h} width="26" height={h} fill="none" stroke={g.color} strokeWidth="0.6" rx="3" />
+                                    <text x={x + 13} y={52 - h} fill={g.color} fontSize="7" fontWeight="bold" textAnchor="middle">{g.val.toFixed(1)}</text>
+                                    <text x={x + 13} y="65" fill="#8b949e" fontSize="7" fontWeight="bold" textAnchor="middle">{g.label}</text>
+                                  </g>
+                                );
+                              })}
+                              {[0, 1, 2, 3].map(i => (
+                                <line key={i} x1="8" y1={18 + i * 11} x2="118" y2={18 + i * 11} stroke="#30363d" strokeWidth="0.3" />
+                              ))}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          )}
 
           {/* Tactical Setup Button */}
           <motion.div
