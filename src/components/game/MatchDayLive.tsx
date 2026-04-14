@@ -8,6 +8,7 @@ import { randomBetween, randomFloatBetween, randomChoice, clamp } from '@/lib/ga
 import type { Club, MatchEvent, MatchEventType, MatchResult } from '@/lib/game/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import {
   Radio, Clock, Trophy, Gauge, SkipForward, ChevronRight,
   Star, Zap, Activity, Target, TrendingUp, BarChart3,
@@ -1049,6 +1050,522 @@ function TeamHeatMapComparison({
 }
 
 // ============================================================
+// 1. SVG Live Match Momentum Bar
+// ============================================================
+function SvgLiveMomentum({ homeMomentum, awayMomentum }: { homeMomentum: number; awayMomentum: number }) {
+  const total = homeMomentum + awayMomentum;
+  const homePct = total > 0 ? (homeMomentum / total) * 100 : 50;
+  const awayPct = 100 - homePct;
+  const w = 320;
+  const h = 36;
+  const barH = 20;
+  const barY = 10;
+  const homeW = Math.round((homePct / 100) * w);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <rect x="0" y={barY} width={w} height={barH} rx="4" fill="#21262d" />
+      <rect x="0" y={barY} width={homeW} height={barH} fill="#38bdf8" opacity="0.7" />
+      <rect x={homeW} y={barY} width={w - homeW} height={barH} fill="#fb7185" opacity="0.7" />
+      <line x1={homeW} y1={barY} x2={homeW} y2={barY + barH} stroke="#0d1117" strokeWidth="2" />
+      <text x="14" y={barY + barH - 5} fill="#c9d1d9" fontSize="9" fontFamily="monospace" fontWeight="bold">{Math.round(homePct)}%</text>
+      <text x={w - 14} y={barY + barH - 5} fill="#c9d1d9" fontSize="9" fontFamily="monospace" fontWeight="bold" textAnchor="end">{Math.round(awayPct)}%</text>
+      <text x="10" y="7" fill="#38bdf8" fontSize="5.5" fontFamily="monospace" fontWeight="bold">HOME</text>
+      <text x={w - 10} y="7" fill="#fb7185" fontSize="5.5" fontFamily="monospace" fontWeight="bold" textAnchor="end">AWAY</text>
+      <text x={w / 2} y="7" fill="#484f58" fontSize="5" fontFamily="monospace" textAnchor="middle">MOMENTUM</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 2. SVG Shot Map Mini Pitch
+// ============================================================
+function SvgShotMapMiniPitch({ events }: { events: MatchEvent[] }) {
+  const shotEvents = events.filter(e => e.type === 'goal' || e.type === 'chance' || e.type === 'save');
+  const w = 220;
+  const h = 150;
+  const padX = 16;
+  const padY = 12;
+
+  const shotPositions = shotEvents.reduce<Array<{ x: number; y: number; onTarget: boolean; team: string }>>((acc, e, idx) => {
+    const seedVal = e.minute * 17 + idx * 31 + (e.playerName?.charCodeAt(0) || 0) * 7;
+    const rng = seededRandom(Math.abs(seedVal) + 1);
+    const px = padX + rng() * (w - padX * 2);
+    const py = padY + rng() * (h - padY * 2);
+    const onTarget = e.type === 'goal' || e.type === 'save';
+    acc.push({ x: px, y: py, onTarget, team: e.team || 'home' });
+    return acc;
+  }, []);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <rect x="0" y="0" width={w} height={h} rx="4" fill="#0d1117" />
+      <rect x={padX} y={padY} width={w - padX * 2} height={h - padY * 2} fill="none" stroke="#21262d" strokeWidth="0.8" rx="2" />
+      <line x1={padX} y1={h / 2} x2={w - padX} y2={h / 2} stroke="#21262d" strokeWidth="0.4" />
+      <circle cx={w / 2} cy={h / 2} r="16" fill="none" stroke="#21262d" strokeWidth="0.4" />
+      <rect x={padX} y={padY} width="44" height="38" fill="none" stroke="#21262d" strokeWidth="0.4" rx="1" />
+      <rect x={w - padX - 44} y={padY} width="44" height="38" fill="none" stroke="#21262d" strokeWidth="0.4" rx="1" />
+      <rect x={padX} y={h - padY - 38} width="44" height="38" fill="none" stroke="#21262d" strokeWidth="0.4" rx="1" />
+      <rect x={w - padX - 44} y={h - padY - 38} width="44" height="38" fill="none" stroke="#21262d" strokeWidth="0.4" rx="1" />
+      {shotPositions.map((shot, i) => {
+        const color = shot.team === 'home' ? '#38bdf8' : '#fb7185';
+        return (
+          <g key={`shot-${i}`}>
+            {shot.onTarget ? (
+              <circle cx={shot.x} cy={shot.y} r="4" fill={color} opacity="0.8" />
+            ) : (
+              <g>
+                <line x1={shot.x - 3} y1={shot.y - 3} x2={shot.x + 3} y2={shot.y + 3} stroke={color} strokeWidth="1.5" opacity="0.7" />
+                <line x1={shot.x + 3} y1={shot.y - 3} x2={shot.x - 3} y2={shot.y + 3} stroke={color} strokeWidth="1.5" opacity="0.7" />
+              </g>
+            )}
+          </g>
+        );
+      })}
+      <circle cx={padX + 6} cy={h - 6} r="3" fill="#38bdf8" opacity="0.8" />
+      <text x={padX + 12} y={h - 3} fill="#484f58" fontSize="5" fontFamily="monospace">On Target</text>
+      <g>
+        <line x1={w / 2 - 3} y1={h - 9} x2={w / 2 + 3} y2={h - 3} stroke="#fb7185" strokeWidth="1.5" opacity="0.7" />
+        <line x1={w / 2 + 3} y1={h - 9} x2={w / 2 - 3} y2={h - 3} stroke="#fb7185" strokeWidth="1.5" opacity="0.7" />
+      </g>
+      <text x={w / 2 + 8} y={h - 3} fill="#484f58" fontSize="5" fontFamily="monospace">Off Target</text>
+      {shotEvents.length === 0 && (
+        <text x={w / 2} y={h / 2 + 3} textAnchor="middle" fill="#484f58" fontSize="6" fontFamily="monospace">No shots yet</text>
+      )}
+    </svg>
+  );
+}
+
+// ============================================================
+// 3. SVG Possession Pie Ring
+// ============================================================
+function SvgPossessionPieRing({ homePct, awayPct, homeName, awayName }: { homePct: number; awayPct: number; homeName: string; awayName: string }) {
+  const w = 180;
+  const h = 110;
+  const cx = w / 2;
+  const cy = h / 2 + 4;
+  const r = 34;
+  const circumference = 2 * Math.PI * r;
+  const homeLen = (homePct / 100) * circumference;
+  const awayLen = (awayPct / 100) * circumference;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth="12" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#38bdf8" strokeWidth="12"
+        strokeDasharray={`${homeLen} ${circumference - homeLen}`}
+        strokeDashoffset={circumference / 4}
+        opacity="0.75" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#fb7185" strokeWidth="12"
+        strokeDasharray={`${awayLen} ${circumference - awayLen}`}
+        strokeDashoffset={circumference / 4 - homeLen}
+        opacity="0.75" />
+      <text x={cx} y={cy - 3} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontFamily="monospace" fontWeight="bold">{homePct}-{awayPct}</text>
+      <text x={cx} y={cy + 9} textAnchor="middle" fill="#484f58" fontSize="5.5" fontFamily="monospace">POSSESSION %</text>
+      <text x={cx - r - 6} y={cy + 2} fill="#38bdf8" fontSize="5.5" fontFamily="monospace" textAnchor="end">{homeName}</text>
+      <text x={cx + r + 6} y={cy + 2} fill="#fb7185" fontSize="5.5" fontFamily="monospace">{awayName}</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 4. SVG Pass Accuracy Gauge
+// ============================================================
+function SvgPassAccuracyGauge({ accuracy, homeName, awayName }: { accuracy: { home: number; away: number }; homeName: string; awayName: string }) {
+  const w = 320;
+  const h = 100;
+  const cxHome = 80;
+  const cxAway = 240;
+  const cy = 72;
+  const r = 48;
+  const strokeW = 8;
+
+  const buildArcPath = (value: number, centerX: number): string => {
+    const pct = Math.max(0, Math.min(100, value)) / 100;
+    const startX = centerX - r;
+    const startY = cy;
+    const endAngle = Math.PI * (1 - pct);
+    const endX = centerX + r * Math.cos(endAngle);
+    const endY = cy - r * Math.sin(endAngle);
+    return `M${startX},${startY} A${r},${r} 0 ${pct > 0.5 ? 1 : 0} 1 ${endX},${endY}`;
+  };
+
+  const colorForVal = (v: number) => v >= 85 ? '#34d399' : v >= 70 ? '#fbbf24' : '#ef4444';
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <rect x="0" y="0" width={w} height={h} rx="4" fill="#0d1117" />
+      {/* Home gauge */}
+      <path d={`M${cxHome - r},${cy} A${r},${r} 0 0 1 ${cxHome + r},${cy}`} fill="none" stroke="#21262d" strokeWidth={strokeW} strokeLinecap="round" />
+      <path d={buildArcPath(accuracy.home, cxHome)} fill="none" stroke={colorForVal(accuracy.home)} strokeWidth={strokeW} strokeLinecap="round" opacity="0.8" />
+      <text x={cxHome} y={cy - 12} textAnchor="middle" fill={colorForVal(accuracy.home)} fontSize="16" fontFamily="monospace" fontWeight="bold">{accuracy.home}%</text>
+      <text x={cxHome} y={cy + 2} textAnchor="middle" fill="#38bdf8" fontSize="6" fontFamily="monospace" fontWeight="bold">{homeName}</text>
+      {/* Away gauge */}
+      <path d={`M${cxAway - r},${cy} A${r},${r} 0 0 1 ${cxAway + r},${cy}`} fill="none" stroke="#21262d" strokeWidth={strokeW} strokeLinecap="round" />
+      <path d={buildArcPath(accuracy.away, cxAway)} fill="none" stroke={colorForVal(accuracy.away)} strokeWidth={strokeW} strokeLinecap="round" opacity="0.8" />
+      <text x={cxAway} y={cy - 12} textAnchor="middle" fill={colorForVal(accuracy.away)} fontSize="16" fontFamily="monospace" fontWeight="bold">{accuracy.away}%</text>
+      <text x={cxAway} y={cy + 2} textAnchor="middle" fill="#fb7185" fontSize="6" fontFamily="monospace" fontWeight="bold">{awayName}</text>
+      <text x={w / 2} y="12" textAnchor="middle" fill="#484f58" fontSize="5.5" fontFamily="monospace">PASS ACCURACY</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 5. SVG Match Events Timeline
+// ============================================================
+function SvgMatchEventsTimeline({ events, currentMinute }: { events: MatchEvent[]; currentMinute: number }) {
+  const w = 360;
+  const h = 52;
+  const padX = 24;
+  const midY = 26;
+  const trackW = w - padX * 2;
+
+  const colorMap: Record<string, string> = {
+    goal: '#34d399', yellow_card: '#fbbf24', red_card: '#ef4444',
+    substitution: '#38bdf8', injury: '#fb923c', save: '#a78bfa',
+  };
+
+  const significantEvents = events
+    .filter(e => ['goal', 'yellow_card', 'red_card', 'substitution', 'save', 'injury'].includes(e.type))
+    .slice(-10);
+
+  const xForMinute = (min: number) => padX + (min / 90) * trackW;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <line x1={padX} y1={midY} x2={padX + trackW} y2={midY} stroke="#21262d" strokeWidth="3" strokeLinecap="round" />
+      <line x1={padX} y1={midY} x2={padX + (currentMinute / 90) * trackW} y2={midY} stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" opacity="0.45" />
+      <line x1={xForMinute(45)} y1={midY - 9} x2={xForMinute(45)} y2={midY + 9} stroke="#484f58" strokeWidth="0.8" strokeDasharray="2,2" />
+      <text x={padX} y={h - 3} fill="#484f58" fontSize="5.5" fontFamily="monospace">0&apos;</text>
+      <text x={padX + trackW} y={h - 3} fill="#484f58" fontSize="5.5" fontFamily="monospace" textAnchor="end">90&apos;</text>
+      <text x={xForMinute(45)} y={h - 3} fill="#484f58" fontSize="5.5" fontFamily="monospace" textAnchor="middle">45&apos;</text>
+      {significantEvents.map((e, i) => {
+        const x = xForMinute(e.minute);
+        const color = colorMap[e.type] || '#8b949e';
+        const yOffset = e.team === 'home' ? -9 : 9;
+        return (
+          <g key={`tl-evt-${i}`}>
+            <line x1={x} y1={midY - 3} x2={x} y2={midY + yOffset} stroke={color} strokeWidth="0.5" opacity="0.5" />
+            <circle cx={x} cy={midY + yOffset} r="3.5" fill={color} opacity="0.85" />
+            <text x={x} y={midY + yOffset + (e.team === 'home' ? -6 : 12)} textAnchor="middle" fill={color} fontSize="4.5" fontFamily="monospace" fontWeight="bold">{e.minute}&apos;</text>
+          </g>
+        );
+      })}
+      <circle cx={xForMinute(currentMinute)} cy={midY} r="2.5" fill="white" opacity="0.9" />
+    </svg>
+  );
+}
+
+// ============================================================
+// 6. SVG Player Heatmap Mini
+// ============================================================
+function SvgPlayerHeatmapMini({ data, playerZone }: { data: number[][]; playerZone: { row: number; col: number } | null }) {
+  const displayRows = Math.min(4, data.length);
+  const displayCols = Math.min(5, data[0]?.length ?? 5);
+  const cellW = 28;
+  const cellH = 22;
+  const offsetX = 26;
+  const offsetY = 8;
+  const w = offsetX + displayCols * cellW + 10;
+  const h = offsetY + displayRows * cellH + 16;
+  const rowLabels = ['ATT', 'MID', 'DEF', 'GK'];
+
+  const flatMax = data.reduce<number>((m, row) =>
+    Math.max(m, row.reduce<number>((rm, cell) => Math.max(rm, cell), 0)), 0) || 1;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <rect x="0" y="0" width={w} height={h} rx="4" fill="#0d1117" />
+      {rowLabels.map((label, i) => (
+        <text key={`hm-rl-${i}`} x="3" y={offsetY + i * cellH + cellH / 2 + 3} fill="#484f58" fontSize="5" fontFamily="monospace">{label}</text>
+      ))}
+      {data.slice(0, displayRows).map((row, r) =>
+        row.slice(0, displayCols).map((val, c) => {
+          const intensity = Math.min(val / flatMax, 1);
+          const red = Math.round(16 + intensity * 36);
+          const green = Math.round(185 + intensity * 26);
+          const blue = Math.round(129 + intensity * 24);
+          const isPlayer = playerZone !== null && playerZone.row === r && playerZone.col === c;
+          return (
+            <g key={`hm-${r}-${c}`}>
+              <rect
+                x={offsetX + c * cellW + 1}
+                y={offsetY + r * cellH + 1}
+                width={cellW - 2}
+                height={cellH - 2}
+                rx="3"
+                fill={`rgb(${red},${green},${blue})`}
+                opacity={0.2 + intensity * 0.8}
+              />
+              {isPlayer && (
+                <rect
+                  x={offsetX + c * cellW}
+                  y={offsetY + r * cellH}
+                  width={cellW}
+                  height={cellH}
+                  rx="3"
+                  fill="none"
+                  stroke="#fbbf24"
+                  strokeWidth="1.5"
+                  opacity="0.9"
+                />
+              )}
+            </g>
+          );
+        })
+      )}
+      <text x={offsetX} y={h - 3} fill="#484f58" fontSize="4.5" fontFamily="monospace">LOW</text>
+      <text x={offsetX + displayCols * cellW - 24} y={h - 3} fill="#34d399" fontSize="4.5" fontFamily="monospace">HIGH</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 7. SVG Key Stats Comparison Butterfly
+// ============================================================
+function SvgKeyStatsButterfly({ stats }: { stats: { label: string; home: number; away: number }[] }) {
+  const w = 340;
+  const h = 142;
+  const cx = w / 2;
+  const padY = 14;
+  const barH = 12;
+  const gap = 12;
+  const valueW = 24;
+  const maxBarW = (cx - 20) / 2 - valueW - 6;
+
+  const allMax = stats.reduce<number>((m, s) => Math.max(m, s.home, s.away), 1);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <rect x="0" y="0" width={w} height={h} rx="4" fill="#0d1117" />
+      <line x1={cx} y1={padY - 6} x2={cx} y2={h - 18} stroke="#21262d" strokeWidth="0.5" />
+      {stats.map((s, i) => {
+        const y = padY + i * (barH + gap);
+        const homeW = Math.max(2, (s.home / allMax) * maxBarW);
+        const awayW = Math.max(2, (s.away / allMax) * maxBarW);
+        return (
+          <g key={`bfly-${i}`}>
+            <text x={cx - homeW - valueW - 4} y={y + barH - 3} textAnchor="end" fill="#c9d1d9" fontSize="7" fontFamily="monospace" fontWeight="bold">{s.home}</text>
+            <rect x={cx - homeW - 2} y={y} width={homeW} height={barH} rx="2" fill="#38bdf8" opacity="0.7" />
+            <text x={cx} y={y + barH - 2} textAnchor="middle" fill="#8b949e" fontSize="5.5" fontFamily="monospace" fontWeight="bold">{s.label}</text>
+            <rect x={cx + 2} y={y} width={awayW} height={barH} rx="2" fill="#fb7185" opacity="0.7" />
+            <text x={cx + awayW + valueW + 4} y={y + barH - 3} fill="#c9d1d9" fontSize="7" fontFamily="monospace" fontWeight="bold">{s.away}</text>
+          </g>
+        );
+      })}
+      <text x="6" y={padY + stats.length * (barH + gap) + 8} fill="#38bdf8" fontSize="5.5" fontFamily="monospace" fontWeight="bold">HOME</text>
+      <text x={w - 6} y={padY + stats.length * (barH + gap) + 8} fill="#fb7185" fontSize="5.5" fontFamily="monospace" fontWeight="bold" textAnchor="end">AWAY</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 8. SVG Danger Zone Indicator
+// ============================================================
+function SvgDangerZone({ events, currentMinute }: { events: MatchEvent[]; currentMinute: number }) {
+  const w = 320;
+  const h = 46;
+  const padX = 10;
+  const barH = 22;
+  const barY = 14;
+  const trackW = w - padX * 2;
+
+  const zones = [
+    { label: 'LOW', start: 0, end: 0.33, color: '#34d399' },
+    { label: 'MED', start: 0.33, end: 0.66, color: '#fbbf24' },
+    { label: 'HIGH', start: 0.66, end: 1, color: '#ef4444' },
+  ];
+
+  const recentEvents = events.filter(e => e.minute >= Math.max(0, currentMinute - 15));
+  const dangerLevel = Math.min(1, recentEvents.reduce<number>((dl, e) => {
+    if (e.type === 'goal') return dl + 0.3;
+    if (e.type === 'yellow_card' || e.type === 'red_card') return dl + 0.15;
+    if (e.type === 'chance' || e.type === 'save') return dl + 0.1;
+    return dl + 0.03;
+  }, 0));
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      {zones.map((z, i) => {
+        const zx = padX + z.start * trackW;
+        const zw = (z.end - z.start) * trackW;
+        return (
+          <rect key={`dz-bg-${i}`} x={zx} y={barY} width={zw} height={barH} fill={z.color} opacity="0.12" />
+        );
+      })}
+      <rect x={padX} y={barY} width={trackW} height={barH} rx="4" fill="none" stroke="#21262d" strokeWidth="0.8" />
+      <line x1={padX + trackW * 0.33} y1={barY} x2={padX + trackW * 0.33} y2={barY + barH} stroke="#21262d" strokeWidth="0.5" />
+      <line x1={padX + trackW * 0.66} y1={barY} x2={padX + trackW * 0.66} y2={barY + barH} stroke="#21262d" strokeWidth="0.5" />
+      <rect x={padX + 2} y={barY + 2} width={Math.max(2, dangerLevel * (trackW - 4))} height={barH - 4} rx="3" fill="#ef4444" opacity="0.55" />
+      {zones.map((z, i) => {
+        const zx = padX + ((z.start + z.end) / 2) * trackW;
+        return (
+          <text key={`dz-lbl-${i}`} x={zx} y={barY - 2} textAnchor="middle" fill={z.color} fontSize="5.5" fontFamily="monospace" fontWeight="bold">{z.label}</text>
+        );
+      })}
+      <text x={padX} y={h - 3} fill="#484f58" fontSize="5.5" fontFamily="monospace">DANGER LEVEL: {Math.round(dangerLevel * 100)}%</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 9. SVG Expected Goals Mini Chart
+// ============================================================
+function SvgExpectedGoalsChart({ events }: { events: MatchEvent[] }) {
+  const periods = 6;
+  const periodLen = 15;
+  const w = 320;
+  const h = 76;
+  const padX = 28;
+  const padY = 12;
+  const trackW = w - padX - 12;
+  const trackH = h - padY - 20;
+
+  const xgData = Array.from({ length: periods }, (_, i) => {
+    const startMin = i * periodLen;
+    const endMin = (i + 1) * periodLen;
+    return events
+      .filter(e => e.minute >= startMin && e.minute < endMin)
+      .reduce<number>((xgSum, e) => {
+        if (e.type === 'goal') return xgSum + 0.32;
+        if (e.type === 'save') return xgSum + 0.18;
+        if (e.type === 'chance') return xgSum + 0.08;
+        return xgSum + 0.02;
+      }, 0);
+  });
+
+  const maxXg = Math.max(...xgData, 0.1);
+  const barW = trackW / periods;
+
+  // Build area and line path strings using reduce (rule 9)
+  const areaPoints = xgData.reduce<Array<{ x: number; y: number }>>((pts, val, i) => {
+    pts.push({
+      x: padX + i * barW + barW / 2,
+      y: padY + trackH - (val / maxXg) * trackH,
+    });
+    return pts;
+  }, []);
+
+  const linePathStr = areaPoints.reduce<string>((path, p, i) =>
+    path + `${i === 0 ? 'M' : 'L'}${p.x},${p.y} `, '');
+
+  const areaPathStr = `${linePathStr}L${areaPoints[areaPoints.length - 1].x},${padY + trackH} L${areaPoints[0].x},${padY + trackH} Z`;
+
+  const totalXg = xgData.reduce<number>((tx, v) => tx + v, 0);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <rect x="0" y="0" width={w} height={h} rx="4" fill="#0d1117" />
+      <line x1={padX} y1={padY + trackH} x2={padX + trackW} y2={padY + trackH} stroke="#21262d" strokeWidth="0.5" />
+      <path d={areaPathStr} fill="#a78bfa" opacity="0.1" />
+      <path d={linePathStr} fill="none" stroke="#a78bfa" strokeWidth="1.2" opacity="0.7" />
+      {areaPoints.map((p, i) => (
+        <circle key={`xg-dot-${i}`} cx={p.x} cy={p.y} r="2.5" fill="#a78bfa" opacity="0.8" />
+      ))}
+      {xgData.map((_, i) => (
+        <text key={`xg-p-${i}`} x={padX + i * barW + barW / 2} y={h - 3} textAnchor="middle" fill="#484f58" fontSize="5" fontFamily="monospace">{i * 15}&apos;</text>
+      ))}
+      <text x={padX} y={padY + 5} fill="#a78bfa" fontSize="6" fontFamily="monospace" fontWeight="bold">xG {totalXg.toFixed(2)}</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 10. SVG Discipline Summary Donut
+// ============================================================
+function SvgDisciplineDonut({ events }: { events: MatchEvent[] }) {
+  const w = 180;
+  const h = 110;
+  const cx = w / 2;
+  const cy = h / 2 + 4;
+  const r = 32;
+  const circumference = 2 * Math.PI * r;
+
+  // Use .reduce() for discipline counting (rule 6)
+  const counts = events.reduce<{ fouls: number; yellows: number; reds: number }>((disc, e) => {
+    if (e.type === 'yellow_card') { disc.yellows += 1; disc.fouls += 1; }
+    else if (e.type === 'red_card' || e.type === 'second_yellow') { disc.reds += 1; disc.fouls += 1; }
+    return disc;
+  }, { fouls: Math.max(events.length, 3), yellows: 0, reds: 0 });
+
+  const total = counts.fouls + counts.yellows + counts.reds || 1;
+  const foulLen = (counts.fouls / total) * circumference;
+  const yellowLen = (counts.yellows / total) * circumference;
+  const redLen = (counts.reds / total) * circumference;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth="10" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#8b949e" strokeWidth="10"
+        strokeDasharray={`${foulLen} ${circumference - foulLen}`}
+        strokeDashoffset={circumference / 4}
+        opacity="0.55" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#fbbf24" strokeWidth="10"
+        strokeDasharray={`${yellowLen} ${circumference - yellowLen}`}
+        strokeDashoffset={circumference / 4 - foulLen}
+        opacity="0.75" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#ef4444" strokeWidth="10"
+        strokeDasharray={`${redLen} ${circumference - redLen}`}
+        strokeDashoffset={circumference / 4 - foulLen - yellowLen}
+        opacity="0.75" />
+      <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="13" fontFamily="monospace" fontWeight="bold">{total}</text>
+      <text x={cx} y={cy + 8} textAnchor="middle" fill="#484f58" fontSize="5" fontFamily="monospace">INCIDENTS</text>
+      <circle cx="12" cy={h - 8} r="3" fill="#8b949e" opacity="0.55" />
+      <text x="18" y={h - 5} fill="#484f58" fontSize="4.5" fontFamily="monospace">Fouls {counts.fouls}</text>
+      <circle cx="68" cy={h - 8} r="3" fill="#fbbf24" opacity="0.75" />
+      <text x="74" y={h - 5} fill="#484f58" fontSize="4.5" fontFamily="monospace">Ylw {counts.yellows}</text>
+      <circle cx="118" cy={h - 8} r="3" fill="#ef4444" opacity="0.75" />
+      <text x="124" y={h - 5} fill="#484f58" fontSize="4.5" fontFamily="monospace">Red {counts.reds}</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// 11. SVG Set Piece Efficiency Bars
+// ============================================================
+function SvgSetPieceEfficiencyBars({ corners, freeKicks, penalties }: {
+  corners: { total: number; goals: number };
+  freeKicks: { total: number; goals: number };
+  penalties: { total: number; goals: number };
+}) {
+  const w = 300;
+  const h = 100;
+  const padX = 62;
+  const padY = 12;
+  const barH = 16;
+  const gap = 12;
+  const trackW = w - padX - 44;
+
+  const items = [
+    { label: 'CORNERS', total: corners.total, goals: corners.goals, color: '#38bdf8' },
+    { label: 'FREE KICKS', total: freeKicks.total, goals: freeKicks.goals, color: '#a78bfa' },
+    { label: 'PENALTIES', total: penalties.total, goals: penalties.goals, color: '#34d399' },
+  ];
+
+  const maxTotal = items.reduce<number>((mt, it) => Math.max(mt, it.total), 1);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: `${h}px` }}>
+      <rect x="0" y="0" width={w} height={h} rx="4" fill="#0d1117" />
+      {items.map((item, i) => {
+        const y = padY + i * (barH + gap);
+        const barW = Math.max(2, (item.total / maxTotal) * trackW);
+        const eff = item.total > 0 ? Math.round((item.goals / item.total) * 100) : 0;
+        return (
+          <g key={`sp-bar-${i}`}>
+            <text x="6" y={y + barH - 4} fill="#484f58" fontSize="5.5" fontFamily="monospace" fontWeight="bold">{item.label}</text>
+            <rect x={padX} y={y} width={trackW} height={barH} rx="3" fill="#21262d" />
+            <rect x={padX} y={y} width={barW} height={barH} rx="3" fill={item.color} opacity="0.55" />
+            <text x={padX + barW + 4} y={y + barH - 4} fill="#c9d1d9" fontSize="7" fontFamily="monospace" fontWeight="bold">{item.total}</text>
+            <text x={padX + trackW + 4} y={y + barH - 4} fill={item.color} fontSize="6" fontFamily="monospace">{eff}%</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function MatchDayLive() {
@@ -1925,6 +2442,175 @@ export default function MatchDayLive() {
             />
           </div>
         )}
+
+        {/* ========== 11 SVG Data Visualizations ========== */}
+
+        {/* 1. SVG Live Match Momentum Bar */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Zap className="w-3 h-3" /> Live Momentum
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgLiveMomentum homeMomentum={homeMomentum} awayMomentum={awayMomentum} />
+          </CardContent>
+        </Card>
+
+        {/* 2. SVG Shot Map Mini Pitch */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Target className="w-3 h-3" /> Shot Map
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgShotMapMiniPitch events={visibleEvents} />
+          </CardContent>
+        </Card>
+
+        {/* 3. SVG Possession Pie Ring */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Activity className="w-3 h-3" /> Possession Ring
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgPossessionPieRing
+              homePct={liveStats.homePossession}
+              awayPct={liveStats.awayPossession}
+              homeName={homeClub.shortName ?? homeClub.name}
+              awayName={awayClub.shortName ?? awayClub.name}
+            />
+          </CardContent>
+        </Card>
+
+        {/* 4. SVG Pass Accuracy Gauge */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Gauge className="w-3 h-3" /> Pass Accuracy
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgPassAccuracyGauge
+              accuracy={{
+                home: liveStats.homePasses > 0 ? Math.round((liveStats.homePasses / (liveStats.homePasses + Math.round(liveStats.homePasses * 0.15))) * 100) : 0,
+                away: liveStats.awayPasses > 0 ? Math.round((liveStats.awayPasses / (liveStats.awayPasses + Math.round(liveStats.awayPasses * 0.18))) * 100) : 0,
+              }}
+              homeName={homeClub.shortName ?? homeClub.name}
+              awayName={awayClub.shortName ?? awayClub.name}
+            />
+          </CardContent>
+        </Card>
+
+        {/* 5. SVG Match Events Timeline */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Activity className="w-3 h-3" /> Match Events Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgMatchEventsTimeline events={visibleEvents} currentMinute={matchMinute} />
+            <div className="flex items-center justify-center gap-3 mt-1 text-[7px] text-[#484f58]">
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm bg-emerald-400 inline-block" /> Goal</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm bg-amber-400 inline-block" /> Card</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm bg-red-500 inline-block" /> Red</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm bg-sky-400 inline-block" /> Sub</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm bg-purple-400 inline-block" /> Save</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 6. SVG Player Heatmap Mini */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Footprints className="w-3 h-3" /> Player Heatmap
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgPlayerHeatmapMini data={heatMapData.home} playerZone={heatMapData.playerZone} />
+          </CardContent>
+        </Card>
+
+        {/* 7. SVG Key Stats Comparison Butterfly */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <BarChart3 className="w-3 h-3" /> Key Stats Butterfly
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgKeyStatsButterfly stats={[
+              { label: 'POSS', home: liveStats.homePossession, away: liveStats.awayPossession },
+              { label: 'SHOTS', home: liveStats.homeShots, away: liveStats.awayShots },
+              { label: 'ON TGT', home: liveStats.homeShotsOnTarget, away: liveStats.awayShotsOnTarget },
+              { label: 'PASS', home: liveStats.homePasses, away: liveStats.awayPasses },
+              { label: 'TACKL', home: liveStats.homeTackles, away: liveStats.awayTackles },
+            ]} />
+          </CardContent>
+        </Card>
+
+        {/* 8. SVG Danger Zone Indicator */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Flame className="w-3 h-3" /> Danger Zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgDangerZone events={visibleEvents} currentMinute={matchMinute} />
+          </CardContent>
+        </Card>
+
+        {/* 9. SVG Expected Goals Mini Chart */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <TrendingUp className="w-3 h-3" /> Expected Goals
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgExpectedGoalsChart events={visibleEvents} />
+          </CardContent>
+        </Card>
+
+        {/* 10. SVG Discipline Summary Donut */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Shield className="w-3 h-3" /> Discipline Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgDisciplineDonut events={visibleEvents} />
+          </CardContent>
+        </Card>
+
+        {/* 11. SVG Set Piece Efficiency Bars */}
+        <Card className="bg-[#0d1117] border-[#30363d] gap-1 py-0 rounded-lg">
+          <CardHeader className="px-3 pt-3 pb-0">
+            <CardTitle className="text-[10px] text-[#8b949e] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <Star className="w-3 h-3" /> Set Piece Efficiency
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-1">
+            <SvgSetPieceEfficiencyBars
+              corners={{ total: setPieceStatsData.cornersTotal, goals: setPieceStatsData.cornerGoals }}
+              freeKicks={{ total: setPieceStatsData.freeKicksTotal, goals: setPieceStatsData.freeKickGoals }}
+              penalties={{
+                total: Math.max(1, Math.round(matchMinute / 45)),
+                goals: visibleEvents.reduce<number>((pGoals, e) =>
+                  pGoals + (e.type === 'goal' && e.detail?.toLowerCase().includes('penalty') ? 1 : 0), 0),
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        {/* ========== End SVG Data Visualizations ========== */}
 
         {/* Player Live Stats Grid */}
         <div className="bg-[#161b22] rounded-lg border border-[#fbbf24]/30 p-3">

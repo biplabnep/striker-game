@@ -682,7 +682,9 @@ export type GameScreen =
   | 'match_replay_viewer'
   | 'pre_season_tour'
   | 'stadium_atmosphere'
-  | 'player_agent_hub_enhanced';
+  | 'player_agent_hub_enhanced'
+  | 'international_expansion'
+  | 'youth_academy_deep_dive';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

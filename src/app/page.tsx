@@ -118,6 +118,8 @@ import MatchReplayViewer from '@/components/game/MatchReplayViewer';
 import PreSeasonTour from '@/components/game/PreSeasonTour';
 import StadiumAtmosphere from '@/components/game/StadiumAtmosphere';
 import PlayerAgentHubEnhanced from '@/components/game/PlayerAgentHubEnhanced';
+import InternationalExpansion from '@/components/game/InternationalExpansion';
+import YouthAcademyDeepDive from '@/components/game/YouthAcademyDeepDive';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -231,6 +233,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   pre_season_tour: PreSeasonTour,
   stadium_atmosphere: StadiumAtmosphere,
   player_agent_hub_enhanced: PlayerAgentHubEnhanced,
+  international_expansion: InternationalExpansion,
+  youth_academy_deep_dive: YouthAcademyDeepDive,
 };
 
 const gameScreens: GameScreen[] = [
@@ -312,6 +316,8 @@ const gameScreens: GameScreen[] = [
   'pre_season_tour',
   'stadium_atmosphere',
   'player_agent_hub_enhanced',
+  'international_expansion',
+  'youth_academy_deep_dive',
 ];
 
 export default function Home() {

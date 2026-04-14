@@ -104,6 +104,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'coach_career_path', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach Path' },
       { screen: 'pre_season_tour', icon: <Plane className="h-5 w-5" />, label: 'Pre-Season Tour' },
       { screen: 'player_agent_hub_enhanced', icon: <Briefcase className="h-5 w-5" />, label: 'Agent Hub+' },
+      { screen: 'international_expansion', icon: <Globe className="h-5 w-5" />, label: 'International' },
     ],
   },
   {
@@ -111,6 +112,7 @@ const moreCategories: NavCategory[] = [
     icon: <Shield className="h-4 w-4" />,
     items: [
       { screen: 'youth_academy', icon: <GraduationCap className="h-5 w-5" />, label: 'Academy' },
+      { screen: 'youth_academy_deep_dive', icon: <Baby className="h-5 w-5" />, label: 'Youth Deep' },
       { screen: 'relationships', icon: <Users className="h-5 w-5" />, label: 'Team' },
       { screen: 'daily_routine_hub', icon: <Calendar className="h-5 w-5" />, label: 'Routine' },
       { screen: 'season_objectives', icon: <Target className="h-5 w-5" />, label: 'Objectives' },

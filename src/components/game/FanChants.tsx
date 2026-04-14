@@ -1623,6 +1623,33 @@ function Badge({ className, children }: { className?: string; children: React.Re
 }
 
 // ============================================================
+// Card Components (inline)
+// ============================================================
+function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`bg-[#161b22] border border-[#30363d] rounded-lg ${className || ''}`}>
+      {children}
+    </div>
+  );
+}
+
+function CardHeader({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`flex items-center gap-2 px-4 pt-4 pb-1 ${className || ''}`}>
+      {children}
+    </div>
+  );
+}
+
+function CardContent({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`px-4 pb-4 pt-1 ${className || ''}`}>
+      {children}
+    </div>
+  );
+}
+
+// ============================================================
 // Camera Icon (fallback)
 // ============================================================
 function Camera(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
@@ -1795,6 +1822,719 @@ export default function FanChants() {
     return generateFanSection(clubName, week);
   }, [clubName, week]);
 
+  // ============================================================
+  // SVG 1: Chant Popularity Bars
+  // ============================================================
+  const chantPopularityBars = (): React.JSX.Element => {
+    const top8 = [...chants].sort((a, b) => b.timesSung - a.timesSung).slice(0, 8);
+    const maxVal = Math.max(...top8.map(c => c.timesSung), 1);
+    const colors = ['#34d399', '#0ea5e9', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316', '#14b8a6', '#ec4899'];
+    return (
+      <Card>
+        <CardHeader>
+          <TrendingUp className="h-4 w-4 text-emerald-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Chant Popularity</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 280 190" className="w-full">
+            {top8.map((c, i) => {
+              const barW = Math.max(2, (c.timesSung / maxVal) * 130);
+              const y = i * 22 + 2;
+              return (
+                <g key={c.id}>
+                  <text x="0" y={y + 11} fill="#8b949e" fontSize="7.5" textAnchor="start">
+                    {c.title.length > 16 ? c.title.slice(0, 16) + '…' : c.title}
+                  </text>
+                  <rect x="105" y={y} width="130" height="14" rx="2" fill="#21262d" />
+                  <motion.rect
+                    x="105" y={y} width={barW} height="14" rx="2"
+                    fill={colors[i]}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.85 }}
+                    transition={{ duration: 0.4, delay: i * 0.06 }}
+                  />
+                  <text x={barW + 108} y={y + 11} fill="#c9d1d9" fontSize="7" fontWeight="bold">
+                    {c.timesSung}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 2: Chant Category Donut (via .reduce())
+  // ============================================================
+  const chantCategoryDonut = (): React.JSX.Element => {
+    const catDefs = [
+      { name: 'Victory', color: '#34d399', types: ['Classic'] },
+      { name: 'Support', color: '#0ea5e9', types: ['Player-specific'] },
+      { name: 'Protest', color: '#ef4444', types: ['Rivalry'] },
+      { name: 'Historical', color: '#f59e0b', types: [] },
+      { name: 'Fun', color: '#8b5cf6', types: ['Modern'] },
+    ];
+
+    const catCounts = catDefs.reduce<Record<string, number>>((accCat, cat) => {
+      accCat[cat.name] = cat.types.length === 0
+        ? seededInt(playerName, week, 'histcat', 1, 3)
+        : chants.filter(c => cat.types.includes(c.category)).length;
+      return accCat;
+    }, {});
+
+    const total = catDefs.reduce((sumCat, cat) => sumCat + (catCounts[cat.name] || 0), 0) || 1;
+    const cx = 100;
+    const cy = 72;
+    const outerR = 55;
+    const innerR = 32;
+
+    const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+
+    const donutSegments = catDefs.reduce<{ pathD: string; color: string; name: string; count: number; endDeg: number }[]>(
+      (accDonut, cat) => {
+        const count = catCounts[cat.name] || 0;
+        const startDeg = accDonut.length > 0 ? accDonut[accDonut.length - 1].endDeg : 0;
+        const sweep = (count / total) * 360;
+        const endDeg = startDeg + sweep;
+
+        const oS = { x: cx + outerR * Math.cos(toRad(startDeg)), y: cy + outerR * Math.sin(toRad(startDeg)) };
+        const oE = { x: cx + outerR * Math.cos(toRad(endDeg)), y: cy + outerR * Math.sin(toRad(endDeg)) };
+        const iE = { x: cx + innerR * Math.cos(toRad(endDeg)), y: cy + innerR * Math.sin(toRad(endDeg)) };
+        const iS = { x: cx + innerR * Math.cos(toRad(startDeg)), y: cy + innerR * Math.sin(toRad(startDeg)) };
+        const largeArc = sweep > 180 ? 1 : 0;
+        const segPath = `M ${oS.x} ${oS.y} A ${outerR} ${outerR} 0 ${largeArc} 1 ${oE.x} ${oE.y} L ${iE.x} ${iE.y} A ${innerR} ${innerR} 0 ${largeArc} 0 ${iS.x} ${iS.y} Z`;
+
+        return [...accDonut, { pathD: segPath, color: cat.color, name: cat.name, count, endDeg }];
+      },
+      []
+    );
+
+    return (
+      <Card>
+        <CardHeader>
+          <Crown className="h-4 w-4 text-violet-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Chant Categories</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 200 150" className="w-full">
+            {donutSegments.map((seg, i) => (
+              <motion.path
+                key={seg.name}
+                d={seg.pathD}
+                fill={seg.color}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+              />
+            ))}
+            <text x={cx} y={cy - 3} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="bold">{total}</text>
+            <text x={cx} y={cy + 9} textAnchor="middle" fill="#8b949e" fontSize="7">chants</text>
+            {catDefs.map((cat, i) => {
+              const lx = i < 3 ? 8 : 108;
+              const ly = cy + outerR + 18 + (i % 3) * 14;
+              return (
+                <g key={cat.name}>
+                  <rect x={lx} y={ly} width="8" height="8" rx="1" fill={cat.color} opacity="0.85" />
+                  <text x={lx + 12} y={ly + 7.5} fill="#8b949e" fontSize="7">{cat.name} ({catCounts[cat.name] || 0})</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 3: Crowd Participation Gauge (semi-circular)
+  // ============================================================
+  const crowdParticipationGauge = (): React.JSX.Element => {
+    const value = Math.min(100, Math.max(0, atmosphereData.score));
+    const r = 56;
+    const cx = 80;
+    const cy = 75;
+    const sw = 7;
+    const polarToCart = (deg: number) => {
+      const rad = (deg * Math.PI) / 180;
+      return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+    };
+    const bgStart = polarToCart(180);
+    const bgEnd = polarToCart(0);
+    const bgPath = `M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 0 0 ${bgEnd.x} ${bgEnd.y}`;
+    const valueAngle = 180 - (value / 100) * 180;
+    const valEnd = polarToCart(valueAngle);
+    const valSweep = 180 - valueAngle;
+    const valLargeArc = valSweep > 180 ? 1 : 0;
+    const valPath = `M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 ${valLargeArc} 0 ${valEnd.x} ${valEnd.y}`;
+    const gaugeColor = value >= 75 ? '#34d399' : value >= 50 ? '#f59e0b' : value >= 30 ? '#f97316' : '#ef4444';
+    return (
+      <Card>
+        <CardHeader>
+          <Users className="h-4 w-4 text-sky-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Crowd Participation</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 160 100" className="w-full">
+            <path d={bgPath} fill="none" stroke="#21262d" strokeWidth={sw} strokeLinecap="round" />
+            <motion.path
+              d={valPath}
+              fill="none"
+              stroke={gaugeColor}
+              strokeWidth={sw}
+              strokeLinecap="round"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8 }}
+            />
+            <text x={cx} y={cy - 6} textAnchor="middle" fill="#c9d1d9" fontSize="20" fontWeight="bold">{value}</text>
+            <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize="8">sing-along %</text>
+            {[0, 25, 50, 75, 100].map(tick => {
+              const tickAngle = 180 - (tick / 100) * 180;
+              const tickPt = polarToCart(tickAngle);
+              const tickInner = polarToCart(tickAngle);
+              return (
+                <text
+                  key={tick}
+                  x={tickInner.x}
+                  y={tickInner.y + 16}
+                  textAnchor="middle"
+                  fill="#484f58"
+                  fontSize="6"
+                >
+                  {tick}
+                </text>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 4: Chant Complexity Radar (5 axes)
+  // ============================================================
+  const chantComplexityRadar = (): React.JSX.Element => {
+    const axes = [
+      { label: 'Rhythm', value: seededInt(playerName, week, 'rhythm', 40, 95) },
+      { label: 'Lyrics', value: seededInt(playerName, week, 'lyricsc', 50, 90) },
+      { label: 'Length', value: seededInt(playerName, week, 'lengthc', 30, 80) },
+      { label: 'Harmony', value: seededInt(playerName, week, 'harmonyc', 35, 85) },
+      { label: 'Volume', value: seededInt(playerName, week, 'volumec', 55, 98) },
+    ];
+    const cx = 100;
+    const cy = 90;
+    const maxR = 60;
+    const angleStep = (2 * Math.PI) / 5;
+    const polarToCart = (index: number, radius: number) => ({
+      x: cx + radius * Math.cos(angleStep * index - Math.PI / 2),
+      y: cy + radius * Math.sin(angleStep * index - Math.PI / 2),
+    });
+    const gridLevels = [0.25, 0.5, 0.75, 1.0];
+    const dataPoints = axes.map((axis, i) => {
+      const pt = polarToCart(i, (axis.value / 100) * maxR);
+      return `${pt.x},${pt.y}`;
+    });
+    const dataPointsStr = dataPoints.join(' ');
+    return (
+      <Card>
+        <CardHeader>
+          <Target className="h-4 w-4 text-amber-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Chant Complexity</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 200 190" className="w-full">
+            {gridLevels.map((level, li) => {
+              const gridPts = axes.map((_a, i) => {
+                const gp = polarToCart(i, maxR * level);
+                return `${gp.x},${gp.y}`;
+              });
+              const gridStr = gridPts.join(' ');
+              return (
+                <polygon
+                  key={li}
+                  points={gridStr}
+                  fill="none"
+                  stroke="#21262d"
+                  strokeWidth="0.8"
+                />
+              );
+            })}
+            {axes.map((_a, i) => {
+              const endPt = polarToCart(i, maxR);
+              return (
+                <line key={i} x1={cx} y1={cy} x2={endPt.x} y2={endPt.y} stroke="#30363d" strokeWidth="0.6" />
+              );
+            })}
+            <motion.polygon
+              points={dataPointsStr}
+              fill="#34d399"
+              fillOpacity="0.15"
+              stroke="#34d399"
+              strokeWidth="1.5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            />
+            {axes.map((axis, i) => {
+              const labelPt = polarToCart(i, maxR + 14);
+              const dotPt = polarToCart(i, (axis.value / 100) * maxR);
+              return (
+                <g key={axis.label}>
+                  <text x={labelPt.x} y={labelPt.y + 3} textAnchor="middle" fill="#8b949e" fontSize="7">
+                    {axis.label}
+                  </text>
+                  <circle cx={dotPt.x} cy={dotPt.y} r="3" fill="#34d399" />
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 5: Match Moment Chant Timeline
+  // ============================================================
+  const matchMomentTimeline = (): React.JSX.Element => {
+    const moments = [
+      { label: 'Kickoff', minute: 0, color: '#34d399' },
+      { label: 'First Chant', minute: seededInt(playerName, week, 'tl1', 3, 12), color: '#0ea5e9' },
+      { label: 'Goal!', minute: seededInt(playerName, week, 'tl2', 15, 35), color: '#f59e0b' },
+      { label: 'Conceded', minute: seededInt(playerName, week, 'tl3', 25, 45), color: '#ef4444' },
+      { label: 'Half-time', minute: 45, color: '#8b949e' },
+      { label: '2nd Half', minute: 46, color: '#8b5cf6' },
+      { label: 'Late Goal', minute: seededInt(playerName, week, 'tl4', 70, 88), color: '#f97316' },
+      { label: 'Full-time', minute: 90, color: '#14b8a6' },
+    ];
+    const padX = 15;
+    const lineY = 50;
+    const lineEndX = 270;
+    return (
+      <Card>
+        <CardHeader>
+          <Clock className="h-4 w-4 text-emerald-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Chant Timeline</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 285 105" className="w-full">
+            <line x1={padX} y1={lineY} x2={lineEndX} y2={lineY} stroke="#30363d" strokeWidth="1.5" />
+            {moments.map((m, i) => {
+              const x = padX + (m.minute / 90) * (lineEndX - padX);
+              return (
+                <g key={m.label}>
+                  <motion.circle
+                    cx={x} cy={lineY} r="6"
+                    fill={m.color}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.9 }}
+                    transition={{ duration: 0.3, delay: i * 0.07 }}
+                  />
+                  <circle cx={x} cy={lineY} r="9" fill="none" stroke={m.color} strokeWidth="1" opacity="0.35" />
+                  <text x={x} y={lineY + 22} textAnchor="middle" fill="#c9d1d9" fontSize="6.5" fontWeight="bold">
+                    {m.minute}'
+                  </text>
+                  <text x={x} y={lineY - 14} textAnchor="middle" fill="#8b949e" fontSize="6">
+                    {m.label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 6: Fan Group Contribution Bars
+  // ============================================================
+  const fanGroupBars = (): React.JSX.Element => {
+    const groups = [
+      { name: 'Ultras', value: seededInt(playerName, week, 'ultras', 70, 98) },
+      { name: 'Supporters', value: seededInt(playerName, week, 'supporters', 55, 90) },
+      { name: 'Family', value: seededInt(playerName, week, 'family', 25, 60) },
+      { name: 'Away Fans', value: seededInt(playerName, week, 'awayfans', 30, 70) },
+      { name: 'VIP', value: seededInt(playerName, week, 'vipfans', 10, 40) },
+    ];
+    const colors = ['#ef4444', '#34d399', '#0ea5e9', '#f59e0b', '#8b5cf6'];
+    return (
+      <Card>
+        <CardHeader>
+          <Shield className="h-4 w-4 text-red-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Fan Group Contributions</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 280 130" className="w-full">
+            {groups.map((g, i) => {
+              const barW = Math.max(2, (g.value / 100) * 140);
+              const y = i * 24 + 2;
+              return (
+                <g key={g.name}>
+                  <text x="0" y={y + 11} fill="#8b949e" fontSize="8">{g.name}</text>
+                  <rect x="80" y={y} width="140" height="16" rx="2" fill="#21262d" />
+                  <motion.rect
+                    x="80" y={y} width={barW} height="16" rx="2"
+                    fill={colors[i]}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.8 }}
+                    transition={{ duration: 0.35, delay: i * 0.07 }}
+                  />
+                  <text x={barW + 84} y={y + 12} fill="#c9d1d9" fontSize="7" fontWeight="bold">{g.value}%</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 7: Chant Evolution Area Chart
+  // ============================================================
+  const chantEvolutionArea = (): React.JSX.Element => {
+    const seasons = ['20/21', '21/22', '22/23', '23/24', '24/25', '25/26'];
+    const baseVal = seededInt(playerName, week, 'basev', 8, 18);
+    const seasonData = seasons.map((s, i) => ({
+      label: s,
+      value: baseVal + seededInt(playerName, week, `sval${i}`, 2, 12) + i * 3,
+    }));
+    const maxVal = Math.max(...seasonData.map(d => d.value), 1);
+    const padL = 30;
+    const padB = 25;
+    const padT = 8;
+    const chartW = 240;
+    const chartH = 90;
+    const xStep = chartW / (seasons.length - 1);
+
+    const linePoints = seasonData.map((d, i) => {
+      const px = padL + i * xStep;
+      const py = padT + chartH - (d.value / maxVal) * chartH;
+      return `${px},${py}`;
+    });
+    const lineStr = linePoints.join(' ');
+    const areaStr = `${padL},${padT + chartH} ${lineStr} ${padL + chartW},${padT + chartH}`;
+
+    return (
+      <Card>
+        <CardHeader>
+          <Calendar className="h-4 w-4 text-sky-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Chant Repertoire Growth</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 285 140" className="w-full">
+            {/* Y-axis grid lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+              const gy = padT + chartH - frac * chartH;
+              return (
+                <line key={i} x1={padL} y1={gy} x2={padL + chartW} y2={gy} stroke="#21262d" strokeWidth="0.5" />
+              );
+            })}
+            {/* X-axis baseline */}
+            <line x1={padL} y1={padT + chartH} x2={padL + chartW} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+            <motion.polygon
+              points={areaStr}
+              fill="#0ea5e9"
+              fillOpacity="0.15"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            />
+            <motion.polyline
+              points={lineStr}
+              fill="none"
+              stroke="#0ea5e9"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            />
+            {seasonData.map((d, i) => {
+              const px = padL + i * xStep;
+              const py = padT + chartH - (d.value / maxVal) * chartH;
+              return (
+                <g key={d.label}>
+                  <circle cx={px} cy={py} r="3" fill="#0ea5e9" />
+                  <text x={px} y={padT + chartH + 14} textAnchor="middle" fill="#8b949e" fontSize="7">{d.label}</text>
+                  <text x={px} y={py - 7} textAnchor="middle" fill="#c9d1d9" fontSize="6">{d.value}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 8: Regional Chant Comparison (grouped bars)
+  // ============================================================
+  const regionalComparison = (): React.JSX.Element => {
+    const regions = [
+      { name: 'English', color: '#ef4444', vals: [seededInt(playerName, week, 'en1', 50, 90), seededInt(playerName, week, 'en2', 40, 85), seededInt(playerName, week, 'en3', 55, 95)] },
+      { name: 'Italian', color: '#34d399', vals: [seededInt(playerName, week, 'it1', 60, 95), seededInt(playerName, week, 'it2', 50, 80), seededInt(playerName, week, 'it3', 70, 98)] },
+      { name: 'Spanish', color: '#f59e0b', vals: [seededInt(playerName, week, 'es1', 45, 85), seededInt(playerName, week, 'es2', 55, 90), seededInt(playerName, week, 'es3', 40, 80)] },
+      { name: 'S. American', color: '#8b5cf6', vals: [seededInt(playerName, week, 'sa1', 65, 98), seededInt(playerName, week, 'sa2', 60, 95), seededInt(playerName, week, 'sa3', 55, 90)] },
+    ];
+    const metrics = ['Volume', 'Passion', 'Creativity'];
+    const barW = 14;
+    const groupW = metrics.length * barW + (metrics.length - 1) * 2;
+    const padL = 65;
+    const padB = 25;
+    const chartH = 100;
+    const padT = 5;
+    const groupSpacing = 18;
+
+    return (
+      <Card>
+        <CardHeader>
+          <MapPin className="h-4 w-4 text-emerald-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Regional Chant Styles</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 280 160" className="w-full">
+            {/* Y-axis grid */}
+            {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+              const gy = padT + chartH - frac * chartH;
+              return (
+                <g key={i}>
+                  <line x1={padL} y1={gy} x2={270} y2={gy} stroke="#21262d" strokeWidth="0.5" />
+                  <text x={padL - 4} y={gy + 3} textAnchor="end" fill="#484f58" fontSize="6">{Math.round(frac * 100)}</text>
+                </g>
+              );
+            })}
+            <line x1={padL} y1={padT + chartH} x2={270} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+            {regions.map((region, ri) => {
+              const groupX = padL + ri * (groupW + groupSpacing);
+              return (
+                <g key={region.name}>
+                  {region.vals.map((val, mi) => {
+                    const bx = groupX + mi * (barW + 2);
+                    const bh = Math.max(1, (val / 100) * chartH);
+                    const by = padT + chartH - bh;
+                    return (
+                      <motion.rect
+                        key={mi}
+                        x={bx} y={by} width={barW} height={bh} rx="1.5"
+                        fill={region.color}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.8 }}
+                        transition={{ duration: 0.35, delay: (ri * 3 + mi) * 0.04 }}
+                      />
+                    );
+                  })}
+                  <text x={groupX + groupW / 2} y={padT + chartH + 14} textAnchor="middle" fill="#8b949e" fontSize="7">
+                    {region.name}
+                  </text>
+                </g>
+              );
+            })}
+            {/* Legend */}
+            {metrics.map((m, i) => (
+              <g key={m}>
+                <rect x={padL + i * 65} y={padT + chartH + 22} width="8" height="8" rx="1" fill="#484f58" opacity="0.7" />
+                <text x={padL + i * 65 + 11} y={padT + chartH + 29} fill="#8b949e" fontSize="6">{m}</text>
+              </g>
+            ))}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 9: Vocal Energy Ring
+  // ============================================================
+  const vocalEnergyRing = (): React.JSX.Element => {
+    const energyVal = Math.min(100, Math.max(0, atmosphereData.score + seededInt(playerName, week, 'energyboost', -5, 10)));
+    const cx = 80;
+    const cy = 75;
+    const outerR = 55;
+    const ringW = 8;
+    const innerR = outerR - ringW;
+    const sweepAngle = (energyVal / 100) * 360;
+
+    const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+    const bgStart = { x: cx + outerR * Math.cos(toRad(0)), y: cy + outerR * Math.sin(toRad(0)) };
+    const bgEnd = { x: cx + outerR * Math.cos(toRad(359.9)), y: cy + outerR * Math.sin(toRad(359.9)) };
+    const bgArc = `M ${bgStart.x} ${bgStart.y} A ${outerR} ${outerR} 0 1 1 ${bgEnd.x} ${bgEnd.y}`;
+
+    const valEndAngle = sweepAngle;
+    const oS = { x: cx + outerR * Math.cos(toRad(0)), y: cy + outerR * Math.sin(toRad(0)) };
+    const oE = { x: cx + outerR * Math.cos(toRad(valEndAngle)), y: cy + outerR * Math.sin(toRad(valEndAngle)) };
+    const largeArc = valEndAngle > 180 ? 1 : 0;
+    const energyArc = `M ${oS.x} ${oS.y} A ${outerR} ${outerR} 0 ${largeArc} 1 ${oE.x} ${oE.y}`;
+
+    const energyColor = energyVal >= 80 ? '#34d399' : energyVal >= 60 ? '#0ea5e9' : energyVal >= 40 ? '#f59e0b' : '#ef4444';
+
+    const innerBgStart = { x: cx + innerR * Math.cos(toRad(0)), y: cy + innerR * Math.sin(toRad(0)) };
+    const innerBgEnd = { x: cx + innerR * Math.cos(toRad(359.9)), y: cy + innerR * Math.sin(toRad(359.9)) };
+    const innerBgArc = `M ${innerBgStart.x} ${innerBgStart.y} A ${innerR} ${innerR} 0 1 1 ${innerBgEnd.x} ${innerBgEnd.y}`;
+
+    return (
+      <Card>
+        <CardHeader>
+          <Volume2 className="h-4 w-4 text-emerald-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Vocal Energy</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 160 150" className="w-full">
+            {/* Outer ring bg */}
+            <path d={bgArc} fill="none" stroke="#21262d" strokeWidth={ringW} strokeLinecap="round" />
+            {/* Inner ring bg */}
+            <path d={innerBgArc} fill="none" stroke="#21262d" strokeWidth={ringW} strokeLinecap="round" />
+            {/* Energy arc */}
+            <motion.path
+              d={energyArc}
+              fill="none"
+              stroke={energyColor}
+              strokeWidth={ringW}
+              strokeLinecap="round"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8 }}
+            />
+            {/* Center text */}
+            <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="22" fontWeight="bold">{energyVal}</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="8">energy level</text>
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 10: Chant Duration Distribution (via .reduce())
+  // ============================================================
+  const chantDurationBars = (): React.JSX.Element => {
+    const buckets = [
+      { label: '<30s', minLines: 0, maxLines: 2 },
+      { label: '30-60s', minLines: 2, maxLines: 4 },
+      { label: '1-2min', minLines: 4, maxLines: 6 },
+      { label: '2min+', minLines: 6, maxLines: 99 },
+    ];
+    const durationCounts = buckets.reduce<Record<string, number>>((accDur, bucket) => {
+      accDur[bucket.label] = chants.reduce((matchCount, chant) => {
+        const lineCount = chant.lyrics.length;
+        const durationEst = lineCount * 8 + seededInt(playerName, week, `dur${chant.id}`, 5, 20);
+        return matchCount + (durationEst >= bucket.minLines * 12 && durationEst < bucket.maxLines * 12 ? 1 : 0);
+      }, 0);
+      if (accDur[bucket.label] === 0) {
+        accDur[bucket.label] = seededInt(playerName, week, `durfill${bucket.label}`, 1, 4);
+      }
+      return accDur;
+    }, {});
+
+    const maxCount = buckets.reduce((mxDur, b) => Math.max(mxDur, durationCounts[b.label] || 0), 0) || 1;
+    const colors = ['#14b8a6', '#0ea5e9', '#f59e0b', '#ef4444'];
+
+    return (
+      <Card>
+        <CardHeader>
+          <Clock className="h-4 w-4 text-amber-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Chant Duration</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 280 120" className="w-full">
+            {buckets.map((b, i) => {
+              const count = durationCounts[b.label] || 0;
+              const barW = Math.max(2, (count / maxCount) * 160);
+              const y = i * 26 + 4;
+              return (
+                <g key={b.label}>
+                  <text x="0" y={y + 12} fill="#8b949e" fontSize="8">{b.label}</text>
+                  <rect x="55" y={y} width="160" height="18" rx="2" fill="#21262d" />
+                  <motion.rect
+                    x="55" y={y} width={barW} height="18" rx="2"
+                    fill={colors[i]}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.8 }}
+                    transition={{ duration: 0.35, delay: i * 0.07 }}
+                  />
+                  <text x={barW + 60} y={y + 13} fill="#c9d1d9" fontSize="7" fontWeight="bold">{count}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // SVG 11: Tifo Integration Scatter
+  // ============================================================
+  const tifoScatter = (): React.JSX.Element => {
+    const scatterData = tifos.map((t, i) => ({
+      x: seededInt(playerName, week, `sx${i}`, 30, 98),
+      y: t.moraleBoost * 5,
+      label: t.title.length > 10 ? t.title.slice(0, 10) + '…' : t.title,
+      color: t.colors[0] || '#34d399',
+    }));
+    const padL = 35;
+    const padB = 30;
+    const padT = 10;
+    const padR = 10;
+    const chartW = 220;
+    const chartH = 90;
+    const dotColors = ['#34d399', '#0ea5e9', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316', '#ec4899', '#14b8a6'];
+
+    return (
+      <Card>
+        <CardHeader>
+          <Sparkles className="h-4 w-4 text-violet-400" />
+          <span className="text-xs font-bold text-[#c9d1d9]">Tifo × Chant Scatter</span>
+        </CardHeader>
+        <CardContent>
+          <svg viewBox="0 0 280 150" className="w-full">
+            {/* Grid lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+              const gy = padT + chartH - frac * chartH;
+              const gx = padL + frac * chartW;
+              return (
+                <g key={i}>
+                  <line x1={padL} y1={gy} x2={padL + chartW} y2={gy} stroke="#21262d" strokeWidth="0.5" />
+                  <line x1={gx} y1={padT} x2={gx} y2={padT + chartH} stroke="#21262d" strokeWidth="0.5" />
+                </g>
+              );
+            })}
+            {/* Axes */}
+            <line x1={padL} y1={padT + chartH} x2={padL + chartW} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+            <line x1={padL} y1={padT} x2={padL} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+            {/* Axis labels */}
+            <text x={padL + chartW / 2} y={padT + chartH + 20} textAnchor="middle" fill="#8b949e" fontSize="7">Chant Volume</text>
+            <text x={padL - 24} y={padT + chartH / 2} textAnchor="middle" fill="#8b949e" fontSize="7"
+              style={{ writingMode: 'vertical-rl' } as React.CSSProperties}
+            >Tifo Quality</text>
+            {/* Dots */}
+            {scatterData.map((d, i) => {
+              const px = padL + (d.x / 100) * chartW;
+              const py = padT + chartH - (d.y / 100) * chartH;
+              return (
+                <g key={i}>
+                  <motion.circle
+                    cx={px} cy={py} r="5"
+                    fill={dotColors[i]}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.85 }}
+                    transition={{ duration: 0.3, delay: i * 0.06 }}
+                  />
+                  <text x={px + 7} y={py - 3} fill="#8b949e" fontSize="5.5">{d.label}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
   // ---- Tab configuration ----
   const tabs = [
     { id: 'chants', label: 'Chants', icon: <Music className="h-3.5 w-3.5" /> },
@@ -1880,6 +2620,25 @@ export default function FanChants() {
         {/* ---- Fan Section Display ---- */}
         <div className="mt-4">
           <FanSectionDisplay data={fanSection} />
+        </div>
+
+        {/* ---- SVG Data Visualizations ---- */}
+        <div className="mt-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {chantPopularityBars()}
+            {chantCategoryDonut()}
+            {crowdParticipationGauge()}
+            {chantComplexityRadar()}
+            {matchMomentTimeline()}
+            {fanGroupBars()}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {chantEvolutionArea()}
+            {regionalComparison()}
+            {vocalEnergyRing()}
+            {chantDurationBars()}
+            {tifoScatter()}
+          </div>
         </div>
       </main>
     </div>
