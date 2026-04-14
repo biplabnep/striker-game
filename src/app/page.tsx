@@ -114,6 +114,8 @@ import PlayerPsychology from '@/components/game/PlayerPsychology';
 import SocialMediaHub from '@/components/game/SocialMediaHub';
 import VirtualTrophyTour from '@/components/game/VirtualTrophyTour';
 import CoachCareer from '@/components/game/CoachCareer';
+import MatchReplayViewer from '@/components/game/MatchReplayViewer';
+import PreSeasonTour from '@/components/game/PreSeasonTour';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -223,6 +225,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   social_media_hub: SocialMediaHub,
   virtual_trophy_tour: VirtualTrophyTour,
   coach_career_path: CoachCareer,
+  match_replay_viewer: MatchReplayViewer,
+  pre_season_tour: PreSeasonTour,
 };
 
 const gameScreens: GameScreen[] = [
@@ -300,6 +304,8 @@ const gameScreens: GameScreen[] = [
   'social_media_hub',
   'virtual_trophy_tour',
   'coach_career_path',
+  'match_replay_viewer',
+  'pre_season_tour',
 ];
 
 export default function Home() {

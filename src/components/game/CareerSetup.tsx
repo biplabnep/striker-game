@@ -3,12 +3,13 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { Position, POSITION_GROUPS } from '@/lib/game/types';
-import { NATIONALITIES, POSITIONS, generatePlayerName } from '@/lib/game/playerData';
+import { NATIONALITIES, POSITIONS, POSITION_WEIGHTS, generatePlayerName } from '@/lib/game/playerData';
 import { ENRICHED_CLUBS, LEAGUES } from '@/lib/game/clubsData';
 import { getOverallColor } from '@/lib/game/gameUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -194,6 +195,142 @@ const STEPS = [
 ];
 
 // ============================================================
+// SVG Geometry Helpers (pure functions, no state dependencies)
+// ============================================================
+function hexPoints(cx: number, cy: number, maxR: number, values: number[]): string {
+  const n = values.length;
+  return values.map((val, i) => {
+    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+    const r = maxR * (val / 100);
+    return `${(cx + r * Math.cos(angle)).toFixed(1)},${(cy + r * Math.sin(angle)).toFixed(1)}`;
+  }).join(' ');
+}
+
+function donutSegPath(
+  cx: number, cy: number,
+  outerR: number, innerR: number,
+  startDeg: number, endDeg: number,
+): string {
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const os = toRad(startDeg);
+  const oe = toRad(endDeg);
+  const osx = cx + outerR * Math.cos(os);
+  const osy = cy + outerR * Math.sin(os);
+  const oex = cx + outerR * Math.cos(oe);
+  const oey = cy + outerR * Math.sin(oe);
+  const iex = cx + innerR * Math.cos(oe);
+  const iey = cy + innerR * Math.sin(oe);
+  const isx = cx + innerR * Math.cos(os);
+  const isy = cy + innerR * Math.sin(os);
+  const large = (endDeg - startDeg) > 180 ? 1 : 0;
+  return [
+    `M ${osx.toFixed(1)} ${osy.toFixed(1)}`,
+    `A ${outerR} ${outerR} 0 ${large} 1 ${oex.toFixed(1)} ${oey.toFixed(1)}`,
+    `L ${iex.toFixed(1)} ${iey.toFixed(1)}`,
+    `A ${innerR} ${innerR} 0 ${large} 0 ${isx.toFixed(1)} ${isy.toFixed(1)}`,
+    'Z',
+  ].join(' ');
+}
+
+function polarToXY(cx: number, cy: number, r: number, deg: number): { x: number; y: number } {
+  const rad = (deg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function areaPolyPts(xArr: number[], yArr: number[], baseY: number): string {
+  const top = xArr.map((x, i) => `${x.toFixed(1)},${yArr[i].toFixed(1)}`);
+  const bot = xArr.slice().reverse().map(x => `${x.toFixed(1)},${baseY.toFixed(1)}`);
+  return [...top, ...bot].join(' ');
+}
+
+function linePolyPts(xArr: number[], yArr: number[]): string {
+  return xArr.map((x, i) => `${x.toFixed(1)},${yArr[i].toFixed(1)}`).join(' ');
+}
+
+// ============================================================
+// Static SVG Data Constants
+// ============================================================
+const POSITION_POPULARITY = [12, 28, 32, 45, 18, 22];
+const POSITION_RADAR_LABELS = ['GK', 'DEF', 'MID', 'FWD', 'CF', 'CAM'];
+const ATTR_RADAR_LABELS = ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'];
+const ATTR_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'] as const;
+
+const REGION_COLORS = ['#10b981', '#f59e0b', '#8b5cf6', '#0ea5e9', '#ec4899'];
+
+const nationalityRegionMap: Array<{ region: string; names: string[] }> = [
+  { region: 'Europe', names: ['England','Spain','Italy','Germany','France','Portugal','Netherlands','Belgium','Croatia','Scotland','Wales','Ireland','Poland','Serbia','Turkey','Sweden','Norway','Denmark','Switzerland','Austria','Czech Republic','Ukraine'] },
+  { region: 'S. America', names: ['Brazil','Argentina','Uruguay','Colombia','Chile','Ecuador'] },
+  { region: 'Africa', names: ['Morocco','Nigeria','Senegal','Ghana','Cameroon','Ivory Coast'] },
+  { region: 'Asia', names: ['South Korea','Japan'] },
+  { region: 'Other', names: ['Mexico','USA','Australia','Canada'] },
+];
+
+const natDistribution = nationalityRegionMap.map((rg, ri) => ({
+  region: rg.region,
+  count: rg.names.reduce((sum, nm) => sum + (NATIONALITIES.some(n => n.name === nm) ? 1 : 0), 0),
+  color: REGION_COLORS[ri] ?? '#484f58',
+}));
+
+const natTotal = natDistribution.reduce((sum, d) => sum + d.count, 0);
+
+const OVR_DISTRIBUTION = [
+  { range: '40-49', pct: 8 },
+  { range: '50-59', pct: 22 },
+  { range: '60-69', pct: 38 },
+  { range: '70-79', pct: 24 },
+  { range: '80+', pct: 8 },
+];
+
+const HEIGHT_DISTRIBUTION = [
+  { range: '<165', pct: 5 },
+  { range: '165-170', pct: 12 },
+  { range: '170-175', pct: 28 },
+  { range: '175-180', pct: 30 },
+  { range: '180-185', pct: 18 },
+  { range: '185+', pct: 7 },
+];
+
+const FOOT_SPLIT = [
+  { label: 'Left', pct: 25, color: '#0ea5e9' },
+  { label: 'Right', pct: 60, color: '#10b981' },
+  { label: 'Both', pct: 15, color: '#f59e0b' },
+];
+
+const CAREER_PROJECTIONS: Record<string, number[]> = {
+  easy: [45,50,56,62,68,74,78,82,85,87,88,88,87,86,85,83,81,79,77,75,73,72],
+  normal: [42,46,52,57,63,68,72,76,79,81,82,82,81,80,78,76,73,70,68,66,64,62],
+  hard: [38,42,47,52,57,61,65,69,72,74,75,75,74,72,70,67,64,61,58,55,53,51],
+};
+
+const BUDGET_ALLOCATION: Record<string, Array<{ label: string; pct: number; color: string }>> = {
+  easy: [
+    { label: 'Wages', pct: 50, color: '#10b981' },
+    { label: 'Transfers', pct: 35, color: '#0ea5e9' },
+    { label: 'Bonus', pct: 15, color: '#f59e0b' },
+  ],
+  normal: [
+    { label: 'Wages', pct: 55, color: '#10b981' },
+    { label: 'Transfers', pct: 30, color: '#0ea5e9' },
+    { label: 'Bonus', pct: 15, color: '#f59e0b' },
+  ],
+  hard: [
+    { label: 'Wages', pct: 60, color: '#ef4444' },
+    { label: 'Transfers', pct: 25, color: '#f59e0b' },
+    { label: 'Bonus', pct: 15, color: '#8b5cf6' },
+  ],
+};
+
+const CLUB_METRICS = [
+  { label: 'Squad', key: 'squadQuality' as const },
+  { label: 'Facility', key: 'facilities' as const },
+  { label: 'Finance', key: 'finances' as const },
+  { label: 'Repute', key: 'reputation' as const },
+  { label: 'Youth', key: 'youthDevelopment' as const },
+];
+
+const DIFFICULTY_GAUGE_POS: Record<string, number> = { easy: 300, normal: 0, hard: 60 };
+
+// ============================================================
 // CareerSetup Component
 // ============================================================
 export default function CareerSetup() {
@@ -216,7 +353,7 @@ export default function CareerSetup() {
 
   // Collapsible leagues
   const selectedClubLeague = useMemo(
-    () => ENRICHED_CLUBS.find(c => c.id === clubId)?.league,
+    () => ENRICHED_CLUBS.find(club => club.id === clubId)?.league,
     [clubId],
   );
   const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(
@@ -252,10 +389,8 @@ export default function CareerSetup() {
   const filteredClubsByLeague = useMemo(() => {
     const q = clubSearch.toLowerCase().trim();
     return LEAGUES.map(league => {
-      let clubs = ENRICHED_CLUBS.filter(c => c.league === league.id);
-      if (q) {
-        clubs = clubs.filter(c => c.name.toLowerCase().includes(q));
-      }
+      const leagueClubs = ENRICHED_CLUBS.filter(club => club.league === league.id);
+      const clubs = q ? leagueClubs.filter(club => club.name.toLowerCase().includes(q)) : leagueClubs;
       return { league, clubs };
     }).filter(entry => entry.clubs.length > 0 || !q);
   }, [clubSearch]);
@@ -293,6 +428,479 @@ export default function CareerSetup() {
     if (ref) ref.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // ============================================================
+  // SVG Render Functions (camelCase, called as {fnName()})
+  // ============================================================
+
+  const renderPositionRadar = (): React.JSX.Element => {
+    const cx = 100, cy = 100, r = 65, sides = 6;
+    const gridLevels = [33, 66, 100];
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Position Popularity</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 200" className="w-full" fill="none">
+            {gridLevels.map((lvl, gi) => (
+              <polygon
+                key={gi}
+                points={hexPoints(cx, cy, r * lvl / 100, Array(sides).fill(lvl))}
+                stroke="#30363d"
+                strokeWidth={0.5}
+              />
+            ))}
+            {POSITION_RADAR_LABELS.map((_, ai) => {
+              const angle = (Math.PI * 2 * ai) / sides - Math.PI / 2;
+              const ex = cx + r * Math.cos(angle);
+              const ey = cy + r * Math.sin(angle);
+              return <line key={ai} x1={cx} y1={cy} x2={ex.toFixed(1)} y2={ey.toFixed(1)} stroke="#30363d" strokeWidth={0.5} />;
+            })}
+            <polygon
+              points={hexPoints(cx, cy, r, POSITION_POPULARITY)}
+              stroke="#10b981"
+              strokeWidth={2}
+              fill="#10b981"
+              fillOpacity={0.15}
+            />
+            {POSITION_POPULARITY.map((val, vi) => {
+              const angle = (Math.PI * 2 * vi) / sides - Math.PI / 2;
+              const px = cx + r * (val / 100) * Math.cos(angle);
+              const py = cy + r * (val / 100) * Math.sin(angle);
+              return <circle key={vi} cx={px.toFixed(1)} cy={py.toFixed(1)} r={3} fill="#10b981" />;
+            })}
+            {POSITION_RADAR_LABELS.map((lbl, li) => {
+              const angle = (Math.PI * 2 * li) / sides - Math.PI / 2;
+              const lx = cx + (r + 14) * Math.cos(angle);
+              const ly = cy + (r + 14) * Math.sin(angle);
+              return (
+                <text key={li} x={lx.toFixed(1)} y={ly.toFixed(1)} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize={9}>
+                  {lbl}
+                </text>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderNationalityDonut = (): React.JSX.Element => {
+    const cx = 100, cy = 100, outerR = 70, innerR = 45;
+    const segs = natDistribution.map(d => ({
+      ...d,
+      deg: (d.count / natTotal) * 360,
+    }));
+    const cumDegs = segs.reduce<number[]>((acc, sg) => {
+      acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + sg.deg);
+      return acc;
+    }, []);
+    const arcs = segs.map((sg, idx) => ({
+      ...sg,
+      startDeg: idx === 0 ? 0 : cumDegs[idx - 1],
+      endDeg: cumDegs[idx],
+    }));
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Nationality Regions</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 200" className="w-full" fill="none">
+            {arcs.map((arc, ai) => (
+              <path key={ai} d={donutSegPath(cx, cy, outerR, innerR, arc.startDeg, arc.endDeg)} fill={arc.color} fillOpacity={0.8} />
+            ))}
+            <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="central" fill="#c9d1d9" fontSize={16} fontWeight="bold">{natTotal}</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" dominantBaseline="central" fill="#484f58" fontSize={8}>nations</text>
+          </svg>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 justify-center">
+            {arcs.map((arc, ai) => (
+              <div key={ai} className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: arc.color }} />
+                <span className="text-[9px] text-[#8b949e]">{arc.region} {Math.round(arc.deg)}%</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderDifficultyGauge = (): React.JSX.Element => {
+    const cx = 100, cy = 105, r = 65;
+    const zones = [
+      { start: 270, end: 330, color: '#10b981', label: 'Easy' },
+      { start: 330, end: 30, color: '#f59e0b', label: 'Normal' },
+      { start: 30, end: 90, color: '#ef4444', label: 'Hard' },
+    ];
+    const indicatorDeg = DIFFICULTY_GAUGE_POS[difficulty] ?? 0;
+    const ip = polarToXY(cx, cy, r, indicatorDeg);
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Difficulty Gauge</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 140" className="w-full" fill="none">
+            {zones.map((zone, zi) => (
+              <path
+                key={zi}
+                d={donutSegPath(cx, cy, r, r - 12, zone.start, zone.end)}
+                fill={zone.color}
+                fillOpacity={difficulty === zone.label.toLowerCase() ? 0.9 : 0.25}
+              />
+            ))}
+            <circle cx={ip.x.toFixed(1)} cy={ip.y.toFixed(1)} r={5} fill="#c9d1d9" />
+            <circle cx={ip.x.toFixed(1)} cy={ip.y.toFixed(1)} r={2.5} fill="#0d1117" />
+            <text x={cx} y={cy - 14} textAnchor="middle" dominantBaseline="central" fill="#c9d1d9" fontSize={13} fontWeight="bold">{difficulty.toUpperCase()}</text>
+            <text x={30} y={cy + 12} textAnchor="middle" dominantBaseline="central" fill="#10b981" fontSize={8}>Easy</text>
+            <text x={cx} y={cy - r - 6} textAnchor="middle" dominantBaseline="central" fill="#f59e0b" fontSize={8}>Normal</text>
+            <text x={170} y={cy + 12} textAnchor="middle" dominantBaseline="central" fill="#ef4444" fontSize={8}>Hard</text>
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderAttributeRadar = (): React.JSX.Element => {
+    const cx = 100, cy = 100, r = 65, sides = 6;
+    const weights = ATTR_KEYS.map(k => POSITION_WEIGHTS[position][k] ?? 0);
+    const maxW = 0.40;
+    const values = weights.map(w => Math.round((w / maxW) * 100));
+    const gridLevels = [33, 66, 100];
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Attribute Preview — {position}</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 200" className="w-full" fill="none">
+            {gridLevels.map((lvl, gi) => (
+              <polygon
+                key={gi}
+                points={hexPoints(cx, cy, r * lvl / 100, Array(sides).fill(lvl))}
+                stroke="#30363d"
+                strokeWidth={0.5}
+              />
+            ))}
+            {ATTR_RADAR_LABELS.map((_, ai) => {
+              const angle = (Math.PI * 2 * ai) / sides - Math.PI / 2;
+              const ex = cx + r * Math.cos(angle);
+              const ey = cy + r * Math.sin(angle);
+              return <line key={ai} x1={cx} y1={cy} x2={ex.toFixed(1)} y2={ey.toFixed(1)} stroke="#30363d" strokeWidth={0.5} />;
+            })}
+            <polygon
+              points={hexPoints(cx, cy, r, values)}
+              stroke="#0ea5e9"
+              strokeWidth={2}
+              fill="#0ea5e9"
+              fillOpacity={0.15}
+            />
+            {values.map((val, vi) => {
+              const angle = (Math.PI * 2 * vi) / sides - Math.PI / 2;
+              const px = cx + r * (val / 100) * Math.cos(angle);
+              const py = cy + r * (val / 100) * Math.sin(angle);
+              return <circle key={vi} cx={px.toFixed(1)} cy={py.toFixed(1)} r={3} fill="#0ea5e9" />;
+            })}
+            {ATTR_RADAR_LABELS.map((lbl, li) => {
+              const angle = (Math.PI * 2 * li) / sides - Math.PI / 2;
+              const lx = cx + (r + 14) * Math.cos(angle);
+              const ly = cy + (r + 14) * Math.sin(angle);
+              return (
+                <text key={li} x={lx.toFixed(1)} y={ly.toFixed(1)} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize={9}>
+                  {lbl}
+                </text>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderOvrDistribution = (): React.JSX.Element => {
+    const barH = 16, gap = 6, labelW = 42, maxPct = 38;
+    const barMaxW = 120;
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Starting OVR Distribution</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 130" className="w-full" fill="none">
+            {OVR_DISTRIBUTION.map((d, di) => {
+              const y = di * (barH + gap);
+              const bw = (d.pct / maxPct) * barMaxW;
+              return (
+                <g key={di}>
+                  <text x={labelW - 4} y={y + barH / 2} textAnchor="end" dominantBaseline="central" fill="#8b949e" fontSize={9}>{d.range}</text>
+                  <rect x={labelW} y={y} width={barMaxW} height={barH} rx={3} fill="#21262d" />
+                  <rect x={labelW} y={y} width={bw.toFixed(1)} height={barH} rx={3} fill="#10b981" fillOpacity={0.8} />
+                  <text x={labelW + bw + 5} y={y + barH / 2} dominantBaseline="central" fill="#c9d1d9" fontSize={8}>{d.pct}%</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderClubComparison = (): React.JSX.Element => {
+    const league = selectedClubLeague ?? 'premier_league';
+    const leagueClubs = ENRICHED_CLUBS.filter(club => club.league === league);
+    const lc = leagueClubs.length > 0 ? leagueClubs.length : 1;
+    const avgVals = CLUB_METRICS.reduce<Record<string, number>>((acc, m) => {
+      const total = leagueClubs.reduce((sum, club) => sum + (club[m.key] ?? 70), 0);
+      acc[m.key] = total / lc;
+      return acc;
+    }, {});
+
+    const barH = 14, gap = 8, labelW = 44, maxVal = 100;
+    const barMaxW = 100;
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Club vs League Average</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 140" className="w-full" fill="none">
+            {CLUB_METRICS.map((m, mi) => {
+              const y = mi * (barH + gap);
+              const clubVal = selectedClub ? selectedClub[m.key] ?? 70 : 70;
+              const avgVal = avgVals[m.key] ?? 70;
+              const clubW = (clubVal / maxVal) * barMaxW;
+              const avgW = (avgVal / maxVal) * barMaxW;
+              return (
+                <g key={mi}>
+                  <text x={labelW - 4} y={y + barH / 2} textAnchor="end" dominantBaseline="central" fill="#8b949e" fontSize={8}>{m.label}</text>
+                  <rect x={labelW} y={y + 1} width={avgW.toFixed(1)} height={barH - 2} rx={2} fill="#484f58" fillOpacity={0.3} />
+                  <rect x={labelW} y={y + 1} width={clubW.toFixed(1)} height={barH - 2} rx={2} fill="#0ea5e9" fillOpacity={0.8} />
+                  <text x={labelW + Math.max(clubW, avgW) + 4} y={y + barH / 2} dominantBaseline="central" fill="#c9d1d9" fontSize={7}>{clubVal}</text>
+                </g>
+              );
+            })}
+            <rect x={labelW + barMaxW + 16} y={4} width={8} height={8} rx={1} fill="#0ea5e9" fillOpacity={0.8} />
+            <text x={labelW + barMaxW + 28} y={10} dominantBaseline="central" fill="#8b949e" fontSize={7}>Club</text>
+            <rect x={labelW + barMaxW + 16} y={16} width={8} height={8} rx={1} fill="#484f58" fillOpacity={0.5} />
+            <text x={labelW + barMaxW + 28} y={22} dominantBaseline="central" fill="#8b949e" fontSize={7}>Avg</text>
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderCareerProjection = (): React.JSX.Element => {
+    const data = CAREER_PROJECTIONS[difficulty] ?? CAREER_PROJECTIONS.normal;
+    const ages = data.map((_, i) => 14 + i);
+    const xPad = 14, yPad = 10;
+    const plotW = 172, plotH = 80;
+    const baseY = yPad + plotH;
+    const xPts = ages.map(a => xPad + ((a - 14) / 21) * plotW);
+    const yPts = data.map(ovr => yPad + ((90 - ovr) / 55) * plotH);
+
+    const difficultyColors: Record<string, string> = { easy: '#10b981', normal: '#f59e0b', hard: '#ef4444' };
+    const lineColor = difficultyColors[difficulty] ?? '#f59e0b';
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Career OVR Projection</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 120" className="w-full" fill="none">
+            {[40, 60, 80].map((ovr, gi) => {
+              const gy = yPad + ((90 - ovr) / 55) * plotH;
+              return (
+                <g key={gi}>
+                  <line x1={xPad} y1={gy.toFixed(1)} x2={xPad + plotW} y2={gy.toFixed(1)} stroke="#30363d" strokeWidth={0.5} strokeDasharray="3,3" />
+                  <text x={xPad - 3} y={gy.toFixed(1)} textAnchor="end" dominantBaseline="central" fill="#484f58" fontSize={7}>{ovr}</text>
+                </g>
+              );
+            })}
+            <line x1={xPad} y1={baseY} x2={xPad + plotW} y2={baseY} stroke="#30363d" strokeWidth={0.5} />
+            <text x={xPad} y={baseY + 10} textAnchor="middle" dominantBaseline="central" fill="#484f58" fontSize={7}>14</text>
+            <text x={xPad + plotW} y={baseY + 10} textAnchor="middle" dominantBaseline="central" fill="#484f58" fontSize={7}>35</text>
+            <polygon points={areaPolyPts(xPts, yPts, baseY)} fill={lineColor} fillOpacity={0.1} />
+            <polyline points={linePolyPts(xPts, yPts)} stroke={lineColor} strokeWidth={2} fill="none" />
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderBudgetDonut = (): React.JSX.Element => {
+    const alloc = BUDGET_ALLOCATION[difficulty] ?? BUDGET_ALLOCATION.normal;
+    const cx = 100, cy = 100, outerR = 65, innerR = 40;
+    const allocDegs = alloc.reduce<number[]>((acc, sg) => {
+      acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + sg.pct * 3.6);
+      return acc;
+    }, []);
+    const arcs = alloc.map((sg, idx) => ({
+      ...sg,
+      startDeg: idx === 0 ? 0 : allocDegs[idx - 1],
+      endDeg: allocDegs[idx],
+    }));
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Budget Allocation</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 200" className="w-full" fill="none">
+            {arcs.map((arc, ai) => (
+              <path key={ai} d={donutSegPath(cx, cy, outerR, innerR, arc.startDeg, arc.endDeg)} fill={arc.color} fillOpacity={0.8} />
+            ))}
+            <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="central" fill="#c9d1d9" fontSize={11} fontWeight="bold">£{difficulty === 'easy' ? '50m' : difficulty === 'normal' ? '30m' : '15m'}</text>
+            <text x={cx} y={cy + 10} textAnchor="middle" dominantBaseline="central" fill="#484f58" fontSize={7}>total budget</text>
+          </svg>
+          <div className="flex gap-3 mt-2 justify-center">
+            {arcs.map((arc, ai) => (
+              <div key={ai} className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: arc.color }} />
+                <span className="text-[9px] text-[#8b949e]">{arc.label} {arc.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderHeightDistribution = (): React.JSX.Element => {
+    const barW = 22, gap = 6, baseY = 100, topY = 12, maxPct = 30;
+    const chartH = baseY - topY;
+    const totalW = HEIGHT_DISTRIBUTION.length * barW + (HEIGHT_DISTRIBUTION.length - 1) * gap;
+    const offsetX = (200 - totalW) / 2;
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Player Height Distribution (cm)</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 130" className="w-full" fill="none">
+            {[10, 20, 30].map((pct, gi) => {
+              const gy = baseY - (pct / maxPct) * chartH;
+              return (
+                <g key={gi}>
+                  <line x1={offsetX} y1={gy.toFixed(1)} x2={offsetX + totalW} y2={gy.toFixed(1)} stroke="#30363d" strokeWidth={0.5} strokeDasharray="3,3" />
+                  <text x={offsetX - 3} y={gy.toFixed(1)} textAnchor="end" dominantBaseline="central" fill="#484f58" fontSize={7}>{pct}%</text>
+                </g>
+              );
+            })}
+            <line x1={offsetX} y1={baseY} x2={offsetX + totalW} y2={baseY} stroke="#30363d" strokeWidth={0.5} />
+            {HEIGHT_DISTRIBUTION.map((d, di) => {
+              const x = offsetX + di * (barW + gap);
+              const bh = (d.pct / maxPct) * chartH;
+              const y = baseY - bh;
+              return (
+                <g key={di}>
+                  <rect x={x} y={y.toFixed(1)} width={barW} height={bh.toFixed(1)} rx={2} fill="#8b5cf6" fillOpacity={0.7} />
+                  <text x={x + barW / 2} y={y - 4} textAnchor="middle" dominantBaseline="central" fill="#c9d1d9" fontSize={7}>{d.pct}%</text>
+                  <text x={x + barW / 2} y={baseY + 10} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize={7}>{d.range}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderFootSplit = (): React.JSX.Element => {
+    const barH = 20, barW = 150, labelW = 34;
+    const offsetX = (200 - labelW - barW) / 2 + labelW;
+    const cumPcts = FOOT_SPLIT.reduce<number[]>((acc, seg) => {
+      acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + seg.pct);
+      return acc;
+    }, []);
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Preferred Foot Split</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 70" className="w-full" fill="none">
+            <rect x={offsetX} y={8} width={barW} height={barH} rx={4} fill="#21262d" />
+            {FOOT_SPLIT.map((seg, si) => {
+              const sw = (seg.pct / 100) * barW;
+              const sx = offsetX + (si === 0 ? 0 : cumPcts[si - 1]) / 100 * barW;
+              return (
+                <g key={si}>
+                  <rect x={sx.toFixed(1)} y={8} width={sw.toFixed(1)} height={barH} rx={si === 0 ? 4 : si === FOOT_SPLIT.length - 1 ? 4 : 0} fill={seg.color} fillOpacity={0.8} />
+                  <text x={sx + sw / 2} y={18} textAnchor="middle" dominantBaseline="central" fill="#ffffff" fontSize={8} fontWeight="bold">{seg.pct}%</text>
+                </g>
+              );
+            })}
+            {FOOT_SPLIT.map((seg, si) => {
+              const mid = FOOT_SPLIT.slice(0, si).reduce((s, f) => s + f.pct, 0) + seg.pct / 2;
+              return (
+                <text key={si} x={offsetX + (mid / 100) * barW} y={42} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize={8}>
+                  {seg.label}
+                </text>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderCompletionRing = (): React.JSX.Element => {
+    const checks = [
+      name.trim().length > 0,
+      nationality !== 'England',
+      position !== 'ST',
+      clubId !== 'arsenal',
+    ];
+    const completed = checks.reduce((sum, v) => sum + (v ? 1 : 0), 0);
+    const pct = (completed / checks.length) * 100;
+    const cx = 100, cy = 100, r = 42;
+    const circumference = 2 * Math.PI * r;
+    const dashOffset = circumference * (1 - pct / 100);
+    const ringColor = pct === 100 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest">Setup Completion</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <svg viewBox="0 0 200 200" className="w-full" fill="none">
+            <circle cx={cx} cy={cy} r={r} stroke="#21262d" strokeWidth={8} />
+            <circle
+              cx={cx} cy={cy} r={r}
+              stroke={ringColor}
+              strokeWidth={8}
+              strokeDasharray={circumference.toFixed(1)}
+              strokeDashoffset={dashOffset.toFixed(1)}
+              strokeLinecap="round"
+              fill="none"
+            />
+            <text x={cx} y={cy - 2} textAnchor="middle" dominantBaseline="central" fill="#c9d1d9" fontSize={20} fontWeight="bold">{Math.round(pct)}%</text>
+            <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="central" fill="#484f58" fontSize={8}>complete</text>
+          </svg>
+          <div className="grid grid-cols-2 gap-1 mt-2">
+            {[
+              { label: 'Name', done: checks[0] },
+              { label: 'Nationality', done: checks[1] },
+              { label: 'Position', done: checks[2] },
+              { label: 'Club', done: checks[3] },
+            ].map((item, ci) => (
+              <div key={ci} className="flex items-center gap-1.5">
+                <div className={`w-1.5 h-1.5 rounded-sm ${item.done ? 'bg-emerald-500' : 'bg-[#30363d]'}`} />
+                <span className={`text-[9px] ${item.done ? 'text-emerald-400' : 'text-[#484f58]'}`}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ============================================================
+  // JSX Return
+  // ============================================================
   return (
     <div className="min-h-screen bg-[#0d1117]">
       {/* Subtle dot grid pattern */}
@@ -832,6 +1440,23 @@ export default function CareerSetup() {
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </motion.div>
+        </div>
+
+        {/* ---- Career Analytics: 11 SVG Visualizations ---- */}
+        <div className="mt-8 space-y-3">
+          <h2 className="text-[10px] font-semibold uppercase tracking-widest text-[#484f58] mb-1">Career Analytics</h2>
+
+          {renderPositionRadar()}
+          {renderNationalityDonut()}
+          {renderDifficultyGauge()}
+          {renderAttributeRadar()}
+          {renderOvrDistribution()}
+          {renderClubComparison()}
+          {renderCareerProjection()}
+          {renderBudgetDonut()}
+          {renderHeightDistribution()}
+          {renderFootSplit()}
+          {renderCompletionRing()}
         </div>
 
         {/* Bottom spacing */}
