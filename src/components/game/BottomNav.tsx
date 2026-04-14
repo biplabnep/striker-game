@@ -94,6 +94,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'fantasy_draft', icon: <UsersRound className="h-5 w-5" />, label: 'Draft' },
       { screen: 'season_review_documentary', icon: <Clapperboard className="h-5 w-5" />, label: 'Season Review' },
       { screen: 'match_replay_viewer', icon: <Film className="h-5 w-5" />, label: 'Match Replay' },
+      { screen: 'referee_system_enhanced', icon: <ShieldAlert className="h-5 w-5" />, label: 'Referee+' },
       { screen: 'create_a_club', icon: <Palette className="h-5 w-5" />, label: 'Create Club' },
       { screen: 'multiplayer_league', icon: <Swords className="h-5 w-5" />, label: 'MP League' },
       { screen: 'transfer_deadline_day', icon: <AlarmClock className="h-5 w-5" />, label: 'Deadline' },
@@ -105,6 +106,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'pre_season_tour', icon: <Plane className="h-5 w-5" />, label: 'Pre-Season Tour' },
       { screen: 'player_agent_hub_enhanced', icon: <Briefcase className="h-5 w-5" />, label: 'Agent Hub+' },
       { screen: 'international_expansion', icon: <Globe className="h-5 w-5" />, label: 'International' },
+      { screen: 'player_comparison_enhanced', icon: <GitCompareArrows className="h-5 w-5" />, label: 'Compare+' },
     ],
   },
   {

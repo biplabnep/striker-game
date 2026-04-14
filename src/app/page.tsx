@@ -120,6 +120,8 @@ import StadiumAtmosphere from '@/components/game/StadiumAtmosphere';
 import PlayerAgentHubEnhanced from '@/components/game/PlayerAgentHubEnhanced';
 import InternationalExpansion from '@/components/game/InternationalExpansion';
 import YouthAcademyDeepDive from '@/components/game/YouthAcademyDeepDive';
+import PlayerComparisonEnhanced from '@/components/game/PlayerComparisonEnhanced';
+import RefereeSystemEnhanced from '@/components/game/RefereeSystemEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -235,6 +237,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   player_agent_hub_enhanced: PlayerAgentHubEnhanced,
   international_expansion: InternationalExpansion,
   youth_academy_deep_dive: YouthAcademyDeepDive,
+  player_comparison_enhanced: PlayerComparisonEnhanced,
+  referee_system_enhanced: RefereeSystemEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -318,6 +322,8 @@ const gameScreens: GameScreen[] = [
   'player_agent_hub_enhanced',
   'international_expansion',
   'youth_academy_deep_dive',
+  'player_comparison_enhanced',
+  'referee_system_enhanced',
 ];
 
 export default function Home() {

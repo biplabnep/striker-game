@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import {
   Crosshair,
   Footprints,
@@ -360,6 +361,65 @@ const ATTR_LABELS: { key: keyof ActivityEffect; label: string }[] = [
 
 const OPACITY_FAST = { duration: 0.15 };
 const OPACITY_MED = { duration: 0.2 };
+
+// ============================================================
+// SVG Helper Functions
+// ============================================================
+
+function polarToCart(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  if (endAngle - startAngle >= 360) {
+    return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy}`;
+  }
+  const start = polarToCart(cx, cy, r, startAngle);
+  const end = polarToCart(cx, cy, r, endAngle);
+  const largeArc = endAngle - startAngle <= 180 ? '0' : '1';
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+}
+
+function describeDonutArc(cx: number, cy: number, outerR: number, innerR: number, startAngle: number, endAngle: number): string {
+  if (endAngle - startAngle >= 360) {
+    const outerStart = polarToCart(cx, cy, outerR, 0);
+    const innerStart = polarToCart(cx, cy, innerR, 0);
+    return `M ${outerStart.x} ${outerStart.y} A ${outerR} ${outerR} 0 1 1 ${cx - outerR} ${cy} A ${outerR} ${outerR} 0 1 1 ${outerStart.x} ${outerStart.y} L ${innerStart.x} ${innerStart.y} A ${innerR} ${innerR} 0 1 0 ${cx - innerR} ${cy} A ${innerR} ${innerR} 0 1 0 ${innerStart.x} ${innerStart.y} Z`;
+  }
+  const outerStart = polarToCart(cx, cy, outerR, startAngle);
+  const outerEnd = polarToCart(cx, cy, outerR, endAngle);
+  const innerEnd = polarToCart(cx, cy, innerR, endAngle);
+  const innerStart = polarToCart(cx, cy, innerR, startAngle);
+  const largeArc = endAngle - startAngle <= 180 ? '0' : '1';
+  return `M ${outerStart.x} ${outerStart.y} A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y} L ${innerEnd.x} ${innerEnd.y} A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y} Z`;
+}
+
+function buildPointsStr(coords: [number, number][]): string {
+  return coords.map(([x, y]) => `${x},${y}`).join(' ');
+}
+
+// ============================================================
+// SVG Sample Data Constants
+// ============================================================
+
+const SLEEP_HOURS = [7.5, 6.0, 8.0, 7.0, 6.5, 9.0, 8.5] as const;
+const CALORIE_INTAKE = [2800, 3100, 2600, 2900, 3200, 2500, 2700] as const;
+const TIMELINE_SLOTS = [
+  { label: 'Morning', time: '06:00', color: 'text-amber-400', fill: 'fill-amber-500' },
+  { label: 'Training', time: '09:00', color: 'text-emerald-400', fill: 'fill-emerald-500' },
+  { label: 'Lunch', time: '12:00', color: 'text-orange-400', fill: 'fill-orange-500' },
+  { label: 'Rest', time: '15:00', color: 'text-blue-400', fill: 'fill-blue-500' },
+  { label: 'Evening', time: '18:00', color: 'text-purple-400', fill: 'fill-purple-500' },
+  { label: 'Sleep', time: '22:00', color: 'text-slate-400', fill: 'fill-slate-500' },
+] as const;
+const REST_BENEFITS = [
+  { label: 'Injury Reduction', value: 65, color: 'fill-red-500' },
+  { label: 'Mental Refresh', value: 80, color: 'fill-purple-500' },
+  { label: 'Performance Gain', value: 55, color: 'fill-emerald-500' },
+  { label: 'Recovery', value: 90, color: 'fill-blue-500' },
+] as const;
+const RADAR_AXES = ['Fitness', 'Technical', 'Tactical', 'Mental', 'Physical'] as const;
 
 // ============================================================
 // Helper Functions
@@ -1068,6 +1128,565 @@ export default function DailyRoutineHub() {
     );
   }
 
+  // Derived data for SVG charts
+  const trainingLoadPerDay = DAYS.map(day => {
+    const slot = schedule[day];
+    if (!slot) return 0;
+    const periods: ('am' | 'pm')[] = ['am', 'pm'];
+    const dayCost = periods
+      .map(p => {
+        const actId = slot[p];
+        if (!actId || !ACTIVITY_MAP[actId]) return 0;
+        return ACTIVITY_MAP[actId].energyCost;
+      })
+      .reduce((sum: number, c: number) => sum + c, 0);
+    return Math.round((dayCost / 10) * 100);
+  });
+
+  const maxLoad = Math.max(1, ...trainingLoadPerDay);
+
+  const radarValues = RADAR_AXES.map((_axis, i) => {
+    const effectKeys: (keyof ActivityEffect)[] = ['pace', 'shooting', 'defending', 'passing', 'physical'];
+    const val = netEffects[effectKeys[i]] || 0;
+    return Math.min(100, Math.max(0, val * 12 + 30));
+  });
+
+  const scatterData = DAYS.map((day, i) => {
+    const slot = schedule[day];
+    const periods2: ('am' | 'pm')[] = ['am', 'pm'];
+    const footballHrs = slot
+      ? periods2
+          .map(p => {
+            const actId = slot[p];
+            if (!actId || !ACTIVITY_MAP[actId]) return 0;
+            return ACTIVITY_MAP[actId].category === 'training' ? 3 : ACTIVITY_MAP[actId].category === 'recovery' ? 1 : 0.5;
+          })
+          .reduce((s: number, h: number) => s + h, 0)
+      : 0;
+    const personalHrs = Math.max(1, 8 - footballHrs + Math.sin(i * 1.2) * 1.5);
+    return { day, x: footballHrs, y: personalHrs };
+  });
+
+  const donutSegments = [
+    { label: 'Training', count: catCounts.training, fill: '#10b981' },
+    { label: 'Rest', count: catCounts.recovery, fill: '#3b82f6' },
+    { label: 'Recovery', count: catCounts.nutrition, fill: '#f59e0b' },
+    { label: 'Social', count: catCounts.social + catCounts.mental, fill: '#06b6d4' },
+    { label: 'Media', count: catCounts.education, fill: '#8b5cf6' },
+  ];
+  const donutTotal = donutSegments.reduce((s: number, seg: typeof donutSegments[number]) => s + seg.count, 0);
+
+  // ============================================================
+  // SVG 1: Daily Routine Timeline
+  // ============================================================
+  function dailyRoutineTimeline(): React.JSX.Element {
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Daily Routine Timeline</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 220" fill="none" className="w-full">
+            <line x1="30" y1="10" x2="30" y2="210" stroke="#30363d" strokeWidth="2" />
+            {TIMELINE_SLOTS.map((slot, i) => {
+              const yPos = 20 + i * 38;
+              return (
+                <g key={i}>
+                  <circle cx="30" cy={yPos} r="6" className={slot.fill} />
+                  <circle cx="30" cy={yPos} r="3" fill="#0d1117" />
+                  <text x="46" y={yPos - 6} className={slot.color} fontSize="9" fontWeight="600">{slot.label}</text>
+                  <text x="46" y={yPos + 6} fill="#8b949e" fontSize="8">{slot.time}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 2: Activity Distribution Donut
+  // ============================================================
+  function activityDonut(): React.JSX.Element {
+    const cx = 60;
+    const cy = 60;
+    const outerR = 50;
+    const innerR = 30;
+
+    interface DonutSlice { label: string; count: number; fill: string; startAngle: number; endAngle: number }
+
+    const donutPaths = donutTotal > 0
+      ? donutSegments
+          .filter(seg => seg.count > 0)
+          .reduce<{ acc: DonutSlice[]; angle: number }>(
+            (prev, seg) => {
+              const sliceAngle = (seg.count / donutTotal) * 360;
+              const startA = prev.angle;
+              const endA = prev.angle + sliceAngle;
+              return {
+                acc: [...prev.acc, { ...seg, startAngle: startA, endAngle: endA }],
+                angle: endA,
+              };
+            },
+            { acc: [], angle: 0 }
+          ).acc
+      : [];
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-purple-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Activity Distribution</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <div className="flex items-center gap-4">
+            <svg viewBox="0 0 120 120" fill="none" className="w-28 h-28 flex-shrink-0">
+              {donutPaths.map((seg, i) => (
+                <path
+                  key={i}
+                  d={describeDonutArc(cx, cy, outerR, innerR, seg.startAngle, seg.endAngle)}
+                  fill={seg.fill}
+                  opacity="0.8"
+                />
+              ))}
+              {donutPaths.length === 0 && (
+                <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke="#30363d" strokeWidth={outerR - innerR} />
+              )}
+            </svg>
+            <div className="flex-1 space-y-1">
+              {donutSegments.map((seg, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.fill }} />
+                  <span className="text-[10px] text-[#8b949e] flex-1">{seg.label}</span>
+                  <span className="text-[10px] text-[#c9d1d9] font-medium">{seg.count}</span>
+                </div>
+              ))}
+              <div className="text-[10px] text-[#484f58] pt-0.5">{donutTotal} total activities</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 3: Energy Level Gauge
+  // ============================================================
+  function energyGauge(): React.JSX.Element {
+    const pct = maxEnergy > 0 ? Math.round((energyRemaining / maxEnergy) * 100) : 0;
+    const gaugeAngle = Math.round(pct * 1.8);
+    const gaugeColor = pct > 60 ? '#10b981' : pct > 30 ? '#f59e0b' : '#ef4444';
+    const cx = 100;
+    const cy = 90;
+    const r = 70;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Energy Level</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 120" fill="none" className="w-full">
+            <path d={describeArc(cx, cy, r, 0, 180)} stroke="#30363d" strokeWidth="10" strokeLinecap="round" />
+            <path d={describeArc(cx, cy, r, 0, gaugeAngle)} stroke={gaugeColor} strokeWidth="10" strokeLinecap="round" />
+            <text x={cx} y={cy - 10} textAnchor="middle" fill={gaugeColor} fontSize="24" fontWeight="700">{pct}%</text>
+            <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize="9">{energyRemaining}/{maxEnergy} remaining</text>
+            <text x={20} y={cy + 24} fill="#484f58" fontSize="8">0</text>
+            <text x={cx - 4} y={cy - r - 2} fill="#484f58" fontSize="8">50</text>
+            <text x={180} y={cy + 24} fill="#484f58" fontSize="8">100</text>
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 4: Weekly Training Load Bars
+  // ============================================================
+  function trainingLoadBars(): React.JSX.Element {
+    const barH = 12;
+    const barGap = 28;
+    const labelW = 28;
+    const barMaxW = 130;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <Dumbbell className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Weekly Training Load</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 210" fill="none" className="w-full">
+            {DAYS.map((day, i) => {
+              const y = 10 + i * barGap;
+              const val = trainingLoadPerDay[i] as number;
+              const w = maxLoad > 0 ? (val / maxLoad) * barMaxW : 0;
+              const barColor = val > 70 ? '#ef4444' : val > 40 ? '#f59e0b' : '#10b981';
+              return (
+                <g key={i}>
+                  <text x={0} y={y + 10} fill="#8b949e" fontSize="9" fontWeight="600">{day}</text>
+                  <rect x={labelW} y={y} width={barMaxW} height={barH} rx="3" fill="#21262d" />
+                  <rect x={labelW} y={y} width={Math.max(0, w)} height={barH} rx="3" fill={barColor} opacity="0.85" />
+                  <text x={labelW + barMaxW + 6} y={y + 10} fill="#c9d1d9" fontSize="8">{val}%</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 5: Recovery Progress Ring
+  // ============================================================
+  function recoveryRing(): React.JSX.Element {
+    const recoveryPct = donutTotal > 0 ? Math.round((catCounts.recovery / donutTotal) * 100) : 0;
+    const cx = 60;
+    const cy = 60;
+    const r = 45;
+    const circumference = 2 * Math.PI * r;
+    const dashLen = (recoveryPct / 100) * circumference;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <Snowflake className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Recovery Progress</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <div className="flex items-center gap-4">
+            <svg viewBox="0 0 120 120" fill="none" className="w-28 h-28 flex-shrink-0">
+              <circle cx={cx} cy={cy} r={r} stroke="#21262d" strokeWidth="8" />
+              <circle
+                cx={cx} cy={cy} r={r}
+                stroke="#3b82f6"
+                strokeWidth="8"
+                strokeDasharray={`${dashLen} ${circumference - dashLen}`}
+                strokeLinecap="round"
+                strokeDashoffset={circumference * 0.25}
+              />
+              <text x={cx} y={cy - 2} textAnchor="middle" fill="#3b82f6" fontSize="22" fontWeight="700">{recoveryPct}%</text>
+              <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="8">Recovery</text>
+            </svg>
+            <div className="flex-1 space-y-2">
+              <div className="text-[10px] text-[#8b949e]">
+                <span className="text-blue-400 font-semibold">{catCounts.recovery}</span> recovery sessions
+              </div>
+              <div className="text-[10px] text-[#8b949e]">
+                of <span className="text-[#c9d1d9] font-medium">{donutTotal}</span> total scheduled
+              </div>
+              <div className="text-[10px] text-[#484f58] pt-1">
+                {recoveryPct >= 20 ? 'Adequate recovery balance' : 'Consider adding recovery slots'}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 6: Nutrition Tracking Area Chart
+  // ============================================================
+  function nutritionAreaChart(): React.JSX.Element {
+    const maxCal = Math.max(...CALORIE_INTAKE);
+    const chartW = 170;
+    const chartH = 80;
+    const offsetX = 15;
+    const offsetY = 10;
+    const stepX = chartW / 6;
+
+    const areaCoords: [number, number][] = [];
+    const lineCoords: [number, number][] = [];
+    CALORIE_INTAKE.forEach((cal, i) => {
+      const x = offsetX + i * stepX;
+      const y = offsetY + chartH - (cal / maxCal) * chartH;
+      areaCoords.push([x, y]);
+      lineCoords.push([x, y]);
+    });
+    areaCoords.push([offsetX + 6 * stepX, offsetY + chartH]);
+    areaCoords.unshift([offsetX, offsetY + chartH]);
+
+    const areaPoints = buildPointsStr(areaCoords);
+    const linePoints = buildPointsStr(lineCoords);
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <ChefHat className="w-4 h-4 text-amber-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Nutrition Tracking</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 110" fill="none" className="w-full">
+            <polygon points={areaPoints} fill="#f59e0b" opacity="0.12" />
+            <polyline points={linePoints} stroke="#f59e0b" strokeWidth="2" strokeLinejoin="round" />
+            {CALORIE_INTAKE.map((cal, i) => {
+              const x = offsetX + i * stepX;
+              const y = offsetY + chartH - (cal / maxCal) * chartH;
+              return (
+                <g key={i}>
+                  <circle cx={x} cy={y} r="3" fill="#f59e0b" />
+                  <text x={x} y={y - 8} textAnchor="middle" fill="#c9d1d9" fontSize="7">{cal}</text>
+                  <text x={x} y={offsetY + chartH + 14} textAnchor="middle" fill="#8b949e" fontSize="7">{DAYS[i]}</text>
+                </g>
+              );
+            })}
+          </svg>
+          <div className="text-[10px] text-[#484f58] mt-1">Daily calorie intake (kcal)</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 7: Sleep Quality Bars
+  // ============================================================
+  function sleepBars(): React.JSX.Element {
+    const maxSleep = 10;
+    const barH = 12;
+    const barGap = 28;
+    const labelW = 28;
+    const barMaxW = 130;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <BedDouble className="w-4 h-4 text-indigo-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Sleep Quality</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 210" fill="none" className="w-full">
+            {SLEEP_HOURS.map((hrs, i) => {
+              const y = 10 + i * barGap;
+              const w = (hrs / maxSleep) * barMaxW;
+              const barColor = hrs >= 8 ? '#10b981' : hrs >= 7 ? '#f59e0b' : '#ef4444';
+              return (
+                <g key={i}>
+                  <text x={0} y={y + 10} fill="#8b949e" fontSize="9" fontWeight="600">{DAYS[i]}</text>
+                  <rect x={labelW} y={y} width={barMaxW} height={barH} rx="3" fill="#21262d" />
+                  <rect x={labelW} y={y} width={Math.max(0, w)} height={barH} rx="3" fill={barColor} opacity="0.85" />
+                  <text x={labelW + barMaxW + 6} y={y + 10} fill="#c9d1d9" fontSize="8">{hrs}h</text>
+                </g>
+              );
+            })}
+          </svg>
+          <div className="flex justify-between text-[10px] text-[#484f58] mt-1 px-7">
+            <span>&lt;7h Poor</span>
+            <span>7-8h Fair</span>
+            <span>8h+ Optimal</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 8: Training Focus Radar
+  // ============================================================
+  function trainingFocusRadar(): React.JSX.Element {
+    const cx = 100;
+    const cy = 100;
+    const maxR = 70;
+    const numAxes = RADAR_AXES.length;
+    const angleStep = 360 / numAxes;
+
+    const gridRings = [0.25, 0.5, 0.75, 1.0];
+    const gridPaths = gridRings.map(scale => {
+      const pts: [number, number][] = RADAR_AXES.map((_, i) => {
+        const pt = polarToCart(cx, cy, maxR * scale, i * angleStep);
+        return [pt.x, pt.y];
+      });
+      return buildPointsStr(pts);
+    });
+
+    const valuePoints: [number, number][] = RADAR_AXES.map((_, i) => {
+      const val = radarValues[i] / 100;
+      const pt = polarToCart(cx, cy, maxR * val, i * angleStep);
+      return [pt.x, pt.y];
+    });
+    const valuePathStr = buildPointsStr(valuePoints);
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <Crosshair className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Training Focus</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 200" fill="none" className="w-full max-w-[200px] mx-auto">
+            {gridPaths.map((pts, i) => (
+              <polygon key={i} points={pts} stroke="#30363d" strokeWidth="1" />
+            ))}
+            {RADAR_AXES.map((_, i) => {
+              const pt = polarToCart(cx, cy, maxR, i * angleStep);
+              return <line key={i} x1={cx} y1={cy} x2={pt.x} y2={pt.y} stroke="#30363d" strokeWidth="1" />;
+            })}
+            <polygon points={valuePathStr} fill="#10b981" opacity="0.15" stroke="#10b981" strokeWidth="2" />
+            {RADAR_AXES.map((label, i) => {
+              const pt = polarToCart(cx, cy, maxR + 16, i * angleStep);
+              return (
+                <text key={i} x={pt.x} y={pt.y + 3} textAnchor="middle" fill="#8b949e" fontSize="8" fontWeight="500">
+                  {label}
+                </text>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 9: Rest Day Benefits Bars
+  // ============================================================
+  function restBenefitsBars(): React.JSX.Element {
+    const barH = 16;
+    const barGap = 38;
+    const labelW = 80;
+    const barMaxW = 90;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <BedDouble className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Rest Day Benefits</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 165" fill="none" className="w-full">
+            {REST_BENEFITS.map((item, i) => {
+              const y = 8 + i * barGap;
+              const w = (item.value / 100) * barMaxW;
+              return (
+                <g key={i}>
+                  <text x={0} y={y + 12} fill="#8b949e" fontSize="8">{item.label}</text>
+                  <rect x={labelW} y={y} width={barMaxW} height={barH} rx="3" fill="#21262d" />
+                  <rect x={labelW} y={y} width={Math.max(0, w)} height={barH} rx="3" className={item.color} opacity="0.85" />
+                  <text x={labelW + barMaxW + 6} y={y + 12} fill="#c9d1d9" fontSize="8">{item.value}%</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 10: Schedule Adherence Ring
+  // ============================================================
+  function scheduleAdherenceRing(): React.JSX.Element {
+    const adherencePct = Math.round((totalScheduled / 14) * 100);
+    const cx = 60;
+    const cy = 60;
+    const r = 45;
+    const circumference = 2 * Math.PI * r;
+    const dashLen = (adherencePct / 100) * circumference;
+    const ringColor = adherencePct >= 70 ? '#10b981' : adherencePct >= 40 ? '#f59e0b' : '#ef4444';
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Schedule Adherence</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <div className="flex items-center gap-4">
+            <svg viewBox="0 0 120 120" fill="none" className="w-28 h-28 flex-shrink-0">
+              <circle cx={cx} cy={cy} r={r} stroke="#21262d" strokeWidth="8" />
+              <circle
+                cx={cx} cy={cy} r={r}
+                stroke={ringColor}
+                strokeWidth="8"
+                strokeDasharray={`${dashLen} ${circumference - dashLen}`}
+                strokeLinecap="round"
+                strokeDashoffset={circumference * 0.25}
+              />
+              <text x={cx} y={cy - 2} textAnchor="middle" fill={ringColor} fontSize="22" fontWeight="700">{adherencePct}%</text>
+              <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="8">Filled</text>
+            </svg>
+            <div className="flex-1 space-y-2">
+              <div className="text-[10px] text-[#8b949e]">
+                <span className="text-[#c9d1d9] font-semibold">{totalScheduled}</span> of 14 slots
+              </div>
+              <div className="text-[10px] text-[#8b949e]">
+                <span className="text-[#c9d1d9] font-medium">{14 - totalScheduled}</span> remaining
+              </div>
+              <div className="text-[10px] text-[#484f58] pt-1">
+                {adherencePct >= 70 ? 'Great week planning!' : adherencePct >= 40 ? 'Keep filling your schedule' : 'Plan your week ahead'}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ============================================================
+  // SVG 11: Work-Life Balance Scatter
+  // ============================================================
+  function workLifeScatter(): React.JSX.Element {
+    const plotW = 160;
+    const plotH = 120;
+    const offX = 25;
+    const offY = 10;
+    const maxX = 10;
+    const maxY = 10;
+
+    return (
+      <Card className="bg-[#161b22] border-[#30363d] py-0 gap-0">
+        <CardHeader className="px-4 py-3 pb-0">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm font-semibold text-[#c9d1d9]">Work-Life Balance</span>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+          <svg viewBox="0 0 200 160" fill="none" className="w-full">
+            <line x1={offX} y1={offY + plotH} x2={offX + plotW} y2={offY + plotH} stroke="#30363d" strokeWidth="1" />
+            <line x1={offX} y1={offY} x2={offX} y2={offY + plotH} stroke="#30363d" strokeWidth="1" />
+            <text x={offX + plotW / 2} y={offY + plotH + 16} textAnchor="middle" fill="#8b949e" fontSize="7">Football Hours</text>
+            <text x={8} y={offY + plotH / 2} textAnchor="middle" fill="#8b949e" fontSize="7" dominantBaseline="middle">Personal</text>
+            {scatterData.map((pt, i) => {
+              const dotX = offX + (pt.x / maxX) * plotW;
+              const dotY = offY + plotH - (pt.y / maxY) * plotH;
+              const dotColor = i === currentDayIndex ? '#10b981' : '#3b82f6';
+              return (
+                <g key={i}>
+                  <circle cx={dotX} cy={dotY} r={i === currentDayIndex ? 5 : 4} fill={dotColor} opacity={i === currentDayIndex ? 1 : 0.7} />
+                  <text x={dotX + 7} y={dotY + 3} fill="#8b949e" fontSize="6">{pt.day}</text>
+                </g>
+              );
+            })}
+          </svg>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="max-w-lg mx-auto px-4 pb-24 space-y-4">
       {/* ---- Header ---- */}
@@ -1323,6 +1942,19 @@ export default function DailyRoutineHub() {
           })}
         </div>
       </motion.section>
+
+      {/* ---- SVG Data Visualizations ---- */}
+      {dailyRoutineTimeline()}
+      {activityDonut()}
+      {energyGauge()}
+      {trainingLoadBars()}
+      {recoveryRing()}
+      {nutritionAreaChart()}
+      {sleepBars()}
+      {trainingFocusRadar()}
+      {restBenefitsBars()}
+      {scheduleAdherenceRing()}
+      {workLifeScatter()}
     </div>
   );
 

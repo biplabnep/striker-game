@@ -805,6 +805,392 @@ export default function StadiumBuilder() {
 
   if (!gameState || !club || !stadiumData) return null;
 
+  const st = stadiumData!;
+
+  // ============================================================
+  // SVG Data Visualization Sub-Components
+  // ============================================================
+
+  function toPolyPoints(pts: { x: number; y: number }[]): string {
+    return pts.map((pt) => `${pt.x},${pt.y}`).join(' ');
+  }
+
+  function polarToXY(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
+    const rad = (angleDeg - 90) * (Math.PI / 180);
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  // 1. Stadium Capacity Progress Ring
+  function capacityProgressRing(): React.JSX.Element {
+    const maxCap = 80000;
+    const pct = Math.min(st.capacity / maxCap, 1);
+    const r = 45;
+    const sw = 8;
+    const circ = 2 * Math.PI * r;
+    const dashOff = circ * (1 - pct);
+    return (
+      <div className="flex items-center gap-4">
+        <svg viewBox="0 0 120 120" className="w-32 h-32 shrink-0">
+          <circle cx={60} cy={60} r={r} fill="none" stroke="#21262d" strokeWidth={sw} />
+          <circle cx={60} cy={60} r={r} fill="none" stroke="#22c55e" strokeWidth={sw} strokeDasharray={circ} strokeDashoffset={dashOff} strokeLinecap="round" opacity={0.85} />
+          <text x={60} y={55} textAnchor="middle" fill="#c9d1d9" fontSize={16} fontWeight="bold" fontFamily="system-ui">{formatNumber(st.capacity)}</text>
+          <text x={60} y={70} textAnchor="middle" fill="#8b949e" fontSize={8} fontFamily="system-ui">of {formatNumber(maxCap)}</text>
+          <text x={60} y={82} textAnchor="middle" fill="#22c55e" fontSize={9} fontWeight="bold" fontFamily="system-ui">{Math.round(pct * 100)}%</text>
+        </svg>
+        <div className="flex-1 space-y-2">
+          <div className="text-[10px] text-[#8b949e] uppercase tracking-wider">Capacity Utilization</div>
+          <div className="text-lg font-bold text-[#c9d1d9]">{st.attendancePct}% Avg Fill</div>
+          <div className="text-[10px] text-[#484f58]">{formatNumber(st.avgAttendance)} avg attendance</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Facility Completion Donut (5-segment via .reduce())
+  function facilityCompletionDonut(): React.JSX.Element {
+    const segInput = [
+      { name: 'Training', value: st.upgrades[5].currentLevel, color: '#8b5cf6' },
+      { name: 'Stands', value: st.upgrades[0].currentLevel, color: '#22c55e' },
+      { name: 'Pitch', value: st.upgrades[2].currentLevel, color: '#16a34a' },
+      { name: 'Lighting', value: st.upgrades[3].currentLevel, color: '#eab308' },
+      { name: 'Facilities', value: st.upgrades[4].currentLevel, color: '#3b82f6' },
+    ];
+    const segTotal = segInput.reduce((s, seg) => s + seg.value, 0);
+    const cx = 60, cy = 60, outerR = 48, innerR = 30;
+    const donutResult = segInput.reduce<{ arcs: { d: string; color: string }[]; prevAngle: number }>((acc, seg) => {
+      const startA = acc.prevAngle;
+      const sweep = segTotal > 0 ? (seg.value / segTotal) * 360 : 0;
+      const endA = startA + sweep;
+      const large = sweep > 180 ? 1 : 0;
+      const so = polarToXY(cx, cy, outerR, startA);
+      const eo = polarToXY(cx, cy, outerR, endA);
+      const si = polarToXY(cx, cy, innerR, endA);
+      const ei = polarToXY(cx, cy, innerR, startA);
+      const d = `M${so.x},${so.y} A${outerR},${outerR} 0 ${large} 1 ${eo.x},${eo.y} L${si.x},${si.y} A${innerR},${innerR} 0 ${large} 0 ${ei.x},${ei.y} Z`;
+      return { arcs: [...acc.arcs, { d, color: seg.color }], prevAngle: endA };
+    }, { arcs: [], prevAngle: 0 });
+    return (
+      <div className="flex items-center gap-4">
+        <svg viewBox="0 0 120 120" className="w-28 h-28 shrink-0">
+          {donutResult.arcs.map((arc, i) => (
+            <path key={i} d={arc.d} fill={arc.color} opacity={0.8} />
+          ))}
+          <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize={14} fontWeight="bold" fontFamily="system-ui">{segTotal}/25</text>
+          <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize={7} fontFamily="system-ui">Total Levels</text>
+        </svg>
+        <div className="flex-1 space-y-1.5">
+          {segInput.map((seg, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="w-2 h-2 shrink-0" style={{ backgroundColor: seg.color }} />
+              <span className="text-[10px] text-[#8b949e] flex-1">{seg.name}</span>
+              <span className="text-[10px] font-semibold text-[#c9d1d9]">{seg.value}/5</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Budget Allocation Bars
+  function budgetAllocationBars(): React.JSX.Element {
+    const budgetItems = [
+      { name: 'Seating', pct: 28, color: '#22c55e' },
+      { name: 'VIP Boxes', pct: 22, color: '#d97706' },
+      { name: 'Pitch', pct: 18, color: '#16a34a' },
+      { name: 'Floodlights', pct: 12, color: '#eab308' },
+      { name: 'Training', pct: 20, color: '#8b5cf6' },
+    ];
+    const maxBarW = 180;
+    return (
+      <svg viewBox="0 0 280 130" className="w-full">
+        {budgetItems.map((item, i) => {
+          const y = 10 + i * 24;
+          return (
+            <g key={i}>
+              <text x={0} y={y + 12} fill="#8b949e" fontSize={9} fontFamily="system-ui">{item.name}</text>
+              <rect x={70} y={y} width={maxBarW} height={14} rx={2} fill="#21262d" />
+              <rect x={70} y={y} width={Math.max((item.pct / 100) * maxBarW, 0)} height={14} rx={2} fill={item.color} opacity={0.8} />
+              <text x={70 + maxBarW + 6} y={y + 11} fill="#c9d1d9" fontSize={9} fontWeight="bold" fontFamily="system-ui">{item.pct}%</text>
+            </g>
+          );
+        })}
+      </svg>
+    );
+  }
+
+  // 4. Upgrade Priority Radar
+  function upgradePriorityRadar(): React.JSX.Element {
+    const radarData = [
+      { label: 'Capacity', value: (st.seatingLevel / 5) * 100 },
+      { label: 'Comfort', value: (st.upgrades[2].currentLevel / 5) * 100 },
+      { label: 'Safety', value: (st.upgrades[3].currentLevel / 5) * 100 },
+      { label: 'Revenue', value: (st.vipLevel / 5) * 100 },
+      { label: 'Fan Exp.', value: (st.upgrades[4].currentLevel / 5) * 100 },
+    ];
+    const cx = 100, cy = 85, maxR = 60;
+    const gridLevels = [20, 40, 60, 80, 100];
+    const gridPolygons = gridLevels.map((level) => {
+      const vertices = radarData.map((_, ai) => polarToXY(cx, cy, (level / 100) * maxR, ai * 72));
+      return { pts: vertices };
+    });
+    const dataVertices = radarData.map((d, ai) =>
+      polarToXY(cx, cy, (d.value / 100) * maxR, ai * 72)
+    );
+    const labelPositions = radarData.map((_, ai) =>
+      polarToXY(cx, cy, maxR + 16, ai * 72)
+    );
+    return (
+      <svg viewBox="0 0 200 170" className="w-full">
+        {gridPolygons.map((gp, gi) => (
+          <polygon key={gi} points={toPolyPoints(gp.pts)} fill="none" stroke="#21262d" strokeWidth={0.5} opacity={0.6} />
+        ))}
+        {radarData.map((_, ai) => {
+          const axisEnd = polarToXY(cx, cy, maxR, ai * 72);
+          return <line key={ai} x1={cx} y1={cy} x2={axisEnd.x} y2={axisEnd.y} stroke="#21262d" strokeWidth={0.5} />;
+        })}
+        <polygon points={toPolyPoints(dataVertices)} fill="#22c55e" opacity={0.15} />
+        <polygon points={toPolyPoints(dataVertices)} fill="none" stroke="#22c55e" strokeWidth={1.5} opacity={0.8} />
+        {dataVertices.map((v, vi) => (
+          <circle key={vi} cx={v.x} cy={v.y} r={2.5} fill="#22c55e" />
+        ))}
+        {labelPositions.map((lp, li) => (
+          <text key={li} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize={7} fontFamily="system-ui">{radarData[li].label}</text>
+        ))}
+      </svg>
+    );
+  }
+
+  // 5. Build Progress Timeline
+  function buildProgressTimeline(): React.JSX.Element {
+    const milestones = [
+      { label: 'Foundation', done: true },
+      { label: 'Structure', done: st.seatingLevel >= 2 },
+      { label: 'Interior', done: st.seatingLevel >= 3 },
+      { label: 'Systems', done: st.upgrades[3].currentLevel >= 2 },
+      { label: 'Finishes', done: st.rating >= 4 },
+      { label: 'Complete', done: st.rating >= 5 },
+    ];
+    const completedCount = milestones.reduce((cnt, m) => cnt + (m.done ? 1 : 0), 0);
+    const lineY = 40;
+    const padX = 25;
+    const gap = 46;
+    return (
+      <svg viewBox="0 0 280 80" className="w-full">
+        <line x1={padX} y1={lineY} x2={padX + (milestones.length - 1) * gap} y2={lineY} stroke="#21262d" strokeWidth={2} />
+        {milestones.map((ms, i) => {
+          const nodeCx = padX + i * gap;
+          return (
+            <g key={i}>
+              {i > 0 && ms.done && (
+                <line x1={padX + (i - 1) * gap} y1={lineY} x2={nodeCx} y2={lineY} stroke="#22c55e" strokeWidth={2} opacity={0.6} />
+              )}
+              <circle cx={nodeCx} cy={lineY} r={8} fill={ms.done ? '#22c55e' : '#21262d'} stroke={ms.done ? '#22c55e' : '#30363d'} strokeWidth={1.5} />
+              {ms.done && (
+                <path d={`M${nodeCx - 3},${lineY} L${nodeCx - 1},${lineY + 3} L${nodeCx + 3},${lineY - 2}`} fill="none" stroke="#0d1117" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              )}
+              <text x={nodeCx} y={lineY - 16} textAnchor="middle" fill={ms.done ? '#c9d1d9' : '#484f58'} fontSize={7} fontWeight={ms.done ? 'bold' : 'normal'} fontFamily="system-ui">{ms.label}</text>
+            </g>
+          );
+        })}
+        <text x={140} y={70} textAnchor="middle" fill="#8b949e" fontSize={8} fontFamily="system-ui">{completedCount}/{milestones.length} milestones completed</text>
+      </svg>
+    );
+  }
+
+  // 6. Revenue Impact Bars
+  function revenueImpactBars(): React.JSX.Element {
+    const revItems = [
+      { name: 'Match Day', value: st.revenuePerMatch, color: '#22c55e' },
+      { name: 'Events', value: Math.round(st.revenuePerMatch * 0.3), color: '#3b82f6' },
+      { name: 'Sponsorship', value: Math.round(st.revenuePerMatch * 0.5), color: '#d97706' },
+      { name: 'Other', value: Math.round(st.revenuePerMatch * 0.15), color: '#8b5cf6' },
+    ];
+    const maxRev = Math.max(...revItems.map((ri) => ri.value));
+    const maxBarW = 160;
+    return (
+      <svg viewBox="0 0 280 110" className="w-full">
+        {revItems.map((item, i) => {
+          const y = 8 + i * 24;
+          const barW = maxRev > 0 ? (item.value / maxRev) * maxBarW : 0;
+          return (
+            <g key={i}>
+              <text x={0} y={y + 12} fill="#8b949e" fontSize={9} fontFamily="system-ui">{item.name}</text>
+              <rect x={68} y={y} width={maxBarW} height={14} rx={2} fill="#21262d" />
+              <rect x={68} y={y} width={Math.max(barW, 0)} height={14} rx={2} fill={item.color} opacity={0.8} />
+              <text x={68 + maxBarW + 6} y={y + 11} fill="#c9d1d9" fontSize={8} fontFamily="system-ui">{formatCost(item.value)}</text>
+            </g>
+          );
+        })}
+      </svg>
+    );
+  }
+
+  // 7. Stadium Comparison Gauge (semi-circular 0-100)
+  function stadiumComparisonGauge(): React.JSX.Element {
+    const gaugeScore = Math.min(100, Math.round(
+      (st.capacity / 80000) * 40 +
+      (st.rating / 5) * 30 +
+      (st.attendancePct / 100) * 30
+    ));
+    const cx = 100, cy = 95, r = 80;
+    const sx = cx - r, sy = cy;
+    const exFull = cx + r, eyFull = cy;
+    const valAngle = Math.PI * (1 - gaugeScore / 100);
+    const exVal = cx + r * Math.cos(valAngle);
+    const eyVal = cy - r * Math.sin(valAngle);
+    const gaugeColor = gaugeScore >= 70 ? '#22c55e' : gaugeScore >= 40 ? '#eab308' : '#ef4444';
+    return (
+      <svg viewBox="0 0 200 120" className="w-full">
+        <path d={`M${sx},${sy} A${r},${r} 0 0 0 ${exFull},${eyFull}`} fill="none" stroke="#21262d" strokeWidth={10} strokeLinecap="round" />
+        <path d={`M${sx},${sy} A${r},${r} 0 0 0 ${exVal},${eyVal}`} fill="none" stroke={gaugeColor} strokeWidth={10} strokeLinecap="round" opacity={0.85} />
+        <text x={cx} y={cy - 12} textAnchor="middle" fill="#c9d1d9" fontSize={22} fontWeight="bold" fontFamily="system-ui">{gaugeScore}</text>
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="#8b949e" fontSize={8} fontFamily="system-ui">Stadium Score</text>
+        <text x={cx - r} y={cy + 18} textAnchor="middle" fill="#484f58" fontSize={7} fontFamily="system-ui">0</text>
+        <text x={cx} y={8} textAnchor="middle" fill="#484f58" fontSize={7} fontFamily="system-ui">50</text>
+        <text x={cx + r} y={cy + 18} textAnchor="middle" fill="#484f58" fontSize={7} fontFamily="system-ui">100</text>
+      </svg>
+    );
+  }
+
+  // 8. Facility Condition Bars
+  function facilityConditionBars(): React.JSX.Element {
+    const condItems = [
+      { name: 'Seating', pct: (st.seatingLevel / 5) * 100, color: '#22c55e' },
+      { name: 'VIP Area', pct: (st.vipLevel / 5) * 100, color: '#d97706' },
+      { name: 'Pitch', pct: (st.upgrades[2].currentLevel / 5) * 100, color: '#16a34a' },
+      { name: 'Floodlights', pct: (st.upgrades[3].currentLevel / 5) * 100, color: '#eab308' },
+      { name: 'Training', pct: (st.upgrades[5].currentLevel / 5) * 100, color: '#8b5cf6' },
+    ];
+    const maxBarW = 160;
+    return (
+      <svg viewBox="0 0 280 130" className="w-full">
+        {condItems.map((item, i) => {
+          const y = 8 + i * 24;
+          return (
+            <g key={i}>
+              <text x={0} y={y + 12} fill="#8b949e" fontSize={9} fontFamily="system-ui">{item.name}</text>
+              <rect x={68} y={y} width={maxBarW} height={14} rx={2} fill="#21262d" />
+              <rect x={68} y={y} width={Math.max((item.pct / 100) * maxBarW, 0)} height={14} rx={2} fill={item.color} opacity={0.8} />
+              <text x={68 + maxBarW + 6} y={y + 11} fill="#c9d1d9" fontSize={9} fontWeight="bold" fontFamily="system-ui">{Math.round(item.pct)}%</text>
+            </g>
+          );
+        })}
+      </svg>
+    );
+  }
+
+  // 9. Expansion Cost Trend (area chart)
+  function expansionCostTrend(): React.JSX.Element {
+    const phaseCosts = [4000000, 8000000, 12000000, 16000000, 20000000];
+    const cumulativeCosts = phaseCosts.reduce<number[]>((running, cost) => {
+      return [...running, (running.length > 0 ? running[running.length - 1] : 0) + cost];
+    }, []);
+    const maxCost = cumulativeCosts[cumulativeCosts.length - 1];
+    const padL = 42, padR = 10, padT = 15, padB = 25;
+    const plotW = 210, plotH = 75;
+    const xStep = plotW / (cumulativeCosts.length - 1);
+    const dataPts = cumulativeCosts.map((val, i) => ({
+      x: padL + i * xStep,
+      y: padT + plotH - (val / maxCost) * plotH,
+    }));
+    const areaPts = [
+      ...dataPts,
+      { x: dataPts[dataPts.length - 1].x, y: padT + plotH },
+      { x: dataPts[0].x, y: padT + plotH },
+    ];
+    const lineStr = dataPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+    return (
+      <svg viewBox="0 0 280 120" className="w-full">
+        {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+          const gy = padT + plotH - frac * plotH;
+          return (
+            <g key={i}>
+              <line x1={padL} y1={gy} x2={padL + plotW} y2={gy} stroke="#21262d" strokeWidth={0.5} />
+              <text x={padL - 4} y={gy} textAnchor="end" dominantBaseline="central" fill="#484f58" fontSize={7} fontFamily="system-ui">{formatCost(maxCost * frac)}</text>
+            </g>
+          );
+        })}
+        <polygon points={toPolyPoints(areaPts)} fill="#d97706" opacity={0.1} />
+        <path d={lineStr} fill="none" stroke="#d97706" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+        {dataPts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={3} fill="#d97706" stroke="#0d1117" strokeWidth={1.5} />
+            <text x={p.x} y={padT + plotH + 14} textAnchor="middle" fill="#484f58" fontSize={7} fontFamily="system-ui">P{i + 1}</text>
+          </g>
+        ))}
+      </svg>
+    );
+  }
+
+  // 10. Fan Satisfaction Ring
+  function fanSatisfactionRing(): React.JSX.Element {
+    const moodScores: Record<FanMood, number> = { happy: 90, neutral: 65, frustrated: 40, angry: 20 };
+    const satPct = Math.min(100, Math.round(moodScores[fanMood] + (st.rating * 2)));
+    const r = 42, sw = 8;
+    const circ = 2 * Math.PI * r;
+    const dashOff = circ * (1 - satPct / 100);
+    const satColor = satPct >= 75 ? '#22c55e' : satPct >= 50 ? '#eab308' : satPct >= 30 ? '#f97316' : '#ef4444';
+    return (
+      <div className="flex items-center gap-4">
+        <svg viewBox="0 0 110 110" className="w-28 h-28 shrink-0">
+          <circle cx={55} cy={55} r={r} fill="none" stroke="#21262d" strokeWidth={sw} />
+          <circle cx={55} cy={55} r={r} fill="none" stroke={satColor} strokeWidth={sw} strokeDasharray={circ} strokeDashoffset={dashOff} strokeLinecap="round" opacity={0.85} />
+          <text x={55} y={52} textAnchor="middle" fill="#c9d1d9" fontSize={18} fontWeight="bold" fontFamily="system-ui">{satPct}</text>
+          <text x={55} y={67} textAnchor="middle" fill="#8b949e" fontSize={7} fontFamily="system-ui">out of 100</text>
+        </svg>
+        <div className="flex-1 space-y-2">
+          <div className="text-[10px] text-[#8b949e] uppercase tracking-wider">Fan Satisfaction</div>
+          <div className="text-sm font-semibold text-[#c9d1d9]">{fanMoodLabels[fanMood]} Mood</div>
+          <div className="text-[10px] text-[#484f58]">Stadium rating: {st.rating}.0</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 11. Seat Type Distribution Donut (4-segment via .reduce())
+  function seatTypeDonut(): React.JSX.Element {
+    const seatInput = [
+      { name: 'General', value: 75, color: '#22c55e' },
+      { name: 'VIP', value: st.vipLevel * 4, color: '#d97706' },
+      { name: 'Corporate', value: 12, color: '#3b82f6' },
+      { name: 'Disabled', value: 5, color: '#8b5cf6' },
+    ];
+    const seatTotal = seatInput.reduce((s, st) => s + st.value, 0);
+    const cx = 55, cy = 55, outerR = 45, innerR = 28;
+    const seatResult = seatInput.reduce<{ arcs: { d: string; color: string }[]; prevAngle: number }>((acc, seg) => {
+      const startA = acc.prevAngle;
+      const sweep = seatTotal > 0 ? (seg.value / seatTotal) * 360 : 0;
+      const endA = startA + sweep;
+      const large = sweep > 180 ? 1 : 0;
+      const so = polarToXY(cx, cy, outerR, startA);
+      const eo = polarToXY(cx, cy, outerR, endA);
+      const si = polarToXY(cx, cy, innerR, endA);
+      const ei = polarToXY(cx, cy, innerR, startA);
+      const d = `M${so.x},${so.y} A${outerR},${outerR} 0 ${large} 1 ${eo.x},${eo.y} L${si.x},${si.y} A${innerR},${innerR} 0 ${large} 0 ${ei.x},${ei.y} Z`;
+      return { arcs: [...acc.arcs, { d, color: seg.color }], prevAngle: endA };
+    }, { arcs: [], prevAngle: 0 });
+    return (
+      <div className="flex items-center gap-4">
+        <svg viewBox="0 0 110 110" className="w-28 h-28 shrink-0">
+          {seatResult.arcs.map((arc, i) => (
+            <path key={i} d={arc.d} fill={arc.color} opacity={0.8} />
+          ))}
+          <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize={12} fontWeight="bold" fontFamily="system-ui">{seatTotal}%</text>
+          <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize={7} fontFamily="system-ui">Allocation</text>
+        </svg>
+        <div className="flex-1 space-y-1.5">
+          {seatInput.map((seg, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="w-2 h-2 shrink-0" style={{ backgroundColor: seg.color }} />
+              <span className="text-[10px] text-[#8b949e] flex-1">{seg.name}</span>
+              <span className="text-[10px] font-semibold text-[#c9d1d9]">{seg.value}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const fanMoodLabels: Record<FanMood, string> = {
     happy: 'Happy',
     neutral: 'Neutral',
@@ -1214,6 +1600,186 @@ export default function StadiumBuilder() {
               </div>
             </div>
           </div>
+        </div>
+      </motion.div>
+
+      {/* ===== Section 8: Stadium Capacity Ring ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.35 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Capacity Ring</h3>
+          </div>
+          {capacityProgressRing()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 9: Facility Completion Donut ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.38 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardList className="h-4 w-4 text-purple-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Facility Completion</h3>
+          </div>
+          {facilityCompletionDonut()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 10: Budget Allocation ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.41 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Banknote className="h-4 w-4 text-amber-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Budget Allocation</h3>
+            <span className="text-[9px] text-[#484f58]">Upgrade investment split</span>
+          </div>
+          {budgetAllocationBars()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 11: Upgrade Priority Radar ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.44 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="h-4 w-4 text-sky-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Upgrade Priority Radar</h3>
+          </div>
+          {upgradePriorityRadar()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 12: Build Progress Timeline ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.47 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Timer className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Build Progress</h3>
+          </div>
+          {buildProgressTimeline()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 13: Revenue Impact ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.50 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="h-4 w-4 text-emerald-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Revenue Impact</h3>
+            <span className="text-[9px] text-[#484f58]">Per-match potential</span>
+          </div>
+          {revenueImpactBars()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 14: Stadium Score Gauge ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.53 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Building2 className="h-4 w-4 text-[#8b949e]" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Stadium Score Gauge</h3>
+            <span className="text-[9px] text-[#484f58]">vs league average</span>
+          </div>
+          {stadiumComparisonGauge()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 15: Facility Condition ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.56 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardList className="h-4 w-4 text-yellow-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Facility Condition</h3>
+          </div>
+          {facilityConditionBars()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 16: Expansion Cost Trend ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.59 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="h-4 w-4 text-amber-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Expansion Cost Trend</h3>
+            <span className="text-[9px] text-[#484f58]">5-phase cumulative</span>
+          </div>
+          {expansionCostTrend()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 17: Fan Satisfaction ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.62 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Star className="h-4 w-4 text-amber-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Fan Satisfaction</h3>
+          </div>
+          {fanSatisfactionRing()}
+        </div>
+      </motion.div>
+
+      {/* ===== Section 18: Seat Distribution ===== */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.65 }}
+        className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden"
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="h-4 w-4 text-blue-400" />
+            <h3 className="text-xs font-semibold text-[#c9d1d9]">Seat Distribution</h3>
+          </div>
+          {seatTypeDonut()}
         </div>
       </motion.div>
     </div>
