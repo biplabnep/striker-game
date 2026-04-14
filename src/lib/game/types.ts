@@ -670,7 +670,9 @@ export type GameScreen =
   | 'transfer_deadline_day'
   | 'player_agent_contract'
   | 'fan_chants'
-  | 'virtual_trophy_room';
+  | 'virtual_trophy_room'
+  | 'press_scrum'
+  | 'injury_simulator';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

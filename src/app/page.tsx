@@ -106,6 +106,8 @@ import PlayerAgentContract from '@/components/game/PlayerAgentContract';
 import FanChants from '@/components/game/FanChants';
 import VirtualTrophyRoom from '@/components/game/VirtualTrophyRoom';
 import ErrorBoundary from '@/components/game/ErrorBoundary';
+import PressScrum from '@/components/game/PressScrum';
+import InjurySimulator from '@/components/game/InjurySimulator';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -207,6 +209,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   player_agent_contract: PlayerAgentContract,
   fan_chants: FanChants,
   virtual_trophy_room: VirtualTrophyRoom,
+  press_scrum: PressScrum,
+  injury_simulator: InjurySimulator,
 };
 
 const gameScreens: GameScreen[] = [
@@ -276,6 +280,8 @@ const gameScreens: GameScreen[] = [
   'player_agent_contract',
   'fan_chants',
   'virtual_trophy_room',
+  'press_scrum',
+  'injury_simulator',
 ];
 
 export default function Home() {

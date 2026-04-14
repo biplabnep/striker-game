@@ -511,6 +511,994 @@ function AttrBar({ name, value, comparison }: { name: string; value: number; com
 }
 
 // ============================================================
+// SVG 1: Scouting Coverage Map
+// ============================================================
+
+function ScoutingCoverageMap(): React.JSX.Element {
+  const continentShapes = [
+    { id: 'na', path: 'M8 18 L22 15 L28 20 L30 30 L26 37 L20 40 L16 36 L10 30 L6 24 Z', label: 'N. America' },
+    { id: 'sa', path: 'M20 46 L27 43 L32 49 L34 57 L30 66 L26 71 L22 73 L18 69 L16 58 L17 50 Z', label: 'S. America' },
+    { id: 'eu', path: 'M36 14 L54 12 L57 17 L55 24 L51 30 L44 32 L39 30 L35 24 L36 18 Z', label: 'Europe' },
+    { id: 'af', path: 'M38 34 L51 32 L55 40 L57 50 L54 60 L49 66 L43 68 L39 64 L37 52 L36 42 Z', label: 'Africa' },
+    { id: 'as', path: 'M56 10 L78 8 L88 14 L90 24 L86 32 L80 37 L73 40 L66 38 L60 32 L56 24 Z', label: 'Asia' },
+    { id: 'oc', path: 'M73 52 L83 50 L88 54 L86 60 L80 62 L74 60 Z', label: 'Oceania' },
+  ];
+
+  const scoutLocations = [
+    { x: 48, y: 20, region: 'Europe', color: '#58a6ff' },
+    { x: 57, y: 17, region: 'Europe', color: '#58a6ff' },
+    { x: 28, y: 55, region: 'S. America', color: '#3fb950' },
+    { x: 47, y: 48, region: 'Africa', color: '#f0883e' },
+    { x: 70, y: 22, region: 'Asia', color: '#d2a8ff' },
+    { x: 45, y: 23, region: 'Europe', color: '#58a6ff' },
+  ];
+
+  return (
+    <svg viewBox="0 0 100 78" className="w-full h-auto">
+      {/* Continental regions */}
+      {continentShapes.map((c, i) => (
+        <path
+          key={c.id}
+          d={c.path}
+          fill="#21262d"
+          stroke="#30363d"
+          strokeWidth="0.3"
+          opacity={0.6}
+        />
+      ))}
+
+      {/* Scout location dots with pulse rings */}
+      {scoutLocations.map((loc, i) => (
+        <g key={i}>
+          <circle cx={loc.x} cy={loc.y} r="4" fill={loc.color} opacity={0.12} />
+          <circle cx={loc.x} cy={loc.y} r="2" fill={loc.color} opacity={0.25} />
+          <circle cx={loc.x} cy={loc.y} r="1.2" fill={loc.color} />
+        </g>
+      ))}
+
+      {/* Legend */}
+      <rect x="3" y="72" width="94" height="5" rx="1" fill="#161b22" stroke="#30363d" strokeWidth="0.2" />
+      <circle cx="10" cy="74.5" r="1.2" fill="#58a6ff" />
+      <text x="13" y="75.5" fill="#8b949e" fontSize="3" fontFamily="sans-serif">Europe (3)</text>
+      <circle cx="32" cy="74.5" r="1.2" fill="#3fb950" />
+      <text x="35" y="75.5" fill="#8b949e" fontSize="3" fontFamily="sans-serif">S.Am (1)</text>
+      <circle cx="50" cy="74.5" r="1.2" fill="#f0883e" />
+      <text x="53" y="75.5" fill="#8b949e" fontSize="3" fontFamily="sans-serif">Africa (1)</text>
+      <circle cx="70" cy="74.5" r="1.2" fill="#d2a8ff" />
+      <text x="73" y="75.5" fill="#8b949e" fontSize="3" fontFamily="sans-serif">Asia (1)</text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 2: Scout Network Hexagonal Radar
+// ============================================================
+
+function ScoutNetworkHexagonalRadar(): React.JSX.Element {
+  const axes = ['Europe', 'S.America', 'Africa', 'Asia', 'N.America', 'Oceania'];
+  const values = [88, 65, 48, 38, 22, 12];
+  const cx = 50;
+  const cy = 54;
+  const maxR = 36;
+  const n = 6;
+  const angleStep = (2 * Math.PI) / n;
+
+  const hexVertex = (angle: number, r: number): { x: number; y: number } => ({
+    x: cx + r * Math.cos(angle),
+    y: cy + r * Math.sin(angle),
+  });
+
+  const hexPoints = (r: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const v = hexVertex(angleStep * i - Math.PI / 2, r);
+      return `${v.x},${v.y}`;
+    }).join(' ');
+
+  const dataPoints = values.map((val, i) => {
+    const r = maxR * (val / 100);
+    return hexVertex(angleStep * i - Math.PI / 2, r);
+  });
+
+  const dataPointsStr = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const labelPositions = axes.map((_, i) => {
+    const angle = angleStep * i - Math.PI / 2;
+    return {
+      x: cx + (maxR + 12) * Math.cos(angle),
+      y: cy + (maxR + 12) * Math.sin(angle),
+    };
+  });
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-auto">
+      {/* Hexagonal grid rings */}
+      {[0.25, 0.5, 0.75, 1.0].map((level, i) => (
+        <polygon
+          key={i}
+          points={hexPoints(maxR * level)}
+          fill="none"
+          stroke="#30363d"
+          strokeWidth="0.5"
+        />
+      ))}
+
+      {/* Axis lines */}
+      {Array.from({ length: n }, (_, i) => {
+        const v = hexVertex(angleStep * i - Math.PI / 2, maxR);
+        return (
+          <line
+            key={i}
+            x1={cx}
+            y1={cy}
+            x2={v.x}
+            y2={v.y}
+            stroke="#30363d"
+            strokeWidth="0.5"
+          />
+        );
+      })}
+
+      {/* Data polygon */}
+      <polygon
+        points={dataPointsStr}
+        fill="rgba(88,166,255,0.15)"
+        stroke="#58a6ff"
+        strokeWidth="1.5"
+      />
+
+      {/* Data dots */}
+      {dataPoints.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="3" fill="#58a6ff" />
+          <text
+            x={p.x}
+            y={p.y - 5}
+            textAnchor="middle"
+            fill="#c9d1d9"
+            fontSize="5"
+            fontFamily="sans-serif"
+            fontWeight="bold"
+          >
+            {values[i]}
+          </text>
+        </g>
+      ))}
+
+      {/* Axis labels */}
+      {axes.map((label, i) => (
+        <text
+          key={i}
+          x={labelPositions[i].x}
+          y={labelPositions[i].y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#8b949e"
+          fontSize="5.5"
+          fontFamily="sans-serif"
+        >
+          {label}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 3: Scout Budget Allocation Donut
+// ============================================================
+
+function ScoutBudgetAllocationDonut(): React.JSX.Element {
+  const segments = [
+    { label: 'Travel', value: 35, color: '#58a6ff' },
+    { label: 'Salaries', value: 30, color: '#3fb950' },
+    { label: 'Database', value: 15, color: '#f0883e' },
+    { label: 'Equipment', value: 12, color: '#d2a8ff' },
+    { label: 'Misc', value: 8, color: '#8b949e' },
+  ];
+
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  const cx = 50;
+  const cy = 50;
+  const radius = 30;
+  const strokeWidth = 10;
+  const circumference = 2 * Math.PI * radius;
+
+  const arcsData = segments.reduce<{
+    cumulative: number;
+    arcs: { length: number; offset: number; color: string; label: string; pct: number }[];
+  }>(
+    (acc, seg) => {
+      const length = (seg.value / total) * circumference;
+      return {
+        cumulative: acc.cumulative + length,
+        arcs: [
+          ...acc.arcs,
+          {
+            length,
+            offset: circumference / 4 - acc.cumulative,
+            color: seg.color,
+            label: seg.label,
+            pct: Math.round((seg.value / total) * 100),
+          },
+        ],
+      };
+    },
+    { cumulative: 0, arcs: [] },
+  );
+
+  return (
+    <svg viewBox="0 0 100 80" className="w-full h-auto">
+      {/* Donut segments */}
+      {arcsData.arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={arc.color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${arc.length} ${circumference - arc.length}`}
+          strokeDashoffset={arc.offset}
+          opacity={0.85}
+        />
+      ))}
+
+      {/* Center text */}
+      <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="8" fontFamily="sans-serif" fontWeight="bold">
+        Budget
+      </text>
+      <text x={cx} y={cy + 7} textAnchor="middle" fill="#8b949e" fontSize="5" fontFamily="sans-serif">
+        Allocation
+      </text>
+
+      {/* Legend */}
+      {arcsData.arcs.map((arc, i) => (
+        <g key={`leg-${i}`}>
+          <rect x="4" y="4 + i * 6" width="3" height="3" rx="0.5" fill={arc.color} opacity={0.85}>
+            <animate attributeName="y" values="4 + i * 6;{4 + i * 6}" dur="0s" />
+          </rect>
+          <circle cx="5.5" cy={6.5 + i * 6} r="1.5" fill={arc.color} opacity={0.85} />
+          <text x="10" y={8 + i * 6} fill="#8b949e" fontSize="4" fontFamily="sans-serif">
+            {arc.label} {arc.pct}%
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 4: Player Discovery Trend Area Chart
+// ============================================================
+
+function PlayerDiscoveryTrend(): React.JSX.Element {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const data = [8, 12, 15, 11, 18, 22, 25, 20, 28, 24, 30, 26];
+  const maxVal = Math.max(...data);
+  const chartW = 90;
+  const chartH = 50;
+  const padLeft = 5;
+  const padBottom = 12;
+  const padTop = 5;
+
+  const points = data.map((val, i) => ({
+    x: padLeft + (i / (data.length - 1)) * chartW,
+    y: padTop + chartH - (val / maxVal) * chartH,
+  }));
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1].x} ${padTop + chartH} L ${points[0].x} ${padTop + chartH} Z`;
+
+  const gridLines = [0, 0.25, 0.5, 0.75, 1.0];
+
+  return (
+    <svg viewBox="0 0 100 72" className="w-full h-auto">
+      {/* Grid lines */}
+      {gridLines.map((level, i) => {
+        const y = padTop + chartH - level * chartH;
+        return (
+          <g key={i}>
+            <line x1={padLeft} y1={y} x2={padLeft + chartW} y2={y} stroke="#30363d" strokeWidth="0.3" />
+            <text x={padLeft - 1} y={y + 1} textAnchor="end" fill="#484f58" fontSize="3.5" fontFamily="sans-serif">
+              {Math.round(maxVal * level)}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Area fill */}
+      <path d={areaPath} fill="rgba(63,185,80,0.1)" />
+
+      {/* Line */}
+      <path d={linePath} fill="none" stroke="#3fb950" strokeWidth="1.5" />
+
+      {/* Data dots */}
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="2.5" fill="#0d1117" stroke="#3fb950" strokeWidth="1" />
+          {data[i] === maxVal && (
+            <circle cx={p.x} cy={p.y} r="4" fill="#3fb950" opacity={0.2} />
+          )}
+        </g>
+      ))}
+
+      {/* Peak label */}
+      {points.map((p, i) =>
+        data[i] === maxVal ? (
+          <text key={`peak-${i}`} x={p.x} y={p.y - 5} textAnchor="middle" fill="#3fb950" fontSize="4" fontFamily="sans-serif" fontWeight="bold">
+            {maxVal}
+          </text>
+        ) : null,
+      )}
+
+      {/* Month labels */}
+      {months.map((m, i) => {
+        const x = padLeft + (i / (months.length - 1)) * chartW;
+        return (
+          <text key={i} x={x} y={padTop + chartH + 8} textAnchor="middle" fill="#484f58" fontSize="3.5" fontFamily="sans-serif">
+            m
+          </text>
+        );
+      })}
+
+      {/* Title */}
+      <text x="50" y="4" textAnchor="middle" fill="#8b949e" fontSize="4.5" fontFamily="sans-serif" fontWeight="bold">
+        Players Discovered / Month
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 5: Scout Rating Comparison Bars
+// ============================================================
+
+function ScoutRatingComparisonBars(): React.JSX.Element {
+  const attrs = [
+    { name: 'Accuracy', value: 82, color: '#3fb950' },
+    { name: 'Speed', value: 68, color: '#58a6ff' },
+    { name: 'Network', value: 91, color: '#d2a8ff' },
+    { name: 'Reporting', value: 75, color: '#f0883e' },
+    { name: 'Ethics', value: 88, color: '#79c0ff' },
+  ];
+
+  const barH = 8;
+  const gap = 5;
+  const labelW = 22;
+  const barMaxW = 55;
+  const startX = 25;
+  const startY = 8;
+
+  return (
+    <svg viewBox="0 0 100 72" className="w-full h-auto">
+      {/* Title */}
+      <text x="50" y="6" textAnchor="middle" fill="#8b949e" fontSize="4.5" fontFamily="sans-serif" fontWeight="bold">
+        Scout Attribute Ratings
+      </text>
+
+      {/* Bars */}
+      {attrs.map((attr, i) => {
+        const y = startY + i * (barH + gap);
+        const barW = (attr.value / 100) * barMaxW;
+        const bgW = barMaxW;
+
+        return (
+          <g key={i}>
+            {/* Label */}
+            <text x={startX - 2} y={y + barH / 2 + 1} textAnchor="end" fill="#c9d1d9" fontSize="5" fontFamily="sans-serif">
+              {attr.name}
+            </text>
+
+            {/* Background bar */}
+            <rect x={startX} y={y} width={bgW} height={barH} rx="2" fill="#21262d" />
+
+            {/* Value bar */}
+            <rect x={startX} y={y} width={barW} height={barH} rx="2" fill={attr.color} opacity={0.8} />
+
+            {/* Value text */}
+            <text x={startX + bgW + 3} y={y + barH / 2 + 1} fill="#c9d1d9" fontSize="5" fontFamily="sans-serif" fontWeight="bold">
+              {attr.value}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Average line indicator */}
+      {(() => {
+        const avg = Math.round(attrs.reduce((s, a) => s + a.value, 0) / attrs.length);
+        const avgW = (avg / 100) * barMaxW;
+        return (
+          <g>
+            <line x1={startX + avgW} y1={startY - 2} x2={startX + avgW} y2={startY + attrs.length * (barH + gap)} stroke="#f85149" strokeWidth="0.5" strokeDasharray="2 1" />
+            <text x={startX + avgW} y={startY - 3} textAnchor="middle" fill="#f85149" fontSize="3" fontFamily="sans-serif">
+              avg {avg}
+            </text>
+          </g>
+        );
+      })()}
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 6: Scouting Pipeline Funnel
+// ============================================================
+
+function ScoutingPipelineFunnel(): React.JSX.Element {
+  const stages = [
+    { name: 'Identified', value: 150, color: '#58a6ff' },
+    { name: 'Watched', value: 85, color: '#79c0ff' },
+    { name: 'Scouted', value: 45, color: '#f0883e' },
+    { name: 'Reported', value: 22, color: '#ffa657' },
+    { name: 'Recommended', value: 8, color: '#3fb950' },
+  ];
+
+  const maxVal = stages[0].value;
+  const stageH = 10;
+  const gap = 3;
+  const maxW = 80;
+  const cx = 50;
+  const startY = 8;
+
+  const stageWidths = stages.map(s => (s.value / maxVal) * maxW);
+  const funnelShapes = stageWidths.reduce<{
+    shapes: { points: string; color: string; name: string; value: number; labelX: number }[];
+  }>((acc, width, i) => {
+    const prevW = i > 0 ? stageWidths[i - 1] : width;
+    const y = startY + i * (stageH + gap);
+    const left = cx - width / 2;
+    const right = cx + width / 2;
+    const prevLeft = cx - prevW / 2;
+    const prevRight = cx + prevW / 2;
+
+    const points = `${prevLeft},${y} ${prevRight},${y} ${right},${y + stageH} ${left},${y + stageH}`;
+
+    return {
+      shapes: [
+        ...acc.shapes,
+        {
+          points,
+          color: stages[i].color,
+          name: stages[i].name,
+          value: stages[i].value,
+          labelX: cx,
+        },
+      ],
+    };
+  }, { shapes: [] });
+
+  return (
+    <svg viewBox="0 0 100 76" className="w-full h-auto">
+      {/* Title */}
+      <text x="50" y="5" textAnchor="middle" fill="#8b949e" fontSize="4.5" fontFamily="sans-serif" fontWeight="bold">
+        Scouting Pipeline
+      </text>
+
+      {/* Funnel stages */}
+      {funnelShapes.shapes.map((shape, i) => {
+        const y = startY + i * (stageH + gap);
+        return (
+          <g key={i}>
+            <polygon points={shape.points} fill={shape.color} opacity={0.2} />
+            <polygon points={shape.points} fill="none" stroke={shape.color} strokeWidth="0.5" />
+            <text x={shape.labelX} y={y + stageH / 2 + 1.5} textAnchor="middle" fill="#c9d1d9" fontSize="4.5" fontFamily="sans-serif" fontWeight="bold">
+              {shape.name}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Value labels on the right */}
+      {funnelShapes.shapes.map((shape, i) => {
+        const y = startY + i * (stageH + gap) + stageH / 2 + 1.5;
+        const stageW = stageWidths[i];
+        return (
+          <text key={`val-${i}`} x={cx + stageW / 2 + 3} y={y} fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">
+            {shape.value}
+          </text>
+        );
+      })}
+
+      {/* Conversion rates */}
+      {funnelShapes.shapes.map((shape, i) => {
+        if (i === 0) return null;
+        const y = startY + i * (stageH + gap) - 1;
+        const rate = Math.round((shape.value / funnelShapes.shapes[i - 1].value) * 100);
+        return (
+          <text key={`rate-${i}`} x={cx - stageWidths[i] / 2 - 2} y={y} textAnchor="end" fill="#484f58" fontSize="3" fontFamily="sans-serif">
+            {rate}%
+          </text>
+        );
+      })}
+
+      {/* Bottom summary */}
+      <text x="50" y={startY + stages.length * (stageH + gap) + 5} textAnchor="middle" fill="#3fb950" fontSize="4" fontFamily="sans-serif">
+        {stages[stages.length - 1].value} of {stages[0].value} recommended ({Math.round((stages[stages.length - 1].value / stages[0].value) * 100)}%)
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 7: Regional Spending Bars
+// ============================================================
+
+function RegionalSpendingBars(): React.JSX.Element {
+  const regions = [
+    { name: 'Europe', planned: 45, actual: 42 },
+    { name: 'S. America', planned: 25, actual: 28 },
+    { name: 'Africa', planned: 15, actual: 12 },
+    { name: 'Asia', planned: 20, actual: 18 },
+    { name: 'N. America', planned: 10, actual: 14 },
+    { name: 'Oceania', planned: 5, actual: 4 },
+  ];
+
+  const maxVal = Math.max(...regions.reduce<number[]>((acc, r) => [...acc, r.planned, r.actual], []));
+  const barH = 5;
+  const gap = 3;
+  const groupGap = 2;
+  const barMaxW = 52;
+  const labelW = 22;
+  const startX = 26;
+  const startY = 10;
+
+  return (
+    <svg viewBox="0 0 100 80" className="w-full h-auto">
+      {/* Title */}
+      <text x="50" y="6" textAnchor="middle" fill="#8b949e" fontSize="4.5" fontFamily="sans-serif" fontWeight="bold">
+        Regional Spending (€K)
+      </text>
+
+      {/* Bars for each region */}
+      {regions.map((region, i) => {
+        const y = startY + i * (barH * 2 + groupGap + gap);
+        const plannedW = (region.planned / maxVal) * barMaxW;
+        const actualW = (region.actual / maxVal) * barMaxW;
+
+        return (
+          <g key={i}>
+            {/* Region label */}
+            <text x={startX - 2} y={y + barH + 2} textAnchor="end" fill="#c9d1d9" fontSize="4.5" fontFamily="sans-serif">
+              {region.name}
+            </text>
+
+            {/* Planned bar */}
+            <rect x={startX} y={y} width={plannedW} height={barH} rx="1" fill="#58a6ff" opacity={0.35} />
+            <text x={startX + plannedW + 2} y={y + barH - 0.5} fill="#58a6ff" fontSize="3.5" fontFamily="sans-serif" opacity={0.7}>
+              {region.planned}
+            </text>
+
+            {/* Actual bar */}
+            <rect x={startX} y={y + barH + groupGap} width={actualW} height={barH} rx="1" fill="#3fb950" opacity={0.7} />
+            <text x={startX + actualW + 2} y={y + barH * 2 + groupGap - 0.5} fill="#3fb950" fontSize="3.5" fontFamily="sans-serif">
+              {region.actual}
+            </text>
+
+            {/* Variance indicator */}
+            {region.actual > region.planned && (
+              <text x={startX + barMaxW + 8} y={y + barH + 1} fill="#f85149" fontSize="3" fontFamily="sans-serif">
+                +{region.actual - region.planned}
+              </text>
+            )}
+            {region.actual < region.planned && (
+              <text x={startX + barMaxW + 8} y={y + barH + 1} fill="#3fb950" fontSize="3" fontFamily="sans-serif">
+                -{region.planned - region.actual}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Legend */}
+      <rect x="20" y={startY + regions.length * (barH * 2 + groupGap + gap) + 2} width="5" height="3" rx="0.5" fill="#58a6ff" opacity={0.35} />
+      <text x="27" y={startY + regions.length * (barH * 2 + groupGap + gap) + 4.5} fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">
+        Planned
+      </text>
+      <rect x="42" y={startY + regions.length * (barH * 2 + groupGap + gap) + 2} width="5" height="3" rx="0.5" fill="#3fb950" opacity={0.7} />
+      <text x="49" y={startY + regions.length * (barH * 2 + groupGap + gap) + 4.5} fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">
+        Actual
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 8: Scout Assignment Status Donut
+// ============================================================
+
+function ScoutAssignmentStatusDonut(): React.JSX.Element {
+  const segments = [
+    { label: 'Active', value: 3, color: '#3fb950' },
+    { label: 'Available', value: 1, color: '#58a6ff' },
+    { label: 'On-Leave', value: 1, color: '#8b949e' },
+  ];
+
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  const cx = 50;
+  const cy = 46;
+  const radius = 24;
+  const strokeWidth = 9;
+  const circumference = 2 * Math.PI * radius;
+
+  const arcsData = segments.reduce<{
+    cumulative: number;
+    arcs: { length: number; offset: number; color: string; label: string; count: number }[];
+  }>(
+    (acc, seg) => {
+      const length = (seg.value / total) * circumference;
+      return {
+        cumulative: acc.cumulative + length,
+        arcs: [
+          ...acc.arcs,
+          {
+            length,
+            offset: circumference / 4 - acc.cumulative,
+            color: seg.color,
+            label: seg.label,
+            count: seg.value,
+          },
+        ],
+      };
+    },
+    { cumulative: 0, arcs: [] },
+  );
+
+  return (
+    <svg viewBox="0 0 100 72" className="w-full h-auto">
+      {/* Donut segments */}
+      {arcsData.arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={arc.color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${arc.length} ${circumference - arc.length}`}
+          strokeDashoffset={arc.offset}
+          opacity={0.85}
+        />
+      ))}
+
+      {/* Center text */}
+      <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="10" fontFamily="sans-serif" fontWeight="bold">
+        {total}
+      </text>
+      <text x={cx} y={cy + 7} textAnchor="middle" fill="#8b949e" fontSize="4" fontFamily="sans-serif">
+        Total Scouts
+      </text>
+
+      {/* Legend below */}
+      {arcsData.arcs.map((arc, i) => (
+        <g key={`leg-${i}`}>
+          <circle cx={15 + i * 28} cy={68} r="3" fill={arc.color} opacity={0.85} />
+          <text x={20 + i * 28} y={69.5} fill="#c9d1d9" fontSize="4.5" fontFamily="sans-serif">
+            {arc.label}
+          </text>
+          <text x={20 + i * 28} y={65} fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">
+            {arc.count}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 9: Target Player Attributes Radar
+// ============================================================
+
+function TargetPlayerAttributesRadar(): React.JSX.Element {
+  const axes = ['Pace', 'Shooting', 'Passing', 'Dribbling', 'Defending', 'Physical'];
+  const values = [78, 85, 72, 88, 65, 76];
+  const cx = 50;
+  const cy = 54;
+  const maxR = 34;
+  const n = 6;
+  const angleStep = (2 * Math.PI) / n;
+
+  const hexVertex = (angle: number, r: number): { x: number; y: number } => ({
+    x: cx + r * Math.cos(angle),
+    y: cy + r * Math.sin(angle),
+  });
+
+  const hexPoints = (r: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const v = hexVertex(angleStep * i - Math.PI / 2, r);
+      return `${v.x},${v.y}`;
+    }).join(' ');
+
+  const dataPoints = values.map((val, i) => {
+    const r = maxR * (val / 100);
+    return hexVertex(angleStep * i - Math.PI / 2, r);
+  });
+
+  const dataPointsStr = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const avgValue = Math.round(values.reduce((s, v) => s + v, 0) / values.length);
+
+  const labelPositions = axes.map((_, i) => {
+    const angle = angleStep * i - Math.PI / 2;
+    return {
+      x: cx + (maxR + 12) * Math.cos(angle),
+      y: cy + (maxR + 12) * Math.sin(angle),
+    };
+  });
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-auto">
+      {/* Hexagonal grid rings */}
+      {[0.25, 0.5, 0.75, 1.0].map((level, i) => (
+        <polygon
+          key={i}
+          points={hexPoints(maxR * level)}
+          fill="none"
+          stroke="#30363d"
+          strokeWidth="0.5"
+        />
+      ))}
+
+      {/* Grid ring labels */}
+      {[0.5, 1.0].map((level, i) => {
+        const labelAngle = angleStep * 0 - Math.PI / 2;
+        const lx = cx + (maxR * level + 3) * Math.cos(labelAngle);
+        const ly = cy + (maxR * level + 3) * Math.sin(labelAngle);
+        return (
+          <text key={`gl-${i}`} x={lx} y={ly} textAnchor="start" fill="#484f58" fontSize="3" fontFamily="sans-serif">
+            {level * 100}
+          </text>
+        );
+      })}
+
+      {/* Axis lines */}
+      {Array.from({ length: n }, (_, i) => {
+        const v = hexVertex(angleStep * i - Math.PI / 2, maxR);
+        return (
+          <line
+            key={i}
+            x1={cx}
+            y1={cy}
+            x2={v.x}
+            y2={v.y}
+            stroke="#30363d"
+            strokeWidth="0.5"
+          />
+        );
+      })}
+
+      {/* Data polygon fill */}
+      <polygon
+        points={dataPointsStr}
+        fill="rgba(240,136,62,0.12)"
+        stroke="#f0883e"
+        strokeWidth="1.5"
+      />
+
+      {/* Data dots with values */}
+      {dataPoints.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="3.5" fill="#0d1117" stroke="#f0883e" strokeWidth="1.2" />
+          <text
+            x={p.x}
+            y={p.y - 6}
+            textAnchor="middle"
+            fill={values[i] >= 80 ? '#3fb950' : '#c9d1d9'}
+            fontSize="5"
+            fontFamily="sans-serif"
+            fontWeight="bold"
+          >
+            {values[i]}
+          </text>
+        </g>
+      ))}
+
+      {/* Axis labels */}
+      {axes.map((label, i) => (
+        <text
+          key={`al-${i}`}
+          x={labelPositions[i].x}
+          y={labelPositions[i].y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#c9d1d9"
+          fontSize="5.5"
+          fontFamily="sans-serif"
+        >
+          {label}
+        </text>
+      ))}
+
+      {/* Center average */}
+      <text x={cx} y={cy - 1} textAnchor="middle" fill="#c9d1d9" fontSize="5" fontFamily="sans-serif" fontWeight="bold">
+        {avgValue}
+      </text>
+      <text x={cx} y={cy + 5} textAnchor="middle" fill="#8b949e" fontSize="3" fontFamily="sans-serif">
+        AVG
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 10: Scouting Efficiency Gauge
+// ============================================================
+
+function ScoutingEfficiencyGauge(): React.JSX.Element {
+  const currentValue = 73;
+  const cx = 50;
+  const cy = 54;
+  const radius = 32;
+  const strokeWidth = 8;
+  const zones = [
+    { start: 0, end: 20, color: '#f85149' },
+    { start: 20, end: 40, color: '#f0883e' },
+    { start: 40, end: 60, color: '#ffa657' },
+    { start: 60, end: 80, color: '#58a6ff' },
+    { start: 80, end: 100, color: '#3fb950' },
+  ];
+
+  const arcPath = (startDeg: number, endDeg: number): string => {
+    const startRad = (startDeg - 180) * (Math.PI / 180);
+    const endRad = (endDeg - 180) * (Math.PI / 180);
+    const x1 = cx + radius * Math.cos(startRad);
+    const y1 = cy + radius * Math.sin(startRad);
+    const x2 = cx + radius * Math.cos(endRad);
+    const y2 = cy + radius * Math.sin(endRad);
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 0 1 ${x2} ${y2}`;
+  };
+
+  const needleAngle = (currentValue / 100) * 180;
+  const needleRad = (needleAngle - 180) * (Math.PI / 180);
+  const needleLen = radius - 6;
+  const needleX = cx + needleLen * Math.cos(needleRad);
+  const needleY = cy + needleLen * Math.sin(needleRad);
+
+  return (
+    <svg viewBox="0 0 100 72" className="w-full h-auto">
+      {/* Zone arcs */}
+      {zones.map((zone, i) => (
+        <path
+          key={i}
+          d={arcPath(zone.start, zone.end)}
+          fill="none"
+          stroke={zone.color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="butt"
+          opacity={0.35}
+        />
+      ))}
+
+      {/* Value arc highlight */}
+      {(() => {
+        const startDeg = 0;
+        const endDeg = currentValue;
+        const startRad = (startDeg - 180) * (Math.PI / 180);
+        const endRad = (endDeg - 180) * (Math.PI / 180);
+        const x1 = cx + radius * Math.cos(startRad);
+        const y1 = cy + radius * Math.sin(startRad);
+        const x2 = cx + radius * Math.cos(endRad);
+        const y2 = cy + radius * Math.sin(endRad);
+        const largeArc = currentValue > 50 ? 1 : 0;
+        return (
+          <path
+            d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`}
+            fill="none"
+            stroke="#3fb950"
+            strokeWidth={strokeWidth + 2}
+            strokeLinecap="butt"
+            opacity={0.7}
+          />
+        );
+      })()}
+
+      {/* Needle */}
+      <line
+        x1={cx}
+        y1={cy}
+        x2={needleX}
+        y2={needleY}
+        stroke="#c9d1d9"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <circle cx={cx} cy={cy} r="3" fill="#161b22" stroke="#c9d1d9" strokeWidth="1" />
+
+      {/* Value text */}
+      <text x={cx} y={cy + 14} textAnchor="middle" fill="#c9d1d9" fontSize="10" fontFamily="sans-serif" fontWeight="bold">
+        {currentValue}%
+      </text>
+      <text x={cx} y={cy + 20} textAnchor="middle" fill="#8b949e" fontSize="4" fontFamily="sans-serif">
+        Efficiency
+      </text>
+
+      {/* Scale labels */}
+      <text x={cx - radius - 4} y={cy + 5} textAnchor="end" fill="#484f58" fontSize="3.5" fontFamily="sans-serif">
+        0
+      </text>
+      <text x={cx + radius + 4} y={cy + 5} textAnchor="start" fill="#484f58" fontSize="3.5" fontFamily="sans-serif">
+        100
+      </text>
+      <text x={cx} y={cy - radius - 3} textAnchor="middle" fill="#484f58" fontSize="3.5" fontFamily="sans-serif">
+        50
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
+// SVG 11: Monthly Reports Timeline
+// ============================================================
+
+function MonthlyReportsTimeline(): React.JSX.Element {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const qualityColors: Record<string, string> = {
+    high: '#3fb950',
+    medium: '#ffa657',
+    low: '#f85149',
+  };
+  const qualities = ['high', 'high', 'medium', 'high', 'low', 'medium', 'high', 'high', 'medium', 'high', 'medium', 'high'];
+  const reportCounts = [12, 15, 8, 14, 5, 9, 16, 18, 10, 15, 11, 17];
+
+  const lineY = 40;
+  const startX = 8;
+  const endX = 92;
+  const dotR = 4;
+
+  return (
+    <svg viewBox="0 0 100 60" className="w-full h-auto">
+      {/* Title */}
+      <text x="50" y="8" textAnchor="middle" fill="#8b949e" fontSize="4.5" fontFamily="sans-serif" fontWeight="bold">
+        Monthly Reports Quality
+      </text>
+
+      {/* Timeline line */}
+      <line x1={startX} y1={lineY} x2={endX} y2={lineY} stroke="#30363d" strokeWidth="1" />
+
+      {/* Dots and labels */}
+      {months.map((month, i) => {
+        const x = startX + (i / (months.length - 1)) * (endX - startX);
+        const color = qualityColors[qualities[i]];
+        const isHigh = qualities[i] === 'high';
+        return (
+          <g key={i}>
+            {/* Outer ring for high quality */}
+            {isHigh && (
+              <circle cx={x} cy={lineY} r={dotR + 3} fill={color} opacity={0.15} />
+            )}
+
+            {/* Main dot */}
+            <circle cx={x} cy={lineY} r={dotR} fill={color} opacity={0.85} />
+
+            {/* Inner dot */}
+            <circle cx={x} cy={lineY} r={1.5} fill="#0d1117" />
+
+            {/* Month label below */}
+            <text x={x} y={lineY + 10} textAnchor="middle" fill="#484f58" fontSize="3.5" fontFamily="sans-serif">
+              {month.charAt(0)}
+            </text>
+
+            {/* Report count above */}
+            <text x={x} y={lineY - 8} textAnchor="middle" fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">
+              {reportCounts[i]}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Legend */}
+      <circle cx="18" cy="56" r="2.5" fill={qualityColors.high} opacity={0.85} />
+      <text x="22" y="57" fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">High</text>
+      <circle cx="38" cy="56" r="2.5" fill={qualityColors.medium} opacity={0.85} />
+      <text x="42" y="57" fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">Medium</text>
+      <circle cx="62" cy="56" r="2.5" fill={qualityColors.low} opacity={0.85} />
+      <text x="66" y="57" fill="#8b949e" fontSize="3.5" fontFamily="sans-serif">Low</text>
+    </svg>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -744,6 +1732,16 @@ export default function ScoutingNetwork() {
           <div className="text-xs font-bold text-[#3b82f6]">{quickStats.shortlistSize}</div>
         </div>
       </div>
+
+      {/* SVG 3: Budget Allocation Donut & SVG 10: Efficiency Gauge */}
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-2">
+          <ScoutBudgetAllocationDonut />
+        </div>
+        <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-2">
+          <ScoutingEfficiencyGauge />
+        </div>
+      </div>
     </div>
   );
 
@@ -862,6 +1860,16 @@ export default function ScoutingNetwork() {
         >
           Search Players
         </button>
+      </div>
+
+      {/* SVG 4: Player Discovery Trend Area Chart */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <PlayerDiscoveryTrend />
+      </div>
+
+      {/* SVG 6: Scouting Pipeline Funnel */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <ScoutingPipelineFunnel />
       </div>
 
       {/* Results */}
@@ -1078,6 +2086,12 @@ export default function ScoutingNetwork() {
       <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
         <span className="text-xs font-semibold text-[#c9d1d9] block mb-2">Player Profile Radar</span>
         <RadarChart player={player} comparePlayer={comparePlayers.length > 0 ? comparePlayers[0] : undefined} size={220} />
+      </div>
+
+      {/* SVG 9: Target Player Attributes Radar */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <span className="text-xs font-semibold text-[#c9d1d9] block mb-2">Target Player Attributes</span>
+        <TargetPlayerAttributesRadar />
       </div>
 
       {/* Style of Play */}
@@ -1503,6 +2517,23 @@ export default function ScoutingNetwork() {
           </button>
         ))}
       </div>
+
+      {/* SVG 1: Scouting Coverage Map */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <span className="text-xs font-semibold text-[#c9d1d9] block mb-2">Scout Location Coverage</span>
+        <ScoutingCoverageMap />
+      </div>
+
+      {/* SVG 2: Scout Network Hexagonal Radar */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <span className="text-xs font-semibold text-[#c9d1d9] block mb-2">Network Coverage Radar</span>
+        <ScoutNetworkHexagonalRadar />
+      </div>
+
+      {/* SVG 7: Regional Spending Bars */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <RegionalSpendingBars />
+      </div>
     </div>
   );
 
@@ -1528,6 +2559,16 @@ export default function ScoutingNetwork() {
             <span className="text-sm font-bold text-[#c9d1d9]">{activeScouts} / {maxScouts}</span>
           </div>
         </div>
+      </div>
+
+      {/* SVG 5: Scout Rating Comparison Bars */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <ScoutRatingComparisonBars />
+      </div>
+
+      {/* SVG 8: Scout Assignment Status Donut */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <ScoutAssignmentStatusDonut />
       </div>
 
       {/* Scout Cards */}
@@ -1576,6 +2617,11 @@ export default function ScoutingNetwork() {
             </div>
           </motion.div>
         ))}
+      </div>
+
+      {/* SVG 11: Monthly Reports Timeline */}
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-3">
+        <MonthlyReportsTimeline />
       </div>
 
       {/* Hire New Scout */}
