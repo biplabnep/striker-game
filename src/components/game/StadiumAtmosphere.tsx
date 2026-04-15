@@ -215,6 +215,394 @@ function srInt(playerName: string, week: number, key: string, min: number, max: 
 }
 
 // ============================================================
+// SVG Data Visualization Components — Gritty Futurism Design
+// ============================================================
+
+interface RadarValues {
+  name: string;
+  value: number;
+}
+
+function AtmosphereIntensityRadar({ values }: { values: RadarValues[] }): React.JSX.Element {
+  const cx = 150;
+  const cy = 115;
+  const maxR = 80;
+  const sides = 5;
+  const clamped = values.slice(0, sides).map(v => ({ ...v, value: Math.min(100, Math.max(0, v.value)) }));
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+  const gridPolygons = gridLevels.map(level => buildHexPoints(cx, cy, maxR * level, sides));
+  const dataPoints = buildRadarDataPoints(cx, cy, maxR, sides, clamped.map(v => v.value));
+  const axisEndPoints = Array.from({ length: sides }, (_, i) => {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / sides;
+    return { x: cx + maxR * Math.cos(angle), y: cy + maxR * Math.sin(angle), angle };
+  });
+
+  return (
+    <svg viewBox="0 0 300 230" className="w-full">
+      {gridPolygons.map((pts, i) => (
+        <polygon key={`grid-${i}`} points={pts} fill="none" stroke="#30363d" strokeWidth={0.6} />
+      ))}
+      {axisEndPoints.map((pt, i) => (
+        <line key={`axis-${i}`} x1={cx} y1={cy} x2={pt.x} y2={pt.y} stroke="#30363d" strokeWidth={0.5} />
+      ))}
+      <polygon points={dataPoints} fill="#FF550020" stroke="#FF5500" strokeWidth={2} />
+      {clamped.map((v, i) => {
+        const angle = -Math.PI / 2 + (2 * Math.PI * i) / sides;
+        const dx = cx + (v.value / 100) * maxR * Math.cos(angle);
+        const dy = cy + (v.value / 100) * maxR * Math.sin(angle);
+        const lx = cx + (maxR + 16) * Math.cos(angle);
+        const ly = cy + (maxR + 16) * Math.sin(angle);
+        return (
+          <g key={v.name}>
+            <circle cx={dx} cy={dy} r={3} fill="#FF5500" />
+            <text x={lx} y={ly} textAnchor="middle" fill="#8b949e" fontSize={9}>{v.name}</text>
+            <text x={lx} y={ly + 11} textAnchor="middle" fill="#c9d1d9" fontSize={10} fontWeight={700}>{v.value}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function AttendanceTrendAreaChart({ data }: { data: { label: string; value: number }[] }): React.JSX.Element {
+  const left = 40;
+  const right = 280;
+  const top = 20;
+  const bottom = 160;
+  const w = right - left;
+  const h = bottom - top;
+  const minV = 40;
+  const maxV = 100;
+  const range = maxV - minV;
+  const pts = data.slice(0, 8).map((d, i) => ({
+    x: left + (i / Math.max(1, data.length - 1)) * w,
+    y: bottom - ((Math.min(100, Math.max(0, d.value)) - minV) / range) * h,
+  }));
+  const areaPath = buildAreaPath(pts, bottom);
+  const linePath = buildLinePath(pts);
+
+  return (
+    <svg viewBox="0 0 300 190" className="w-full">
+      {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+        const y = bottom - frac * h;
+        return (
+          <g key={`hline-${i}`}>
+            <line x1={left} y1={y} x2={right} y2={y} stroke="#30363d" strokeWidth={0.5} strokeDasharray="4 3" />
+            <text x={left - 5} y={y + 3} textAnchor="end" fill="#8b949e" fontSize={8}>{Math.round(minV + frac * range)}</text>
+          </g>
+        );
+      })}
+      <path d={areaPath} fill="#00E5FF" fillOpacity={0.2} />
+      <path d={linePath} fill="none" stroke="#00E5FF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((pt, i) => (
+        <g key={`dot-${i}`}>
+          <circle cx={pt.x} cy={pt.y} r={3} fill="#00E5FF" />
+          <text x={pt.x} y={bottom + 14} textAnchor="middle" fill="#8b949e" fontSize={8}>{i + 1}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function FanEngagementDonut({ segments }: { segments: { name: string; value: number; color: string }[] }): React.JSX.Element {
+  const cx = 150;
+  const cy = 100;
+  const outerR = 70;
+  const innerR = 42;
+  const gap = 0.04;
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  const arcs = segments.reduce<{ startAngle: number; segment: typeof segments[0]; path: string; pct: number; midAngle: number; labelX: number; labelY: number }[]>((acc, seg) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1] : null;
+    const startA = prev ? prev.midAngle + gap / 2 : -Math.PI / 2;
+    const span = (seg.value / total) * 2 * Math.PI - gap;
+    const endA = startA + span;
+    const midA = startA + span / 2;
+    acc.push({
+      startAngle: startA,
+      segment: seg,
+      path: buildDonutArc(cx, cy, outerR, innerR, startA, endA),
+      pct: Math.round((seg.value / total) * 100),
+      midAngle: midA,
+      labelX: cx + (outerR + 16) * Math.cos(midA),
+      labelY: cy + (outerR + 16) * Math.sin(midA),
+    });
+    return acc;
+  }, []);
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full">
+      {arcs.map((arc, i) => (
+        <g key={`arc-${i}`}>
+          <path d={arc.path} fill={arc.segment.color} />
+          <text x={arc.labelX} y={arc.labelY} textAnchor="middle" fill="#c9d1d9" fontSize={9} fontWeight={600}>{arc.pct}%</text>
+        </g>
+      ))}
+      <text x={cx} y={cy - 3} textAnchor="middle" fill="#c9d1d9" fontSize={12} fontWeight={700}>{total}</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize={8}>Total</text>
+      {arcs.map((arc, i) => (
+        <g key={`leg-${i}`}>
+          <rect x={12} y={150 + i * 13} width={8} height={8} rx={1} fill={arc.segment.color} />
+          <text x={24} y={158 + i * 13} fill="#8b949e" fontSize={8}>{arc.segment.name}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function HomeAdvantageGauge({ value }: { value: number }): React.JSX.Element {
+  const cx = 150;
+  const cy = 145;
+  const radius = 100;
+  const clamped = Math.min(100, Math.max(0, value));
+  const endAngle = Math.PI + (clamped / 100) * Math.PI;
+  const bgArc = buildSemiArcPath(cx, cy, radius, Math.PI, Math.PI * 2);
+  const fgArc = clamped > 0 ? buildSemiArcPath(cx, cy, radius, Math.PI, endAngle) : '';
+
+  return (
+    <svg viewBox="0 0 300 190" className="w-full">
+      <path d={bgArc} fill="none" stroke="#30363d" strokeWidth={14} strokeLinecap="round" />
+      {fgArc && <path d={fgArc} fill="none" stroke="#CCFF00" strokeWidth={14} strokeLinecap="round" />}
+      <text x={cx - 80} y={cy + 18} textAnchor="middle" fill="#8b949e" fontSize={9}>Low</text>
+      <text x={cx} y={cy + 18} textAnchor="middle" fill="#8b949e" fontSize={9}>Mid</text>
+      <text x={cx + 80} y={cy + 18} textAnchor="middle" fill="#8b949e" fontSize={9}>High</text>
+      <text x={cx} y={cy + 42} textAnchor="middle" fill="#CCFF00" fontSize={22} fontWeight={800}>{clamped}</text>
+      <text x={cx} y={cy + 56} textAnchor="middle" fill="#8b949e" fontSize={10}>/ 100</text>
+    </svg>
+  );
+}
+
+function ChantVolumeTimeline({ events }: { events: { label: string; intensity: number }[] }): React.JSX.Element {
+  const cy = 60;
+  const left = 30;
+  const right = 270;
+  const totalW = right - left;
+  const items = events.slice(0, 8);
+  const nodes = items.map((ev, i) => {
+    const x = left + (i / Math.max(1, items.length - 1)) * totalW;
+    const r = 4 + (Math.min(100, Math.max(0, ev.intensity)) / 100) * 8;
+    const color = ev.intensity >= 80 ? '#FF5500' : ev.intensity >= 50 ? '#CCFF00' : '#666666';
+    return { x, r, color, label: ev.label, intensity: ev.intensity };
+  });
+
+  return (
+    <svg viewBox="0 0 300 120" className="w-full">
+      <line x1={left} y1={cy} x2={right} y2={cy} stroke="#30363d" strokeWidth={2} />
+      {nodes.map((n, i) => (
+        <g key={`node-${i}`}>
+          <line x1={n.x} y1={cy - n.r} x2={n.x} y2={cy + n.r} stroke={n.color} strokeWidth={1} opacity={0.3} />
+          <circle cx={n.x} cy={cy} r={n.r} fill={n.color} opacity={0.25} />
+          <circle cx={n.x} cy={cy} r={4} fill={n.color} />
+          <text x={n.x} y={cy - n.r - 8} textAnchor="middle" fill="#c9d1d9" fontSize={8} fontWeight={600}>{n.intensity}</text>
+          <text x={n.x} y={cy + n.r + 16} textAnchor="middle" fill="#8b949e" fontSize={7}>{n.label}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function AtmosphereRatingRing({ score }: { score: number }): React.JSX.Element {
+  const cx = 150;
+  const cy = 100;
+  const r = 70;
+  const sw = 10;
+  const clamped = Math.min(100, Math.max(0, score));
+  const circumference = 2 * Math.PI * r;
+  const filled = (clamped / 100) * circumference;
+  const offset = circumference * 0.25;
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#30363d" strokeWidth={sw} />
+      <circle
+        cx={cx} cy={cy} r={r} fill="none" stroke="#00E5FF" strokeWidth={sw}
+        strokeDasharray={`${filled} ${circumference - filled}`}
+        strokeDashoffset={-offset}
+        strokeLinecap="butt"
+      />
+      <text x={cx} y={cy - 5} textAnchor="middle" fill="#00E5FF" fontSize={28} fontWeight={800}>{clamped}</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fill="#8b949e" fontSize={10}>/ 100</text>
+      <text x={cx} y={cy + 30} textAnchor="middle" fill="#8b949e" fontSize={9}>Atmosphere</text>
+    </svg>
+  );
+}
+
+function TifoImpactBars({ items }: { items: { name: string; value: number; color: string }[] }): React.JSX.Element {
+  const barH = 18;
+  const gap = 10;
+  const labelW = 100;
+  const barMaxW = 150;
+  const startY = 15;
+  const barColors = ['#FF5500', '#CCFF00', '#00E5FF', '#666666', '#FF5500'];
+
+  return (
+    <svg viewBox="0 0 300 180" className="w-full">
+      {items.slice(0, 5).reduce<{ elements: React.JSX.Element[]; idx: number }>((acc, item) => {
+        const y = startY + acc.idx * (barH + gap);
+        const clamped = Math.min(100, Math.max(0, item.value));
+        const w = (clamped / 100) * barMaxW;
+        const color = item.color || barColors[acc.idx] || '#666666';
+        acc.elements.push(
+          <g key={item.name}>
+            <text x={labelW - 5} y={y + barH / 2 + 4} textAnchor="end" fill="#8b949e" fontSize={9}>{item.name}</text>
+            <rect x={labelW} y={y} width={barMaxW} height={barH} fill="#21262d" rx={2} />
+            <rect x={labelW} y={y} width={w} height={barH} fill={color} rx={2} />
+            <text x={labelW + w + 6} y={y + barH / 2 + 4} fill="#c9d1d9" fontSize={9} fontWeight={600}>{clamped}</text>
+          </g>
+        );
+        acc.idx += 1;
+        return acc;
+      }, { elements: [], idx: 0 }).elements}
+    </svg>
+  );
+}
+
+function WeatherAtmosphereRadar({ values }: { values: RadarValues[] }): React.JSX.Element {
+  const cx = 150;
+  const cy = 115;
+  const maxR = 80;
+  const sides = 5;
+  const clamped = values.slice(0, sides).map(v => ({ ...v, value: Math.min(100, Math.max(0, v.value)) }));
+  const gridPolygons = [0.25, 0.5, 0.75, 1.0].map(level => buildHexPoints(cx, cy, maxR * level, sides));
+  const dataPoints = buildRadarDataPoints(cx, cy, maxR, sides, clamped.map(v => v.value));
+
+  return (
+    <svg viewBox="0 0 300 230" className="w-full">
+      {gridPolygons.map((pts, i) => (
+        <polygon key={`wgrid-${i}`} points={pts} fill="none" stroke="#30363d" strokeWidth={0.6} />
+      ))}
+      {Array.from({ length: sides }, (_, i) => {
+        const angle = -Math.PI / 2 + (2 * Math.PI * i) / sides;
+        const ex = cx + maxR * Math.cos(angle);
+        const ey = cy + maxR * Math.sin(angle);
+        return <line key={`waxis-${i}`} x1={cx} y1={cy} x2={ex} y2={ey} stroke="#30363d" strokeWidth={0.5} />;
+      })}
+      <polygon points={dataPoints} fill="#CCFF0020" stroke="#CCFF00" strokeWidth={2} />
+      {clamped.map((v, i) => {
+        const angle = -Math.PI / 2 + (2 * Math.PI * i) / sides;
+        const dx = cx + (v.value / 100) * maxR * Math.cos(angle);
+        const dy = cy + (v.value / 100) * maxR * Math.sin(angle);
+        const lx = cx + (maxR + 16) * Math.cos(angle);
+        const ly = cy + (maxR + 16) * Math.sin(angle);
+        return (
+          <g key={v.name}>
+            <circle cx={dx} cy={dy} r={3} fill="#CCFF00" />
+            <text x={lx} y={ly} textAnchor="middle" fill="#8b949e" fontSize={9}>{v.name}</text>
+            <text x={lx} y={ly + 11} textAnchor="middle" fill="#c9d1d9" fontSize={10} fontWeight={700}>{v.value}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function MatchEventEnergyLine({ data }: { data: { minute: string; energy: number }[] }): React.JSX.Element {
+  const left = 40;
+  const right = 280;
+  const top = 20;
+  const bottom = 150;
+  const w = right - left;
+  const h = bottom - top;
+  const pts = data.slice(0, 8).map((d, i) => ({
+    x: left + (i / Math.max(1, data.length - 1)) * w,
+    y: bottom - (Math.min(100, Math.max(0, d.energy)) / 100) * h,
+  }));
+  const linePath = buildLinePath(pts);
+
+  return (
+    <svg viewBox="0 0 300 180" className="w-full">
+      {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+        const y = bottom - frac * h;
+        return (
+          <g key={`eline-${i}`}>
+            <line x1={left} y1={y} x2={right} y2={y} stroke="#30363d" strokeWidth={0.5} strokeDasharray="4 3" />
+            <text x={left - 5} y={y + 3} textAnchor="end" fill="#8b949e" fontSize={8}>{Math.round(frac * 100)}</text>
+          </g>
+        );
+      })}
+      <path d={linePath} fill="none" stroke="#FF5500" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((pt, i) => (
+        <g key={`edot-${i}`}>
+          <circle cx={pt.x} cy={pt.y} r={3} fill="#FF5500" />
+          <text x={pt.x} y={bottom + 14} textAnchor="middle" fill="#8b949e" fontSize={7}>{data[i].minute}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function StadiumCapacityUtilizationRing({ attendance, capacity }: { attendance: number; capacity: number }): React.JSX.Element {
+  const cx = 150;
+  const cy = 100;
+  const r = 70;
+  const sw = 10;
+  const pct = Math.min(100, Math.max(0, Math.round((attendance / Math.max(1, capacity)) * 100)));
+  const circumference = 2 * Math.PI * r;
+  const filled = (pct / 100) * circumference;
+  const offset = circumference * 0.25;
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#30363d" strokeWidth={sw} />
+      <circle
+        cx={cx} cy={cy} r={r} fill="none" stroke="#CCFF00" strokeWidth={sw}
+        strokeDasharray={`${filled} ${circumference - filled}`}
+        strokeDashoffset={-offset}
+        strokeLinecap="butt"
+      />
+      <text x={cx} y={cy - 5} textAnchor="middle" fill="#CCFF00" fontSize={22} fontWeight={800}>{pct}%</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fill="#8b949e" fontSize={10}>{attendance.toLocaleString()} / {capacity.toLocaleString()}</text>
+      <text x={cx} y={cy + 30} textAnchor="middle" fill="#8b949e" fontSize={9}>Capacity</text>
+    </svg>
+  );
+}
+
+function FanDemographicsDonut({ segments }: { segments: { name: string; value: number }[] }): React.JSX.Element {
+  const cx = 150;
+  const cy = 100;
+  const outerR = 70;
+  const innerR = 42;
+  const gap = 0.04;
+  const colors = ['#CCFF00', '#FF5500', '#00E5FF', '#666666', '#CCFF00'];
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  const arcs = segments.reduce<{ path: string; color: string; name: string; pct: number; labelX: number; labelY: number }[]>((acc, seg, idx) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1] : null;
+    const prevEnd = prev ? Math.atan2(prev.labelY - cy, prev.labelX - cx) + gap / 2 : -Math.PI / 2;
+    const startA = prevEnd;
+    const span = (seg.value / total) * 2 * Math.PI - gap;
+    const endA = startA + span;
+    const midA = startA + span / 2;
+    acc.push({
+      path: buildDonutArc(cx, cy, outerR, innerR, startA, endA),
+      color: colors[idx] || '#666666',
+      name: seg.name,
+      pct: Math.round((seg.value / total) * 100),
+      labelX: cx + (outerR + 16) * Math.cos(midA),
+      labelY: cy + (outerR + 16) * Math.sin(midA),
+    });
+    return acc;
+  }, []);
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full">
+      {arcs.map((arc, i) => (
+        <g key={`darc-${i}`}>
+          <path d={arc.path} fill={arc.color} />
+          <text x={arc.labelX} y={arc.labelY} textAnchor="middle" fill="#c9d1d9" fontSize={9} fontWeight={600}>{arc.pct}%</text>
+        </g>
+      ))}
+      <text x={cx} y={cy - 3} textAnchor="middle" fill="#c9d1d9" fontSize={12} fontWeight={700}>{total.toLocaleString()}</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize={8}>Fans</text>
+      {arcs.map((arc, i) => (
+        <g key={`dleg-${i}`}>
+          <rect x={12} y={150 + i * 13} width={8} height={8} rx={1} fill={arc.color} />
+          <text x={24} y={158 + i * 13} fill="#8b949e" fontSize={8}>{arc.name}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function StadiumAtmosphere(): React.JSX.Element {

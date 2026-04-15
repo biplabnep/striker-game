@@ -708,7 +708,9 @@ export type GameScreen =
   | 'daily_routine_enhanced'
   | 'set_piece_trainer_enhanced'
   | 'transfer_market_enhanced'
-  | 'match_engine_simulation_enhanced';
+  | 'match_engine_simulation_enhanced'
+  | 'contract_negotiation_enhanced'
+  | 'player_psychology_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

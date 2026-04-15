@@ -40,6 +40,8 @@ import PlayerOfTheMonth from '@/components/game/PlayerOfTheMonth';
 import PostMatchAnalysis from '@/components/game/PostMatchAnalysis';
 import PlayerComparison from '@/components/game/PlayerComparison';
 import TransferNegotiation from '@/components/game/TransferNegotiation';
+import ContractNegotiationEnhanced from '@/components/game/ContractNegotiationEnhanced';
+import PlayerPsychologyEnhanced from '@/components/game/PlayerPsychologyEnhanced';
 import FanEngagement from '@/components/game/FanEngagement';
 import WorldFootballNews from '@/components/game/WorldFootballNews';
 import HallOfFame from '@/components/game/HallOfFame';
@@ -283,6 +285,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   set_piece_trainer_enhanced: SetPieceTrainerEnhanced,
   transfer_market_enhanced: TransferMarketEnhanced,
   match_engine_simulation_enhanced: MatchEngineSimulationEnhanced,
+  contract_negotiation_enhanced: ContractNegotiationEnhanced,
+  player_psychology_enhanced: PlayerPsychologyEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -390,6 +394,8 @@ const gameScreens: GameScreen[] = [
   'set_piece_trainer_enhanced',
   'transfer_market_enhanced',
   'match_engine_simulation_enhanced',
+  'contract_negotiation_enhanced',
+  'player_psychology_enhanced',
 ];
 
 export default function Home() {

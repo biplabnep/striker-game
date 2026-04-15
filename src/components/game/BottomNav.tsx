@@ -69,6 +69,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'transfer_market_enhanced', icon: <Store className="h-5 w-5" />, label: 'Market+' },
       { screen: 'personal_finances', icon: <Wallet className="h-5 w-5" />, label: 'Finances' },
       { screen: 'transfer_negotiation', icon: <Handshake className="h-5 w-5" />, label: 'Negotiate' },
+      { screen: 'contract_negotiation_enhanced', icon: <FileText className="h-5 w-5" />, label: 'Contract+' },
       { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },
       { screen: 'career_statistics', icon: <ScrollText className="h-5 w-5" />, label: 'Statistics' },
       { screen: 'hall_of_fame', icon: <Crown className="h-5 w-5" />, label: 'Hall of Fame' },
@@ -185,6 +186,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'injury_recovery', icon: <Stethoscope className="h-5 w-5" />, label: 'Recovery' },
       { screen: 'injury_simulator', icon: <Syringe className="h-5 w-5" />, label: 'Simulator' },
       { screen: 'player_psychology', icon: <Brain className="h-5 w-5" />, label: 'Psychology' },
+      { screen: 'player_psychology_enhanced', icon: <Brain className="h-5 w-5" />, label: 'Psychology+' },
     ],
   },
   {

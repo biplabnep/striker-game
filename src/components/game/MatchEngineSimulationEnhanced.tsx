@@ -1148,10 +1148,6 @@ export default function MatchEngineSimulationEnhanced() {
   // Simulation timer effect
   useEffect(() => {
     if (!isSimulating || currentMinute >= 90) {
-      if (currentMinute >= 90) {
-        setIsSimulating(false);
-        setPhase('full_time');
-      }
       return;
     }
 
@@ -1162,7 +1158,14 @@ export default function MatchEngineSimulationEnhanced() {
           setPhase('half_time');
           return 45;
         }
-        if (next >= 90) return 90;
+        if (next >= 90) {
+          // Schedule full-time state update via setTimeout (not synchronous in effect body)
+          setTimeout(() => {
+            setIsSimulating(false);
+            setPhase('full_time');
+          }, 0);
+          return 90;
+        }
         return next;
       });
     }, 800);

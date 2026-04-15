@@ -2434,6 +2434,413 @@ function TeamBondingActivities({
 }
 
 // ============================================================
+// SVG Data Visualization Components (Gritty Futurism)
+// ============================================================
+
+interface RadarDataPoint {
+  label: string;
+  value: number;
+}
+
+function CampFitnessOverviewRadar({ data }: { data: RadarDataPoint[] }) {
+  const cx = 100;
+  const cy = 100;
+  const maxR = 80;
+  const axes = data.length;
+  const angleStep = (2 * Math.PI) / axes;
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+  const gridPaths = gridLevels.map((level) => {
+    const points = Array.from({ length: axes }, (_, i) => {
+      const angle = i * angleStep - Math.PI / 2;
+      const r = maxR * level;
+      return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+    }).join(' ');
+    return points;
+  });
+  const dataPoints = data.map((d, i) => {
+    const angle = i * angleStep - Math.PI / 2;
+    const r = (d.value / 100) * maxR;
+    return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+  }).join(' ');
+  const labelPositions = data.map((d, i) => {
+    const angle = i * angleStep - Math.PI / 2;
+    const labelR = maxR + 14;
+    return { label: d.label, x: cx + labelR * Math.cos(angle), y: cy + labelR * Math.sin(angle) };
+  });
+
+  return (
+    <div className="w-full">
+      <svg viewBox="0 0 200 200" className="w-full" aria-label="Camp Fitness Radar">
+        {gridPaths.map((pts, gi) => (
+          <polygon key={gi} points={pts} fill="none" stroke="#30363d" strokeWidth="1" />
+        ))}
+        {Array.from({ length: axes }, (_, i) => {
+          const angle = i * angleStep - Math.PI / 2;
+          return (
+            <line key={i} x1={cx} y1={cy} x2={cx + maxR * Math.cos(angle)} y2={cy + maxR * Math.sin(angle)} stroke="#30363d" strokeWidth="0.5" />
+          );
+        })}
+        <polygon points={dataPoints} fill="none" stroke="#FF5500" strokeWidth="2" />
+        {data.map((d, i) => {
+          const angle = i * angleStep - Math.PI / 2;
+          const r = (d.value / 100) * maxR;
+          return <circle key={i} cx={cx + r * Math.cos(angle)} cy={cy + r * Math.sin(angle)} r="3" fill="#FF5500" />;
+        })}
+        {labelPositions.map((lp, i) => (
+          <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize="8" fontWeight="600">{lp.label}</text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function TrainingLoadAreaChart({ loads }: { loads: number[] }) {
+  const width = 240;
+  const height = 100;
+  const padX = 28;
+  const padY = 12;
+  const chartW = width - padX * 2;
+  const chartH = height - padY * 2;
+  const maxVal = 100;
+  const dayLabels = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8'];
+  const points = loads.map((v, i) => ({
+    x: padX + (i / (loads.length - 1)) * chartW,
+    y: padY + chartH - (Math.min(v, maxVal) / maxVal) * chartH,
+  }));
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = `${linePath} L${points[points.length - 1].x},${padY + chartH} L${points[0].x},${padY + chartH} Z`;
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" aria-label="Training Load Area Chart">
+        {Array.from({ length: 4 }, (_, i) => {
+          const yPos = padY + (i / 3) * chartH;
+          return (
+            <g key={i}>
+              <line x1={padX} y1={yPos} x2={width - padX} y2={yPos} stroke="#30363d" strokeWidth="0.5" />
+              <text x={padX - 4} y={yPos + 3} textAnchor="end" fill="#666666" fontSize="6">{Math.round(100 - (i / 3) * 100)}</text>
+            </g>
+          );
+        })}
+        <path d={areaPath} fill="#00E5FF" opacity="0.2" />
+        <path d={linePath} fill="none" stroke="#00E5FF" strokeWidth="1.5" />
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#00E5FF" />
+        ))}
+        {dayLabels.map((label, i) => {
+          const x = padX + (i / (dayLabels.length - 1)) * chartW;
+          return <text key={label} x={x} y={height - 2} textAnchor="middle" fill="#666666" fontSize="6">{label}</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function DrillCompletionDonut({ segments }: { segments: { label: string; value: number; color: string }[] }) {
+  const cx = 80;
+  const cy = 80;
+  const outerR = 60;
+  const innerR = 38;
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  const gap = 0.04;
+  const segData = segments.reduce<Array<{ color: string; d: string; midAngle: number; label: string }>>((acc, seg, idx) => {
+    const prevAngle = acc.length > 0
+      ? -Math.PI / 2 + segments.slice(0, idx).reduce((s, sg) => s + (total > 0 ? (sg.value / total) * 2 * Math.PI : 0), 0)
+      : -Math.PI / 2;
+    const startAngle = prevAngle;
+    const sweep = total > 0 ? (seg.value / total) * 2 * Math.PI : 0;
+    const clampedSweep = Math.max(0, sweep - gap);
+    const endAngle = startAngle + sweep;
+    const midAngle = startAngle + sweep / 2;
+    const outerStart = { x: cx + outerR * Math.cos(startAngle), y: cy + outerR * Math.sin(startAngle) };
+    const outerEnd = { x: cx + outerR * Math.cos(startAngle + clampedSweep), y: cy + outerR * Math.sin(startAngle + clampedSweep) };
+    const innerEnd = { x: cx + innerR * Math.cos(startAngle + clampedSweep), y: cy + innerR * Math.sin(startAngle + clampedSweep) };
+    const innerStart = { x: cx + innerR * Math.cos(startAngle), y: cy + innerR * Math.sin(startAngle) };
+    const largeArc = clampedSweep > Math.PI ? 1 : 0;
+    const d = `M${outerStart.x},${outerStart.y} A${outerR},${outerR} 0 ${largeArc} 1 ${outerEnd.x},${outerEnd.y} L${innerEnd.x},${innerEnd.y} A${innerR},${innerR} 0 ${largeArc} 0 ${innerStart.x},${innerStart.y} Z`;
+    return [...acc, { color: seg.color, d, midAngle, label: seg.label }];
+  }, []);
+
+  return (
+    <div className="w-full">
+      <svg viewBox="0 0 160 130" className="w-full" aria-label="Drill Completion Donut">
+        {segData.map((seg, i) => (
+          <path key={i} d={seg.d} fill={seg.color} opacity="0.85" />
+        ))}
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="700">{total}%</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#666666" fontSize="7">COMPLETE</text>
+        {segData.map((seg, i) => {
+          const labelR = outerR + 12;
+          const lx = cx + labelR * Math.cos(seg.midAngle);
+          const ly = cy + labelR * Math.sin(seg.midAngle);
+          return <text key={i} x={lx} y={ly} textAnchor="middle" fill="#8b949e" fontSize="6">{seg.label}</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function PlayerConditionGauge({ value }: { value: number }) {
+  const cx = 100;
+  const cy = 90;
+  const r = 70;
+  const startAngle = Math.PI;
+  const endAngle = 2 * Math.PI;
+  const valueAngle = startAngle + (Math.min(value, 100) / 100) * Math.PI;
+  const arcPath = (aStart: number, aEnd: number) => {
+    const sx = cx + r * Math.cos(aStart);
+    const sy = cy + r * Math.sin(aStart);
+    const ex = cx + r * Math.cos(aEnd);
+    const ey = cy + r * Math.sin(aEnd);
+    return `M${sx},${sy} A${r},${r} 0 0 1 ${ex},${ey}`;
+  };
+  const needleLen = r - 16;
+  const nx = cx + needleLen * Math.cos(valueAngle);
+  const ny = cy + needleLen * Math.sin(valueAngle);
+
+  return (
+    <div className="w-full">
+      <svg viewBox="0 0 200 120" className="w-full" aria-label="Player Condition Gauge">
+        <path d={arcPath(startAngle, endAngle)} fill="none" stroke="#30363d" strokeWidth="8" strokeLinecap="round" />
+        <path d={arcPath(startAngle, valueAngle)} fill="none" stroke="#CCFF00" strokeWidth="8" strokeLinecap="round" />
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#c9d1d9" strokeWidth="2" strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r="4" fill="#0d1117" stroke="#c9d1d9" strokeWidth="1" />
+        <text x={cx} y={cy + 28} textAnchor="middle" fill="#CCFF00" fontSize="22" fontWeight="700">{value}</text>
+        <text x={cx} y={cy + 38} textAnchor="middle" fill="#666666" fontSize="7">CONDITION</text>
+        <text x={cx - r - 2} y={cy + 14} textAnchor="middle" fill="#666666" fontSize="7">0</text>
+        <text x={cx + r + 2} y={cy + 14} textAnchor="middle" fill="#666666" fontSize="7">100</text>
+      </svg>
+    </div>
+  );
+}
+
+function CampProgressTimeline({ phases }: { phases: { label: string; completed: boolean }[] }) {
+  const width = 320;
+  const height = 60;
+  const padX = 24;
+  const spacing = (width - padX * 2) / (phases.length - 1);
+  const nodeY = 24;
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" aria-label="Camp Progress Timeline">
+        <line x1={padX} y1={nodeY} x2={width - padX} y2={nodeY} stroke="#30363d" strokeWidth="2" />
+        {phases.map((phase, i) => {
+          const x = padX + i * spacing;
+          const fillColor = phase.completed ? '#00E5FF' : '#0d1117';
+          const strokeColor = phase.completed ? '#00E5FF' : '#30363d';
+          return (
+            <g key={i}>
+              {i > 0 && (
+                <line x1={padX + (i - 1) * spacing} y1={nodeY} x2={x} y2={nodeY}
+                  stroke={phase.completed && phases[i - 1].completed ? '#00E5FF' : '#30363d'} strokeWidth="2" />
+              )}
+              <circle cx={x} cy={nodeY} r="6" fill={fillColor} stroke={strokeColor} strokeWidth="2" />
+              <text x={x} y={nodeY + 18} textAnchor="middle" fill={phase.completed ? '#c9d1d9' : '#666666'} fontSize="6" fontWeight="600">{phase.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function IntensityDistributionBars({ distribution }: { distribution: { label: string; value: number; color: string }[] }) {
+  const width = 200;
+  const barHeight = 10;
+  const barGap = 14;
+  const padLeft = 60;
+  const maxBarW = width - padLeft - 30;
+  const totalH = distribution.length * barGap + 16;
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${width} ${totalH}`} className="w-full" aria-label="Intensity Distribution Bars">
+        {distribution.map((d, i) => {
+          const y = 4 + i * barGap;
+          const barW = (d.value / 100) * maxBarW;
+          return (
+            <g key={i}>
+              <text x={padLeft - 4} y={y + barHeight - 2} textAnchor="end" fill="#8b949e" fontSize="7">{d.label}</text>
+              <rect x={padLeft} y={y} width={maxBarW} height={barHeight} rx="2" fill="#21262d" />
+              <rect x={padLeft} y={y} width={barW} height={barHeight} rx="2" fill={d.color} />
+              <text x={padLeft + barW + 4} y={y + barHeight - 2} fill="#c9d1d9" fontSize="7" fontWeight="600">{d.value}%</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function RecoveryRateLine({ scores }: { scores: number[] }) {
+  const width = 240;
+  const height = 90;
+  const padX = 28;
+  const padY = 12;
+  const chartW = width - padX * 2;
+  const chartH = height - padY * 2;
+  const maxVal = 100;
+  const dayLabels = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8'];
+  const points = scores.map((v, i) => ({
+    x: padX + (i / (scores.length - 1)) * chartW,
+    y: padY + chartH - (Math.min(v, maxVal) / maxVal) * chartH,
+  }));
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" aria-label="Recovery Rate Line">
+        {Array.from({ length: 4 }, (_, i) => {
+          const yPos = padY + (i / 3) * chartH;
+          return (
+            <g key={i}>
+              <line x1={padX} y1={yPos} x2={width - padX} y2={yPos} stroke="#30363d" strokeWidth="0.5" />
+              <text x={padX - 4} y={yPos + 3} textAnchor="end" fill="#666666" fontSize="6">{Math.round(100 - (i / 3) * 100)}</text>
+            </g>
+          );
+        })}
+        <path d={linePath} fill="none" stroke="#CCFF00" strokeWidth="1.5" />
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#CCFF00" />
+        ))}
+        {dayLabels.map((label, i) => {
+          const x = padX + (i / (dayLabels.length - 1)) * chartW;
+          return <text key={label} x={x} y={height - 2} textAnchor="middle" fill="#666666" fontSize="6">{label}</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function SkillDevelopmentRadar({ data }: { data: RadarDataPoint[] }) {
+  const cx = 100;
+  const cy = 100;
+  const maxR = 75;
+  const axes = data.length;
+  const angleStep = (2 * Math.PI) / axes;
+  const gridLevels = [0.2, 0.4, 0.6, 0.8, 1.0];
+  const gridPaths = gridLevels.map((level) => {
+    return Array.from({ length: axes }, (_, i) => {
+      const angle = i * angleStep - Math.PI / 2;
+      const r = maxR * level;
+      return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+    }).join(' ');
+  });
+  const dataPoints = data.map((d, i) => {
+    const angle = i * angleStep - Math.PI / 2;
+    const r = (d.value / 100) * maxR;
+    return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+  }).join(' ');
+  const labelPositions = data.map((d, i) => {
+    const angle = i * angleStep - Math.PI / 2;
+    const labelR = maxR + 16;
+    return { label: d.label, x: cx + labelR * Math.cos(angle), y: cy + labelR * Math.sin(angle), value: d.value };
+  });
+
+  return (
+    <div className="w-full">
+      <svg viewBox="0 0 200 200" className="w-full" aria-label="Skill Development Radar">
+        {gridPaths.map((pts, gi) => (
+          <polygon key={gi} points={pts} fill="none" stroke="#30363d" strokeWidth="0.8" />
+        ))}
+        {Array.from({ length: axes }, (_, i) => {
+          const angle = i * angleStep - Math.PI / 2;
+          return (
+            <line key={i} x1={cx} y1={cy} x2={cx + maxR * Math.cos(angle)} y2={cy + maxR * Math.sin(angle)} stroke="#30363d" strokeWidth="0.5" />
+          );
+        })}
+        <polygon points={dataPoints} fill="#FF5500" opacity="0.15" stroke="#FF5500" strokeWidth="1.5" />
+        {data.map((d, i) => {
+          const angle = i * angleStep - Math.PI / 2;
+          const r = (d.value / 100) * maxR;
+          return <circle key={i} cx={cx + r * Math.cos(angle)} cy={cy + r * Math.sin(angle)} r="3" fill="#FF5500" />;
+        })}
+        {labelPositions.map((lp, i) => (
+          <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize="7" fontWeight="600">
+            {lp.label} {lp.value}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function TeamChemistryRing({ percentage }: { percentage: number }) {
+  const cx = 80;
+  const cy = 80;
+  const r = 60;
+  const strokeW = 8;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
+  const labelColor = percentage >= 75 ? '#00E5FF' : percentage >= 50 ? '#CCFF00' : '#FF5500';
+
+  return (
+    <div className="w-full">
+      <svg viewBox="0 0 160 160" className="w-full" aria-label="Team Chemistry Ring">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#30363d" strokeWidth={strokeW} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#00E5FF" strokeWidth={strokeW}
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
+        <text x={cx} y={cy - 4} textAnchor="middle" fill={labelColor} fontSize="22" fontWeight="700">{percentage}%</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#666666" fontSize="7" fontWeight="600">CHEMISTRY</text>
+      </svg>
+    </div>
+  );
+}
+
+function CampNutritionBars({ items }: { items: { label: string; value: number; color: string }[] }) {
+  const width = 220;
+  const barHeight = 10;
+  const barGap = 16;
+  const padLeft = 74;
+  const maxBarW = width - padLeft - 30;
+  const totalH = items.length * barGap + 10;
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${width} ${totalH}`} className="w-full" aria-label="Camp Nutrition Bars">
+        {items.map((item, i) => {
+          const y = 4 + i * barGap;
+          const barW = (item.value / 100) * maxBarW;
+          return (
+            <g key={i}>
+              <text x={padLeft - 4} y={y + barHeight - 2} textAnchor="end" fill="#8b949e" fontSize="7" fontWeight="500">{item.label}</text>
+              <rect x={padLeft} y={y} width={maxBarW} height={barHeight} rx="2" fill="#21262d" />
+              <rect x={padLeft} y={y} width={barW} height={barHeight} rx="2" fill={item.color} />
+              <text x={padLeft + barW + 4} y={y + barHeight - 2} fill="#c9d1d9" fontSize="7" fontWeight="600">{item.value}%</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function PreSeasonGoalProgressRing({ completed, total }: { completed: number; total: number }) {
+  const cx = 80;
+  const cy = 80;
+  const r = 58;
+  const strokeW = 7;
+  const circumference = 2 * Math.PI * r;
+  const pct = total > 0 ? Math.min((completed / total) * 100, 100) : 0;
+  const offset = circumference - (pct / 100) * circumference;
+  const displayPct = Math.round(pct);
+
+  return (
+    <div className="w-full">
+      <svg viewBox="0 0 160 160" className="w-full" aria-label="Pre-Season Goal Progress Ring">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#30363d" strokeWidth={strokeW} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#FF5500" strokeWidth={strokeW}
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#FF5500" fontSize="20" fontWeight="700">{completed}/{total}</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#666666" fontSize="7" fontWeight="600">GOALS</text>
+        <text x={cx} y={cy + 20} textAnchor="middle" fill="#8b949e" fontSize="7">{displayPct}% done</text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 

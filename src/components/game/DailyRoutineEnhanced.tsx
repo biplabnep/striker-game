@@ -284,7 +284,7 @@ function ActivityDistributionDonut({ catCounts }: { catCounts: Record<CategoryId
 
   const total = labels.reduce((sum, label) => sum + catCounts[label], 0);
 
-  const segments = useMemo(() => {
+  const segments = (() => {
     if (total === 0) return [];
     let currentAngle = 0;
     return labels.reduce((acc, label, i) => {
@@ -296,11 +296,10 @@ function ActivityDistributionDonut({ catCounts }: { catCounts: Record<CategoryId
       const midAngle = currentAngle + angle / 2;
       const path = describeDonutArc(cx, cy, outerR, innerR, startAngle, Math.max(startAngle + 0.5, endAngle));
       const pct = Math.round((count / total) * 100);
-      const result = [...acc, { path, color: colors[i], label, count, pct, midAngle }];
       currentAngle += angle;
-      return result;
+      return [...acc, { path, color: colors[i], label, count, pct, midAngle }];
     }, [] as { path: string; color: string; label: CategoryId; count: number; pct: number; midAngle: number }[]);
-  }, [total, catCounts]);
+  })();
 
   return (
     <div className={`${CARD_BG} border ${BORDER_COLOR} p-4`}>
@@ -924,9 +923,9 @@ function LifestyleBalanceDonut({ schedule, morale, fitness }: { schedule: Weekly
   const segmentGap = 4;
   const colors = [W3_ORANGE, W3_CYAN, W3_LIME, W3_ORANGE, W3_GRAY];
 
-  const catCounts = useMemo(() => getCategoryCounts(schedule), [schedule]);
+  const catCounts = getCategoryCounts(schedule);
 
-  const distribution = useMemo(() => {
+  const distribution = (() => {
     const training = catCounts.training;
     const rest = catCounts.recovery;
     const social = catCounts.social;
@@ -943,11 +942,11 @@ function LifestyleBalanceDonut({ schedule, morale, fitness }: { schedule: Weekly
       ...d,
       pct: total > 0 ? Math.round((d.value / total) * 100) : 20,
     }));
-  }, [catCounts]);
+  })();
 
   const total = distribution.reduce((sum, d) => sum + d.value, 0);
 
-  const segments = useMemo(() => {
+  const segments = (() => {
     if (total === 0) return [];
     let currentAngle = 0;
     return distribution.reduce((acc, item, i) => {
@@ -956,17 +955,16 @@ function LifestyleBalanceDonut({ schedule, morale, fitness }: { schedule: Weekly
       const startAngle = currentAngle + segmentGap;
       const endAngle = currentAngle + angle - segmentGap;
       const path = describeDonutArc(cx, cy, outerR, innerR, startAngle, Math.max(startAngle + 0.5, endAngle));
-      const result = [...acc, { path, color: colors[i], label: item.label, value: item.value, pct: item.pct }];
       currentAngle += angle;
-      return result;
+      return [...acc, { path, color: colors[i], label: item.label, value: item.value, pct: item.pct }];
     }, [] as { path: string; color: string; label: string; value: number; pct: number }[]);
-  }, [total, distribution, cx, cy, outerR, innerR]);
+  })();
 
-  const balanceScore = useMemo(() => {
+  const balanceScore = (() => {
     const ideal = 20;
     const deviation = distribution.reduce((sum, d) => sum + Math.abs(d.pct - ideal), 0);
     return Math.max(0, 100 - deviation * 1.5);
-  }, [distribution]);
+  })();
 
   return (
     <div className={`${CARD_BG} border ${BORDER_COLOR} p-4`}>

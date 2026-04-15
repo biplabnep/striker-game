@@ -607,8 +607,8 @@ export default function TacticalSubstitutions() {
     ? matchData.homeScore < matchData.awayScore
     : matchData.awayScore < matchData.homeScore;
 
-  // Computed SVG visualization data (after null guard)
-  const svgFitnessRadar = useMemo(() => {
+  // Computed SVG visualization data (pure functions, no useMemo needed)
+  const svgFitnessRadar = (() => {
     const starters = squadData.starters;
     const isGK = (p: string) => p === 'GK';
     const isDEF = (p: string) => ['CB', 'LB', 'RB'].includes(p);
@@ -622,9 +622,9 @@ export default function TacticalSubstitutions() {
       avg(starters.filter(p => isATT(p.position)).map(p => p.fitness)),
       avg(starters.map(p => p.fitness)),
     ];
-  }, [squadData]);
+  })();
 
-  const svgFitnessDonut = useMemo(() => {
+  const svgFitnessDonut = (() => {
     const counts = squadData.starters.reduce(
       (acc, p) => {
         if (p.fitness >= 80) acc.high++;
@@ -650,18 +650,18 @@ export default function TacticalSubstitutions() {
       }
     });
     return { segments, total };
-  }, [squadData]);
+  })();
 
-  const svgBenchStrength = useMemo(() => {
+  const svgBenchStrength = (() => {
     const startersAvg = squadData.starters.reduce((s, p) => s + p.ovr, 0) / squadData.starters.length;
     return squadData.bench.slice(0, 5).map(p => ({
       name: p.name.split(' ').pop() ?? p.name,
       ovr: p.ovr,
       diff: p.ovr - startersAvg,
     }));
-  }, [squadData]);
+  })();
 
-  const svgMatchMomentum = useMemo(() => {
+  const svgMatchMomentum = (() => {
     const seed = hashString(`${matchData.homeTeam}-${matchData.awayTeam}`);
     const rng = createSeededRandom(seed + 1);
     return Array.from({ length: 8 }).map(() => {
@@ -669,9 +669,9 @@ export default function TacticalSubstitutions() {
       const variation = (rng() - 0.5) * 0.4;
       return Math.round(Math.max(20, Math.min(95, (base + variation) * 100)));
     });
-  }, [matchData]);
+  })();
 
-  const svgPossessionTimeline = useMemo(() => {
+  const svgPossessionTimeline = (() => {
     const seed = hashString(`poss-${matchData.homeTeam}`);
     const rng = createSeededRandom(seed + 7);
     return Array.from({ length: 10 }).map(() => {
@@ -679,9 +679,9 @@ export default function TacticalSubstitutions() {
       const drift = (rng() - 0.5) * 20;
       return Math.round(Math.max(25, Math.min(75, base + drift)));
     });
-  }, [matchData]);
+  })();
 
-  const svgTacticScores = useMemo(() => {
+  const svgTacticScores = (() => {
     const teamScores: Record<TacticKey, number[]> = {
       attack_more: [85, 40, 60, 50, 70],
       defend_deeper: [35, 90, 70, 55, 45],
@@ -690,25 +690,25 @@ export default function TacticalSubstitutions() {
     };
     const opponentScores = teamScores[activeTactic].map(v => Math.max(30, 100 - v + 5));
     return { team: teamScores[activeTactic], opponent: opponentScores };
-  }, [activeTactic]);
+  })();
 
-  const svgMatchControl = useMemo(() => {
+  const svgMatchControl = (() => {
     const myGoals = matchData.isHome ? matchData.homeScore : matchData.awayScore;
     const oppGoals = matchData.isHome ? matchData.awayScore : matchData.homeScore;
     const goalDiff = myGoals - oppGoals;
     const possBonus = matchData.possession - 50;
     const shotBonus = matchData.shots - matchData.opponentShots;
     return Math.round(Math.max(10, Math.min(95, 50 + goalDiff * 12 + possBonus * 0.5 + shotBonus * 3)));
-  }, [matchData]);
+  })();
 
-  const svgFormationFamiliarity = useMemo(() => {
+  const svgFormationFamiliarity = (() => {
     const familiarity: Record<FormationKey, number> = {
       '4-3-3': 88, '4-4-2': 75, '4-2-3-1': 82, '3-5-2': 60, '4-5-1': 70,
     };
     return familiarity[formation];
-  }, [formation]);
+  })();
 
-  const svgSubImpact = useMemo(() => {
+  const svgSubImpact = (() => {
     const startersAvg = squadData.starters.reduce((s, p) => s + p.ovr, 0) / squadData.starters.length;
     return subSlots.map((slot, i) => {
       if (slot.completed && slot.playerIn && slot.playerOut) {
@@ -717,7 +717,7 @@ export default function TacticalSubstitutions() {
       const benchIdx = Math.min(i, squadData.bench.length - 1);
       return { impact: squadData.bench[benchIdx].ovr - Math.round(startersAvg), actual: false };
     });
-  }, [subSlots, squadData]);
+  })();
 
   return (
     <div className={`${DARK_BG} min-h-screen`}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -1323,69 +1323,64 @@ export default function TransferMarketEnhanced() {
   const [sortBy, setSortBy] = useState<string>('ovr');
   const [shortlist, setShortlist] = useState<Set<string>>(new Set());
 
+  const clubName = gameState?.currentClub.name ?? '';
+  const season = gameState?.currentSeason ?? 1;
+  const week = gameState?.currentWeek ?? 1;
+  const budget = gameState?.currentClub.budget ?? 50_000_000;
+  const budgetInM = budget / 1_000_000;
+
   if (!gameState) {
     return null;
   }
 
-  const clubName = gameState.currentClub.name;
-  const season = gameState.currentSeason;
-  const week = gameState.currentWeek;
-  const budget = gameState.currentClub.budget || 50_000_000;
-  const budgetInM = budget / 1_000_000;
-
   // ==========================================================
-  // Generate deterministic data
+  // Generate deterministic data (pure functions, no useMemo needed)
   // ==========================================================
-  const targets = useMemo(
-    () => generateTargets(season, week),
-    [season, week]
-  );
-
-  const marketTrends = useMemo(
-    () => generateMarketTrends(season, week),
-    [season, week]
-  );
-
-  const transferHistory = useMemo(
-    () => generateTransferHistory(season, week),
-    [season, week]
-  );
-
-  const scoutReports = useMemo(
-    () => generateScoutReports(season, week),
-    [season, week]
-  );
+  const targets = generateTargets(season, week);
+  const marketTrends = generateMarketTrends(season, week);
+  const transferHistory = generateTransferHistory(season, week);
+  const scoutReports = generateScoutReports(season, week);
 
   // ==========================================================
   // Computed values
   // ==========================================================
-  const shortlistedTargets = useMemo(
-    () => targets.filter((t) => shortlist.has(t.id)),
-    [targets, shortlist]
-  );
-
-  const shortlistTotal = useMemo(
-    () => shortlistedTargets.reduce((sum, t) => sum + t.askingPrice, 0),
-    [shortlistedTargets]
-  );
+  const shortlistedTargets = targets.filter((t) => shortlist.has(t.id));
+  const shortlistTotal = shortlistedTargets.reduce((sum, t) => sum + t.askingPrice, 0);
 
   // Filter and sort targets
-  const filteredTargets = useMemo(() => {
-    let result = [...targets];
+  const filteredTargets = (() => {
+    const result = [...targets];
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(
+      const filtered = result.filter(
         (t) =>
           t.name.toLowerCase().includes(q) ||
           t.clubName.toLowerCase().includes(q) ||
           t.position.toLowerCase().includes(q)
       );
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+      return filtered;
     }
     if (positionFilter !== 'All') {
-      result = result.filter((t) => {
+      const catFiltered = result.filter((t) => {
         const cat = getPositionCategory(t.position);
         return cat === positionFilter;
       });
+      switch (sortBy) {
+        case 'ovr':
+          catFiltered.sort((a, b) => b.overall - a.overall);
+          break;
+        case 'price':
+          catFiltered.sort((a, b) => b.askingPrice - a.askingPrice);
+          break;
+        case 'age':
+          catFiltered.sort((a, b) => a.age - b.age);
+          break;
+        case 'name':
+          catFiltered.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+      }
+      return catFiltered;
     }
     switch (sortBy) {
       case 'ovr':
@@ -1402,56 +1397,38 @@ export default function TransferMarketEnhanced() {
         break;
     }
     return result;
-  }, [targets, searchQuery, positionFilter, sortBy]);
+  })();
 
   // Market analytics computed values
-  const avgMarketFee = useMemo(() => {
-    if (marketTrends.length === 0) return 0;
-    const total = marketTrends.reduce((sum, t) => sum + t.avgFee, 0);
-    return Math.round((total / marketTrends.length) * 10) / 10;
-  }, [marketTrends]);
+  const avgMarketFee = marketTrends.length > 0
+    ? Math.round((marketTrends.reduce((sum, t) => sum + t.avgFee, 0) / marketTrends.length) * 10) / 10
+    : 0;
 
-  const totalMarketActivity = useMemo(() => {
-    return marketTrends.reduce((sum, t) => sum + t.activity, 0);
-  }, [marketTrends]);
-
-  const peakActivity = useMemo(() => {
-    return Math.max(...marketTrends.map((t) => t.activity), 0);
-  }, [marketTrends]);
+  const totalMarketActivity = marketTrends.reduce((sum, t) => sum + t.activity, 0);
+  const peakActivity = Math.max(...marketTrends.map((t) => t.activity), 0);
 
   // Transfer history computed values
-  const completedTransfers = useMemo(
-    () => transferHistory.filter((r) => r.status === 'completed'),
-    [transferHistory]
-  );
-
-  const totalSpent = useMemo(
-    () => completedTransfers.reduce((sum, r) => sum + r.fee, 0),
-    [completedTransfers]
-  );
-
+  const completedTransfers = transferHistory.filter((r) => r.status === 'completed');
+  const totalSpent = completedTransfers.reduce((sum, r) => sum + r.fee, 0);
   const successCount = completedTransfers.length;
   const totalCount = transferHistory.length;
   const successRate = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 0;
 
   // Season spending data (simulated across 8 seasons)
-  const seasonSpending = useMemo(() => {
+  const seasonSpending = (() => {
     const seed = season * 200 + 55;
     const rng = seededRandom(seed);
     return Array.from({ length: 8 }, () => 10 + Math.floor(rng() * 70));
-  }, [season]);
+  })();
 
   // Scout reports computed values
-  const topScoutPlayer = useMemo(
-    () => scoutReports.reduce((best, p) => (p.potentialRating > best.potentialRating ? p : best), scoutReports[0]),
-    [scoutReports]
-  );
+  const topScoutPlayer = scoutReports.length > 0
+    ? scoutReports.reduce((best, p) => (p.potentialRating > best.potentialRating ? p : best), scoutReports[0])
+    : scoutReports[0];
 
-  const avgConfidence = useMemo(() => {
-    if (scoutReports.length === 0) return 0;
-    const total = scoutReports.reduce((sum, p) => sum + p.confidence, 0);
-    return Math.round(total / scoutReports.length);
-  }, [scoutReports]);
+  const avgConfidence = scoutReports.length > 0
+    ? Math.round(scoutReports.reduce((sum, p) => sum + p.confidence, 0) / scoutReports.length)
+    : 0;
 
   // ==========================================================
   // Handlers

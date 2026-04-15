@@ -322,13 +322,14 @@ function GoalsByCompetitionDonut({ leagueGoals, cupGoals, continentalGoals }: { 
     { value: continentalGoals, color: '#00E5FF' },
   ];
   const total = segments.reduce((sum, seg) => sum + seg.value, 0) || 1;
-  let accumulated = 0;
-  const arcPaths = segments.reduce<Array<{ d: string; color: string }>>((acc, seg) => {
+  const arcPaths = segments.reduce<Array<{ d: string; color: string }>>((acc, seg, idx) => {
+    const prevAngle = acc.length > 0
+      ? segments.slice(0, idx).reduce((s, sg) => s + (sg.value / total) * 360, 0)
+      : 0;
     const angle = (seg.value / total) * 360;
     if (angle > 0) {
-      acc.push({ d: describeArc(cx, cy, r, accumulated, accumulated + Math.min(angle, 359.9)), color: seg.color });
+      acc.push({ d: describeArc(cx, cy, r, prevAngle, prevAngle + Math.min(angle, 359.9)), color: seg.color });
     }
-    accumulated += angle;
     return acc;
   }, []);
   return (
