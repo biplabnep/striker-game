@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +48,35 @@ interface MeetingEntry {
 }
 
 type RelationshipLabel = 'Poor' | 'Fair' | 'Good' | 'Excellent';
+
+interface DonutSegmentDef {
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface ConfidenceBarItem {
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface RadarAxis {
+  label: string;
+  value: number;
+}
+
+interface TimelineMilestone {
+  label: string;
+  week: number;
+  active: boolean;
+}
+
+interface ScatterPoint {
+  name: string;
+  approval: number;
+  performance: number;
+}
 
 // ============================================================
 // Constants
@@ -168,6 +197,916 @@ function getRelationshipBg(value: number): string {
 
 function seededChoice<T>(items: T[], seed: number): T {
   return items[Math.abs(seed) % items.length];
+}
+
+// ============================================================
+// SVG Helper Functions (extracted per constraint #12)
+// ============================================================
+
+function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+}
+
+function gaugeArcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
+  const start = polarToCartesian(cx, cy, r, startDeg);
+  const end = polarToCartesian(cx, cy, r, endDeg);
+  const sweep = endDeg - startDeg;
+  const largeArc = sweep > 180 ? 1 : 0;
+  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+}
+
+function donutSegmentPath(cx: number, cy: number, outerR: number, innerR: number, startDeg: number, endDeg: number): string {
+  const outerStart = polarToCartesian(cx, cy, outerR, startDeg);
+  const outerEnd = polarToCartesian(cx, cy, outerR, endDeg);
+  const innerStart = polarToCartesian(cx, cy, innerR, startDeg);
+  const innerEnd = polarToCartesian(cx, cy, innerR, endDeg);
+  const sweep = endDeg - startDeg;
+  const largeArc = sweep > 180 ? 1 : 0;
+  return [
+    `M ${outerStart.x.toFixed(2)} ${outerStart.y.toFixed(2)}`,
+    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEnd.x.toFixed(2)} ${outerEnd.y.toFixed(2)}`,
+    `L ${innerEnd.x.toFixed(2)} ${innerEnd.y.toFixed(2)}`,
+    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerStart.x.toFixed(2)} ${innerStart.y.toFixed(2)}`,
+    'Z',
+  ].join(' ');
+}
+
+function hexPointsString(cx: number, cy: number, r: number): string {
+  return Array.from({ length: 6 }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+    return `${(cx + r * Math.cos(angle)).toFixed(1)},${(cy + r * Math.sin(angle)).toFixed(1)}`;
+  }).join(' ');
+}
+
+function radarDataPointsString(cx: number, cy: number, maxR: number, values: number[]): string {
+  return Array.from({ length: values.length }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / values.length - Math.PI / 2;
+    const r = (values[i] / 100) * maxR;
+    return `${(cx + r * Math.cos(angle)).toFixed(1)},${(cy + r * Math.sin(angle)).toFixed(1)}`;
+  }).join(' ');
+}
+
+function trendLinePointsString(data: number[], xOff: number, yOff: number, w: number, h: number): string {
+  return Array.from({ length: data.length }, (_, i) => {
+    const x = xOff + (i / Math.max(1, data.length - 1)) * w;
+    const y = yOff + h - (data[i] / 100) * h;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+
+function areaPointsString(data: number[], xOff: number, yOff: number, w: number, h: number): string {
+  const line = Array.from({ length: data.length }, (_, i) => {
+    const x = xOff + (i / Math.max(1, data.length - 1)) * w;
+    const y = yOff + h - (data[i] / 100) * h;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const lastX = (xOff + w).toFixed(1);
+  const firstX = xOff.toFixed(1);
+  const baseY = (yOff + h).toFixed(1);
+  return `${line} ${lastX},${baseY} ${firstX},${baseY}`;
+}
+
+// ============================================================
+// SVG Visualization Components
+// ============================================================
+
+function ManagerRatingGauge({ rating }: { rating: number }): React.JSX.Element {
+  const clamped = Math.min(100, Math.max(0, rating));
+  const color = clamped >= 75 ? '#10B981' : clamped >= 50 ? '#3B82F6' : clamped >= 25 ? '#F59E0B' : '#EF4444';
+  const endAngle = 180 + (clamped / 100) * 180;
+  const bgPath = gaugeArcPath(100, 95, 75, 180, 360);
+  const fgPath = clamped > 0 ? gaugeArcPath(100, 95, 75, 180, endAngle) : '';
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Star className="h-3.5 w-3.5 text-amber-400" />
+          Manager Rating
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 110" className="w-full">
+          <path d={bgPath} fill="none" stroke="#21262d" strokeWidth={12} strokeLinecap="round" />
+          {fgPath && (
+            <path d={fgPath} fill="none" stroke={color} strokeWidth={12} strokeLinecap="round" />
+          )}
+          <text
+            x={100}
+            y={85}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={28}
+            fontWeight={700}
+            fill="#e6edf3"
+          >
+            {clamped}
+          </text>
+          <text
+            x={100}
+            y={102}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={10}
+            fill="#8b949e"
+          >
+            out of 100
+          </text>
+          <text
+            x={30}
+            y={95}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={9}
+            fill="#484f58"
+          >
+            0
+          </text>
+          <text
+            x={170}
+            y={95}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={9}
+            fill="#484f58"
+          >
+            100
+          </text>
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SquadSatisfactionDonut({ segments }: { segments: DonutSegmentDef[] }): React.JSX.Element {
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  const segmentsWithAngles = segments.reduce<
+    Array<{ seg: DonutSegmentDef; startAngle: number; endAngle: number }>
+  >((acc, seg) => {
+    const prevEnd = acc.length > 0 ? acc[acc.length - 1].endAngle : 0;
+    const sweep = total > 0 ? (seg.value / total) * 360 : 0;
+    acc.push({ seg: { ...seg }, startAngle: prevEnd, endAngle: prevEnd + sweep });
+    return acc;
+  }, []);
+
+  const average = Math.round(
+    segments.reduce((sum, s, i) => sum + s.value * (i === 0 ? 100 : i === 1 ? 75 : i === 2 ? 50 : 25), 0) / Math.max(1, total)
+  );
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Heart className="h-3.5 w-3.5 text-red-400" />
+          Squad Satisfaction
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 210" className="w-full">
+          {segmentsWithAngles.map((arc, i) => (
+            <path
+              key={i}
+              d={donutSegmentPath(100, 95, 70, 42, arc.startAngle, arc.endAngle)}
+              fill={arc.seg.color}
+              fillOpacity={0.85}
+              stroke="#161b22"
+              strokeWidth={2}
+            />
+          ))}
+          <text
+            x={100}
+            y={92}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={18}
+            fontWeight={700}
+            fill="#e6edf3"
+          >
+            {average}%
+          </text>
+          <text
+            x={100}
+            y={106}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={9}
+            fill="#8b949e"
+          >
+            avg score
+          </text>
+          {segments.map((seg, i) => (
+            <React.Fragment key={i}>
+              <rect x={24} y={128 + i * 18} width={8} height={8} fill={seg.color} rx={2} />
+              <text
+                x={38}
+                y={136 + i * 18}
+                textAnchor={"start" as "start" | "middle" | "end"}
+                fontSize={9}
+                fill="#c9d1d9"
+              >
+                {seg.label}
+              </text>
+              <text
+                x={175}
+                y={136 + i * 18}
+                textAnchor={"end" as "start" | "middle" | "end"}
+                fontSize={9}
+                fontWeight={600}
+                fill="#e6edf3"
+              >
+                {seg.value}
+              </text>
+            </React.Fragment>
+          ))}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BoardConfidenceBars({ data }: { data: ConfidenceBarItem[] }): React.JSX.Element {
+  const barWidth = 110;
+  const barHeight = 14;
+  const startY = 16;
+  const gap = 24;
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Shield className="h-3.5 w-3.5 text-blue-400" />
+          Board Confidence
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 148" className="w-full">
+          {data.map((item, i) => {
+            const y = startY + i * gap;
+            const fillWidth = (item.value / 100) * barWidth;
+            return (
+              <React.Fragment key={i}>
+                <text
+                  x={0}
+                  y={y + 11}
+                  textAnchor={"start" as "start" | "middle" | "end"}
+                  fontSize={10}
+                  fill="#c9d1d9"
+                >
+                  {item.label}
+                </text>
+                <rect
+                  x={72}
+                  y={y}
+                  width={barWidth}
+                  height={barHeight}
+                  fill="#21262d"
+                  rx={3}
+                />
+                <rect
+                  x={72}
+                  y={y}
+                  width={fillWidth}
+                  height={barHeight}
+                  fill={item.color}
+                  rx={3}
+                  fillOpacity={0.85}
+                />
+                <text
+                  x={190}
+                  y={y + 11}
+                  textAnchor={"end" as "start" | "middle" | "end"}
+                  fontSize={10}
+                  fontWeight={600}
+                  fill="#e6edf3"
+                >
+                  {item.value}
+                </text>
+              </React.Fragment>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SeasonObjectivesProgressRing({ completed, total }: { completed: number; total: number }): React.JSX.Element {
+  const pct = total > 0 ? completed / total : 0;
+  const circumference = 2 * Math.PI * 60;
+  const dashOffset = circumference * (1 - pct);
+  const displayPct = Math.round(pct * 100);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Target className="h-3.5 w-3.5 text-emerald-400" />
+          Objectives Progress
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 flex justify-center">
+        <svg viewBox="0 0 160 160" className="w-40">
+          <circle
+            cx={80}
+            cy={80}
+            r={60}
+            fill="none"
+            stroke="#21262d"
+            strokeWidth={10}
+          />
+          <circle
+            cx={80}
+            cy={80}
+            r={60}
+            fill="none"
+            stroke="#10B981"
+            strokeWidth={10}
+            strokeDasharray={circumference.toFixed(2)}
+            strokeDashoffset={dashOffset.toFixed(2)}
+            strokeLinecap="round"
+            transform="rotate(-90 80 80)"
+          />
+          <text
+            x={80}
+            y={76}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={24}
+            fontWeight={700}
+            fill="#e6edf3"
+          >
+            {displayPct}%
+          </text>
+          <text
+            x={80}
+            y={94}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={10}
+            fill="#8b949e"
+          >
+            {completed}/{total} done
+          </text>
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TransferBudgetUtilization({ spent, remaining, earmarked }: { spent: number; remaining: number; earmarked: number }): React.JSX.Element {
+  const total = spent + remaining + earmarked;
+  const spentPct = total > 0 ? (spent / total) * 100 : 0;
+  const earmarkedPct = total > 0 ? (earmarked / total) * 100 : 0;
+  const barY = 30;
+  const barH = 22;
+  const barX = 10;
+  const barW = 180;
+
+  function fmtMillions(val: number): string {
+    if (val >= 1000000) return `\u20AC${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `\u20AC${(val / 1000).toFixed(0)}K`;
+    return `\u20AC${val}`;
+  }
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <TrendingUp className="h-3.5 w-3.5 text-purple-400" />
+          Transfer Budget
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 100" className="w-full">
+          <rect x={barX} y={barY} width={barW} height={barH} fill="#21262d" rx={4} />
+          <rect
+            x={barX}
+            y={barY}
+            width={(spentPct / 100) * barW}
+            height={barH}
+            fill="#EF4444"
+            rx={4}
+            fillOpacity={0.85}
+          />
+          <rect
+            x={barX + (spentPct / 100) * barW}
+            y={barY}
+            width={(earmarkedPct / 100) * barW}
+            height={barH}
+            fill="#F59E0B"
+            fillOpacity={0.85}
+          />
+          <text
+            x={barX + barW / 2}
+            y={barY + barH / 2 + 4}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={9}
+            fontWeight={600}
+            fill="#e6edf3"
+          >
+            {fmtMillions(total)}
+          </text>
+          {[
+            { label: 'Spent', value: fmtMillions(spent), color: '#EF4444', yOff: 66 },
+            { label: 'Earmarked', value: fmtMillions(earmarked), color: '#F59E0B', yOff: 80 },
+            { label: 'Remaining', value: fmtMillions(remaining), color: '#10B981', yOff: 94 },
+          ].map((item, i) => (
+            <React.Fragment key={i}>
+              <rect x={14} y={item.yOff - 7} width={8} height={8} fill={item.color} rx={1} />
+              <text
+                x={28}
+                y={item.yOff}
+                textAnchor={"start" as "start" | "middle" | "end"}
+                fontSize={9}
+                fill="#c9d1d9"
+              >
+                {item.label}: {item.value}
+              </text>
+            </React.Fragment>
+          ))}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ManagerWinRateTrend({ data }: { data: number[] }): React.JSX.Element {
+  const chartX = 30;
+  const chartY = 8;
+  const chartW = 150;
+  const chartH = 80;
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Activity className="h-3.5 w-3.5 text-blue-400" />
+          Win Rate Trend
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 120" className="w-full">
+          {[0, 25, 50, 75, 100].map((val, i) => {
+            const y = chartY + chartH - (val / 100) * chartH;
+            return (
+              <React.Fragment key={i}>
+                <line
+                  x1={chartX}
+                  y1={y}
+                  x2={chartX + chartW}
+                  y2={y}
+                  stroke="#21262d"
+                  strokeWidth={1}
+                />
+                <text
+                  x={chartX - 4}
+                  y={y + 3}
+                  textAnchor={"end" as "start" | "middle" | "end"}
+                  fontSize={8}
+                  fill="#484f58"
+                >
+                  {val}
+                </text>
+              </React.Fragment>
+            );
+          })}
+          <polygon
+            points={areaPointsString(data, chartX, chartY, chartW, chartH)}
+            fill="#3B82F6"
+            fillOpacity={0.12}
+          />
+          <polyline
+            points={trendLinePointsString(data, chartX, chartY, chartW, chartH)}
+            fill="none"
+            stroke="#3B82F6"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {data.map((val, i) => {
+            const x = chartX + (i / Math.max(1, data.length - 1)) * chartW;
+            const y = chartY + chartH - (val / 100) * chartH;
+            return (
+              <circle
+                key={i}
+                cx={x}
+                cy={y}
+                r={3.5}
+                fill="#3B82F6"
+                stroke="#161b22"
+                strokeWidth={1.5}
+              />
+            );
+          })}
+          {data.map((val, i) => {
+            const x = chartX + (i / Math.max(1, data.length - 1)) * chartW;
+            return (
+              <text
+                key={i}
+                x={x}
+                y={chartY + chartH + 14}
+                textAnchor={"middle" as "start" | "middle" | "end"}
+                fontSize={8}
+                fill="#484f58"
+              >
+                {i + 1}
+              </text>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TeamMoraleHexRadar({ axes }: { axes: RadarAxis[] }): React.JSX.Element {
+  const cx = 100;
+  const cy = 100;
+  const maxR = 70;
+  const levels = [0.33, 0.66, 1.0];
+  const values = axes.map(a => a.value);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Brain className="h-3.5 w-3.5 text-purple-400" />
+          Team Morale Radar
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 200" className="w-full">
+          {levels.map((lvl, i) => (
+            <polygon
+              key={i}
+              points={hexPointsString(cx, cy, maxR * lvl)}
+              fill="none"
+              stroke="#21262d"
+              strokeWidth={1}
+            />
+          ))}
+          {axes.map((_, i) => {
+            const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+            const ex = cx + maxR * Math.cos(angle);
+            const ey = cy + maxR * Math.sin(angle);
+            return (
+              <line
+                key={i}
+                x1={cx}
+                y1={cy}
+                x2={ex}
+                y2={ey}
+                stroke="#21262d"
+                strokeWidth={1}
+              />
+            );
+          })}
+          <polygon
+            points={radarDataPointsString(cx, cy, maxR, values)}
+            fill="#8B5CF6"
+            fillOpacity={0.2}
+            stroke="#8B5CF6"
+            strokeWidth={2}
+          />
+          {axes.map((axis, i) => {
+            const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+            const lx = cx + (maxR + 14) * Math.cos(angle);
+            const ly = cy + (maxR + 14) * Math.sin(angle);
+            const anchor = Math.abs(lx - cx) < 5
+              ? "middle" as "start" | "middle" | "end"
+              : lx > cx
+                ? "start" as "start" | "middle" | "end"
+                : "end" as "start" | "middle" | "end";
+            return (
+              <text
+                key={i}
+                x={lx}
+                y={ly + 3}
+                textAnchor={anchor}
+                fontSize={9}
+                fill="#c9d1d9"
+              >
+                {axis.label}
+              </text>
+            );
+          })}
+          {axes.map((axis, i) => {
+            const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+            const r = (axis.value / 100) * maxR;
+            return (
+              <circle
+                key={i}
+                cx={cx + r * Math.cos(angle)}
+                cy={cy + r * Math.sin(angle)}
+                r={3}
+                fill="#8B5CF6"
+                stroke="#161b22"
+                strokeWidth={1.5}
+              />
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ContractStatusTimeline({ milestones }: { milestones: TimelineMilestone[] }): React.JSX.Element {
+  const lineY = 28;
+  const startX = 16;
+  const endX = 184;
+  const span = endX - startX;
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5 text-amber-400" />
+          Contract Milestones
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 80" className="w-full">
+          <line x1={startX} y1={lineY} x2={endX} y2={lineY} stroke="#21262d" strokeWidth={2} strokeLinecap="round" />
+          {milestones.map((ms, i) => {
+            const x = startX + (i / Math.max(1, milestones.length - 1)) * span;
+            const isActive = ms.active;
+            return (
+              <React.Fragment key={i}>
+                <circle
+                  cx={x}
+                  cy={lineY}
+                  r={isActive ? 5 : 4}
+                  fill={isActive ? '#10B981' : '#30363d'}
+                  stroke={isActive ? '#10B981' : '#484f58'}
+                  strokeWidth={isActive ? 2 : 1}
+                />
+                <text
+                  x={x}
+                  y={lineY + 16}
+                  textAnchor={"middle" as "start" | "middle" | "end"}
+                  fontSize={8}
+                  fontWeight={isActive ? 600 : 400}
+                  fill={isActive ? '#c9d1d9' : '#484f58'}
+                >
+                  {ms.label}
+                </text>
+                <text
+                  x={x}
+                  y={lineY + 27}
+                  textAnchor={"middle" as "start" | "middle" | "end"}
+                  fontSize={7}
+                  fill="#484f58"
+                >
+                  Wk {ms.week}
+                </text>
+              </React.Fragment>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PressConferenceImpactBars({ data }: { data: ConfidenceBarItem[] }): React.JSX.Element {
+  const barWidth = 100;
+  const barHeight = 14;
+  const startY = 16;
+  const gap = 24;
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-cyan-400" />
+          Press Conference Impact
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 118" className="w-full">
+          {data.map((item, i) => {
+            const y = startY + i * gap;
+            const fillWidth = (item.value / 100) * barWidth;
+            return (
+              <React.Fragment key={i}>
+                <text
+                  x={0}
+                  y={y + 11}
+                  textAnchor={"start" as "start" | "middle" | "end"}
+                  fontSize={10}
+                  fill="#c9d1d9"
+                >
+                  {item.label}
+                </text>
+                <rect
+                  x={80}
+                  y={y}
+                  width={barWidth}
+                  height={barHeight}
+                  fill="#21262d"
+                  rx={3}
+                />
+                <rect
+                  x={80}
+                  y={y}
+                  width={fillWidth}
+                  height={barHeight}
+                  fill={item.color}
+                  rx={3}
+                  fillOpacity={0.85}
+                />
+                <text
+                  x={186}
+                  y={y + 11}
+                  textAnchor={"start" as "start" | "middle" | "end"}
+                  fontSize={10}
+                  fontWeight={600}
+                  fill="#e6edf3"
+                >
+                  {item.value}
+                </text>
+              </React.Fragment>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BoardRelationshipScatter({ members }: { members: ScatterPoint[] }): React.JSX.Element {
+  const plotX = 32;
+  const plotY = 8;
+  const plotW = 156;
+  const plotH = 140;
+
+  function toSvgX(val: number): number {
+    return plotX + (val / 100) * plotW;
+  }
+  function toSvgY(val: number): number {
+    return plotY + plotH - (val / 100) * plotH;
+  }
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Award className="h-3.5 w-3.5 text-emerald-400" />
+          Board Relationship
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <svg viewBox="0 0 200 200" className="w-full">
+          {[0, 25, 50, 75, 100].map((val, i) => (
+            <React.Fragment key={i}>
+              <line
+                x1={plotX}
+                y1={toSvgY(val)}
+                x2={plotX + plotW}
+                y2={toSvgY(val)}
+                stroke="#21262d"
+                strokeWidth={1}
+              />
+              <line
+                x1={toSvgX(val)}
+                y1={plotY}
+                x2={toSvgX(val)}
+                y2={plotY + plotH}
+                stroke="#21262d"
+                strokeWidth={1}
+              />
+              <text
+                x={plotX - 4}
+                y={toSvgY(val) + 3}
+                textAnchor={"end" as "start" | "middle" | "end"}
+                fontSize={7}
+                fill="#484f58"
+              >
+                {val}
+              </text>
+            </React.Fragment>
+          ))}
+          <rect
+            x={plotX}
+            y={plotY}
+            width={plotW}
+            height={plotH}
+            fill="none"
+            stroke="#30363d"
+            strokeWidth={1}
+          />
+          <text
+            x={plotX + plotW / 2}
+            y={plotY + plotH + 16}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={9}
+            fill="#8b949e"
+          >
+            Approval
+          </text>
+          <text
+            x={10}
+            y={plotY + plotH / 2}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={9}
+            fill="#8b949e"
+            transform={`rotate(-90 10 ${plotY + plotH / 2})`}
+          >
+            Performance
+          </text>
+          {members.map((m, i) => (
+            <circle
+              key={i}
+              cx={toSvgX(m.approval)}
+              cy={toSvgY(m.performance)}
+              r={5}
+              fill="#3B82F6"
+              fillOpacity={0.75}
+              stroke="#161b22"
+              strokeWidth={1}
+            />
+          ))}
+          {members.slice(0, 4).map((m, i) => (
+            <text
+              key={i}
+              x={toSvgX(m.approval)}
+              y={toSvgY(m.performance) - 8}
+              textAnchor={"middle" as "start" | "middle" | "end"}
+              fontSize={7}
+              fill="#8b949e"
+            >
+              {m.name.split(' ')[0]}
+            </text>
+          ))}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SeasonProgressRing({ current, total }: { current: number; total: number }): React.JSX.Element {
+  const pct = total > 0 ? current / total : 0;
+  const circumference = 2 * Math.PI * 60;
+  const dashOffset = circumference * (1 - pct);
+  const displayPct = Math.round(pct * 100);
+
+  return (
+    <Card className="bg-[#161b22] border-[#30363d] overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <CardTitle className="text-xs font-semibold text-[#8b949e] flex items-center gap-1.5">
+          <Briefcase className="h-3.5 w-3.5 text-amber-400" />
+          Season Progress
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 flex justify-center">
+        <svg viewBox="0 0 160 160" className="w-40">
+          <circle
+            cx={80}
+            cy={80}
+            r={60}
+            fill="none"
+            stroke="#21262d"
+            strokeWidth={10}
+          />
+          <circle
+            cx={80}
+            cy={80}
+            r={60}
+            fill="none"
+            stroke="#F59E0B"
+            strokeWidth={10}
+            strokeDasharray={circumference.toFixed(2)}
+            strokeDashoffset={dashOffset.toFixed(2)}
+            strokeLinecap="round"
+            transform="rotate(-90 80 80)"
+          />
+          <text
+            x={80}
+            y={72}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={22}
+            fontWeight={700}
+            fill="#e6edf3"
+          >
+            {current}
+          </text>
+          <text
+            x={80}
+            y={90}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={10}
+            fill="#8b949e"
+          >
+            of {total} weeks
+          </text>
+          <text
+            x={80}
+            y={104}
+            textAnchor={"middle" as "start" | "middle" | "end"}
+            fontSize={10}
+            fontWeight={600}
+            fill="#F59E0B"
+          >
+            {displayPct}%
+          </text>
+        </svg>
+      </CardContent>
+    </Card>
+  );
 }
 
 // ============================================================
@@ -293,6 +1232,104 @@ export default function ManagerOffice() {
   const squadRoleColor = squadStatus === 'starter' ? 'text-emerald-400' : squadStatus === 'rotation' || squadStatus === 'bench' ? 'text-amber-400' : 'text-[#8b949e]';
   const squadRoleBg = squadStatus === 'starter' ? 'bg-emerald-500/10 border-emerald-500/20' : squadStatus === 'rotation' || squadStatus === 'bench' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-[#21262d] border-[#30363d]';
 
+  // ============================================================
+  // SVG Data Derivation (deterministic, no Math.random in render)
+  // ============================================================
+  const recentResults = gameState?.recentResults ?? [];
+  const clubId = club?.id ?? '';
+  const seasonObjectives = gameState?.seasonObjectives ?? [];
+  const teamDynamics = gameState?.teamDynamics ?? { morale: 50, cohesion: 50, dressingRoomAtmosphere: 'neutral' as const, playerInfluence: 50, captainRating: 50 };
+  const relationships = gameState?.relationships ?? [];
+  const budget = club?.budget ?? 50000000;
+
+  // 1. Manager Rating
+  const managerRating = Math.min(100, Math.max(0, relationship));
+
+  // 2. Squad Satisfaction (4 segments via reduce-safe map)
+  const squadSatisfactionSegments: DonutSegmentDef[] = [
+    { label: 'Very Satisfied', value: Math.max(1, Math.round((teamDynamics.morale ?? 50) * 0.3 + (morale * 0.2))), color: '#10B981' },
+    { label: 'Satisfied', value: Math.max(1, Math.round((teamDynamics.cohesion ?? 50) * 0.3 + 10)), color: '#3B82F6' },
+    { label: 'Neutral', value: Math.max(1, Math.round(30 - (morale * 0.1))), color: '#F59E0B' },
+    { label: 'Unhappy', value: Math.max(1, Math.round(20 + (100 - morale) * 0.1)), color: '#EF4444' },
+  ];
+
+  // 3. Board Confidence
+  const boardConfidenceData: ConfidenceBarItem[] = [
+    { label: 'Tactics', value: Math.min(100, Math.round(relationship * 0.7 + overall * 0.3)), color: '#3B82F6' },
+    { label: 'Transfers', value: Math.min(100, Math.round(relationship * 0.6 + 20)), color: '#8B5CF6' },
+    { label: 'Youth', value: Math.min(100, Math.round((club?.youthDevelopment ?? 50) + 10)), color: '#10B981' },
+    { label: 'Finances', value: Math.min(100, Math.round((club?.finances ?? 50) + 5)), color: '#F59E0B' },
+    { label: 'Comms', value: Math.min(100, Math.round(relationship * 0.8 + 10)), color: '#64748b' },
+  ];
+
+  // 4. Season Objectives Progress (via reduce)
+  const objectiveStats = seasonObjectives.reduce(
+    (acc, set) => set.objectives.reduce(
+      (inner, obj) => ({
+        completed: inner.completed + (obj.status === 'completed' ? 1 : 0),
+        total: inner.total + 1,
+      }),
+      acc
+    ),
+    { completed: 0, total: 0 }
+  );
+
+  // 5. Transfer Budget
+  const budgetSpent = Math.round(budget * 0.35 + currentWeek * 100000);
+  const budgetEarmarked = Math.round(budget * 0.2);
+  const budgetRemaining = Math.max(0, budget - budgetSpent - budgetEarmarked);
+
+  // 6. Win Rate Trend (8 data points)
+  const rawWinRates = recentResults.slice(-8).map(r => {
+    const isHome = r.homeClub.id === clubId;
+    const scored = isHome ? r.homeScore : r.awayScore;
+    const conceded = isHome ? r.awayScore : r.homeScore;
+    return scored > conceded ? 100 : scored === conceded ? 50 : 0;
+  });
+  const winRateTrendData = Array.from({ length: 8 }, (_, i) => rawWinRates[i] ?? Math.round((form * 10 + i * 5) % 100));
+
+  // 7. Team Morale Radar
+  const moraleRadarAxes: RadarAxis[] = [
+    { label: 'Confidence', value: Math.min(100, Math.round(morale * 0.8 + overall * 0.2)) },
+    { label: 'Motivation', value: Math.min(100, Math.round((teamDynamics.morale ?? 50) * 0.7 + 20)) },
+    { label: 'Unity', value: Math.min(100, Math.round((teamDynamics.cohesion ?? 50) * 0.8 + 15)) },
+    { label: 'Discipline', value: Math.min(100, Math.round((player?.seasonStats?.yellowCards ?? 0) > 3 ? 40 : 70 + (currentSeason * 5) % 30)) },
+    { label: 'Focus', value: Math.min(100, Math.round(form * 10 + 10)) },
+    { label: 'Spirit', value: Math.min(100, Math.round((teamDynamics.morale ?? 50) * 0.6 + (teamDynamics.cohesion ?? 50) * 0.3 + 10)) },
+  ];
+
+  // 8. Contract Timeline
+  const contractMilestones: TimelineMilestone[] = [
+    { label: 'Signed', week: 1, active: true },
+    { label: 'Review', week: 6, active: currentWeek >= 6 },
+    { label: 'Mid-term', week: 13, active: currentWeek >= 13 },
+    { label: 'Negotiate', week: 28, active: currentWeek >= 28 },
+    { label: 'Deadline', week: 34, active: currentWeek >= 34 },
+    { label: 'Expiry', week: 38, active: false },
+  ];
+
+  // 9. Press Conference Impact
+  const pressImpactData: ConfidenceBarItem[] = [
+    { label: 'Pre-match', value: Math.min(100, Math.round(relationship * 0.5 + 30 + (currentWeek % 10))), color: '#3B82F6' },
+    { label: 'Post-match', value: Math.min(100, Math.round(form * 8 + 20 + (currentSeason * 7) % 20)), color: '#10B981' },
+    { label: 'Transfer Q&A', value: Math.min(100, Math.round(40 + (currentWeek * 3) % 30)), color: '#8B5CF6' },
+    { label: 'Season Rev', value: Math.min(100, Math.round(overall * 0.5 + 20)), color: '#F59E0B' },
+  ];
+
+  // 10. Board Relationship Scatter (from relationships, padded deterministically)
+  const coachRels = relationships.filter(r => r.type === 'coach');
+  const boardScatterData: ScatterPoint[] = Array.from({ length: 8 }, (_, i) => {
+    const rel = coachRels[i];
+    return {
+      name: rel?.name ?? `Director ${i + 1}`,
+      approval: rel?.affinity ?? (30 + i * 9 + currentSeason * 3) % 100,
+      performance: rel ? (rel.affinity + 10 + i * 5) % 100 : (25 + i * 10 + currentWeek) % 100,
+    };
+  });
+
+  // 11. Season Progress
+  const seasonProgressCurrent = Math.min(38, Math.max(1, currentWeek));
+
   if (!gameState || !player) return null;
 
   const relLabel = getRelationshipLabel(relationship);
@@ -335,7 +1372,7 @@ export default function ManagerOffice() {
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="font-bold text-base text-[#c9d1d9]">{managerName}</h2>
-              <p className="text-xs text-[#8b949e] mt-0.5">Age 52 • English</p>
+              <p className="text-xs text-[#8b949e] mt-0.5">Age 52 &bull; English</p>
               <div className="flex items-center gap-2 mt-1.5">
                 <Badge variant="outline" className="text-[10px] border-[#30363d] text-[#8b949e]">
                   <Shield className="h-2.5 w-2.5 mr-0.5" />
@@ -392,6 +1429,17 @@ export default function ManagerOffice() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ============================================================
+          SVG Visualization: Manager Rating Gauge
+          ============================================================ */}
+      <ManagerRatingGauge rating={managerRating} />
+
+      {/* SVG Visualization: Squad Satisfaction + Board Confidence (2-col) */}
+      <div className="grid grid-cols-2 gap-2">
+        <SquadSatisfactionDonut segments={squadSatisfactionSegments} />
+        <BoardConfidenceBars data={boardConfidenceData} />
+      </div>
 
       {/* Weekly Feedback Section */}
       <div>
@@ -458,6 +1506,34 @@ export default function ManagerOffice() {
           </Card>
         </div>
       </div>
+
+      {/* ============================================================
+          SVG Visualizations: Objectives + Season Progress (2-col)
+          ============================================================ */}
+      <div className="grid grid-cols-2 gap-2">
+        <SeasonObjectivesProgressRing completed={objectiveStats.completed} total={objectiveStats.total} />
+        <SeasonProgressRing current={seasonProgressCurrent} total={38} />
+      </div>
+
+      {/* SVG Visualization: Transfer Budget */}
+      <TransferBudgetUtilization spent={budgetSpent} remaining={budgetRemaining} earmarked={budgetEarmarked} />
+
+      {/* SVG Visualization: Win Rate Trend */}
+      <ManagerWinRateTrend data={winRateTrendData} />
+
+      {/* SVG Visualization: Team Morale Radar */}
+      <TeamMoraleHexRadar axes={moraleRadarAxes} />
+
+      {/* ============================================================
+          SVG Visualizations: Contract Timeline + Press Conference (2-col)
+          ============================================================ */}
+      <div className="grid grid-cols-2 gap-2">
+        <ContractStatusTimeline milestones={contractMilestones} />
+        <PressConferenceImpactBars data={pressImpactData} />
+      </div>
+
+      {/* SVG Visualization: Board Relationship Scatter */}
+      <BoardRelationshipScatter members={boardScatterData} />
 
       {/* Manager Response Dialog */}
       <AnimatePresence>

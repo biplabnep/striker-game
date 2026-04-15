@@ -111,6 +111,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'dream_transfer_enhanced', icon: <Sparkles className="h-5 w-5" />, label: 'Dream Transfer+' },
       { screen: 'multiplayer_enhanced', icon: <Gamepad2 className="h-5 w-5" />, label: 'Multiplayer+' },
       { screen: 'season_review_enhanced', icon: <FileSignature className="h-5 w-5" />, label: 'Season Review+' },
+      { screen: 'fantasy_draft_enhanced', icon: <UsersRound className="h-5 w-5" />, label: 'Fantasy Draft+' },
+      { screen: 'hall_of_fame_enhanced', icon: <Landmark className="h-5 w-5" />, label: 'Hall of Fame+' },
     ],
   },
   {

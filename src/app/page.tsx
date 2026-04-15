@@ -126,6 +126,8 @@ import DreamTransferEnhanced from '@/components/game/DreamTransferEnhanced';
 import LoanSystemEnhanced from '@/components/game/LoanSystemEnhanced';
 import SeasonReviewEnhanced from '@/components/game/SeasonReviewEnhanced';
 import MultiplayerEnhanced from '@/components/game/MultiplayerEnhanced';
+import FantasyDraftEnhanced from '@/components/game/FantasyDraftEnhanced';
+import HallOfFameEnhanced from '@/components/game/HallOfFameEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -247,6 +249,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   loan_system_enhanced: LoanSystemEnhanced,
   season_review_enhanced: SeasonReviewEnhanced,
   multiplayer_enhanced: MultiplayerEnhanced,
+  fantasy_draft_enhanced: FantasyDraftEnhanced,
+  hall_of_fame_enhanced: HallOfFameEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -336,6 +340,8 @@ const gameScreens: GameScreen[] = [
   'loan_system_enhanced',
   'season_review_enhanced',
   'multiplayer_enhanced',
+  'fantasy_draft_enhanced',
+  'hall_of_fame_enhanced',
 ];
 
 export default function Home() {
