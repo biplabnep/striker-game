@@ -279,6 +279,39 @@ function simulateMarketValueHistory(
 }
 
 // -----------------------------------------------------------
+// SVG Arc helper for donut / ring charts
+// -----------------------------------------------------------
+function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  const rad = (a: number) => (a * Math.PI) / 180;
+  const x1 = cx + r * Math.cos(rad(endAngle));
+  const y1 = cy + r * Math.sin(rad(endAngle));
+  const x2 = cx + r * Math.cos(rad(startAngle));
+  const y2 = cy + r * Math.sin(rad(startAngle));
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 0 ${x2} ${y2}`;
+}
+
+interface DonutSeg { label: string; count: number; color: string; }
+interface DonutArc { seg: DonutSeg; startPct: number; endPct: number; path: string; }
+
+function buildDonutArcs(cx: number, cy: number, r: number, segments: DonutSeg[]): DonutArc[] {
+  const total = segments.reduce((s, seg) => s + seg.count, 0);
+  if (total === 0) return [];
+  let cumPct = 0;
+  return segments.reduce<DonutArc[]>((acc, seg) => {
+    const startPct = cumPct;
+    const pct = seg.count / total;
+    const endPct = cumPct + pct;
+    const startAngle = startPct * 360 - 90;
+    const endAngle = endPct * 360 - 90;
+    const path = pct >= 0.999 ? '' : describeArc(cx, cy, r, startAngle, endAngle);
+    cumPct = endPct;
+    acc.push({ seg, startPct, endPct, path });
+    return acc;
+  }, []);
+}
+
+// -----------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------
 export default function PlayerProfile() {
@@ -429,6 +462,208 @@ export default function PlayerProfile() {
 
   const { player, currentClub, currentSeason, currentWeek, seasons } = gameState;
   const squadColor = getSquadStatusColor(player.squadStatus);
+
+  // ── SVG Visualization Data ──────────────────────────────────
+
+  // 1. Overall Rating Trend Area Chart (8 seasons)
+  const ratingTrend = (() => {
+    const maxR = 10;
+    const completed = seasons.map(s => s.playerStats.averageRating).filter(r => r > 0);
+    const cur = player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating : player.overall / 10;
+    const allRatings = [...completed, cur].slice(-8);
+    const padded: number[] = [];
+    const needed = 8 - allRatings.length;
+    for (let i = 0; i < needed; i++) {
+      padded.push(Math.max(4.0, (player.overall / 10) * (0.5 + (i / (needed + 1)) * 0.3)));
+    }
+    const ratings = [...padded, ...allRatings].slice(-8);
+    const pts = ratings.map((v, i) => ({
+      x: 35 + i * (250 / 7),
+      y: 15 + (1 - Math.min(v, maxR) / maxR) * 120,
+    }));
+    const lineStr = pts.map(p => `${p.x},${p.y}`).join(' ');
+    const areaStr = [`${pts[0].x},140`, ...pts.map(p => `${p.x},${p.y}`), `${pts[pts.length - 1].x},140`].join(' ');
+    const seasonLabels = ratings.map((_, i) => `S${currentSeason - 7 + i + 1}`);
+    return { pts, lineStr, areaStr, ratings, seasonLabels };
+  })();
+
+  // 2. Position Attribute Comparison Radar
+  const posAvgRadar = getPositionAverages(player.position);
+  const posCompRadar = (() => {
+    const cx = 120, cy = 125, r = 80;
+    const playerVals = ATTR_KEYS.map(k => player.attributes[k]);
+    const avgVals = ATTR_KEYS.map(k => posAvgRadar[k]);
+    const playerStr = playerVals.map((v, i) => {
+      const pt = polarToCartesian(cx, cy, (v / 100) * r, ANGLES[i]);
+      return `${pt.x},${pt.y}`;
+    }).join(' ');
+    const avgStr = avgVals.map((v, i) => {
+      const pt = polarToCartesian(cx, cy, (v / 100) * r, ANGLES[i]);
+      return `${pt.x},${pt.y}`;
+    }).join(' ');
+    const gridRings = [25, 50, 75, 100].map(v =>
+      ANGLES.map(a => {
+        const pt = polarToCartesian(cx, cy, (v / 100) * r, a);
+        return `${pt.x},${pt.y}`;
+      }).join(' ')
+    );
+    const labelData = ATTR_KEYS.map((k, i) => {
+      const pt = polarToCartesian(cx, cy, r + 16, ANGLES[i]);
+      return { x: pt.x, y: pt.y, label: ATTR_META[k].shortLabel, playerVal: playerVals[i], avgVal: avgVals[i] };
+    });
+    return { playerStr, avgStr, gridRings, labelData, cx, cy, r };
+  })();
+
+  // 3. Market Value Projection Ring
+  const peakMarketValue = player.marketValue * (player.potential / Math.max(player.overall, 1)) * 1.3;
+  const valueProjectionPct = Math.min(100, Math.round((player.marketValue / Math.max(peakMarketValue, 0.01)) * 100));
+
+  // 4. Career Goals vs Assists Grouped Bars (4 seasons)
+  const goalsAssistsBars = (() => {
+    const seasonData = [
+      ...seasons.slice(-3).map(s => ({ season: s.number, goals: s.playerStats.goals, assists: s.playerStats.assists })),
+      { season: currentSeason, goals: player.seasonStats.goals, assists: player.seasonStats.assists },
+    ];
+    const padded = seasonData.length < 4
+      ? Array.from({ length: 4 - seasonData.length }, (_, i) => ({
+          season: currentSeason - seasonData.length - i,
+          goals: 0,
+          assists: 0,
+        }))
+      : [];
+    const data = [...padded, ...seasonData].slice(-4);
+    const maxVal = Math.max(...data.map(d => Math.max(d.goals, d.assists)), 1);
+    return data.map(d => ({
+      season: d.season,
+      goalH: (d.goals / maxVal) * 100,
+      assistH: (d.assists / maxVal) * 100,
+      goals: d.goals,
+      assists: d.assists,
+    }));
+  })();
+
+  // 5. Attribute Development Heatmap (6 rows × 4 cols)
+  const heatmapCells = (() => {
+    const currentAttrs = ATTR_KEYS.map(k => player.attributes[k]);
+    const colW = 55;
+    const rowH = 18;
+    const sx = 48;
+    const sy = 22;
+    const cells: { x: number; y: number; color: string; value: number; key: string }[] = [];
+    for (let col = 0; col < 4; col++) {
+      const factor = 0.7 + (col / 3) * 0.3;
+      for (let row = 0; row < 6; row++) {
+        const val = col === 3 ? currentAttrs[row] : Math.max(1, Math.round(currentAttrs[row] * factor));
+        const intensity = val / 99;
+        let color: string;
+        if (intensity >= 0.8) color = '#22c55e';
+        else if (intensity >= 0.6) color = '#16a34a';
+        else if (intensity >= 0.4) color = '#f59e0b';
+        else if (intensity >= 0.2) color = '#ea580c';
+        else color = '#ef4444';
+        cells.push({ x: sx + col * colW, y: sy + row * rowH, color, value: val, key: `${col}-${row}` });
+      }
+    }
+    const rowLabels = ATTR_KEYS.map(k => ATTR_META[k].shortLabel);
+    const colLabels = seasons.length >= 3
+      ? seasons.slice(-3).map(s => `S${s.number}`).concat(['Now'])
+      : ['S-3', 'S-2', 'S-1', 'Now'];
+    return { cells, rowLabels, colLabels };
+  })();
+
+  // 6. Minutes Played Distribution Donut
+  const minutesDonutSegments: DonutSeg[] = (() => {
+    let starter = 0;
+    let sub = 0;
+    const recent = gameState.recentResults.slice(0, 30);
+    for (const r of recent) {
+      if (r.playerMinutesPlayed >= 60) starter++;
+      else if (r.playerMinutesPlayed > 0) sub++;
+    }
+    const total = player.seasonStats.appearances || 1;
+    const unused = Math.max(0, total - starter - sub);
+    const injured = Math.max(0, Math.floor(total * 0.05));
+    return [
+      { label: 'Starter', count: Math.max(starter, 1), color: '#22c55e' },
+      { label: 'Sub', count: sub, color: '#3b82f6' },
+      { label: 'Unused', count: unused, color: '#6b7280' },
+      { label: 'Injured', count: injured, color: '#ef4444' },
+    ];
+  })();
+  const minutesDonutArcs = buildDonutArcs(120, 120, 80, minutesDonutSegments);
+
+  // 7. Form Consistency Gauge
+  const formConsistency = Math.min(99, Math.max(10, Math.round(
+    (player.form > 0 ? player.form : 5) * 8 +
+    player.morale * 0.2 +
+    (player.seasonStats.averageRating > 0 ? player.seasonStats.averageRating * 5 : 25)
+  )));
+  const gaugeArcPath = describeArc(120, 130, 80, 180, 180 + (formConsistency / 100) * 180);
+  const gaugeBgPath = describeArc(120, 130, 80, 180, 360);
+  const gaugeColor = formConsistency >= 70 ? '#22c55e' : formConsistency >= 40 ? '#f59e0b' : '#ef4444';
+  const gaugeNeedlePt = polarToCartesian(120, 130, 80, 180 + (formConsistency / 100) * 180);
+
+  // 8. Season Comparison Butterfly
+  const butterflyData = seasonComparison
+    ? [
+        { label: 'Goals', curr: seasonComparison.current.goals, prev: seasonComparison.prev.goals },
+        { label: 'Assists', curr: seasonComparison.current.assists, prev: seasonComparison.prev.assists },
+        { label: 'Rating', curr: Math.round(seasonComparison.current.averageRating * 10), prev: Math.round(seasonComparison.prev.averageRating * 10) },
+        { label: 'Apps', curr: seasonComparison.current.appearances, prev: seasonComparison.prev.appearances },
+        { label: 'ClnSht', curr: seasonComparison.current.cleanSheets, prev: seasonComparison.prev.cleanSheets },
+      ].map(d => {
+        const mx = Math.max(d.curr, d.prev, 1);
+        return { ...d, maxVal: mx, currW: (d.curr / mx) * 65, prevW: (d.prev / mx) * 65 };
+      })
+    : [];
+
+  // 9. Physical Condition Radar (5 axes)
+  const physicalRadar = (() => {
+    const cx = 120, cy = 125, r = 80;
+    const values = [
+      player.fitness,
+      Math.min(99, Math.round(player.fitness * 0.8 + player.attributes.physical * 0.2)),
+      player.attributes.physical,
+      player.attributes.pace,
+      Math.min(99, Math.round(player.attributes.pace * 0.4 + player.attributes.dribbling * 0.6)),
+    ];
+    const labels = ['FIT', 'STA', 'STR', 'SPD', 'AGI'];
+    const angles = [-90, -18, 54, 126, 198];
+    const polyStr = values.map((v, i) => {
+      const pt = polarToCartesian(cx, cy, (v / 100) * r, angles[i]);
+      return `${pt.x},${pt.y}`;
+    }).join(' ');
+    const gridStrs = [25, 50, 75, 100].map(v =>
+      angles.map(a => {
+        const pt = polarToCartesian(cx, cy, (v / 100) * r, a);
+        return `${pt.x},${pt.y}`;
+      }).join(' ')
+    );
+    const labelPts = labels.map((l, i) => {
+      const pt = polarToCartesian(cx, cy, r + 16, angles[i]);
+      return { x: pt.x, y: pt.y, label: l, value: values[i] };
+    });
+    return { polyStr, gridStrs, labelPts, cx, cy, r, angles };
+  })();
+
+  // 10. Discipline Record Bars
+  const disciplineData = [
+    { label: 'Fouls', value: player.seasonStats.yellowCards * 3 + player.seasonStats.redCards * 5, color: '#f59e0b', max: 50 },
+    { label: 'Yellow', value: player.seasonStats.yellowCards, color: '#eab308', max: 15 },
+    { label: 'Red', value: player.seasonStats.redCards, color: '#ef4444', max: 5 },
+    { label: 'Susp.', value: player.seasonStats.redCards * 2, color: '#dc2626', max: 10 },
+  ].map(d => ({ ...d, width: Math.min(100, (d.value / Math.max(d.max, 1)) * 100) }));
+
+  // 11. Achievement Progress Ring
+  const unlockedCount = milestones.filter(m => m.unlocked).length;
+  const totalCount = Math.max(milestones.length, 1);
+  const achievementPct = Math.round((unlockedCount / totalCount) * 100);
+  const achievementArcs = buildDonutArcs(120, 120, 80, [
+    { label: 'Unlocked', count: unlockedCount, color: '#22c55e' },
+    { label: 'Locked', count: totalCount - unlockedCount, color: '#21262d' },
+  ]);
+
+  // ── End SVG Visualization Data ──────────────────────────────
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-6">
@@ -824,6 +1059,360 @@ export default function PlayerProfile() {
                 <p className="text-xs text-[#484f58]">No traits yet — develop through training</p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 1. OVERALL RATING TREND AREA CHART ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.36 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <TrendingUp className="h-3.5 w-3.5" /> Rating Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="300" height="160" viewBox="0 0 300 160">
+              {[0, 1, 2, 3, 4].map(i => {
+                const y = 15 + i * 31.25;
+                return <line key={i} x1="30" y1={y} x2="290" y2={y} stroke="#21262d" strokeWidth="0.5" />;
+              })}
+              {[8, 7, 6, 5, 4].map((v, i) => {
+                const y = 15 + i * 31.25;
+                return <text key={i} x="25" y={y + 3} textAnchor={"end" as const} fill="#484f58" fontSize="8">{v}</text>;
+              })}
+              <polygon points={ratingTrend.areaStr} fill="#22c55e15" />
+              <polyline points={ratingTrend.lineStr} fill="none" stroke="#22c55e" strokeWidth="1.5" />
+              {ratingTrend.pts.map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#22c55e" />
+              ))}
+              {ratingTrend.seasonLabels.map((lbl, i) => {
+                const x = 35 + i * (250 / 7);
+                return <text key={i} x={x} y={155} textAnchor={"middle" as const} fill="#484f58" fontSize="7">{lbl}</text>;
+              })}
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 2. POSITION ATTRIBUTE COMPARISON RADAR ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.37 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5" /> Position Comparison
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="240" height="240" viewBox="0 0 240 240">
+              {posCompRadar.gridRings.map((pts, i) => (
+                <polygon key={i} points={pts} fill="none" stroke="#1e293b" strokeWidth="0.5" />
+              ))}
+              {ANGLES.map((angle, i) => {
+                const pt = polarToCartesian(posCompRadar.cx, posCompRadar.cy, posCompRadar.r, angle);
+                return <line key={i} x1={posCompRadar.cx} y1={posCompRadar.cy} x2={pt.x} y2={pt.y} stroke="#1e293b" strokeWidth="0.5" />;
+              })}
+              <polygon points={posCompRadar.avgStr} fill="#64748b10" stroke="#64748b" strokeWidth="1" strokeDasharray="3 2" />
+              <polygon points={posCompRadar.playerStr} fill={`${overallColor}20`} stroke={overallColor} strokeWidth="1.5" />
+              {posCompRadar.labelData.map((lbl, i) => (
+                <g key={i}>
+                  <text x={lbl.x} y={lbl.y - 2} textAnchor={"middle" as const} fill={overallColor} fontSize="10" fontWeight="bold">{lbl.playerVal}</text>
+                  <text x={lbl.x} y={lbl.y + 9} textAnchor={"middle" as const} fill="#64748b" fontSize="7">{lbl.label}</text>
+                  <text x={lbl.x} y={lbl.y + 18} textAnchor={"middle" as const} fill="#484f58" fontSize="7">avg {lbl.avgVal}</text>
+                </g>
+              ))}
+              <g style={{ opacity: 0.7 }}>
+                <circle cx="10" cy="230" r="4" fill={overallColor} />
+                <text x="18" y="233" fill="#8b949e" fontSize="8">You</text>
+                <circle cx="50" cy="230" r="4" fill="#64748b" />
+                <text x="58" y="233" fill="#8b949e" fontSize="8">Avg</text>
+              </g>
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 3. MARKET VALUE PROJECTION RING ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.38 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <DollarSign className="h-3.5 w-3.5" /> Value Projection
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="240" height="240" viewBox="0 0 240 240">
+              <circle cx="120" cy="120" r="90" fill="none" stroke="#21262d" strokeWidth="8" />
+              <circle cx="120" cy="120" r="90" fill="none" stroke="#30363d" strokeWidth="8" strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 90}
+                strokeDashoffset={2 * Math.PI * 90 * 0.5}
+                transform="rotate(-90 120 120)" />
+              <motion.circle cx="120" cy="120" r="90" fill="none" stroke="#22c55e" strokeWidth="8" strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 90}
+                strokeDashoffset={2 * Math.PI * 90}
+                animate={{ strokeDashoffset: 2 * Math.PI * 90 * (1 - valueProjectionPct / 100) }}
+                transition={{ duration: 0.2, delay: 0.8 }}
+                transform="rotate(-90 120 120)" />
+              <text x="120" y="112" textAnchor={"middle" as const} fill="#c9d1d9" fontSize="28" fontWeight="900">{valueProjectionPct}%</text>
+              <text x="120" y="130" textAnchor={"middle" as const} fill="#8b949e" fontSize="9">of peak value</text>
+              <text x="120" y="160" textAnchor={"middle" as const} fill="#22c55e" fontSize="10" fontWeight="bold">{formatCurrency(player.marketValue, 'M')}</text>
+              <text x="120" y="175" textAnchor={"middle" as const} fill="#484f58" fontSize="8">Peak: {formatCurrency(peakMarketValue, 'M')}</text>
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 4. CAREER GOALS VS ASSISTS GROUPED BARS ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.39 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Target className="h-3.5 w-3.5" /> Goals vs Assists
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="300" height="160" viewBox="0 0 300 160">
+              <line x1="35" y1="15" x2="35" y2="130" stroke="#21262d" strokeWidth="0.5" />
+              <line x1="35" y1="130" x2="290" y2="130" stroke="#21262d" strokeWidth="0.5" />
+              {[0, 1, 2, 3].map(i => {
+                const y = 130 - i * 28.75;
+                return <line key={i} x1="35" y1={y} x2="290" y2={y} stroke="#21262d" strokeWidth="0.3" />;
+              })}
+              {goalsAssistsBars.map((d, i) => {
+                const gx = 55 + i * 65;
+                const barBase = 130;
+                const gH = (d.goalH / 100) * 105;
+                const aH = (d.assistH / 100) * 105;
+                return (
+                  <g key={i}>
+                    <rect x={gx} y={barBase - gH} width="14" height={Math.max(gH, 0)} fill="#22c55e" rx="2" />
+                    <rect x={gx + 18} y={barBase - aH} width="14" height={Math.max(aH, 0)} fill="#3b82f6" rx="2" />
+                    <text x={gx + 16} y={barBase + 14} textAnchor={"middle" as const} fill="#484f58" fontSize="8">S{d.season}</text>
+                    {d.goals > 0 && <text x={gx + 7} y={barBase - gH - 3} textAnchor={"middle" as const} fill="#22c55e" fontSize="7">{d.goals}</text>}
+                    {d.assists > 0 && <text x={gx + 25} y={barBase - aH - 3} textAnchor={"middle" as const} fill="#3b82f6" fontSize="7">{d.assists}</text>}
+                  </g>
+                );
+              })}
+              <circle cx="50" cy="150" r="4" fill="#22c55e" />
+              <text x="58" y="153" fill="#8b949e" fontSize="8">Goals</text>
+              <circle cx="100" cy="150" r="4" fill="#3b82f6" />
+              <text x="108" y="153" fill="#8b949e" fontSize="8">Assists</text>
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 5. ATTRIBUTE DEVELOPMENT HEATMAP ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.40 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5" /> Attribute Development
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="300" height="140" viewBox="0 0 300 140">
+              {heatmapCells.colLabels.map((lbl, i) => {
+                const x = 48 + i * 55 + 27;
+                return <text key={i} x={x} y={15} textAnchor={"middle" as const} fill="#484f58" fontSize="8">{lbl}</text>;
+              })}
+              {heatmapCells.rowLabels.map((lbl, i) => {
+                const y = 22 + i * 18 + 12;
+                return <text key={i} x="42" y={y} textAnchor={"end" as const} fill="#8b949e" fontSize="8">{lbl}</text>;
+              })}
+              {heatmapCells.cells.map(cell => (
+                <g key={cell.key}>
+                  <rect x={cell.x} y={cell.y} width="50" height="16" fill={cell.color} rx="2" opacity={0.3 + (cell.value / 99) * 0.7} />
+                  <text x={cell.x + 25} y={cell.y + 12} textAnchor={"middle" as const} fill="#e2e8f0" fontSize="9" fontWeight="bold">{cell.value}</text>
+                </g>
+              ))}
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 6. MINUTES PLAYED DISTRIBUTION DONUT ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.41 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5" /> Minutes Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="240" height="240" viewBox="0 0 240 240">
+              <circle cx="120" cy="120" r="80" fill="none" stroke="#21262d" strokeWidth="16" />
+              {minutesDonutArcs.map((arc, i) => {
+                if (!arc.path) return null;
+                return (
+                  <g key={i}>
+                    <path d={arc.path} fill="none" stroke={arc.seg.color} strokeWidth="16" strokeLinecap="butt" />
+                    <circle
+                      cx={120 + 80 * Math.cos(((arc.startPct + arc.endPct) / 2 * 360 - 90) * Math.PI / 180)}
+                      cy={120 + 80 * Math.sin(((arc.startPct + arc.endPct) / 2 * 360 - 90) * Math.PI / 180)}
+                      r="2" fill="white"
+                    />
+                  </g>
+                );
+              })}
+              <text x="120" y="115" textAnchor={"middle" as const} fill="#c9d1d9" fontSize="16" fontWeight="900">{player.seasonStats.minutesPlayed}</text>
+              <text x="120" y="130" textAnchor={"middle" as const} fill="#8b949e" fontSize="8">minutes</text>
+              {minutesDonutArcs.map((arc, i) => (
+                <g key={i}>
+                  <circle cx={i < 2 ? 55 : 160} cy={210 + Math.floor(i / 2) * 16} r="4" fill={arc.seg.color} />
+                  <text x={i < 2 ? 64 : 169} y={213 + Math.floor(i / 2) * 16} fill="#8b949e" fontSize="8">
+                    {arc.seg.label} ({minutesDonutSegments[i].count})
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 7. FORM CONSISTENCY GAUGE ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.42 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Activity className="h-3.5 w-3.5" /> Form Consistency
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="240" height="180" viewBox="0 0 240 180">
+              <path d={gaugeBgPath} fill="none" stroke="#21262d" strokeWidth="10" strokeLinecap="round" />
+              <path d={gaugeArcPath} fill="none" stroke={gaugeColor} strokeWidth="10" strokeLinecap="round" />
+              <circle cx={gaugeNeedlePt.x} cy={gaugeNeedlePt.y} r="6" fill={gaugeColor} />
+              <circle cx={gaugeNeedlePt.x} cy={gaugeNeedlePt.y} r="3" fill="#0d1117" />
+              <text x="120" y="140" textAnchor={"middle" as const} fill="#c9d1d9" fontSize="28" fontWeight="900">{formConsistency}</text>
+              <text x="120" y="158" textAnchor={"middle" as const} fill="#8b949e" fontSize="9">out of 100</text>
+              <text x="40" y="120" textAnchor={"middle" as const} fill="#484f58" fontSize="7">0</text>
+              <text x="120" y="52" textAnchor={"middle" as const} fill="#484f58" fontSize="7">50</text>
+              <text x="200" y="120" textAnchor={"middle" as const} fill="#484f58" fontSize="7">100</text>
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 8. SEASON COMPARISON BUTTERFLY ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.43 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Star className="h-3.5 w-3.5" /> Season Comparison
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            {butterflyData.length > 0 ? (
+              <svg width="300" height="160" viewBox="0 0 300 160">
+                <line x1="150" y1="10" x2="150" y2="150" stroke="#30363d" strokeWidth="1" />
+                {butterflyData.map((d, i) => {
+                  const y = 18 + i * 26;
+                  return (
+                    <g key={i}>
+                      <rect x={150 - d.prevW} y={y} width={d.prevW} height="18" fill="#475569" rx="2" />
+                      <rect x="150" y={y} width={d.currW} height="18" fill="#22c55e" rx="2" />
+                      <text x={150 - d.prevW - 5} y={y + 13} textAnchor={"end" as const} fill="#8b949e" fontSize="9">{d.prev}</text>
+                      <text x={150 + d.currW + 5} y={y + 13} textAnchor={"start" as const} fill="#c9d1d9" fontSize="9">{d.curr}</text>
+                      <text x="150" y={y + 13} textAnchor={"middle" as const} fill="#e2e8f0" fontSize="8" fontWeight="bold">{d.label}</text>
+                    </g>
+                  );
+                })}
+                <circle cx="105" cy="155" r="3" fill="#475569" />
+                <text x="112" y="158" fill="#8b949e" fontSize="7">Previous</text>
+                <circle cx="160" cy="155" r="3" fill="#22c55e" />
+                <text x="167" y="158" fill="#8b949e" fontSize="7">Current</text>
+              </svg>
+            ) : (
+              <div style={{ opacity: 0.5 }}>
+                <p className="text-xs text-[#484f58]">Need at least one completed season</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 9. PHYSICAL CONDITION RADAR ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.44 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Dumbbell className="h-3.5 w-3.5" /> Physical Condition
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="240" height="240" viewBox="0 0 240 240">
+              {physicalRadar.gridStrs.map((pts, i) => (
+                <polygon key={i} points={pts} fill="none" stroke="#1e293b" strokeWidth="0.5" />
+              ))}
+              {physicalRadar.angles.map((angle, i) => {
+                const pt = polarToCartesian(physicalRadar.cx, physicalRadar.cy, physicalRadar.r, angle);
+                return <line key={i} x1={physicalRadar.cx} y1={physicalRadar.cy} x2={pt.x} y2={pt.y} stroke="#1e293b" strokeWidth="0.5" />;
+              })}
+              <polygon points={physicalRadar.polyStr} fill="#3b82f620" stroke="#3b82f6" strokeWidth="1.5" />
+              {physicalRadar.labelPts.map((lbl, i) => (
+                <g key={i}>
+                  <text x={lbl.x} y={lbl.y - 2} textAnchor={"middle" as const} fill="#3b82f6" fontSize="10" fontWeight="bold">{lbl.value}</text>
+                  <text x={lbl.x} y={lbl.y + 9} textAnchor={"middle" as const} fill="#64748b" fontSize="7">{lbl.label}</text>
+                </g>
+              ))}
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 10. DISCIPLINE RECORD BARS ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.45 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <MinusCircle className="h-3.5 w-3.5" /> Discipline
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="300" height="130" viewBox="0 0 300 130">
+              {disciplineData.map((d, i) => {
+                const y = 15 + i * 28;
+                return (
+                  <g key={i}>
+                    <text x="55" y={y + 12} textAnchor={"end" as const} fill="#8b949e" fontSize="10">{d.label}</text>
+                    <rect x="60" y={y} width="170" height="18" fill="#21262d" rx="3" />
+                    <rect x="60" y={y} width={Math.max(d.width * 1.7, 0)} height="18" fill={d.color} rx="3" opacity={0.8} />
+                    <text x="240" y={y + 13} textAnchor={"start" as const} fill="#c9d1d9" fontSize="10" fontWeight="bold">{d.value}</text>
+                  </g>
+                );
+              })}
+            </svg>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ===== VIZ 11. CAREER ACHIEVEMENT PROGRESS RING ===== */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.46 }}>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-xs text-[#8b949e] flex items-center gap-2">
+              <Award className="h-3.5 w-3.5" /> Achievement Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex justify-center">
+            <svg width="240" height="240" viewBox="0 0 240 240">
+              <circle cx="120" cy="120" r="80" fill="none" stroke="#21262d" strokeWidth="14" />
+              {achievementArcs.map((arc, i) => {
+                if (!arc.path) return null;
+                return (
+                  <path key={i} d={arc.path} fill="none" stroke={arc.seg.color} strokeWidth="14" strokeLinecap="butt" />
+                );
+              })}
+              <text x="120" y="112" textAnchor={"middle" as const} fill="#c9d1d9" fontSize="28" fontWeight="900">{achievementPct}%</text>
+              <text x="120" y="130" textAnchor={"middle" as const} fill="#8b949e" fontSize="9">{unlockedCount}/{totalCount} unlocked</text>
+              <g style={{ opacity: 0.7 }}>
+                <circle cx="65" cy="210" r="4" fill="#22c55e" />
+                <text x="74" y="213" fill="#8b949e" fontSize="8">Unlocked ({unlockedCount})</text>
+                <circle cx="65" cy="226" r="4" fill="#21262d" stroke="#30363d" strokeWidth="1" />
+                <text x="74" y="229" fill="#8b949e" fontSize="8">Locked ({totalCount - unlockedCount})</text>
+              </g>
+            </svg>
           </CardContent>
         </Card>
       </motion.div>

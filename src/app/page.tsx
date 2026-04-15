@@ -128,6 +128,8 @@ import SeasonReviewEnhanced from '@/components/game/SeasonReviewEnhanced';
 import MultiplayerEnhanced from '@/components/game/MultiplayerEnhanced';
 import FantasyDraftEnhanced from '@/components/game/FantasyDraftEnhanced';
 import HallOfFameEnhanced from '@/components/game/HallOfFameEnhanced';
+import MediaInteraction from '@/components/game/MediaInteraction';
+import LegendStatus from '@/components/game/LegendStatus';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -251,6 +253,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   multiplayer_enhanced: MultiplayerEnhanced,
   fantasy_draft_enhanced: FantasyDraftEnhanced,
   hall_of_fame_enhanced: HallOfFameEnhanced,
+  media_interaction: MediaInteraction,
+  legend_status: LegendStatus,
 };
 
 const gameScreens: GameScreen[] = [
@@ -342,6 +346,8 @@ const gameScreens: GameScreen[] = [
   'multiplayer_enhanced',
   'fantasy_draft_enhanced',
   'hall_of_fame_enhanced',
+  'media_interaction',
+  'legend_status',
 ];
 
 export default function Home() {

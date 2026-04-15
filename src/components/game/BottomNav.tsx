@@ -113,6 +113,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'season_review_enhanced', icon: <FileSignature className="h-5 w-5" />, label: 'Season Review+' },
       { screen: 'fantasy_draft_enhanced', icon: <UsersRound className="h-5 w-5" />, label: 'Fantasy Draft+' },
       { screen: 'hall_of_fame_enhanced', icon: <Landmark className="h-5 w-5" />, label: 'Hall of Fame+' },
+      { screen: 'media_interaction', icon: <Mic className="h-5 w-5" />, label: 'Media Center' },
+      { screen: 'legend_status', icon: <Crown className="h-5 w-5" />, label: 'Legend Status' },
     ],
   },
   {

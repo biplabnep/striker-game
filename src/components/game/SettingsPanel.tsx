@@ -365,6 +365,99 @@ function useStorageUsage() {
 }
 
 // ============================================================
+// SVG Helper Functions (pure, no hooks)
+// ============================================================
+
+function describeArc(cx: number, cy: number, r: number, ir: number, startDeg: number, endDeg: number): string {
+  if (endDeg - startDeg >= 359.9) {
+    return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} L ${cx + ir} ${cy} A ${ir} ${ir} 0 1 0 ${cx - ir} ${cy} A ${ir} ${ir} 0 1 0 ${cx + ir} ${cy} Z`;
+  }
+  const startRad = ((startDeg - 90) * Math.PI) / 180;
+  const endRad = ((endDeg - 90) * Math.PI) / 180;
+  const x1 = cx + r * Math.cos(startRad);
+  const y1 = cy + r * Math.sin(startRad);
+  const x2 = cx + r * Math.cos(endRad);
+  const y2 = cy + r * Math.sin(endRad);
+  const ix1 = cx + ir * Math.cos(endRad);
+  const iy1 = cy + ir * Math.sin(endRad);
+  const ix2 = cx + ir * Math.cos(startRad);
+  const iy2 = cy + ir * Math.sin(startRad);
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${ir} ${ir} 0 ${largeArc} 0 ${ix2} ${iy2} Z`;
+}
+
+function radarPointsStr(cx: number, cy: number, r: number, values: number[]): string {
+  return values.map((v, i) => {
+    const angle = ((i * 360) / values.length - 90) * (Math.PI / 180);
+    const dist = (v / 100) * r;
+    return `${cx + dist * Math.cos(angle)},${cy + dist * Math.sin(angle)}`;
+  }).join(' ');
+}
+
+function radarAxisEndpoints(cx: number, cy: number, r: number, count: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const angle = ((i * 360) / count - 90) * (Math.PI / 180);
+    pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+  }
+  return pts.join(' ');
+}
+
+function radarGridPolygons(cx: number, cy: number, maxR: number, levels: number, count: number): string[] {
+  const polys: string[] = [];
+  for (let lvl = 1; lvl <= levels; lvl++) {
+    const r = (lvl / levels) * maxR;
+    polys.push(radarAxisEndpoints(cx, cy, r, count));
+  }
+  return polys;
+}
+
+function areaChartLinePath(data: number[], w: number, h: number, padX: number, padY: number, maxVal: number): string {
+  if (data.length === 0) return '';
+  const stepX = (w - padX * 2) / Math.max(data.length - 1, 1);
+  const pts = data.map((v, i) => {
+    const x = padX + i * stepX;
+    const y = padY + (h - padY * 2) - (v / maxVal) * (h - padY * 2);
+    return `${x},${y}`;
+  });
+  return pts.join(' ');
+}
+
+function areaChartFillPath(data: number[], w: number, h: number, padX: number, padY: number, maxVal: number): string {
+  if (data.length === 0) return '';
+  const line = areaChartLinePath(data, w, h, padX, padY, maxVal);
+  const lastX = padX + (data.length - 1) * ((w - padX * 2) / Math.max(data.length - 1, 1));
+  return `${line} ${lastX},${h - padY} ${padX},${h - padY}`;
+}
+
+function semiCircleArc(cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
+  const startRad = ((startDeg - 90) * Math.PI) / 180;
+  const endRad = ((endDeg - 90) * Math.PI) / 180;
+  const x1 = cx + r * Math.cos(startRad);
+  const y1 = cy + r * Math.sin(startRad);
+  const x2 = cx + r * Math.cos(endRad);
+  const y2 = cy + r * Math.sin(endRad);
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+}
+
+function ringArc(cx: number, cy: number, r: number, pctVal: number): string {
+  if (pctVal <= 0) return '';
+  if (pctVal >= 100) {
+    return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy}`;
+  }
+  const endDeg = (pctVal / 100) * 360;
+  const startRad = -Math.PI / 2;
+  const endRad = ((endDeg - 90) * Math.PI) / 180;
+  const x1 = cx + r * Math.cos(startRad);
+  const y1 = cy + r * Math.sin(startRad);
+  const x2 = cx + r * Math.cos(endRad);
+  const y2 = cy + r * Math.sin(endRad);
+  const largeArc = endDeg > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -619,6 +712,145 @@ export default function SettingsPanel() {
   const { player, currentClub, currentSeason, currentWeek, difficulty } = gameState;
   const leagueInfo = getLeagueById(currentClub.league);
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // ---- SVG Visualization Data (plain reduce / direct assignment) ----
+
+  // Safe access to stats with ?? fallback
+  const cs = player.careerStats ?? { totalAppearances: 0, totalGoals: 0, totalAssists: 0, totalCleanSheets: 0, trophies: [], seasonsPlayed: 0 };
+  const ss = player.seasonStats ?? { appearances: 0, starts: 0, minutesPlayed: 0, goals: 0, assists: 0, cleanSheets: 0, yellowCards: 0, redCards: 0, averageRating: 0, manOfTheMatch: 0, injuries: 0 };
+  const playerMorale = player.morale ?? 70;
+
+  // 1. Notification Distribution Donut segments via .reduce()
+  const donutTypes = ['match', 'transfer', 'achievement', 'event'];
+  const donutColors = ['#10B981', '#F59E0B', '#A855F7', '#06B6D4'];
+  const donutFiltered = notifications.filter(n => donutTypes.includes(n.type));
+  const donutTotal = donutFiltered.length;
+  const donutCounts = donutFiltered.reduce<Record<string, number>>((acc, n) => {
+    acc[n.type] = (acc[n.type] || 0) + 1;
+    return acc;
+  }, {});
+  const donutSegments = donutTypes.reduce<Array<{ seg: string; startPct: number; endPct: number; path: string; color: string; count: number }>>((arcs, type, i) => {
+    const count = donutTotal > 0 ? (donutCounts[type] || 0) : 0;
+    const fraction = donutTotal > 0 ? count / donutTotal : 0;
+    const prevEnd = arcs.length > 0 ? arcs[arcs.length - 1].endPct : 0;
+    const startPct = prevEnd;
+    const endPct = startPct + fraction;
+    const path = fraction > 0.001 ? describeArc(120, 120, 80, 50, startPct * 360, endPct * 360) : '';
+    arcs.push({ seg: type, startPct, endPct, path, color: donutColors[i], count });
+    return arcs;
+  }, []);
+
+  // 2. Gameplay Statistics Radar values
+  const gpRadarVals = [
+    Math.min(((cs.totalGoals ?? 0) / Math.max(cs.totalAppearances ?? 1, 1)) * 300, 100),
+    Math.min(((cs.totalGoals ?? 0) / 20) * 100, 100),
+    Math.min(((cs.totalAssists ?? 0) / 15) * 100, 100),
+    Math.min(((cs.totalCleanSheets ?? 0) / 10) * 100, 100),
+    Math.min((ss.averageRating ?? 0) * 10, 100),
+  ];
+  const gpRadarLabels = ['Win Rate', 'Goals', 'Assists', 'Clean Shts', 'Rating'];
+  const gpRadarShape = radarPointsStr(120, 120, 80, gpRadarVals);
+  const gpRadarAxes = radarAxisEndpoints(120, 120, 80, 5);
+  const gpRadarGrids = radarGridPolygons(120, 120, 80, 4, 5);
+
+  // 3. Career Progress Timeline milestones
+  const careerMilestones = [
+    { label: 'Start', achieved: true },
+    { label: 'Debut', achieved: (cs.totalAppearances ?? 0) > 0 },
+    { label: '1st Goal', achieved: (cs.totalGoals ?? 0) > 0 },
+    { label: '1st Assist', achieved: (cs.totalAssists ?? 0) > 0 },
+    { label: 'Clean Sheet', achieved: (cs.totalCleanSheets ?? 0) > 0 },
+    { label: 'Trophy', achieved: (cs.trophies ?? []).length > 0 },
+    { label: '50 Apps', achieved: (cs.totalAppearances ?? 0) >= 50 },
+    { label: '100 Apps', achieved: (cs.totalAppearances ?? 0) >= 100 },
+  ];
+
+  // 4. Weekly Activity Heatmap (7 days × 4 weeks)
+  const hmDayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const heatmapGrid = (() => {
+    const grid: number[][] = [];
+    const now = Date.now();
+    for (let week = 3; week >= 0; week--) {
+      const row: number[] = [];
+      for (let day = 0; day < 7; day++) {
+        const dayStart = now - (week * 7 + (6 - day)) * 86400000;
+        const dayEnd = dayStart + 86400000;
+        const cnt = notifications.reduce((c, n) => {
+          const ts = new Date(n.timestamp).getTime();
+          return c + (ts >= dayStart && ts < dayEnd ? 1 : 0);
+        }, 0);
+        row.push(cnt);
+      }
+      grid.push(row);
+    }
+    return grid;
+  })();
+  const hmMaxVal = Math.max(...heatmapGrid.flat(), 1);
+
+  // 5. Settings Completeness Ring
+  const settingsTogglesArr = [animationsEnabled, compactMode, darkTheme, autoAdvance, tutorialTips, notifMatchReminders, notifTransferNews, notifAchievementAlerts, notifTrainingReminders];
+  const settingsTotalCount = settingsTogglesArr.length;
+  const settingsEnabledCount = settingsTogglesArr.reduce((c, v) => c + (v ? 1 : 0), 0);
+  const settingsPct = Math.round((settingsEnabledCount / settingsTotalCount) * 100);
+  const settingsRingD = ringArc(120, 120, 80, settingsPct);
+
+  // 6. Audio Levels
+  const audioSfx = sfxVolume[0];
+  const audioMus = musicVolume[0];
+
+  // 7. Difficulty Impact Gauge
+  const diffScore = difficulty === 'easy' ? 30 : difficulty === 'hard' ? 90 : 60;
+  const gaugeNeedleAngle = (-90 + (diffScore / 100) * 180) * (Math.PI / 180);
+  const gaugeNx = 120 + 68 * Math.cos(gaugeNeedleAngle);
+  const gaugeNy = 120 + 68 * Math.sin(gaugeNeedleAngle);
+  const gaugeBgArc = semiCircleArc(120, 120, 80, 0, 180);
+  const gaugeFillArc = semiCircleArc(120, 120, 80, 0, (diffScore / 100) * 180);
+
+  // 8. Season Time Investment Bars
+  const investBars = [
+    { label: 'Training', value: Math.min((ss.appearances ?? 0) * 3 + 20, 100), color: '#10B981' },
+    { label: 'Matches', value: Math.min((ss.appearances ?? 0) * 8, 100), color: '#3B82F6' },
+    { label: 'Transfers', value: 15, color: '#A855F7' },
+    { label: 'Social', value: Math.min((cs.totalAssists ?? 0) * 5 + 10, 100), color: '#EC4899' },
+    { label: 'Media', value: 20, color: '#F59E0B' },
+    { label: 'Management', value: 25, color: '#06B6D4' },
+  ];
+
+  // 9. Save Data Integrity Ring (inverse of storage usage)
+  const integrityPct = Math.max(0, Math.round(100 - pct));
+  const integrityD = ringArc(120, 120, 80, integrityPct);
+
+  // 10. Notification Frequency Area Chart (7 days)
+  const notifFreqData = (() => {
+    const now = Date.now();
+    const daily: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = now - i * 86400000;
+      const dayEnd = dayStart + 86400000;
+      const cnt = notifications.reduce((c, n) => {
+        const ts = new Date(n.timestamp).getTime();
+        return c + (ts >= dayStart && ts < dayEnd ? 1 : 0);
+      }, 0);
+      daily.push(cnt);
+    }
+    return daily;
+  })();
+  const notifFreqMax = Math.max(...notifFreqData, 1);
+  const notifFreqLine = areaChartLinePath(notifFreqData, 300, 160, 30, 20, notifFreqMax);
+  const notifFreqFill = areaChartFillPath(notifFreqData, 300, 160, 30, 20, notifFreqMax);
+
+  // 11. Career Balance Radar
+  const balRadarVals = [
+    Math.min(((cs.totalAppearances ?? 0) / 40) * 100, 100),
+    Math.min((ss.averageRating ?? 0) * 10, 100),
+    Math.min(((cs.totalAssists ?? 0) / 10) * 100, 100),
+    30,
+    playerMorale,
+  ];
+  const balRadarLabels = ['Playing', 'Develop', 'Social', 'Finance', 'Morale'];
+  const balRadarShape = radarPointsStr(120, 120, 80, balRadarVals);
+  const balRadarAxes = radarAxisEndpoints(120, 120, 80, 5);
+  const balRadarGrids = radarGridPolygons(120, 120, 80, 4, 5);
 
   // ---- Helpers ----
 
@@ -1121,6 +1353,459 @@ export default function SettingsPanel() {
                 {pct.toFixed(1)}% of 5 MB
               </span>
             </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ============================================================ */}
+      {/* SVG VISUALIZATIONS (11 inline SVG data viz sections)          */}
+      {/* ============================================================ */}
+
+      {/* 1. Notification Distribution Donut */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.56, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Bell className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Notification Distribution</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">Breakdown by type (match/transfer/achievement/event)</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 240" className="w-48 h-48">
+              {donutSegments.map((arc) => (
+                arc.path ? (
+                  <path key={arc.seg} d={arc.path} fill={arc.color} style={{ opacity: 0.85 }} />
+                ) : null
+              ))}
+              {donutTotal === 0 && (
+                <circle cx="120" cy="120" r="65" fill="none" stroke="#30363d" strokeWidth="30" />
+              )}
+              <text x="120" y="116" textAnchor={"middle" as "middle"} fill="#c9d1d9" fontSize="22" fontWeight="bold">{donutTotal}</text>
+              <text x="120" y="134" textAnchor={"middle" as "middle"} fill="#8b949e" fontSize="10">total</text>
+            </svg>
+          </div>
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+            {donutSegments.map((arc) => (
+              <span key={arc.seg} className="flex items-center gap-1.5 text-[10px] text-[#8b949e]">
+                <div className="w-2 h-2 rounded-sm" style={{ background: arc.color }} />
+                {arc.seg} ({arc.count})
+              </span>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 2. Gameplay Statistics Radar */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.58, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <BarChart3 className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Gameplay Statistics</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">5-axis performance radar from career stats</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 240" className="w-48 h-48">
+              {/* Grid polygons */}
+              {gpRadarGrids.map((pts, idx) => (
+                <polygon key={idx} points={pts} fill="none" stroke="#21262d" strokeWidth="1" />
+              ))}
+              {/* Axis lines */}
+              {gpRadarAxes.split(' ').map((pt, idx) => {
+                const [x, y] = pt.split(',');
+                return <line key={idx} x1="120" y1="120" x2={x} y2={y} stroke="#21262d" strokeWidth="1" />;
+              })}
+              {/* Data shape */}
+              <polygon points={gpRadarShape} fill="#10B981" fillOpacity="0.2" stroke="#10B981" strokeWidth="2" />
+              {/* Labels */}
+              {gpRadarAxes.split(' ').map((pt, idx) => {
+                const [x, y] = pt.split(',');
+                const anchor = (parseFloat(x) as number) < 120 ? 'end' as const : (parseFloat(x) as number) > 120 ? 'start' as const : 'middle' as const;
+                return <text key={idx} x={parseFloat(x) as number} y={(parseFloat(y) as number) - 8} textAnchor={anchor} fill="#8b949e" fontSize="9">{gpRadarLabels[idx]}</text>;
+              })}
+              {/* Center dot */}
+              <circle cx="120" cy="120" r="2" fill="#30363d" />
+            </svg>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 3. Career Progress Timeline */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.60, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Trophy className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Career Progress Timeline</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">8 milestones tracked across your career</p>
+            </div>
+          </div>
+          <div className="flex justify-center overflow-x-auto">
+            <svg viewBox="0 0 300 80" className="w-full max-w-[300px]" preserveAspectRatio="xMidYMid meet">
+              {/* Base line */}
+              <line x1="20" y1="40" x2="280" y2="40" stroke="#30363d" strokeWidth="2" />
+              {/* Milestone dots and labels */}
+              {careerMilestones.map((m, i) => {
+                const x = 20 + i * (260 / 7);
+                const fill = m.achieved ? '#10B981' : '#21262d';
+                const stroke = m.achieved ? '#10B981' : '#30363d';
+                return (
+                  <g key={m.label}>
+                    <circle cx={x} cy="40" r="6" fill={fill} stroke={stroke} strokeWidth="2" />
+                    {m.achieved && <circle cx={x} cy="40" r="2.5" fill="#161b22" />}
+                    <text
+                      x={x}
+                      y="22"
+                      textAnchor={'middle' as 'middle'}
+                      fill={m.achieved ? '#c9d1d9' : '#484f58'}
+                      fontSize="8"
+                    >
+                      {m.label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+          <div className="flex justify-center gap-3 text-[10px] text-[#8b949e]">
+            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-emerald-500" /> Achieved</span>
+            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-[#21262d] border border-[#30363d]" /> Locked</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 4. Weekly Activity Heatmap */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.62, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Calendar className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Weekly Activity Heatmap</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">Notification volume by day (last 4 weeks)</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 160" className="w-full max-w-[280px]">
+              {/* Day labels */}
+              {hmDayLabels.map((d, i) => (
+                <text key={d + i} x="18" y={30 + i * 22} textAnchor={'end' as 'end'} fill="#8b949e" fontSize="9">{d}</text>
+              ))}
+              {/* Week labels */}
+              {['W-4', 'W-3', 'W-2', 'W-1'].map((w, wi) => (
+                <text key={w} x={55 + wi * 46} y="14" textAnchor={'middle' as 'middle'} fill="#484f58" fontSize="8">{w}</text>
+              ))}
+              {/* Heatmap cells */}
+              {heatmapGrid.map((row, ri) =>
+                row.map((val, ci) => {
+                  const intensity = hmMaxVal > 0 ? val / hmMaxVal : 0;
+                  const cellColor = val === 0 ? '#161b22' : intensity < 0.33 ? '#064e3b' : intensity < 0.66 ? '#10B981' : '#34D399';
+                  return (
+                    <rect
+                      key={`${ri}-${ci}`}
+                      x={30 + ci * 46}
+                      y={20 + ri * 22}
+                      width="38"
+                      height="16"
+                      rx="3"
+                      fill={cellColor}
+                      stroke="#21262d"
+                      strokeWidth="1"
+                    />
+                  );
+                })
+              )}
+            </svg>
+          </div>
+          <div className="flex justify-center gap-2 text-[9px] text-[#484f58]">
+            <span>Less</span>
+            {[0, 1, 2, 3].map((lvl) => (
+              <div key={lvl} className="w-3 h-3 rounded-sm" style={{ background: lvl === 0 ? '#161b22' : lvl === 1 ? '#064e3b' : lvl === 2 ? '#10B981' : '#34D399' }} />
+            ))}
+            <span>More</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 5. Settings Completeness Ring */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.64, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Check className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Settings Completeness</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">{settingsEnabledCount}/{settingsTotalCount} toggles configured</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 240" className="w-44 h-44">
+              <circle cx="120" cy="120" r="80" fill="none" stroke="#21262d" strokeWidth="12" />
+              {settingsRingD && (
+                <path d={settingsRingD} fill="none" stroke="#10B981" strokeWidth="12" strokeLinecap="round" />
+              )}
+              <text x="120" y="114" textAnchor={'middle' as 'middle'} fill="#c9d1d9" fontSize="28" fontWeight="bold">{settingsPct}%</text>
+              <text x="120" y="134" textAnchor={'middle' as 'middle'} fill="#8b949e" fontSize="10">complete</text>
+            </svg>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 6. Audio Levels Visualization */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.66, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Volume2 className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Audio Levels</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">SFX and Music volume visualization</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 300 120" className="w-full max-w-[300px]">
+              {/* SFX Bar */}
+              <text x="10" y="38" fill="#c9d1d9" fontSize="11">SFX</text>
+              <rect x="50" y="24" width="220" height="20" rx="4" fill="#21262d" />
+              <rect x="50" y="24" width={(audioSfx / 100) * 220} height="20" rx="4" fill="#10B981" />
+              <text x="280" y="38" textAnchor={'end' as 'end'} fill="#8b949e" fontSize="10">{audioSfx}%</text>
+              {/* Music Bar */}
+              <text x="10" y="88" fill="#c9d1d9" fontSize="11">Music</text>
+              <rect x="50" y="74" width="220" height="20" rx="4" fill="#21262d" />
+              <rect x="50" y="74" width={(audioMus / 100) * 220} height="20" rx="4" fill="#3B82F6" />
+              <text x="280" y="88" textAnchor={'end' as 'end'} fill="#8b949e" fontSize="10">{audioMus}%</text>
+              {/* Tick marks */}
+              {[0, 25, 50, 75, 100].map((tick) => (
+                <line key={tick} x1={50 + (tick / 100) * 220} y1="104" x2={50 + (tick / 100) * 220} y2="110" stroke="#484f58" strokeWidth="1" />
+              ))}
+              {[0, 25, 50, 75, 100].map((tick) => (
+                <text key={tick} x={50 + (tick / 100) * 220} y="118" textAnchor={'middle' as 'middle'} fill="#484f58" fontSize="7">{tick}</text>
+              ))}
+            </svg>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 7. Difficulty Impact Gauge */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.68, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Shield className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Difficulty Impact Gauge</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">How difficulty affects your career (0-100)</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 140" className="w-full max-w-[240px]">
+              {/* Background semi-circle */}
+              <path d={gaugeBgArc} fill="none" stroke="#21262d" strokeWidth="14" strokeLinecap="round" />
+              {/* Filled arc */}
+              <path d={gaugeFillArc} fill="none" stroke={diffScore <= 30 ? '#10B981' : diffScore <= 60 ? '#F59E0B' : '#EF4444'} strokeWidth="14" strokeLinecap="round" />
+              {/* Needle */}
+              <line x1="120" y1="120" x2={gaugeNx} y2={gaugeNy} stroke="#c9d1d9" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="120" cy="120" r="4" fill="#c9d1d9" />
+              {/* Labels */}
+              <text x="38" y="136" textAnchor={'start' as 'start'} fill="#484f58" fontSize="9">0</text>
+              <text x="120" y="60" textAnchor={'middle' as 'middle'} fill="#c9d1d9" fontSize="18" fontWeight="bold">{diffScore}</text>
+              <text x="120" y="136" textAnchor={'middle' as 'middle'} fill="#8b949e" fontSize="9">50</text>
+              <text x="202" y="136" textAnchor={'end' as 'end'} fill="#484f58" fontSize="9">100</text>
+              {/* Difficulty label */}
+              <text x="120" y="78" textAnchor={'middle' as 'middle'} fill="#8b949e" fontSize="10">{diffInfo.label}</text>
+            </svg>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 8. Season Time Investment Bars */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.70, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Timer className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Season Time Investment</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">Time distribution across game areas</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 300 200" className="w-full max-w-[300px]">
+              {investBars.map((bar, i) => {
+                const barY = 10 + i * 30;
+                return (
+                  <g key={bar.label}>
+                    <text x="70" y={barY + 13} textAnchor={'end' as 'end'} fill="#c9d1d9" fontSize="10">{bar.label}</text>
+                    <rect x="78" y={barY} width="190" height="18" rx="4" fill="#21262d" />
+                    <rect x="78" y={barY} width={(bar.value / 100) * 190} height="18" rx="4" fill={bar.color} />
+                    <text x="278" y={barY + 13} textAnchor={'end' as 'end'} fill="#8b949e" fontSize="9">{bar.value}%</text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 9. Save Data Integrity Ring */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.72, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <HardDrive className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Save Data Integrity</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">Storage health based on remaining capacity</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 240" className="w-44 h-44">
+              <circle cx="120" cy="120" r="80" fill="none" stroke="#21262d" strokeWidth="12" />
+              {integrityD && (
+                <path d={integrityD} fill="none" stroke={integrityPct > 50 ? '#10B981' : integrityPct > 25 ? '#F59E0B' : '#EF4444'} strokeWidth="12" strokeLinecap="round" />
+              )}
+              <text x="120" y="114" textAnchor={'middle' as 'middle'} fill="#c9d1d9" fontSize="28" fontWeight="bold">{integrityPct}%</text>
+              <text x="120" y="134" textAnchor={'middle' as 'middle'} fill="#8b949e" fontSize="10">integrity</text>
+            </svg>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 10. Notification Frequency Area Chart */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.74, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <BarChart3 className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Notification Frequency</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">Volume over the last 7 days</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 300 160" className="w-full max-w-[300px]">
+              {/* Grid lines */}
+              {[0, 1, 2, 3].map((lvl) => {
+                const y = 20 + ((3 - lvl) / 3) * 120;
+                return (
+                  <g key={lvl}>
+                    <line x1="30" y1={y} x2="270" y2={y} stroke="#21262d" strokeWidth="1" />
+                    <text x="25" y={y + 3} textAnchor={'end' as 'end'} fill="#484f58" fontSize="8">{Math.round((lvl / 3) * notifFreqMax)}</text>
+                  </g>
+                );
+              })}
+              {/* Area fill */}
+              {notifFreqFill && <polygon points={notifFreqFill} fill="#10B981" fillOpacity="0.15" />}
+              {/* Line */}
+              {notifFreqLine && <polyline points={notifFreqLine} fill="none" stroke="#10B981" strokeWidth="2" strokeLinejoin="round" />}
+              {/* Dots */}
+              {notifFreqData.map((val, i) => {
+                const x = 30 + (i / Math.max(notifFreqData.length - 1, 1)) * 240;
+                const y = 20 + 120 - (val / notifFreqMax) * 120;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="3" fill="#10B981" stroke="#161b22" strokeWidth="1.5" />
+                    {val > 0 && <text x={x} y={y - 7} textAnchor={'middle' as 'middle'} fill="#c9d1d9" fontSize="8">{val}</text>}
+                  </g>
+                );
+              })}
+              {/* X-axis day labels */}
+              {notifFreqData.map((_, i) => {
+                const x = 30 + (i / Math.max(notifFreqData.length - 1, 1)) * 240;
+                const dayLabel = ['6d', '5d', '4d', '3d', '2d', '1d', 'Now'];
+                return (
+                  <text key={i} x={x} y="150" textAnchor={'middle' as 'middle'} fill="#484f58" fontSize="8">{dayLabel[i]}</text>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 11. Career Balance Radar */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.76, ease: 'easeOut' } }}
+      >
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center justify-center w-9 h-9 bg-[#21262d] rounded-lg flex-shrink-0 mt-0.5">
+              <Zap className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-[#c9d1d9]">Career Balance</h3>
+              <p className="text-xs text-[#8b949e] mt-0.5">5-axis balance radar (Playing/Development/Social/Finances/Morale)</p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 240" className="w-48 h-48">
+              {/* Grid polygons */}
+              {balRadarGrids.map((pts, idx) => (
+                <polygon key={idx} points={pts} fill="none" stroke="#21262d" strokeWidth="1" />
+              ))}
+              {/* Axis lines */}
+              {balRadarAxes.split(' ').map((pt, idx) => {
+                const coords = pt.split(',');
+                return <line key={idx} x1="120" y1="120" x2={coords[0]} y2={coords[1]} stroke="#21262d" strokeWidth="1" />;
+              })}
+              {/* Data shape */}
+              <polygon points={balRadarShape} fill="#A855F7" fillOpacity="0.2" stroke="#A855F7" strokeWidth="2" />
+              {/* Labels */}
+              {balRadarAxes.split(' ').map((pt, idx) => {
+                const coords = pt.split(',');
+                const px = parseFloat(coords[0]);
+                const py = parseFloat(coords[1]);
+                const anchor: 'start' | 'middle' | 'end' = px < 118 ? 'end' : px > 122 ? 'start' : 'middle';
+                return <text key={idx} x={px} y={py - 8} textAnchor={anchor} fill="#8b949e" fontSize="9">{balRadarLabels[idx]}</text>;
+              })}
+              {/* Center dot */}
+              <circle cx="120" cy="120" r="2" fill="#30363d" />
+            </svg>
           </div>
         </div>
       </motion.div>
