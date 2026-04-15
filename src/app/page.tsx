@@ -138,6 +138,8 @@ import WeatherEnhanced from '@/components/game/WeatherEnhanced';
 import DraftSystemEnhanced from '@/components/game/DraftSystemEnhanced';
 import CareerJournalEnhanced from '@/components/game/CareerJournalEnhanced';
 import CareerLegacyProfileEnhanced from '@/components/game/CareerLegacyProfileEnhanced';
+import InjuryRecoveryEnhanced from '@/components/game/InjuryRecoveryEnhanced';
+import SkillChallengesEnhanced from '@/components/game/SkillChallengesEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -271,6 +273,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   draft_system_enhanced: DraftSystemEnhanced,
   career_journal_enhanced: CareerJournalEnhanced,
   career_legacy_profile_enhanced: CareerLegacyProfileEnhanced,
+  injury_recovery_enhanced: InjuryRecoveryEnhanced,
+  skill_challenges_enhanced: SkillChallengesEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -372,6 +376,8 @@ const gameScreens: GameScreen[] = [
   'draft_system_enhanced',
   'career_journal_enhanced',
   'career_legacy_profile_enhanced',
+  'injury_recovery_enhanced',
+  'skill_challenges_enhanced',
 ];
 
 export default function Home() {

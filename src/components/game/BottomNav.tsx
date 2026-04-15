@@ -123,6 +123,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'draft_system_enhanced', icon: <UsersRound className="h-5 w-5" />, label: 'Draft+' },
       { screen: 'career_journal_enhanced', icon: <Brain className="h-5 w-5" />, label: 'Journal+' },
       { screen: 'career_legacy_profile_enhanced', icon: <Crown className="h-5 w-5" />, label: 'Legacy+' },
+      { screen: 'skill_challenges_enhanced', icon: <Target className="h-5 w-5" />, label: 'Challenges+' },
     ],
   },
   {
