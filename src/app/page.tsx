@@ -23,21 +23,21 @@ import SettingsPanel from '@/components/game/SettingsPanel';
 import PlayerProfile from '@/components/game/PlayerProfile';
 import SeasonObjectivesPanel from '@/components/game/SeasonObjectivesPanel';
 import CupBracket from '@/components/game/CupBracket';
-import YouthAcademy from '@/components/game/YouthAcademy';
+import YouthAcademyEnhanced from '@/components/game/YouthAcademyEnhanced';
 import RelationshipsPanel from '@/components/game/RelationshipsPanel';
 import ContinentalPanel from '@/components/game/ContinentalPanel';
 import InternationalPanel from '@/components/game/InternationalPanel';
 import MoralePanel from '@/components/game/MoralePanel';
 import InjuryReport from '@/components/game/InjuryReport';
 import PWAInstallPrompt from '@/components/game/PWAInstallPromptFixed';
-import SkillChallenges from '@/components/game/SkillChallenges';
-import PlayerAgentHub from '@/components/game/PlayerAgentHub';
+import SkillChallengesEnhanced from '@/components/game/SkillChallengesEnhanced';
+import PlayerAgentHubEnhanced from '@/components/game/PlayerAgentHubEnhanced';
 import DailyRoutineHub from '@/components/game/DailyRoutineHub';
 import CareerStatistics from '@/components/game/CareerStatistics';
 import TacticalBriefing from '@/components/game/TacticalBriefing';
 import PlayerOfTheMonth from '@/components/game/PlayerOfTheMonth';
 import PostMatchAnalysis from '@/components/game/PostMatchAnalysis';
-import PlayerComparison from '@/components/game/PlayerComparison';
+import PlayerComparisonEnhanced from '@/components/game/PlayerComparisonEnhanced';
 import TransferNegotiation from '@/components/game/TransferNegotiation';
 import TransferMarketEnhanced from '@/components/game/TransferMarketEnhanced';
 import PersonalFinancesEnhanced from '@/components/game/PersonalFinancesEnhanced';
@@ -93,12 +93,11 @@ import PreSeasonTour from '@/components/game/PreSeasonTour';
 import StadiumAtmosphereEnhanced from '@/components/game/StadiumAtmosphereEnhanced';
 import FanEngagement from '@/components/game/FanEngagement';
 import WorldFootballNews from '@/components/game/WorldFootballNews';
-import HallOfFame from '@/components/game/HallOfFame';
+import HallOfFameEnhanced from '@/components/game/HallOfFameEnhanced';
 import PlayerTraitsPanel from '@/components/game/PlayerTraitsEnhanced';
-import MatchHighlights from '@/components/game/MatchHighlights';
+
 import MatchHighlightsEnhanced from '@/components/game/MatchHighlightsEnhanced';
 import PreMatchScoutReport from '@/components/game/PreMatchScoutReport';
-import DreamTransfer from '@/components/game/DreamTransfer';
 import MatchStatsComparison from '@/components/game/MatchStatsComparison';
 import CareerMilestones from '@/components/game/CareerMilestones';
 import PressConferenceEnhanced from '@/components/game/PressConferenceEnhanced';
@@ -112,18 +111,14 @@ import MatchDayLive from '@/components/game/MatchDayLive';
 import DynamicDifficultyPanel from '@/components/game/DynamicDifficultyPanel';
 import PreSeasonTrainingCamp from '@/components/game/PreSeasonTrainingCamp';
 import KitCustomization from '@/components/game/KitCustomization';
-import PlayerComparisonEnhanced from '@/components/game/PlayerComparisonEnhanced';
 import DreamTransferEnhanced from '@/components/game/DreamTransferEnhanced';
-import HallOfFameEnhanced from '@/components/game/HallOfFameEnhanced';
 import CareerJournalEnhanced from '@/components/game/CareerJournalEnhanced';
 import CareerLegacyProfileEnhanced from '@/components/game/CareerLegacyProfileEnhanced';
-import SkillChallengesEnhanced from '@/components/game/SkillChallengesEnhanced';
 import DailyRoutineEnhanced from '@/components/game/DailyRoutineEnhanced';
 import ContractNegotiationEnhanced from '@/components/game/ContractNegotiationEnhanced';
 import MediaInterviewEnhanced from '@/components/game/MediaInterviewEnhanced';
 import CareerEventsEnhanced from '@/components/game/CareerEventsEnhanced';
 import TrainingGroundEnhanced from '@/components/game/TrainingGroundEnhanced';
-import YouthAcademyEnhanced from '@/components/game/YouthAcademyEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -144,27 +139,27 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   player_profile: PlayerProfile,
   season_objectives: SeasonObjectivesPanel,
   cup_bracket: CupBracket,
-  youth_academy: YouthAcademy,
+  youth_academy: YouthAcademyEnhanced,
   relationships: RelationshipsPanel,
   continental: ContinentalPanel,
   international: InternationalPanel,
   morale: MoralePanel,
   injury_report: InjuryReport,
-  skill_challenges: SkillChallenges,
-  player_agent_hub: PlayerAgentHub,
+  skill_challenges: SkillChallengesEnhanced,
+  player_agent_hub: PlayerAgentHubEnhanced,
   daily_routine_hub: DailyRoutineHub,
   career_statistics: CareerStatistics,
   tactical_briefing: TacticalBriefing,
   player_of_the_month: PlayerOfTheMonth,
   post_match_analysis: PostMatchAnalysis,
-  player_comparison: PlayerComparison,
+  player_comparison: PlayerComparisonEnhanced,
   transfer_negotiation: TransferNegotiation,
   fan_engagement: FanEngagement,
   world_football_news: WorldFootballNews,
-  hall_of_fame: HallOfFame,
+  hall_of_fame: HallOfFameEnhanced,
   player_traits: PlayerTraitsPanel,
-  dream_transfer: DreamTransfer,
-  match_highlights: MatchHighlights,
+  dream_transfer: DreamTransferEnhanced,
+  match_highlights: MatchHighlightsEnhanced,
   match_highlights_enhanced: MatchHighlightsEnhanced,
   pre_match_scout: PreMatchScoutReport,
   match_stats_comparison: MatchStatsComparison,

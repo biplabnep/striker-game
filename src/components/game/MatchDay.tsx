@@ -16,7 +16,7 @@ import {
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MatchEvent, MatchEventType, MatchResult } from '@/lib/game/types';
-import PressConference from '@/components/game/PressConference';
+import PressConferenceEnhanced from '@/components/game/PressConferenceEnhanced';
 import WeatherSystem from '@/components/game/WeatherSystem';
 import MatchStatsPopup from '@/components/game/MatchStatsPopup';
 import TacticalSetup from '@/components/game/TacticalSetup';
@@ -2485,7 +2485,7 @@ export default function MatchDay() {
         </motion.div>
 
         {/* Press Conference Modal */}
-        <PressConference
+        <PressConferenceEnhanced
           type={pressConferenceType}
           open={showPressConference}
           onClose={() => setShowPressConference(false)}
@@ -3530,7 +3530,7 @@ export default function MatchDay() {
 
           {/* Pre-Match Press Conference Modal */}
           {opponent && (
-            <PressConference
+            <PressConferenceEnhanced
               type="pre-match"
               open={showPressConference && pressConferenceType === 'pre-match'}
               onClose={() => setShowPressConference(false)}
