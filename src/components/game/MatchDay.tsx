@@ -499,6 +499,399 @@ function svgMomentumArea(data: number[], baseY: number, startX: number, stepX: n
 }
 
 // -----------------------------------------------------------
+// Web3 "Gritty Futurism" SVG Visualization Components
+// -----------------------------------------------------------
+
+const W3_FONT = "'Monaspace Neon', 'Space Grotesk', monospace";
+
+function svgDonutArc(cx: number, cy: number, r: number, ir: number, startAngle: number, endAngle: number): string {
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+  const x2 = cx + r * Math.cos(endAngle);
+  const y2 = cy + r * Math.sin(endAngle);
+  const ix1 = cx + ir * Math.cos(endAngle);
+  const iy1 = cy + ir * Math.sin(endAngle);
+  const ix2 = cx + ir * Math.cos(startAngle);
+  const iy2 = cy + ir * Math.sin(startAngle);
+  const large = (endAngle - startAngle) > Math.PI ? 1 : 0;
+  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} L ${ix1.toFixed(1)} ${iy1.toFixed(1)} A ${ir} ${ir} 0 ${large} 0 ${ix2.toFixed(1)} ${iy2.toFixed(1)} Z`;
+}
+
+function svgRingArc(cx: number, cy: number, radius: number, pct: number): string {
+  const clamped = Math.max(0.001, Math.min(0.999, pct));
+  const startA = -Math.PI / 2;
+  const endA = startA + clamped * 2 * Math.PI;
+  const x1 = cx + radius * Math.cos(startA);
+  const y1 = cy + radius * Math.sin(startA);
+  const x2 = cx + radius * Math.cos(endA);
+  const y2 = cy + radius * Math.sin(endA);
+  const large = clamped > 0.5 ? 1 : 0;
+  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${radius} ${radius} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+
+// 1. PreMatchReadinessGauge — Semi-circular gauge (0-100) showing player readiness
+function PreMatchReadinessGauge({ readiness }: { readiness: number }) {
+  const pct = Math.max(0, Math.min(1, readiness / 100));
+  const bgArc = svgGaugeArc(150, 170, 100, 1);
+  const fillArc = svgGaugeArc(150, 170, 100, pct);
+  const tier = pct >= 0.8 ? 'OPTIMAL' : pct >= 0.6 ? 'READY' : pct >= 0.4 ? 'MODERATE' : 'RISK';
+  return (
+    <div className="bg-[#0a0a0a] border border-[#CCFF00]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Readiness Gauge</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        <path d={bgArc} fill="none" stroke="#333333" strokeWidth="12" strokeLinecap="round" />
+        <path d={fillArc} fill="none" stroke="#CCFF00" strokeWidth="12" strokeLinecap="round" />
+        <text x="150" y="148" fill="#c9d1d9" fontSize="36" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{readiness}</text>
+        <text x="150" y="168" fill="#888888" fontSize="10" textAnchor="middle" fontFamily={W3_FONT}>/ 100</text>
+        <text x="150" y="195" fill="#CCFF00" fontSize="8" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{tier}</text>
+      </svg>
+    </div>
+  );
+}
+
+// 2. OpponentAnalysisRadar — 5-axis radar chart (Attack/Defense/Set Piece/Counter/Possession)
+function OpponentAnalysisRadar({ values, labels }: { values: number[]; labels: string[] }) {
+  const cx = 150;
+  const cy = 100;
+  const maxR = 65;
+  const n = values.length;
+  const gridPaths = svgHexGridPaths(cx, cy, maxR, 4, n);
+  const radarPath = svgRadarPath(values, cx, cy, maxR);
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Opponent Analysis</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {gridPaths.map((p, i) => (
+          <path key={`og-${i}`} d={p} fill="none" stroke="#333333" strokeWidth={i < 4 ? 0.5 : 0.3} />
+        ))}
+        <path d={radarPath} fill="#FF5500" fillOpacity="0.15" stroke="#FF5500" strokeWidth="1.5" />
+        {labels.map((label, i) => {
+          const a = startAngle + i * angleStep;
+          const lx = cx + (maxR + 16) * Math.cos(a);
+          const ly = cy + (maxR + 16) * Math.sin(a);
+          return <text key={`ol-${i}`} x={lx} y={ly + 3} fill="#888888" fontSize="7" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{label}</text>;
+        })}
+        {values.map((v, i) => {
+          const a = startAngle + i * angleStep;
+          const dx = cx + (v / 100) * maxR * Math.cos(a);
+          const dy = cy + (v / 100) * maxR * Math.sin(a);
+          return <circle key={`od-${i}`} cx={dx} cy={dy} r="2.5" fill="#FF5500" />;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 3. FormComparisonBars — 5 horizontal bars comparing home vs away team form
+function FormComparisonBars({ homeStats, awayStats, labels, homeName, awayName }: {
+  homeStats: number[]; awayStats: number[]; labels: string[]; homeName: string; awayName: string;
+}) {
+  const maxVal = [...homeStats, ...awayStats].reduce((m, v) => Math.max(m, v), 1);
+  const barMaxW = 80;
+  const barH = 14;
+  const gap = 32;
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Form Comparison</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        <text x="10" y="14" fill="#00E5FF" fontSize="7" fontWeight="bold" fontFamily={W3_FONT}>{homeName}</text>
+        <text x="170" y="14" fill="#FF5500" fontSize="7" fontWeight="bold" fontFamily={W3_FONT}>{awayName}</text>
+        {labels.map((label, i) => {
+          const y = 26 + i * gap;
+          const hW = Math.max(3, (homeStats[i] / maxVal) * barMaxW);
+          const aW = Math.max(3, (awayStats[i] / maxVal) * barMaxW);
+          return (
+            <g key={`fb-${i}`}>
+              <text x="2" y={y + 10} fill="#888888" fontSize="7" fontFamily={W3_FONT}>{label}</text>
+              <rect key={`fh-${i}`} x="28" y={y} width={hW} height={barH} fill="#00E5FF" fillOpacity="0.25" />
+              <text key={`ft-${i}`} x={32 + hW} y={y + 10} fill="#00E5FF" fontSize="7" fontWeight="bold" fontFamily={W3_FONT}>{homeStats[i]}</text>
+              <rect key={`ah-${i}`} x="150" y={y} width={aW} height={barH} fill="#FF5500" fillOpacity="0.25" />
+              <text key={`at-${i}`} x={154 + aW} y={y + 10} fill="#FF5500" fontSize="7" fontWeight="bold" fontFamily={W3_FONT}>{awayStats[i]}</text>
+            </g>
+          );
+        })}
+        <text x="150" y="192" fill="#666666" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>LAST 5 MATCH FORM</text>
+      </svg>
+    </div>
+  );
+}
+
+// 4. MatchExpectationDonut — 4-segment donut showing expected result probabilities via .reduce()
+function MatchExpectationDonut({ segments }: { segments: { label: string; value: number; color: string }[] }) {
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  const cx = 150;
+  const cy = 105;
+  const r = 60;
+  const ir = 32;
+  const offset = -Math.PI / 2;
+  const arcs = segments.reduce((acc, seg) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1].endAngle : offset;
+    const angle = total > 0 ? (seg.value / total) * 2 * Math.PI : 0;
+    const endAngle = prev + angle;
+    acc.push({ ...seg, startAngle: prev, endAngle, midAngle: prev + angle / 2 });
+    return acc;
+  }, [] as Array<{ label: string; value: number; color: string; startAngle: number; endAngle: number; midAngle: number }>);
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Match Expectation</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        <circle cx={cx} cy={cy} r={r} fill="#111111" />
+        <circle cx={cx} cy={cy} r={ir} fill="#0a0a0a" />
+        {arcs.map((arc) => (
+          <path key={`da-${arc.label}`} d={svgDonutArc(cx, cy, r, ir, arc.startAngle, arc.endAngle)} fill={arc.color} fillOpacity="0.35" stroke="#0a0a0a" strokeWidth="2" />
+        ))}
+        <text x={cx} y={cy - 3} fill="#c9d1d9" fontSize="16" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{total}%</text>
+        <text x={cx} y={cy + 10} fill="#888888" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>PROBABILITY</text>
+        {arcs.map((arc) => {
+          const lx = cx + (r + 20) * Math.cos(arc.midAngle);
+          const ly = cy + (r + 20) * Math.sin(arc.midAngle);
+          return <text key={`dl-${arc.label}`} x={lx} y={ly + 3} fill={arc.color} fontSize="6" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{arc.label} {Math.round(arc.value)}%</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 5. HistoricalH2HTimeline — 8-node horizontal timeline showing head-to-head results
+function HistoricalH2HTimeline({ results }: { results: Array<{ week: number; homeScore: number; awayScore: number; isPlayerHome: boolean }> }) {
+  const n = results.length;
+  const startX = 25;
+  const endX = 275;
+  const stepX = n > 1 ? (endX - startX) / (n - 1) : 0;
+  const y = 90;
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>H2H Timeline</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        <line x1={startX - 5} y1={y} x2={endX + 5} y2={y} stroke="#333333" strokeWidth="2" strokeLinecap="round" />
+        {results.map((r, i) => {
+          const x = startX + i * stepX;
+          const pg = r.isPlayerHome ? r.homeScore : r.awayScore;
+          const og = r.isPlayerHome ? r.awayScore : r.homeScore;
+          const result = pg > og ? 'W' : pg < og ? 'L' : 'D';
+          const color = result === 'W' ? '#CCFF00' : result === 'L' ? '#FF5500' : '#888888';
+          return (
+            <g key={`hn-${i}`}>
+              <circle cx={x} cy={y} r="9" fill="#0a0a0a" stroke={color} strokeWidth="2" />
+              <text x={x} y={y + 3} fill={color} fontSize="7" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{result}</text>
+              <text x={x} y={y - 16} fill="#c9d1d9" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>{r.homeScore}-{r.awayScore}</text>
+              <text x={x} y={y + 24} fill="#888888" fontSize="5" textAnchor="middle" fontFamily={W3_FONT}>Wk{r.week}</text>
+            </g>
+          );
+        })}
+        <text x="150" y="140" fill="#666666" fontSize="7" textAnchor="middle" fontFamily={W3_FONT}>HEAD-TO-HEAD HISTORY</text>
+      </svg>
+    </div>
+  );
+}
+
+// 6. KeyPlayerMatchupRadar — 5-axis radar comparing your key stats vs direct opponent
+function KeyPlayerMatchupRadar({ playerVals, oppVals, labels }: { playerVals: number[]; oppVals: number[]; labels: string[] }) {
+  const cx = 150;
+  const cy = 100;
+  const maxR = 65;
+  const n = playerVals.length;
+  const gridPaths = svgHexGridPaths(cx, cy, maxR, 4, n);
+  const pPath = svgRadarPath(playerVals, cx, cy, maxR);
+  const oPath = svgRadarPath(oppVals, cx, cy, maxR);
+  const step = (2 * Math.PI) / n;
+  const start = -Math.PI / 2;
+  return (
+    <div className="bg-[#0a0a0a] border border-[#CCFF00]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Key Player Matchup</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {gridPaths.map((p, i) => (
+          <path key={`kg-${i}`} d={p} fill="none" stroke="#333333" strokeWidth={i < 4 ? 0.5 : 0.3} />
+        ))}
+        <path d={oPath} fill="#FF5500" fillOpacity="0.1" stroke="#FF5500" strokeWidth="1" strokeDasharray="3,2" />
+        <path d={pPath} fill="#CCFF00" fillOpacity="0.15" stroke="#CCFF00" strokeWidth="1.5" />
+        {labels.map((label, i) => {
+          const a = start + i * step;
+          const lx = cx + (maxR + 16) * Math.cos(a);
+          const ly = cy + (maxR + 16) * Math.sin(a);
+          return <text key={`kl-${i}`} x={lx} y={ly + 3} fill="#888888" fontSize="7" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{label}</text>;
+        })}
+        <line x1="210" y1="14" x2="226" y2="14" stroke="#CCFF00" strokeWidth="1.5" />
+        <text x="230" y="17" fill="#CCFF00" fontSize="6" fontFamily={W3_FONT}>YOU</text>
+        <line x1="254" y1="14" x2="270" y2="14" stroke="#FF5500" strokeWidth="1" strokeDasharray="3,2" />
+        <text x="274" y="17" fill="#FF5500" fontSize="6" fontFamily={W3_FONT}>OPP</text>
+      </svg>
+    </div>
+  );
+}
+
+// 7. MatchDayWeatherImpact — 5 horizontal bars showing weather impact on match aspects
+function MatchDayWeatherImpact({ impacts, labels }: { impacts: number[]; labels: string[] }) {
+  const maxVal = Math.abs(impacts.reduce((m, v) => Math.max(m, Math.abs(v)), 1));
+  const barMaxW = 140;
+  const barH = 14;
+  const gap = 30;
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Weather Impact</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {labels.map((label, i) => {
+          const y = 16 + i * gap;
+          const w = Math.max(4, (Math.abs(impacts[i]) / maxVal) * barMaxW);
+          const color = impacts[i] < 0 ? '#FF5500' : '#CCFF00';
+          return (
+            <g key={`wi-${i}`}>
+              <text x="2" y={y + 10} fill="#888888" fontSize="7" fontFamily={W3_FONT}>{label}</text>
+              <rect key={`wb-${i}`} x="70" y={y} width={w} height={barH} fill={color} fillOpacity="0.25" />
+              <text key={`wt-${i}`} x={74 + w} y={y + 10} fill={color} fontSize="7" fontWeight="bold" fontFamily={W3_FONT}>{impacts[i] > 0 ? '+' : ''}{impacts[i]}%</text>
+            </g>
+          );
+        })}
+        <text x="150" y="190" fill="#666666" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>WEATHER EFFECT ON MATCH ASPECTS</text>
+      </svg>
+    </div>
+  );
+}
+
+// 8. PositionalBattleArea — 8-point area chart showing positional dominance across pitch zones
+function PositionalBattleArea({ values, labels }: { values: number[]; labels: string[] }) {
+  const n = values.length;
+  const cx = 150;
+  const cy = 105;
+  const maxR = 70;
+  const step = (2 * Math.PI) / n;
+  const start = -Math.PI / 2;
+  const areaPath = values.reduce((path, v, i) => {
+    const a = start + i * step;
+    const r = (v / 100) * maxR;
+    const x = cx + r * Math.cos(a);
+    const y = cy + r * Math.sin(a);
+    return path + `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)} `;
+  }, '') + 'Z';
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Positional Battle</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {Array.from({ length: 4 }, (_, l) => {
+          const r = ((l + 1) / 4) * maxR;
+          const pts = Array.from({ length: n }, (_, i) => {
+            const a = start + i * step;
+            return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+          });
+          const p = pts.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ') + ' Z';
+          return <path key={`pg-${l}`} d={p} fill="none" stroke="#333333" strokeWidth="0.5" />;
+        })}
+        <path d={areaPath} fill="#00E5FF" fillOpacity="0.2" stroke="#00E5FF" strokeWidth="1.5" strokeLinejoin="round" />
+        {values.map((v, i) => {
+          const a = start + i * step;
+          const r = (v / 100) * maxR;
+          const x = cx + r * Math.cos(a);
+          const y = cy + r * Math.sin(a);
+          const lx = cx + (maxR + 18) * Math.cos(a);
+          const ly = cy + (maxR + 18) * Math.sin(a);
+          return (
+            <g key={`pp-${i}`}>
+              <circle key={`pd-${i}`} cx={x} cy={y} r="3" fill="#00E5FF" />
+              <text key={`pl-${i}`} x={lx} y={ly + 3} fill="#888888" fontSize="6" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{labels[i]}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 9. SetPieceThreatRing — Circular ring (0-100) measuring set piece threat level for both teams
+function SetPieceThreatRing({ homeThreat, awayThreat, homeName, awayName }: {
+  homeThreat: number; awayThreat: number; homeName: string; awayName: string;
+}) {
+  const homePct = Math.max(0.001, Math.min(0.999, homeThreat / 100));
+  const awayPct = Math.max(0.001, Math.min(0.999, awayThreat / 100));
+  const homeArc = svgRingArc(80, 100, 55, homePct);
+  const awayArc = svgRingArc(220, 100, 55, awayPct);
+  return (
+    <div className="bg-[#0a0a0a] border border-[#CCFF00]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Set Piece Threat</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        <circle cx="80" cy="100" r="55" fill="none" stroke="#333333" strokeWidth="8" />
+        <path d={homeArc} fill="none" stroke="#CCFF00" strokeWidth="8" strokeLinecap="round" />
+        <text x="80" y="97" fill="#c9d1d9" fontSize="18" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{homeThreat}</text>
+        <text x="80" y="112" fill="#888888" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>/ 100</text>
+        <text x="80" y="175" fill="#CCFF00" fontSize="7" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{homeName}</text>
+        <circle cx="220" cy="100" r="55" fill="none" stroke="#333333" strokeWidth="8" />
+        <path d={awayArc} fill="none" stroke="#FF5500" strokeWidth="8" strokeLinecap="round" />
+        <text x="220" y="97" fill="#c9d1d9" fontSize="18" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{awayThreat}</text>
+        <text x="220" y="112" fill="#888888" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>/ 100</text>
+        <text x="220" y="175" fill="#FF5500" fontSize="7" fontWeight="bold" textAnchor="middle" fontFamily={W3_FONT}>{awayName}</text>
+        <text x="150" y="195" fill="#666666" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>SET PIECE THREAT LEVEL</text>
+      </svg>
+    </div>
+  );
+}
+
+// 10. SubstitutionReadinessBars — 5 horizontal bars showing bench player readiness levels
+function SubstitutionReadinessBars({ players }: { players: { name: string; readiness: number; pos: string }[] }) {
+  const barMaxW = 110;
+  const barH = 14;
+  const gap = 32;
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Bench Readiness</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {players.map((p, i) => {
+          const y = 14 + i * gap;
+          const w = Math.max(4, (p.readiness / 100) * barMaxW);
+          const color = p.readiness >= 80 ? '#CCFF00' : p.readiness >= 60 ? '#00E5FF' : p.readiness >= 40 ? '#888888' : '#FF5500';
+          return (
+            <g key={`sb-${i}`}>
+              <text x="2" y={y + 10} fill="#888888" fontSize="7" fontFamily={W3_FONT}>{p.pos}</text>
+              <text x="26" y={y + 10} fill="#c9d1d9" fontSize="7" fontFamily={W3_FONT}>{p.name}</text>
+              <rect key={`sr-${i}`} x="90" y={y} width={w} height={barH} fill={color} fillOpacity="0.25" />
+              <text key={`sv-${i}`} x={94 + w} y={y + 10} fill={color} fontSize="7" fontWeight="bold" fontFamily={W3_FONT}>{p.readiness}%</text>
+            </g>
+          );
+        })}
+        <text x="150" y="190" fill="#666666" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>SUBSTITUTION READINESS INDEX</text>
+      </svg>
+    </div>
+  );
+}
+
+// 11. PostMatchRatingDistribution — 5 horizontal bars showing rating distribution via .reduce()
+function PostMatchRatingDistribution({ ratings }: { ratings: number[] }) {
+  const bins = ratings.reduce((acc, r) => {
+    if (r >= 9) acc[0]++;
+    else if (r >= 8) acc[1]++;
+    else if (r >= 7) acc[2]++;
+    else if (r >= 6) acc[3]++;
+    else acc[4]++;
+    return acc;
+  }, [0, 0, 0, 0, 0] as number[]);
+  const labels = ['9+', '8-9', '7-8', '6-7', '<6'];
+  const colors = ['#CCFF00', '#00E5FF', '#FF5500', '#888888', '#666666'];
+  const maxVal = bins.reduce((m, v) => Math.max(m, v), 1);
+  const barMaxW = 120;
+  const barH = 16;
+  const gap = 30;
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] text-[#888888] font-semibold mb-2 uppercase tracking-wider" style={{ fontFamily: W3_FONT }}>Rating Distribution</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {labels.map((label, i) => {
+          const y = 14 + i * gap;
+          const w = Math.max(4, (bins[i] / maxVal) * barMaxW);
+          return (
+            <g key={`rd-${i}`}>
+              <text x="2" y={y + 10} fill="#888888" fontSize="7" fontFamily={W3_FONT}>{label}</text>
+              <rect key={`rb-${i}`} x="30" y={y} width={w} height={barH} fill={colors[i]} fillOpacity="0.25" />
+              <text key={`rv-${i}`} x={34 + w} y={y + 10} fill={colors[i]} fontSize="7" fontWeight="bold" fontFamily={W3_FONT}>{bins[i]} players</text>
+            </g>
+          );
+        })}
+        <text x="150" y="190" fill="#666666" fontSize="6" textAnchor="middle" fontFamily={W3_FONT}>SQUAD RATING BREAKDOWN</text>
+      </svg>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------
 export default function MatchDay() {
@@ -2002,6 +2395,52 @@ export default function MatchDay() {
         </motion.div>
         )}
 
+        {/* Web3 Gritty Futurism: Post-Match Deep Analysis */}
+        {postMatchAnalysis && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.58, duration: 0.3 }}
+          className="space-y-3"
+        >
+          <div className="bg-[#111111] border border-[#00E5FF]/10 overflow-hidden">
+            <div className="px-4 pt-3 pb-2 border-b border-[#00E5FF]/10">
+              <p className="text-[10px] text-[#00E5FF] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ fontFamily: W3_FONT }}>
+                ◆ Post-Match Deep Analysis
+              </p>
+              <p className="text-[8px] text-[#666666] mt-0.5" style={{ fontFamily: W3_FONT }}>Rating breakdown, bench readiness, and weather impact assessment via Web3 analytics.</p>
+            </div>
+            <div className="p-3 space-y-3">
+              {(() => {
+                const seed = lastResult.week * 100 + lastResult.homeScore * 10 + lastResult.awayScore;
+                const syntheticRatings = Array.from({ length: 18 }, (_, i) => 5.5 + seededRandom(seed + i * 3) * 4);
+                const benchPlayers = Array.from({ length: 5 }, (_, i) => ({
+                  name: ['J. Silva', 'M. Kone', 'R. Tanaka', 'L. Berg', 'A. Osei'][i],
+                  readiness: 50 + Math.round(seededRandom(gameState.currentWeek * 100 + i * 37) * 50),
+                  pos: ['SUB', 'SUB', 'SUB', 'SUB', 'SUB'][i],
+                }));
+                const weatherLabels = ['Passing', 'Shooting', 'Running', 'Tactics', 'Set Pcs'];
+                const weatherImpacts = currentWeather
+                  ? Array.from({ length: 5 }, (_, i) => {
+                      const severityVal = currentWeather.severity === 'none' ? 0 : currentWeather.severity === 'mild' ? -3 : currentWeather.severity === 'moderate' ? -7 : -12;
+                      return severityVal + Math.round(seededRandom(gameState.currentWeek * 31 + i * 17) * 10 - 5);
+                    })
+                  : [0, 0, 0, 0, 0];
+                return (
+                  <>
+                    <PostMatchRatingDistribution ratings={syntheticRatings} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <SubstitutionReadinessBars players={benchPlayers} />
+                      <MatchDayWeatherImpact impacts={weatherImpacts} labels={weatherLabels} />
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </motion.div>
+        )}
+
         {/* Post-Match Actions - Horizontal Row */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -2557,6 +2996,88 @@ export default function MatchDay() {
             </div>
           </motion.div>
 
+          {/* Web3 Gritty Futurism: Pre-Match Intelligence Visualizations */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.33, duration: 0.3 }}
+            className="space-y-3"
+          >
+            <div className="bg-[#111111] border border-[#FF5500]/10 overflow-hidden">
+              <div className="px-4 pt-3 pb-2 border-b border-[#FF5500]/10">
+                <p className="text-[10px] text-[#FF5500] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ fontFamily: W3_FONT }}>
+                  ◆ Pre-Match Intelligence
+                </p>
+                <p className="text-[8px] text-[#666666] mt-0.5" style={{ fontFamily: W3_FONT }}>Web3-powered analysis of squad readiness, opponent threats, and recent form.</p>
+              </div>
+              <div className="p-3 space-y-3">
+                {(() => {
+                  const readiness = Math.round(
+                    (player.form / 10) * 40 +
+                    (player.morale / 100) * 35 +
+                    seededRandom(gameState.currentWeek * 13 + gameState.currentSeason) * 25
+                  );
+                  const oppRadarLabels = ['ATK', 'DEF', 'SET', 'CTR', 'POS'];
+                  const oppRadarValues = Array.from({ length: 5 }, (_, i) =>
+                    55 + Math.round(seededRandom(opponent.squadQuality * (i + 7) * 3) * 40)
+                  );
+                  const formStats = gameState.recentResults.slice(0, 5).reduce(
+                    (acc, r) => {
+                      const isHome = r.homeClub.id === currentClub.id;
+                      const isOpp = r.homeClub.id === opponent.id || r.awayClub.id === opponent.id;
+                      if (isHome || r.awayClub.id === currentClub.id) {
+                        const mg = isHome ? r.homeScore : r.awayScore;
+                        const tg = isHome ? r.awayScore : r.homeScore;
+                        if (mg > tg) acc.hW++;
+                        if (mg === tg) acc.hD++;
+                        if (mg < tg) acc.hL++;
+                        acc.hGF += mg;
+                        acc.hGA += tg;
+                        acc.hCnt++;
+                      }
+                      if (isOpp) {
+                        const isOH = r.homeClub.id === opponent.id;
+                        const mg = isOH ? r.homeScore : r.awayScore;
+                        const tg = isOH ? r.awayScore : r.homeScore;
+                        if (mg > tg) acc.aW++;
+                        if (mg === tg) acc.aD++;
+                        if (mg < tg) acc.aL++;
+                        acc.aGF += mg;
+                        acc.aGA += tg;
+                        acc.aCnt++;
+                      }
+                      return acc;
+                    },
+                    { hW: 0, hD: 0, hL: 0, hGF: 0, hGA: 0, hCnt: 0, aW: 0, aD: 0, aL: 0, aGF: 0, aGA: 0, aCnt: 0 }
+                  );
+                  const homeSP = 30 + Math.round(seededRandom(currentClub.squadQuality * 17) * 60);
+                  const awaySP = 30 + Math.round(seededRandom(opponent.squadQuality * 19) * 60);
+                  return (
+                    <>
+                      <PreMatchReadinessGauge readiness={readiness} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <OpponentAnalysisRadar values={oppRadarValues} labels={oppRadarLabels} />
+                        <FormComparisonBars
+                          homeStats={[formStats.hW, formStats.hD, formStats.hL, formStats.hGF, formStats.hGA]}
+                          awayStats={[formStats.aW, formStats.aD, formStats.aL, formStats.aGF, formStats.aGA]}
+                          labels={['W', 'D', 'L', 'GF', 'GA']}
+                          homeName={currentClub.shortName || currentClub.name}
+                          awayName={opponent.shortName || opponent.name}
+                        />
+                      </div>
+                      <SetPieceThreatRing
+                        homeThreat={homeSP}
+                        awayThreat={awaySP}
+                        homeName={currentClub.shortName || currentClub.name}
+                        awayName={opponent.shortName || opponent.name}
+                      />
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </motion.div>
+
           {/* Head-to-Head History */}
           {(() => {
             const h2hResults = gameState.recentResults.filter(r =>
@@ -2882,6 +3403,68 @@ export default function MatchDay() {
                     </CardContent>
                   </Card>
                 </div>
+              </div>
+            </div>
+          </motion.div>
+          )}
+
+          {/* Web3 Gritty Futurism: Deep Match Intelligence */}
+          {preMatchAnalytics && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.38, duration: 0.3 }}
+            className="space-y-3"
+          >
+            <div className="bg-[#111111] border border-[#00E5FF]/10 overflow-hidden">
+              <div className="px-4 pt-3 pb-2 border-b border-[#00E5FF]/10">
+                <p className="text-[10px] text-[#00E5FF] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ fontFamily: W3_FONT }}>
+                  ◆ Deep Match Intelligence
+                </p>
+                <p className="text-[8px] text-[#666666] mt-0.5" style={{ fontFamily: W3_FONT }}>Probability modeling, historical trends, and positional analysis via Web3 data pipelines.</p>
+              </div>
+              <div className="p-3 space-y-3">
+                {(() => {
+                  const wp = preMatchAnalytics.winProb;
+                  const donutSegs = [
+                    { label: 'WIN', value: wp.win, color: '#CCFF00' },
+                    { label: 'DRAW', value: Math.round(wp.draw * 0.6), color: '#00E5FF' },
+                    { label: 'LOSS', value: wp.loss, color: '#FF5500' },
+                    { label: 'ET', value: Math.round(wp.draw * 0.4), color: '#888888' },
+                  ];
+                  const h2hRaw = gameState.recentResults.filter(r =>
+                    (r.homeClub.id === currentClub.id || r.awayClub.id === currentClub.id) &&
+                    (r.homeClub.id === opponent.id || r.awayClub.id === opponent.id)
+                  ).slice(0, 8);
+                  const paddedH2H = Array.from({ length: 8 }, (_, i) => {
+                    if (i < h2hRaw.length) {
+                      const r = h2hRaw[i];
+                      return { week: r.week, homeScore: r.homeScore, awayScore: r.awayScore, isPlayerHome: r.homeClub.id === currentClub.id };
+                    }
+                    const s = currentClub.squadQuality * (i + 1) * 7 + opponent.squadQuality * (i + 1) * 13;
+                    return { week: gameState.currentWeek - (8 - i), homeScore: Math.round(seededRandom(s) * 3), awayScore: Math.round(seededRandom(s + 1) * 3), isPlayerHome: seededRandom(s + 2) > 0.5 };
+                  });
+                  const matchupLabels = ['PAC', 'SHO', 'PAS', 'DEF', 'PHY'];
+                  const playerVals = [player.attributes.pace, player.attributes.shooting, player.attributes.passing, player.attributes.defending, player.attributes.physical];
+                  const oppVals = Array.from({ length: 5 }, (_, i) =>
+                    Math.max(30, Math.min(95, opponent.squadQuality - 10 + Math.round(seededRandom(opponent.squadQuality * (i + 3) * 11) * 20)))
+                  );
+                  const qd = currentClub.squadQuality - opponent.squadQuality;
+                  const posLabels = ['LWB', 'CB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'ST'];
+                  const posValues = Array.from({ length: 8 }, (_, i) =>
+                    Math.max(15, Math.min(95, Math.round(50 + qd * 0.3 + seededRandom(currentClub.squadQuality * (i + 1) * 7 + opponent.squadQuality * (i + 1) * 13) * 30 - 15)))
+                  );
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <MatchExpectationDonut segments={donutSegs} />
+                        <KeyPlayerMatchupRadar playerVals={playerVals} oppVals={oppVals} labels={matchupLabels} />
+                      </div>
+                      <HistoricalH2HTimeline results={paddedH2H} />
+                      <PositionalBattleArea values={posValues} labels={posLabels} />
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </motion.div>

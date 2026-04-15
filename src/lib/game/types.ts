@@ -714,7 +714,9 @@ export type GameScreen =
   | 'transfer_deadline_day_enhanced'
   | 'squad_rotation_enhanced'
   | 'media_interview_enhanced'
-  | 'sponsor_system_enhanced';
+  | 'sponsor_system_enhanced'
+  | 'career_events_enhanced'
+  | 'training_ground_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

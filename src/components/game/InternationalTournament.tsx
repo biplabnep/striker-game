@@ -1004,6 +1004,537 @@ function GdTrendChart({ gdPerDay, width = 280, height = 80 }: { gdPerDay: number
 }
 
 // ============================================================
+// Web3 "Gritty Futurism" SVG Visualization Components
+// ============================================================
+
+// 1. TournamentJourneyTimeline — Horizontal timeline with 8 nodes
+function TournamentJourneyTimeline({ nationName, caps, goals, seed }: { nationName: string; caps: number; goals: number; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_journey_' + seed);
+  const rounds = ['Qualifiers', 'Group', 'R16', 'QF', 'SF', '3rd Place', 'Final', 'Winner'];
+  const reachedIdx = Math.min(
+    Math.floor(caps / 8) + Math.floor(goals / 4),
+    rounds.length - 1
+  );
+  const svgW = 300;
+  const svgH = 80;
+  const padX = 20;
+  const nodeSpacing = (svgW - padX * 2) / (rounds.length - 1);
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#FF5500' }}>
+        Tournament Journey
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Progression through international rounds</p>
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        <line x1={padX} y1="35" x2={svgW - padX} y2="35" stroke="#333333" strokeWidth="2" />
+        {rounds.map((rnd, i) => {
+          const cx = padX + i * nodeSpacing;
+          const reached = i <= reachedIdx;
+          const isMilestone = i === reachedIdx || i === 0;
+          return (
+            <g key={rnd}>
+              <circle cx={cx} cy="35" r={isMilestone ? 6 : 4} fill={reached ? '#CCFF00' : '#1a1a1a'} stroke={reached ? '#CCFF00' : '#333333'} strokeWidth="1.5" />
+              {reached && i < reachedIdx && (
+                <line x1={cx} y1="35" x2={cx + nodeSpacing} y2="35" stroke="#FF5500" strokeWidth="2" strokeLinecap="round" />
+              )}
+              <text x={cx} y="55" textAnchor="middle" fill={reached ? '#c9d1d9' : '#555555'} fontSize="6">{rnd}</text>
+              {isMilestone && reached && (
+                <text x={cx} y="22" textAnchor="middle" fill="#CCFF00" fontSize="7" fontWeight="700">{rnd}</text>
+              )}
+            </g>
+          );
+        })}
+        <text x={padX} y={svgH - 4} fill="#666666" fontSize="7">Reached: {rounds[reachedIdx]}</text>
+      </svg>
+    </div>
+  );
+}
+
+// 2. NationalTeamPerformanceRadar — 5-axis radar (Attack/Defense/Midfield/Teamwork/Discipline)
+function NationalTeamPerformanceRadar({ nationName, seed }: { nationName: string; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_perf_radar_' + seed);
+  const axes = ['Attack', 'Defense', 'Midfield', 'Teamwork', 'Discipline'];
+  const values = axes.map((_, i) => 0.35 + sr(baseSeed + i) * 0.65);
+  const cx = 150;
+  const cy = 105;
+  const maxR = 70;
+  const levels = [0.25, 0.5, 0.75, 1.0];
+  const angleStep = (2 * Math.PI) / axes.length;
+  const startAngle = -Math.PI / 2;
+
+  const dataPoints = values.map((v, i) => ({
+    x: cx + Math.cos(startAngle + i * angleStep) * maxR * v,
+    y: cy + Math.sin(startAngle + i * angleStep) * maxR * v,
+  }));
+  const dataPath = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#00E5FF' }}>
+        National Team Performance
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>5-axis radar breakdown</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        {levels.map((lv) => (
+          <polygon key={lv}
+            points={axes.map((_, i) => {
+              const px = cx + Math.cos(startAngle + i * angleStep) * maxR * lv;
+              const py = cy + Math.sin(startAngle + i * angleStep) * maxR * lv;
+              return `${px},${py}`;
+            }).join(' ')}
+            fill="none" stroke="#222222" strokeWidth="0.5"/>
+        ))}
+        {axes.map((_, i) => (
+          <line key={i} x1={cx} y1={cy} x2={cx + Math.cos(startAngle + i * angleStep) * maxR} y2={cy + Math.sin(startAngle + i * angleStep) * maxR} stroke="#222222" strokeWidth="0.5" />
+        ))}
+        <path d={dataPath} fill="#00E5FF" fillOpacity="0.12" stroke="#00E5FF" strokeWidth="1.5" strokeLinejoin="round" />
+        {dataPoints.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="#0a0a0a" stroke="#00E5FF" strokeWidth="1.5" />
+        ))}
+        {axes.map((label, i) => {
+          const lx = cx + Math.cos(startAngle + i * angleStep) * (maxR + 14);
+          const ly = cy + Math.sin(startAngle + i * angleStep) * (maxR + 14);
+          return (
+            <text key={label} x={lx} y={ly + 3} textAnchor="middle" fill="#c9d1d9" fontSize="8">{label}</text>
+          );
+        })}
+        {values.map((v, i) => {
+          const lx = cx + Math.cos(startAngle + i * angleStep) * (maxR + 24);
+          const ly = cy + Math.sin(startAngle + i * angleStep) * (maxR + 24);
+          return (
+            <text key={`val-${i}`} x={lx} y={ly + 3} textAnchor="middle" fill="#00E5FF" fontSize="7" fontWeight="700">{Math.round(v * 100)}</text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 3. InternationalGoalsArea — 8-point area chart showing goals scored
+function InternationalGoalsArea({ nationName, goals, seed }: { nationName: string; goals: number; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_goals_area_' + seed);
+  const dataPoints = Array.from({ length: 8 }, (_, i) => Math.max(0, Math.floor(sr(baseSeed + i) * (goals + 2))));
+  const pad = { t: 15, b: 25, l: 30, r: 10 };
+  const cW = 300 - pad.l - pad.r;
+  const cH = 200 - pad.t - pad.b;
+  const maxVal = Math.max(...dataPoints, 1);
+  const range = maxVal || 1;
+  const pts = dataPoints.map((v, i) => ({
+    x: pad.l + (i / 7) * cW,
+    y: pad.t + cH - (v / range) * cH,
+  }));
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = `${linePath} L${pts[7].x},${pad.t + cH} L${pts[0].x},${pad.t + cH} Z`;
+  const matchLabels = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#FF5500' }}>
+        International Goals
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Goals scored across recent matches</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        {[0, Math.floor(maxVal / 2), maxVal].map(v => {
+          const y = pad.t + cH - (v / range) * cH;
+          return (
+            <g key={`grid-${v}`}>
+              <line x1={pad.l} y1={y} x2={300 - pad.r} y2={y} stroke="#222222" strokeWidth="0.5" />
+              <text x={pad.l - 4} y={y + 3} textAnchor="end" fill="#666666" fontSize="7">{v}</text>
+            </g>
+          );
+        })}
+        <path d={areaPath} fill="#FF5500" fillOpacity="0.2" />
+        <path d={linePath} fill="none" stroke="#FF5500" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="3" fill="#0a0a0a" stroke="#FF5500" strokeWidth="1.5" />
+            <text x={p.x} y={200 - 6} textAnchor="middle" fill="#666666" fontSize="7">{matchLabels[i]}</text>
+          </g>
+        ))}
+        {pts.map((p, i) => (
+          <text key={`val-${i}`} x={p.x} y={p.y - 7} textAnchor="middle" fill="#c9d1d9" fontSize="7">{dataPoints[i]}</text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// 4. OpponentConfederationDonut — 5-segment donut via .reduce()
+function OpponentConfederationDonut({ nationName, seed }: { nationName: string; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_confed_donut_' + seed);
+  const rawOpponents = ['UEFA', 'CONMEBOL', 'CONCACAF', 'CAF', 'AFC'];
+  const segments = rawOpponents.map((conf, i) => ({
+    label: conf,
+    value: Math.max(1, Math.floor(sr(baseSeed + i) * 8) + 1),
+  }));
+  const segTotal = segments.reduce((a, s) => a + s.value, 0);
+  const donutR = 55;
+  const donutC = 2 * Math.PI * donutR;
+  const cx = 90;
+  const cy = 100;
+  let cumulative = 0;
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#00E5FF' }}>
+        Opponent Confederations
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Breakdown by confederation faced</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        <circle cx={cx} cy={cy} r={donutR} fill="none" stroke="#1a1a1a" strokeWidth="16" />
+        {segments.map((seg) => {
+          const pct = seg.value / segTotal;
+          const dashLen = pct * donutC;
+          const dashOff = donutC * 0.25 - cumulative * donutC;
+          cumulative += pct;
+          return (
+            <circle key={seg.label} cx={cx} cy={cy} r={donutR} fill="none" stroke="#00E5FF" strokeWidth="16"
+              strokeDasharray={`${dashLen} ${donutC - dashLen}`} strokeDashoffset={dashOff} strokeLinecap="butt" />
+          );
+        })}
+        <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="700">{segTotal}</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#888888" fontSize="8">matches</text>
+        {segments.map((seg, i) => {
+          const ly = 40 + i * 32;
+          const segPct = Math.round((seg.value / segTotal) * 100);
+          return (
+            <g key={seg.label + '-legend'}>
+              <circle cx="210" cy={ly} r="5" fill="#00E5FF" fillOpacity={0.3 + i * 0.15} stroke="#00E5FF" strokeWidth="1" />
+              <text x="222" y={ly + 4} fill="#c9d1d9" fontSize="9">{seg.label}</text>
+              <text x="290" y={ly + 4} textAnchor="end" fill="#666666" fontSize="8">{seg.value} ({segPct}%)</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 5. WorldRankingProgressionLine — 8-point line chart showing FIFA ranking
+function WorldRankingProgressionLine({ nationName, seed }: { nationName: string; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_rank_line_' + seed);
+  const baseRank = getFifaRanking(nationName);
+  const rankings = Array.from({ length: 8 }, (_, i) => {
+    const variation = Math.floor(sr(baseSeed + i) * 40) - 20;
+    return Math.max(1, baseRank + variation);
+  });
+  const months = ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov', 'Jan', 'Mar'];
+  const pad = { t: 15, b: 25, l: 35, r: 10 };
+  const cW = 300 - pad.l - pad.r;
+  const cH = 200 - pad.t - pad.b;
+  const minRank = Math.max(1, Math.min(...rankings) - 3);
+  const maxRank = Math.max(...rankings) + 3;
+  const rankRange = maxRank - minRank || 1;
+  const pts = rankings.map((r, i) => ({
+    x: pad.l + (i / 7) * cW,
+    y: pad.t + cH - ((r - minRank) / rankRange) * cH,
+  }));
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#CCFF00' }}>
+        FIFA Ranking Trajectory
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>8-period ranking progression</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        {[minRank, Math.floor((minRank + maxRank) / 2), maxRank].map(v => {
+          const y = pad.t + cH - ((v - minRank) / rankRange) * cH;
+          return (
+            <g key={`grid-${v}`}>
+              <line x1={pad.l} y1={y} x2={300 - pad.r} y2={y} stroke="#222222" strokeWidth="0.5" />
+              <text x={pad.l - 4} y={y + 3} textAnchor="end" fill="#666666" fontSize="7">#{v}</text>
+            </g>
+          );
+        })}
+        <path d={linePath} fill="none" stroke="#CCFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="3.5" fill="#0a0a0a" stroke="#CCFF00" strokeWidth="1.5" />
+            <text x={p.x} y={p.y - 7} textAnchor="middle" fill="#c9d1d9" fontSize="6">#{rankings[i]}</text>
+            <text x={p.x} y={200 - 6} textAnchor="middle" fill="#666666" fontSize="7">{months[i]}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// 6. TrophyAspirationBars — 5 horizontal bars showing probability per stage
+function TrophyAspirationBars({ nationName, caps, goals, seed }: { nationName: string; caps: number; goals: number; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_trophy_bars_' + seed);
+  const stages = ['Group Stage', 'Quarter-Final', 'Semi-Final', 'Final', 'Winner'];
+  const baseProb = Math.min(95, 30 + caps * 1.2 + goals * 2);
+  const probabilities = stages.map((_, i) =>
+    Math.max(5, Math.min(100, Math.round(baseProb - i * 18 + Math.floor(sr(baseSeed + i) * 10 - 5))))
+  );
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#FF5500' }}>
+        Trophy Aspiration
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Probability of reaching each stage</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        {stages.map((stage, i) => {
+          const barMaxW = 180;
+          const barW = Math.max(4, (probabilities[i] / 100) * barMaxW);
+          const barY = 10 + i * 36;
+          return (
+            <g key={stage}>
+              <text x="80" y={barY + 12} textAnchor="end" fill="#c9d1d9" fontSize="9">{stage}</text>
+              <rect x="86" y={barY} width={barMaxW} height="16" rx="2" fill="#1a1a1a" />
+              <rect x="86" y={barY} width={barW} height="16" rx="2" fill="#FF5500" fillOpacity="0.75" />
+              <text x={86 + barW + 6} y={barY + 12} fill="#FF5500" fontSize="9" fontWeight="700">{probabilities[i]}%</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 7. InternationalExperienceRing — Circular ring (0-100) for international cap level
+function InternationalExperienceRing({ caps }: { caps: number }) {
+  const value = Math.min(caps, 100);
+  const ringR = 60;
+  const ringC = 2 * Math.PI * ringR;
+  const pct = value / 100;
+  const dashArr = `${pct * ringC} ${ringC}`;
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#CCFF00' }}>
+        International Experience
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Cap count and experience level</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        <circle cx="150" cy="100" r={ringR} fill="none" stroke="#1a1a1a" strokeWidth="10" />
+        <circle cx="150" cy="100" r={ringR} fill="none" stroke="#CCFF00" strokeWidth="10"
+          strokeDasharray={dashArr} strokeDashoffset={ringC * 0.25} strokeLinecap="round" />
+        <text x="150" y="95" textAnchor="middle" fill="#CCFF00" fontSize="28" fontWeight="700">{value}</text>
+        <text x="150" y="112" textAnchor="middle" fill="#888888" fontSize="9">of 100 caps</text>
+        <text x="150" y="175" textAnchor="middle" fill={value >= 75 ? '#CCFF00' : '#666666'} fontSize="10" fontWeight="700">
+          {value >= 100 ? 'LEGENDARY' : value >= 75 ? 'VETERAN' : value >= 50 ? 'ESTABLISHED' : value >= 25 ? 'RISING' : 'DEBUTANT'}
+        </text>
+        {[0, 25, 50, 75, 100].map(mark => {
+          const angle = -Math.PI / 2 + (mark / 100) * 2 * Math.PI;
+          const mx = 150 + Math.cos(angle) * (ringR + 16);
+          const my = 100 + Math.sin(angle) * (ringR + 16);
+          return (
+            <text key={mark} x={mx} y={my + 3} textAnchor="middle" fill="#444444" fontSize="6">{mark}</text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 8. ContinentalComparisonRadar — 5-axis radar across confederations
+function ContinentalComparisonRadar({ nationName, seed }: { nationName: string; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_continental_' + seed);
+  const confeds = ['UEFA', 'CONMEBOL', 'CONCACAF', 'CAF', 'AFC'];
+  const values = confeds.map((_, i) => 0.25 + sr(baseSeed + i) * 0.75);
+  const cx = 150;
+  const cy = 105;
+  const maxR = 65;
+  const levels = [0.25, 0.5, 0.75, 1.0];
+  const angleStep = (2 * Math.PI) / confeds.length;
+  const startAngle = -Math.PI / 2;
+
+  const dataPoints = values.map((v, i) => ({
+    x: cx + Math.cos(startAngle + i * angleStep) * maxR * v,
+    y: cy + Math.sin(startAngle + i * angleStep) * maxR * v,
+  }));
+  const dataPath = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#00E5FF' }}>
+        Continental Comparison
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Performance across confederations</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        {levels.map((lv) => (
+          <polygon key={lv}
+            points={confeds.map((_, i) => {
+              const px = cx + Math.cos(startAngle + i * angleStep) * maxR * lv;
+              const py = cy + Math.sin(startAngle + i * angleStep) * maxR * lv;
+              return `${px},${py}`;
+            }).join(' ')}
+            fill="none" stroke="#1a1a1a" strokeWidth="0.5"/>
+        ))}
+        {confeds.map((_, i) => (
+          <line key={i} x1={cx} y1={cy} x2={cx + Math.cos(startAngle + i * angleStep) * maxR} y2={cy + Math.sin(startAngle + i * angleStep) * maxR} stroke="#1a1a1a" strokeWidth="0.5" />
+        ))}
+        <path d={dataPath} fill="#00E5FF" fillOpacity="0.1" stroke="#00E5FF" strokeWidth="1.5" strokeLinejoin="round" />
+        {dataPoints.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="#0a0a0a" stroke="#00E5FF" strokeWidth="1.5" />
+        ))}
+        {confeds.map((label, i) => {
+          const lx = cx + Math.cos(startAngle + i * angleStep) * (maxR + 16);
+          const ly = cy + Math.sin(startAngle + i * angleStep) * (maxR + 16);
+          return (
+            <text key={label} x={lx} y={ly + 3} textAnchor="middle" fill="#c9d1d9" fontSize="8">{label}</text>
+          );
+        })}
+        {values.map((v, i) => {
+          const lx = cx + Math.cos(startAngle + i * angleStep) * (maxR + 28);
+          const ly = cy + Math.sin(startAngle + i * angleStep) * (maxR + 28);
+          return (
+            <text key={`v-${i}`} x={lx} y={ly + 3} textAnchor="middle" fill="#00E5FF" fontSize="7" fontWeight="700">{Math.round(v * 100)}</text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 9. InternationalFormGauge — Semi-circular gauge (0-100)
+function InternationalFormGauge({ nationName, caps, seed }: { nationName: string; caps: number; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_form_gauge_' + seed);
+  const formScore = Math.max(10, Math.min(100, Math.round(40 + sr(baseSeed) * 50 + caps * 0.3)));
+  const gaugeR = 70;
+  const gaugeCx = 150;
+  const gaugeCy = 140;
+  const startAngle = Math.PI;
+  const endAngle = 0;
+  const pct = formScore / 100;
+  const fillAngle = startAngle + pct * (endAngle - startAngle);
+  const arcPath = `M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 ${pct > 0.5 ? 1 : 0} 1 ${gaugeCx + Math.cos(fillAngle) * gaugeR} ${gaugeCy - Math.sin(fillAngle) * gaugeR}`;
+  const bgArcPath = `M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 1 1 ${gaugeCx + gaugeR} ${gaugeCy}`;
+  const label = formScore >= 80 ? 'Elite' : formScore >= 60 ? 'Good' : formScore >= 40 ? 'Average' : 'Poor';
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#FF5500' }}>
+        International Form
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Current international form rating</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        <path d={bgArcPath} fill="none" stroke="#1a1a1a" strokeWidth="12" strokeLinecap="round" />
+        {pct > 0.01 && (
+          <path d={arcPath} fill="none" stroke="#FF5500" strokeWidth="12" strokeLinecap="round" />
+        )}
+        <text x={gaugeCx} y={gaugeCy - 20} textAnchor="middle" fill="#FF5500" fontSize="28" fontWeight="700">{formScore}</text>
+        <text x={gaugeCx} y={gaugeCy - 4} textAnchor="middle" fill="#888888" fontSize="9">{label}</text>
+        <text x={gaugeCx - gaugeR - 5} y={gaugeCy + 14} textAnchor="middle" fill="#444444" fontSize="7">0</text>
+        <text x={gaugeCx + gaugeR + 5} y={gaugeCy + 14} textAnchor="middle" fill="#444444" fontSize="7">100</text>
+        {[25, 50, 75].map(mark => {
+          const markAngle = Math.PI + (mark / 100) * Math.PI;
+          const mx = gaugeCx + Math.cos(markAngle) * (gaugeR + 14);
+          const my = gaugeCy - Math.sin(markAngle) * (gaugeR + 14);
+          return (
+            <text key={mark} x={mx} y={my + 3} textAnchor="middle" fill="#444444" fontSize="6">{mark}</text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 10. CallUpFrequencyBars — 5 horizontal bars by competition type
+function CallUpFrequencyBars({ nationName, caps, seed }: { nationName: string; caps: number; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_callup_' + seed);
+  const competitions = ['Friendly', 'Qualifiers', 'Group Stage', 'Knockout', 'Finals'];
+  const counts = competitions.map((_, i) =>
+    Math.max(1, Math.floor(sr(baseSeed + i) * caps * 0.4) + (i < 2 ? 3 : 0))
+  );
+  const maxCount = Math.max(...counts, 1);
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#CCFF00' }}>
+        Call-Up Frequency
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Appearances by competition type</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        {competitions.map((comp, i) => {
+          const barMaxW = 160;
+          const barW = Math.max(4, (counts[i] / maxCount) * barMaxW);
+          const barY = 8 + i * 36;
+          return (
+            <g key={comp}>
+              <text x="85" y={barY + 12} textAnchor="end" fill="#c9d1d9" fontSize="9">{comp}</text>
+              <rect x="90" y={barY} width={barMaxW} height="18" rx="2" fill="#1a1a1a" />
+              <rect x="90" y={barY} width={barW} height="18" rx="2" fill="#CCFF00" fillOpacity="0.7" />
+              <text x={90 + barW + 6} y={barY + 13} fill="#CCFF00" fontSize="9" fontWeight="700">{counts[i]}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 11. InternationalCareerDonut — 4-segment donut via .reduce()
+function InternationalCareerDonut({ nationName, caps, seed }: { nationName: string; caps: number; seed: number }) {
+  const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+  const baseSeed = hashCode(nationName + '_career_donut_' + seed);
+  const rawAppearences = [
+    { label: 'Started', seedOffset: 0 },
+    { label: 'Benched', seedOffset: 1 },
+    { label: 'Subbed On', seedOffset: 2 },
+    { label: 'Unused', seedOffset: 3 },
+  ];
+  const segments = rawAppearences.map(a => ({
+    label: a.label,
+    value: Math.max(1, Math.floor(sr(baseSeed + a.seedOffset) * caps * 0.4) + 1),
+  }));
+  const segTotal = segments.reduce((a, s) => a + s.value, 0);
+  const donutR = 55;
+  const donutC = 2 * Math.PI * donutR;
+  const cx = 90;
+  const cy = 100;
+  let cumulative = 0;
+
+  return (
+    <div className="bg-[#111111] border border-[#333333] p-3">
+      <h4 className="text-[10px] font-bold mb-2" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace", color: '#00E5FF' }}>
+        Career Appearance Breakdown
+      </h4>
+      <p className="text-[9px] mb-2" style={{ color: '#888888' }}>Started / Benched / Subbed / Unused</p>
+      <svg viewBox="0 0 300 200" className="w-full" style={{ fontFamily: "'Monaspace Neon', 'Space Grotesk', monospace" }}>
+        <circle cx={cx} cy={cy} r={donutR} fill="none" stroke="#1a1a1a" strokeWidth="16" />
+        {segments.map((seg) => {
+          const pct = seg.value / segTotal;
+          const dashLen = pct * donutC;
+          const dashOff = donutC * 0.25 - cumulative * donutC;
+          cumulative += pct;
+          return (
+            <circle key={seg.label} cx={cx} cy={cy} r={donutR} fill="none" stroke="#00E5FF" strokeWidth="16"
+              strokeDasharray={`${dashLen} ${donutC - dashLen}`} strokeDashoffset={dashOff} strokeLinecap="butt" />
+          );
+        })}
+        <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="700">{segTotal}</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#888888" fontSize="8">total</text>
+        {segments.map((seg, i) => {
+          const ly = 30 + i * 38;
+          const segPct = Math.round((seg.value / segTotal) * 100);
+          return (
+            <g key={seg.label + '-cl'}>
+              <circle cx="210" cy={ly} r="5" fill="#00E5FF" fillOpacity={0.2 + i * 0.2} stroke="#00E5FF" strokeWidth="1" />
+              <text x="222" y={ly + 4} fill="#c9d1d9" fontSize="9">{seg.label}</text>
+              <text x="290" y={ly + 4} textAnchor="end" fill="#666666" fontSize="8">{seg.value} ({segPct}%)</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
 // Sub-section components
 // ============================================================
 
@@ -2406,6 +2937,16 @@ export default function InternationalTournament() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
             <RoadToQualification caps={tournamentData.caps} nationName={nationInfo.name} season={gameState.currentSeason} />
           </motion.div>
+
+          {/* Web3: TournamentJourneyTimeline */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+            <TournamentJourneyTimeline nationName={nationInfo.name} caps={tournamentData.caps} goals={tournamentData.goals} seed={tournamentData.seed} />
+          </motion.div>
+
+          {/* Web3: TrophyAspirationBars */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+            <TrophyAspirationBars nationName={nationInfo.name} caps={tournamentData.caps} goals={tournamentData.goals} seed={tournamentData.seed} />
+          </motion.div>
         </TabsContent>
 
         {/* Bracket Tab */}
@@ -2445,6 +2986,16 @@ export default function InternationalTournament() {
               goals={tournamentData.goals}
             />
           </motion.div>
+
+          {/* Web3: InternationalExperienceRing */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+            <InternationalExperienceRing caps={tournamentData.caps} />
+          </motion.div>
+
+          {/* Web3: InternationalCareerDonut */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+            <InternationalCareerDonut nationName={nationInfo.name} caps={tournamentData.caps} seed={tournamentData.seed} />
+          </motion.div>
         </TabsContent>
 
         {/* Match Tab */}
@@ -2459,6 +3010,16 @@ export default function InternationalTournament() {
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
             <PlayerTournamentStats caps={tournamentData.caps} goals={tournamentData.goals} assists={tournamentData.assists} />
+          </motion.div>
+
+          {/* Web3: InternationalGoalsArea */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+            <InternationalGoalsArea nationName={nationInfo.name} goals={tournamentData.goals} seed={tournamentData.seed} />
+          </motion.div>
+
+          {/* Web3: InternationalFormGauge */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+            <InternationalFormGauge nationName={nationInfo.name} caps={tournamentData.caps} seed={tournamentData.seed} />
           </motion.div>
         </TabsContent>
 
@@ -2484,6 +3045,21 @@ export default function InternationalTournament() {
               />
             </motion.div>
           )}
+
+          {/* Web3: NationalTeamPerformanceRadar */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+            <NationalTeamPerformanceRadar nationName={nationInfo.name} seed={tournamentData.seed} />
+          </motion.div>
+
+          {/* Web3: ContinentalComparisonRadar */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+            <ContinentalComparisonRadar nationName={nationInfo.name} seed={tournamentData.seed} />
+          </motion.div>
+
+          {/* Web3: OpponentConfederationDonut */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+            <OpponentConfederationDonut nationName={nationInfo.name} seed={tournamentData.seed} />
+          </motion.div>
         </TabsContent>
 
         {/* Progress Tab */}
@@ -2497,6 +3073,16 @@ export default function InternationalTournament() {
               knockoutMatches={tournamentData.euroBracket}
               history={tournamentData.history}
             />
+          </motion.div>
+
+          {/* Web3: WorldRankingProgressionLine */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+            <WorldRankingProgressionLine nationName={nationInfo.name} seed={tournamentData.seed} />
+          </motion.div>
+
+          {/* Web3: CallUpFrequencyBars */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+            <CallUpFrequencyBars nationName={nationInfo.name} caps={tournamentData.caps} seed={tournamentData.seed} />
           </motion.div>
         </TabsContent>
 
