@@ -2453,6 +2453,631 @@ function FanSectionDisplay({ data }: { data: ReturnType<typeof generateFanSectio
 }
 
 // ============================================================
+// SVG Helper: ChantPopularityRadar — 5-axis radar
+// ============================================================
+function ChantPopularityRadar({ chants }: { chants: Chant[] }) {
+  const axes = ['Classic', 'Modern', 'Tribal', 'Ironic', 'Epic'] as const;
+  const cx = 100;
+  const cy = 92;
+  const maxR = 66;
+  const toRad = (i: number) => ((i * 72) - 90) * Math.PI / 180;
+  const values = axes.reduce((acc, axis, i) => {
+    const base = chants.filter(c => c.category === axis).length;
+    const extra = ((i * 17 + chants.length * 3 + i * i * 7) % 40);
+    return [...acc, Math.min(100, base * 18 + extra + 22)];
+  }, [] as number[]);
+  const polyPts = values.reduce((acc, v, i) => {
+    const r = (v / 100) * maxR;
+    return [...acc, `${(cx + r * Math.cos(toRad(i))).toFixed(1)},${(cy + r * Math.sin(toRad(i))).toFixed(1)}`];
+  }, [] as string[]).join(' ');
+  const gridLevels = [1, 0.75, 0.5, 0.25];
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Chant Popularity Radar</p>
+      <svg viewBox="0 0 200 190" className="w-48 h-44 mx-auto">
+        {gridLevels.map((level, li) => {
+          const pts = axes.reduce((a, _, ai) => {
+            const r = maxR * level;
+            return [...a, `${(cx + r * Math.cos(toRad(ai))).toFixed(1)},${(cy + r * Math.sin(toRad(ai))).toFixed(1)}`];
+          }, [] as string[]).join(' ');
+          return <polygon key={`gl-${li}`} points={pts} fill="none" stroke="#21262d" strokeWidth="0.7" />;
+        })}
+        {axes.map((label, i) => {
+          const ex = cx + maxR * Math.cos(toRad(i));
+          const ey = cy + maxR * Math.sin(toRad(i));
+          const anchor = Math.cos(toRad(i)) > 0.1 ? 'start' : Math.cos(toRad(i)) < -0.1 ? 'end' : 'middle';
+          const tx = ex + (Math.cos(toRad(i)) > 0.1 ? 5 : Math.cos(toRad(i)) < -0.1 ? -5 : 0);
+          const ty = ey + (Math.sin(toRad(i)) > 0.1 ? 13 : Math.sin(toRad(i)) < -0.1 ? -4 : 3);
+          return (
+            <g key={label}>
+              <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="#21262d" strokeWidth="0.5" />
+              <circle cx={ex} cy={ey} r="1.5" fill="#30363d" />
+              <text x={tx} y={ty} fill="#8b949e" fontSize="6.5" textAnchor={anchor}>{label}</text>
+            </g>
+          );
+        })}
+        <polygon points={polyPts} fill="#FF5500" fillOpacity="0.12" stroke="#FF5500" strokeWidth="1.5" />
+        {values.map((v, i) => {
+          const r = (v / 100) * maxR;
+          return (
+            <motion.circle
+              key={`rp-${i}`}
+              cx={cx + r * Math.cos(toRad(i))}
+              cy={cy + r * Math.sin(toRad(i))}
+              r="2.5"
+              fill="#FF5500"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: i * 0.06 }}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: FanSegmentDonut — 5-segment donut
+// ============================================================
+function FanSegmentDonut({ total, seed }: { total: number; seed: number }) {
+  const segments = [
+    { label: 'Ultras', pct: 32 },
+    { label: 'Families', pct: 24 },
+    { label: 'Casuals', pct: 20 },
+    { label: 'Away', pct: 16 },
+    { label: 'Corporate', pct: 8 },
+  ];
+  const colors = ['#FF5500', '#CCFF00', '#00E5FF', '#666666', '#8b949e'];
+  const cx = 60;
+  const cy = 55;
+  const outerR = 42;
+  const innerR = 24;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const adjusted = segments.reduce((acc, seg, i) => {
+    const shift = ((seed + i * 11) % 10) - 5;
+    return [...acc, { ...seg, pct: Math.max(3, seg.pct + shift) }];
+  }, [] as typeof segments);
+  const sumPct = adjusted.reduce((s, a) => s + a.pct, 0);
+  const arcs = adjusted.reduce<{ pathD: string; color: string; label: string; value: number; endDeg: number }[]>(
+    (acc, item, idx) => {
+      const startDeg = acc.length > 0 ? acc[acc.length - 1].endDeg : 0;
+      const sweep = (item.pct / sumPct) * 360;
+      const endDeg = startDeg + sweep;
+      const oS = { x: cx + outerR * Math.cos(toRad(startDeg)), y: cy + outerR * Math.sin(toRad(startDeg)) };
+      const oE = { x: cx + outerR * Math.cos(toRad(endDeg)), y: cy + outerR * Math.sin(toRad(endDeg)) };
+      const iE = { x: cx + innerR * Math.cos(toRad(endDeg)), y: cy + innerR * Math.sin(toRad(endDeg)) };
+      const iS = { x: cx + innerR * Math.cos(toRad(startDeg)), y: cy + innerR * Math.sin(toRad(startDeg)) };
+      const la = sweep > 180 ? 1 : 0;
+      const p = `M ${oS.x.toFixed(1)} ${oS.y.toFixed(1)} A ${outerR} ${outerR} 0 ${la} 1 ${oE.x.toFixed(1)} ${oE.y.toFixed(1)} L ${iE.x.toFixed(1)} ${iE.y.toFixed(1)} A ${innerR} ${innerR} 0 ${la} 0 ${iS.x.toFixed(1)} ${iS.y.toFixed(1)} Z`;
+      const count = Math.round(total * item.pct / sumPct);
+      return [...acc, { pathD: p, color: colors[idx], label: item.label, value: count, endDeg }];
+    },
+    []
+  );
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Fan Segments</p>
+      <svg viewBox="0 0 120 130" className="w-32 h-36 mx-auto">
+        {arcs.map((arc, i) => (
+          <motion.path
+            key={arc.label}
+            d={arc.pathD}
+            fill={arc.color}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.4, delay: i * 0.07 }}
+          />
+        ))}
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="13" fontWeight="bold">{total}</text>
+        <text x={cx} y={cy + 9} textAnchor="middle" fill="#8b949e" fontSize="7">fans</text>
+        {arcs.map((arc, i) => {
+          const lx = i < 3 ? 4 : 62;
+          const ly = 100 + (i % 3) * 10;
+          return (
+            <g key={`lg-${arc.label}`}>
+              <rect x={lx} y={ly} width="6" height="6" rx="1" fill={arc.color} opacity="0.85" />
+              <text x={lx + 9} y={ly + 5.5} fill="#8b949e" fontSize="5.5">{arc.label} ({arc.value})</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: ChantEnergyAreaChart — 8-pt area chart
+// ============================================================
+function ChantEnergyAreaChart({ values }: { values: number[] }) {
+  const cx = 16;
+  const cy = 90;
+  const chartW = 228;
+  const chartH = 64;
+  const pts = values.reduce((acc, v, i) => {
+    const x = cx + (i / Math.max(values.length - 1, 1)) * chartW;
+    const y = cy - (v / 100) * chartH;
+    return [...acc, { x, y }];
+  }, [] as { x: number; y: number }[]);
+  const areaPath = pts.reduce((acc, pt, i) => {
+    if (i === 0) return `M ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+    return `${acc} L ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+  }, '');
+  const closedArea = `${areaPath} L ${pts[pts.length - 1].x.toFixed(1)} ${cy} L ${pts[0].x.toFixed(1)} ${cy} Z`;
+  const linePath = pts.reduce((acc, pt, i) => {
+    if (i === 0) return `M ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+    return `${acc} L ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+  }, '');
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Chant Energy Over Time</p>
+      <svg viewBox="0 0 260 105" className="w-full">
+        {[0, 25, 50, 75, 100].map((tick) => {
+          const y = cy - (tick / 100) * chartH;
+          return (
+            <g key={`tk-${tick}`}>
+              <line x1={cx} y1={y} x2={cx + chartW} y2={y} stroke="#21262d" strokeWidth="0.5" />
+              <text x={cx - 3} y={y + 2.5} fill="#484f58" fontSize="5.5" textAnchor="end">{tick}</text>
+            </g>
+          );
+        })}
+        <line x1={cx} y1={cy} x2={cx + chartW} y2={cy} stroke="#30363d" strokeWidth="1" />
+        <motion.path
+          d={closedArea}
+          fill="#00E5FF"
+          fillOpacity="0.2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        <motion.path
+          d={linePath}
+          fill="none"
+          stroke="#00E5FF"
+          strokeWidth="1.5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        />
+        {pts.map((pt, i) => (
+          <motion.circle
+            key={`ep-${i}`}
+            cx={pt.x}
+            cy={pt.y}
+            r="2.5"
+            fill="#00E5FF"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25, delay: 0.1 + i * 0.05 }}
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: TifoCreativityGauge — semi-circular gauge
+// ============================================================
+function TifoCreativityGauge({ score }: { score: number }) {
+  const cx = 80;
+  const cy = 72;
+  const r = 52;
+  const sw = 9;
+  const startAngle = -180;
+  const endAngle = 0;
+  const scoreAngle = startAngle + (score / 100) * (endAngle - startAngle);
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const bgS = { x: cx + r * Math.cos(toRad(startAngle)), y: cy + r * Math.sin(toRad(startAngle)) };
+  const bgE = { x: cx + r * Math.cos(toRad(endAngle)), y: cy + r * Math.sin(toRad(endAngle)) };
+  const bgArc = `M ${bgS.x.toFixed(1)} ${bgS.y.toFixed(1)} A ${r} ${r} 0 0 1 ${bgE.x.toFixed(1)} ${bgE.y.toFixed(1)}`;
+  const valE = { x: cx + r * Math.cos(toRad(scoreAngle)), y: cy + r * Math.sin(toRad(scoreAngle)) };
+  const sweep = Math.abs(scoreAngle - startAngle);
+  const la = sweep > 180 ? 1 : 0;
+  const valArc = `M ${bgS.x.toFixed(1)} ${bgS.y.toFixed(1)} A ${r} ${r} 0 ${la} 1 ${valE.x.toFixed(1)} ${valE.y.toFixed(1)}`;
+  const ticks = [0, 25, 50, 75, 100];
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Tifo Creativity</p>
+      <svg viewBox="0 0 160 90" className="w-40 h-24 mx-auto">
+        <path d={bgArc} fill="none" stroke="#21262d" strokeWidth={sw} strokeLinecap="round" />
+        <motion.path
+          d={valArc}
+          fill="none"
+          stroke="#CCFF00"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7 }}
+        />
+        {ticks.map((tick) => {
+          const angle = startAngle + (tick / 100) * (endAngle - startAngle);
+          const tx = cx + (r + 14) * Math.cos(toRad(angle));
+          const ty = cy + (r + 14) * Math.sin(toRad(angle));
+          return (
+            <text key={`tick-${tick}`} x={tx} y={ty + 3} textAnchor="middle" fill="#484f58" fontSize="6">
+              {tick}
+            </text>
+          );
+        })}
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="#c9d1d9" fontSize="18" fontWeight="bold">{score}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill="#8b949e" fontSize="7">/ 100</text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: ChantOriginTimeline — 8-node horizontal
+// ============================================================
+function ChantOriginTimeline({ chants }: { chants: Chant[] }) {
+  const uniqueYears = (() => {
+    return chants
+      .reduce((acc, c) => {
+        if (acc.indexOf(c.originYear) === -1) return [...acc, c.originYear];
+        return acc;
+      }, [] as number[])
+      .sort((a, b) => a - b)
+      .slice(0, 8);
+  })();
+  const padX = 18;
+  const lineY = 48;
+  const lineEndX = 262;
+  const nodeColors = ['#FF5500', '#CCFF00', '#00E5FF', '#666666', '#FF5500', '#CCFF00', '#00E5FF', '#666666'];
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Chant Origin Timeline</p>
+      <svg viewBox="0 0 280 95" className="w-full">
+        <line x1={padX} y1={lineY} x2={lineEndX} y2={lineY} stroke="#21262d" strokeWidth="1.5" />
+        {uniqueYears.map((year, i) => {
+          const x = padX + (i / Math.max(uniqueYears.length - 1, 1)) * (lineEndX - padX);
+          const isLast = i === uniqueYears.length - 1;
+          const isFirst = i === 0;
+          const color = nodeColors[i % nodeColors.length];
+          return (
+            <g key={`ot-${year}-${i}`}>
+              <motion.circle
+                cx={x} cy={lineY} r="5"
+                fill={color}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.9 }}
+                transition={{ duration: 0.3, delay: i * 0.06 }}
+              />
+              <circle cx={x} cy={lineY} r="8" fill="none" stroke={color} strokeWidth="0.8" opacity="0.3" />
+              <text x={x} y={lineY + 18} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontWeight="bold">{year}</text>
+              {isFirst && <text x={x} y={lineY - 14} textAnchor="middle" fill="#8b949e" fontSize="5.5">First</text>}
+              {isLast && <text x={x} y={lineY - 14} textAnchor="middle" fill="#8b949e" fontSize="5.5">Latest</text>}
+              {!isFirst && !isLast && (
+                <text x={x} y={lineY - 14} textAnchor="middle" fill="#484f58" fontSize="5">
+                  {chants.filter(c => c.originYear === year).length} chants
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: AtmosphereImpactRing — circular 0-100
+// ============================================================
+function AtmosphereImpactRing({ score }: { score: number }) {
+  const cx = 80;
+  const cy = 75;
+  const r = 52;
+  const sw = 9;
+  const sweepAngle = (score / 100) * 360;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const bgS = { x: cx + r * Math.cos(toRad(0)), y: cy + r * Math.sin(toRad(0)) };
+  const bgE = { x: cx + r * Math.cos(toRad(359.9)), y: cy + r * Math.sin(toRad(359.9)) };
+  const bgArc = `M ${bgS.x.toFixed(1)} ${bgS.y.toFixed(1)} A ${r} ${r} 0 1 1 ${bgE.x.toFixed(1)} ${bgE.y.toFixed(1)}`;
+  const valE = { x: cx + r * Math.cos(toRad(sweepAngle)), y: cy + r * Math.sin(toRad(sweepAngle)) };
+  const la = sweepAngle > 180 ? 1 : 0;
+  const valArc = `M ${bgS.x.toFixed(1)} ${bgS.y.toFixed(1)} A ${r} ${r} 0 ${la} 1 ${valE.x.toFixed(1)} ${valE.y.toFixed(1)}`;
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Atmosphere Impact</p>
+      <svg viewBox="0 0 160 115" className="w-40 h-28 mx-auto">
+        <path d={bgArc} fill="none" stroke="#21262d" strokeWidth={sw} strokeLinecap="round" />
+        <motion.path
+          d={valArc}
+          fill="none"
+          stroke="#FF5500"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        />
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="bold">{score}</text>
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize="7">/ 100</text>
+        {score >= 75 && (
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="#FF5500" fontSize="6" fontWeight="bold">Elite</text>
+        )}
+        {score >= 50 && score < 75 && (
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="#CCFF00" fontSize="6" fontWeight="bold">Strong</text>
+        )}
+        {score < 50 && (
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="#8b949e" fontSize="6">Moderate</text>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: SongComplexityBars — 5 horizontal bars
+// ============================================================
+function SongComplexityBars({ songs }: { songs: { name: string; complexity: number }[] }) {
+  const top5 = songs.slice(0, 5);
+  const maxVal = Math.max(...top5.map(s => s.complexity), 1);
+  const barColors = ['#FF5500', '#CCFF00', '#00E5FF', '#666666', '#8b949e'];
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Song Complexity</p>
+      <svg viewBox="0 0 260 138" className="w-full">
+        {top5.map((song, i) => {
+          const barW = Math.max(2, (song.complexity / maxVal) * 130);
+          const y = i * 26 + 2;
+          const color = barColors[i % barColors.length];
+          const label = song.name.length > 22 ? song.name.slice(0, 22) + '\u2026' : song.name;
+          return (
+            <g key={`sc-${i}`}>
+              <text x="0" y={y + 12} fill="#8b949e" fontSize="7.5" textAnchor="start">{label}</text>
+              <rect x="105" y={y} width="130" height="18" rx="2" fill="#21262d" />
+              <motion.rect
+                x="105" y={y} width={barW} height="18" rx="2"
+                fill={color}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ duration: 0.35, delay: i * 0.07 }}
+              />
+              <text x={barW + 108} y={y + 13} fill="#c9d1d9" fontSize="7" fontWeight="bold">{song.complexity}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: FanMobilizationRadar — 5-axis radar
+// ============================================================
+function FanMobilizationRadar({ values }: { values: [number, number, number, number, number] }) {
+  const axes = ['Matchday', 'Travel', 'Social', 'Protests', 'Fundraising'] as const;
+  const cx = 100;
+  const cy = 92;
+  const maxR = 66;
+  const toRad = (i: number) => ((i * 72) - 90) * Math.PI / 180;
+  const polyPts = values.reduce((acc, v, i) => {
+    const r = (v / 100) * maxR;
+    return [...acc, `${(cx + r * Math.cos(toRad(i))).toFixed(1)},${(cy + r * Math.sin(toRad(i))).toFixed(1)}`];
+  }, [] as string[]).join(' ');
+  const gridLevels = [1, 0.75, 0.5, 0.25];
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Fan Mobilization Radar</p>
+      <svg viewBox="0 0 200 190" className="w-48 h-44 mx-auto">
+        {gridLevels.map((level, li) => {
+          const pts = axes.reduce((a, _, ai) => {
+            const r = maxR * level;
+            return [...a, `${(cx + r * Math.cos(toRad(ai))).toFixed(1)},${(cy + r * Math.sin(toRad(ai))).toFixed(1)}`];
+          }, [] as string[]).join(' ');
+          return <polygon key={`fgl-${li}`} points={pts} fill="none" stroke="#21262d" strokeWidth="0.7" />;
+        })}
+        {axes.map((label, i) => {
+          const ex = cx + maxR * Math.cos(toRad(i));
+          const ey = cy + maxR * Math.sin(toRad(i));
+          const anchor = Math.cos(toRad(i)) > 0.1 ? 'start' : Math.cos(toRad(i)) < -0.1 ? 'end' : 'middle';
+          const tx = ex + (Math.cos(toRad(i)) > 0.1 ? 5 : Math.cos(toRad(i)) < -0.1 ? -5 : 0);
+          const ty = ey + (Math.sin(toRad(i)) > 0.1 ? 13 : Math.sin(toRad(i)) < -0.1 ? -4 : 3);
+          return (
+            <g key={label}>
+              <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="#21262d" strokeWidth="0.5" />
+              <circle cx={ex} cy={ey} r="1.5" fill="#30363d" />
+              <text x={tx} y={ty} fill="#8b949e" fontSize="6.5" textAnchor={anchor}>{label}</text>
+            </g>
+          );
+        })}
+        <polygon points={polyPts} fill="#00E5FF" fillOpacity="0.1" stroke="#00E5FF" strokeWidth="1.5" />
+        {values.map((v, i) => {
+          const r = (v / 100) * maxR;
+          return (
+            <motion.circle
+              key={`fm-${i}`}
+              cx={cx + r * Math.cos(toRad(i))}
+              cy={cy + r * Math.sin(toRad(i))}
+              r="2.5"
+              fill="#00E5FF"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: i * 0.06 }}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: ChantSpreadLine — 8-pt line chart
+// ============================================================
+function ChantSpreadLine({ values }: { values: number[] }) {
+  const cx = 16;
+  const cy = 86;
+  const chartW = 228;
+  const chartH = 62;
+  const pts = values.reduce((acc, v, i) => {
+    const x = cx + (i / Math.max(values.length - 1, 1)) * chartW;
+    const y = cy - (v / 100) * chartH;
+    return [...acc, { x, y }];
+  }, [] as { x: number; y: number }[]);
+  const linePath = pts.reduce((acc, pt, i) => {
+    if (i === 0) return `M ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+    return `${acc} L ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+  }, '');
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Chant Spread Index</p>
+      <svg viewBox="0 0 260 100" className="w-full">
+        {[0, 25, 50, 75, 100].map((tick) => {
+          const y = cy - (tick / 100) * chartH;
+          return (
+            <g key={`slt-${tick}`}>
+              <line x1={cx} y1={y} x2={cx + chartW} y2={y} stroke="#21262d" strokeWidth="0.4" />
+              <text x={cx - 3} y={y + 2.5} fill="#484f58" fontSize="5.5" textAnchor="end">{tick}</text>
+            </g>
+          );
+        })}
+        <line x1={cx} y1={cy} x2={cx + chartW} y2={cy} stroke="#30363d" strokeWidth="0.8" />
+        <motion.path
+          d={linePath}
+          fill="none"
+          stroke="#CCFF00"
+          strokeWidth="2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {pts.map((pt, i) => (
+          <g key={`sld-${i}`}>
+            <motion.circle
+              cx={pt.x}
+              cy={pt.y}
+              r="3"
+              fill="#0d1117"
+              stroke="#CCFF00"
+              strokeWidth="1.5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, delay: 0.1 + i * 0.05 }}
+            />
+            {i === pts.length - 1 && (
+              <text x={pt.x + 5} y={pt.y - 4} fill="#CCFF00" fontSize="6" fontWeight="bold">
+                {values[i]}
+              </text>
+            )}
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: CulturalSignificanceRing — circular 0-100
+// ============================================================
+function CulturalSignificanceRing({ score }: { score: number }) {
+  const cx = 80;
+  const cy = 75;
+  const r = 50;
+  const sw = 9;
+  const sweepAngle = (score / 100) * 360;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const bgS = { x: cx + r * Math.cos(toRad(0)), y: cy + r * Math.sin(toRad(0)) };
+  const bgE = { x: cx + r * Math.cos(toRad(359.9)), y: cy + r * Math.sin(toRad(359.9)) };
+  const bgArc = `M ${bgS.x.toFixed(1)} ${bgS.y.toFixed(1)} A ${r} ${r} 0 1 1 ${bgE.x.toFixed(1)} ${bgE.y.toFixed(1)}`;
+  const valE = { x: cx + r * Math.cos(toRad(sweepAngle)), y: cy + r * Math.sin(toRad(sweepAngle)) };
+  const la = sweepAngle > 180 ? 1 : 0;
+  const valArc = `M ${bgS.x.toFixed(1)} ${bgS.y.toFixed(1)} A ${r} ${r} 0 ${la} 1 ${valE.x.toFixed(1)} ${valE.y.toFixed(1)}`;
+  const tier = score >= 90 ? 'Iconic' : score >= 70 ? 'Legendary' : score >= 50 ? 'Notable' : 'Emerging';
+  const tierColor = score >= 90 ? '#FF5500' : score >= 70 ? '#CCFF00' : score >= 50 ? '#00E5FF' : '#666666';
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Cultural Significance</p>
+      <svg viewBox="0 0 160 115" className="w-40 h-28 mx-auto">
+        <path d={bgArc} fill="none" stroke="#21262d" strokeWidth={sw} strokeLinecap="round" />
+        <motion.path
+          d={valArc}
+          fill="none"
+          stroke="#00E5FF"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        />
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="bold">{score}</text>
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize="7">/ 100</text>
+        <text x={cx} y={cy + 22} textAnchor="middle" fill={tierColor} fontSize="6.5" fontWeight="bold">{tier}</text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Helper: RivalryChantDonut — 4-segment donut
+// ============================================================
+function RivalryChantDonut({ chants }: { chants: Chant[] }) {
+  const rivalryChants = chants.filter(c => c.category === 'Rivalry');
+  const segments = [
+    { label: 'Hostile', color: '#FF5500' },
+    { label: 'Mocking', color: '#CCFF00' },
+    { label: 'Pride', color: '#00E5FF' },
+    { label: 'Warning', color: '#666666' },
+  ];
+  const cx = 60;
+  const cy = 55;
+  const outerR = 42;
+  const innerR = 24;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const data = segments.reduce((acc, seg, i) => {
+    const value = ((i + 1) * 7 + rivalryChants.length * 3) % 10 + 2;
+    return [...acc, { ...seg, value }];
+  }, [] as { label: string; color: string; value: number }[]);
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const arcs = data.reduce<{ pathD: string; color: string; label: string; value: number; endDeg: number }[]>(
+    (acc, item) => {
+      const startDeg = acc.length > 0 ? acc[acc.length - 1].endDeg : 0;
+      const sweep = (item.value / total) * 360;
+      const endDeg = startDeg + sweep;
+      const oS = { x: cx + outerR * Math.cos(toRad(startDeg)), y: cy + outerR * Math.sin(toRad(startDeg)) };
+      const oE = { x: cx + outerR * Math.cos(toRad(endDeg)), y: cy + outerR * Math.sin(toRad(endDeg)) };
+      const iE = { x: cx + innerR * Math.cos(toRad(endDeg)), y: cy + innerR * Math.sin(toRad(endDeg)) };
+      const iS = { x: cx + innerR * Math.cos(toRad(startDeg)), y: cy + innerR * Math.sin(toRad(startDeg)) };
+      const la = sweep > 180 ? 1 : 0;
+      const p = `M ${oS.x.toFixed(1)} ${oS.y.toFixed(1)} A ${outerR} ${outerR} 0 ${la} 1 ${oE.x.toFixed(1)} ${oE.y.toFixed(1)} L ${iE.x.toFixed(1)} ${iE.y.toFixed(1)} A ${innerR} ${innerR} 0 ${la} 0 ${iS.x.toFixed(1)} ${iS.y.toFixed(1)} Z`;
+      return [...acc, { pathD: p, color: item.color, label: item.label, value: item.value, endDeg }];
+    },
+    []
+  );
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Rivalry Chant Mix</p>
+      <svg viewBox="0 0 120 120" className="w-32 h-32 mx-auto">
+        {arcs.map((arc, i) => (
+          <motion.path
+            key={arc.label}
+            d={arc.pathD}
+            fill={arc.color}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.4, delay: i * 0.08 }}
+          />
+        ))}
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="13" fontWeight="bold">{total}</text>
+        <text x={cx} y={cy + 9} textAnchor="middle" fill="#8b949e" fontSize="7">types</text>
+        {arcs.map((arc, i) => {
+          const lx = i < 2 ? 5 : 62;
+          const ly = 94 + (i % 2) * 12;
+          return (
+            <g key={`rlg-${arc.label}`}>
+              <rect x={lx} y={ly} width="7" height="7" rx="1" fill={arc.color} opacity="0.85" />
+              <text x={lx + 10} y={ly + 6.5} fill="#8b949e" fontSize="6">{arc.label} ({arc.value})</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component: FanChants
 // ============================================================
 export default function FanChants() {

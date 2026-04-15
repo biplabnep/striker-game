@@ -165,6 +165,764 @@ function StatBar({ label, home, away, unit }: { label: string; home: number; awa
   );
 }
 
+// ─── 1. TournamentProgressRing ─────────────────────────────────────────
+function TournamentProgressRing({
+  roundReached,
+  totalRounds,
+  size = 80,
+}: {
+  roundReached: number;
+  totalRounds: number;
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = Math.max(1, (size - 12) / 2);
+  const strokeW = 5;
+  const circumference = 2 * Math.PI * radius;
+  const progress = totalRounds > 0 ? roundReached / totalRounds : 0;
+  const dashLength = circumference * progress;
+  const gapLength = circumference - dashLength;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none">
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
+        stroke="#30363d"
+        strokeWidth={strokeW}
+        fill="none"
+      />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
+        stroke="#FF5500"
+        strokeWidth={strokeW}
+        fill="none"
+        strokeDasharray={`${dashLength} ${gapLength}`}
+        strokeDashoffset={0}
+        strokeLinecap="round"
+        opacity={0.9}
+      />
+      <text
+        x={cx}
+        y={cy - 4}
+        textAnchor="middle"
+        fill="#c9d1d9"
+        fontSize={14}
+        fontWeight={700}
+        fontFamily="system-ui"
+      >
+        {roundReached}
+      </text>
+      <text
+        x={cx}
+        y={cy + 10}
+        textAnchor="middle"
+        fill="#8b949e"
+        fontSize={9}
+        fontFamily="system-ui"
+      >
+        of {totalRounds}
+      </text>
+    </svg>
+  );
+}
+
+// ─── 2. CupRunFormAreaChart ───────────────────────────────────────────
+function CupRunFormAreaChart({
+  ratings,
+  width = 200,
+  height = 60,
+}: {
+  ratings: number[];
+  width?: number;
+  height?: number;
+}) {
+  const padX = 8;
+  const padY = 6;
+  const chartW = width - padX * 2;
+  const chartH = height - padY * 2;
+  const dataPoints = ratings.slice(-8);
+  const maxR = 10;
+  const minR = 4;
+
+  const points = dataPoints.map((r, i) => {
+    const x = padX + (dataPoints.length > 1 ? (i / (dataPoints.length - 1)) * chartW : chartW / 2);
+    const clamped = Math.min(maxR, Math.max(minR, r));
+    const y = padY + chartH - ((clamped - minR) / (maxR - minR)) * chartH;
+    return { x, y };
+  });
+
+  const linePath = points.reduce(
+    (acc, p, i) => (i === 0 ? `M${p.x},${p.y}` : `${acc} L${p.x},${p.y}`),
+    ''
+  );
+  const areaPath = points.length > 0
+    ? `${linePath} L${points[points.length - 1].x},${padY + chartH} L${points[0].x},${padY + chartH} Z`
+    : '';
+
+  const dotElements = points.map((p, i) => (
+    <circle key={`form-dot-${i}`} cx={p.x} cy={p.y} r={2.5} fill="#00E5FF" opacity={0.9} />
+  ));
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none">
+      <rect x={0} y={0} width={width} height={height} rx={4} fill="#0d1117" stroke="#30363d" strokeWidth={0.5} />
+      <line x1={padX} y1={padY} x2={padX + chartW} y2={padY} stroke="#21262d" strokeWidth={0.5} strokeDasharray="2 2" />
+      <line x1={padX} y1={padY + chartH} x2={padX + chartW} y2={padY + chartH} stroke="#21262d" strokeWidth={0.5} />
+      {areaPath && <path d={areaPath} fill="#00E5FF" opacity={0.15} />}
+      {linePath && <path d={linePath} stroke="#00E5FF" strokeWidth={1.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />}
+      {dotElements}
+    </svg>
+  );
+}
+
+// ─── 3. GoalDistributionDonut ─────────────────────────────────────────
+function GoalDistributionDonut({
+  groupGoals,
+  knockoutGoals,
+  qfGoals,
+  sfGoals,
+  size = 100,
+}: {
+  groupGoals: number;
+  knockoutGoals: number;
+  qfGoals: number;
+  sfGoals: number;
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = Math.max(1, (size - 8) / 2);
+  const innerR = Math.max(1, outerR - 10);
+  const segments = [
+    { value: groupGoals, color: '#CCFF00', label: 'Group' },
+    { value: knockoutGoals, color: '#FF5500', label: 'KO' },
+    { value: qfGoals, color: '#00E5FF', label: 'QF' },
+    { value: sfGoals, color: '#666666', label: 'SF' },
+  ];
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+
+  const arcPaths = segments.reduce<{ d: string; color: string; label: string; lx: number; ly: number; pct: number; angle: number }[]>((acc, seg, i) => {
+    if (total === 0 || seg.value === 0) return acc;
+    const prevEnd = acc.reduce((p, a) => p + a.angle, 0);
+    const angle = (seg.value / total) * 2 * Math.PI;
+    const startAngle = -Math.PI / 2 + prevEnd;
+    const endAngle = startAngle + angle;
+    const midAngle = startAngle + angle / 2;
+
+    const x1 = cx + outerR * Math.cos(startAngle);
+    const y1 = cy + outerR * Math.sin(startAngle);
+    const x2 = cx + outerR * Math.cos(endAngle);
+    const y2 = cy + outerR * Math.sin(endAngle);
+    const x3 = cx + innerR * Math.cos(endAngle);
+    const y3 = cy + innerR * Math.sin(endAngle);
+    const x4 = cx + innerR * Math.cos(startAngle);
+    const y4 = cy + innerR * Math.sin(startAngle);
+    const labelR = outerR + 10;
+    const lx = cx + labelR * Math.cos(midAngle);
+    const ly = cy + labelR * Math.sin(midAngle);
+
+    const largeArc = angle > Math.PI ? 1 : 0;
+    return [
+      ...acc,
+      {
+        d: `M${x1},${y1} A${outerR},${outerR} 0 ${largeArc} 1 ${x2},${y2} L${x3},${y3} A${innerR},${innerR} 0 ${largeArc} 0 ${x4},${y4} Z`,
+        color: seg.color,
+        label: seg.label,
+        lx,
+        ly,
+        pct: Math.round((seg.value / total) * 100),
+        angle,
+      },
+    ];
+  }, []);
+
+  return (
+    <svg width={size + 20} height={size + 20} viewBox={`0 0 ${size + 20} ${size + 20}`} fill="none">
+      {arcPaths.map((arc, i) => (
+        <path key={`donut-seg-${i}`} d={arc.d} fill={arc.color} opacity={0.8} />
+      ))}
+      <circle cx={cx} cy={cy} r={innerR - 1} fill="#0d1117" />
+      <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize={12} fontWeight={700} fontFamily="system-ui">
+        {total}
+      </text>
+      <text x={cx} y={cy + 9} textAnchor="middle" fill="#8b949e" fontSize={7} fontFamily="system-ui">
+        goals
+      </text>
+    </svg>
+  );
+}
+
+// ─── 4. OpponentStrengthRadar ─────────────────────────────────────────
+function OpponentStrengthRadar({
+  stats,
+  size = 120,
+}: {
+  stats: { attack: number; defense: number; midfield: number; setPieces: number; experience: number };
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = Math.max(1, (size - 24) / 2);
+  const labels = ['ATT', 'DEF', 'MID', 'SP', 'EXP'];
+  const values = [stats.attack, stats.defense, stats.midfield, stats.setPieces, stats.experience];
+  const axes = labels.length;
+
+  const axisAngles = labels.map((_, i) => (-Math.PI / 2) + (2 * Math.PI * i) / axes);
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+
+  const gridPolygons = gridLevels.map((level, li) => {
+    const pts = axisAngles.map(a => {
+      const px = cx + maxR * level * Math.cos(a);
+      const py = cy + maxR * level * Math.sin(a);
+      return `${px},${py}`;
+    });
+    return <polygon key={`radar-grid-${li}`} points={pts.join(' ')} fill="none" stroke="#21262d" strokeWidth={0.5} />;
+  });
+
+  const axisLines = axisAngles.map((a, i) => (
+    <line key={`radar-axis-${i}`} x1={cx} y1={cy} x2={cx + maxR * Math.cos(a)} y2={cy + maxR * Math.sin(a)} stroke="#21262d" strokeWidth={0.5} />
+  ));
+
+  const dataPoints = values.map((v, i) => {
+    const clamped = Math.min(100, Math.max(0, v));
+    const r = (clamped / 100) * maxR;
+    return { x: cx + r * Math.cos(axisAngles[i]), y: cy + r * Math.sin(axisAngles[i]) };
+  });
+  const dataPolygon = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const labelElements = axisAngles.map((a, i) => {
+    const labelR = maxR + 10;
+    return (
+      <text
+        key={`radar-label-${i}`}
+        x={cx + labelR * Math.cos(a)}
+        y={cy + labelR * Math.sin(a) + 3}
+        textAnchor="middle"
+        fill="#8b949e"
+        fontSize={7}
+        fontFamily="system-ui"
+      >
+        {labels[i]}
+      </text>
+    );
+  });
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none">
+      {gridPolygons}
+      {axisLines}
+      <polygon points={dataPolygon} fill="#FF5500" opacity={0.12} stroke="#FF5500" strokeWidth={1.5} />
+      {dataPoints.map((p, i) => (
+        <circle key={`radar-dot-${i}`} cx={p.x} cy={p.y} r={2} fill="#FF5500" />
+      ))}
+      {labelElements}
+    </svg>
+  );
+}
+
+// ─── 5. CupHistoryTimeline ────────────────────────────────────────────
+function CupHistoryTimeline({
+  results,
+  width = 280,
+  height = 50,
+}: {
+  results: { result: 'W' | 'D' | 'L'; label: string }[];
+  width?: number;
+  height?: number;
+}) {
+  const padX = 20;
+  const padY = 16;
+  const usable = width - padX * 2;
+  const data = results.slice(-8);
+  const nodeCount = data.length;
+
+  const nodePositions = data.map((_, i) => ({
+    x: nodeCount > 1 ? padX + (i / (nodeCount - 1)) * usable : padX + usable / 2,
+    y: height / 2,
+  }));
+
+  const colorMap: Record<string, string> = { W: '#CCFF00', D: '#FF5500', L: '#666666' };
+
+  const lineSegments = nodePositions.slice(0, -1).map((p, i) => (
+    <line
+      key={`timeline-line-${i}`}
+      x1={p.x}
+      y1={p.y}
+      x2={nodePositions[i + 1].x}
+      y2={nodePositions[i + 1].y}
+      stroke="#CCFF00"
+      strokeWidth={1.5}
+      opacity={0.4}
+    />
+  ));
+
+  const nodeElements = data.map((d, i) => {
+    const pos = nodePositions[i];
+    const fill = colorMap[d.result] || '#666666';
+    return (
+      <g key={`timeline-node-${i}`}>
+        <circle cx={pos.x} cy={pos.y} r={5} fill="#0d1117" stroke={fill} strokeWidth={1.5} />
+        <circle cx={pos.x} cy={pos.y} r={2} fill={fill} />
+        <text
+          x={pos.x}
+          y={pos.y - 10}
+          textAnchor="middle"
+          fill={fill}
+          fontSize={8}
+          fontWeight={700}
+          fontFamily="system-ui"
+        >
+          {d.result}
+        </text>
+        <text
+          x={pos.x}
+          y={pos.y + 16}
+          textAnchor="middle"
+          fill="#8b949e"
+          fontSize={6}
+          fontFamily="system-ui"
+        >
+          {d.label}
+        </text>
+      </g>
+    );
+  });
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none">
+      {lineSegments}
+      {nodeElements}
+    </svg>
+  );
+}
+
+// ─── 6. UpsetProbabilityBars ──────────────────────────────────────────
+function UpsetProbabilityBars({
+  probabilities,
+  labels,
+  width = 180,
+  height = 100,
+}: {
+  probabilities: number[];
+  labels: string[];
+  width?: number;
+  height?: number;
+}) {
+  const padX = 48;
+  const padY = 8;
+  const barH = 12;
+  const barGap = 6;
+  const colors = ['#00E5FF', '#CCFF00', '#FF5500', '#666666', '#FF5500'];
+  const data = probabilities.slice(0, 5).map((p, i) => ({
+    label: labels[i] || '',
+    value: Math.min(100, Math.max(0, p)),
+    color: colors[i] || '#666666',
+  }));
+
+  const barElements = data.map((d, i) => {
+    const y = padY + i * (barH + barGap);
+    const barMaxW = width - padX - 32;
+    const barW = (d.value / 100) * barMaxW;
+    return (
+      <g key={`upset-bar-${i}`}>
+        <text
+          x={padX - 4}
+          y={y + barH / 2 + 3}
+          textAnchor="end"
+          fill="#8b949e"
+          fontSize={8}
+          fontFamily="system-ui"
+        >
+          {d.label}
+        </text>
+        <rect
+          x={padX}
+          y={y}
+          width={barMaxW}
+          height={barH}
+          rx={2}
+          fill="#161b22"
+          stroke="#21262d"
+          strokeWidth={0.5}
+        />
+        <rect
+          x={padX}
+          y={y}
+          width={Math.max(1, barW)}
+          height={barH}
+          rx={2}
+          fill={d.color}
+          opacity={0.7}
+        />
+        <text
+          x={padX + barMaxW + 4}
+          y={y + barH / 2 + 3}
+          fill="#c9d1d9"
+          fontSize={8}
+          fontWeight={600}
+          fontFamily="system-ui"
+        >
+          {d.value}%
+        </text>
+      </g>
+    );
+  });
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none">
+      {barElements}
+    </svg>
+  );
+}
+
+// ─── 7. MatchDifficultyGauge ──────────────────────────────────────────
+function MatchDifficultyGauge({
+  difficulty,
+  size = 100,
+}: {
+  difficulty: number;
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size * 0.65;
+  const radius = Math.max(1, (size - 16) / 2);
+  const strokeW = 6;
+  const clamped = Math.min(100, Math.max(0, difficulty));
+  const startAngle = Math.PI;
+  const endAngle = 2 * Math.PI;
+  const sweepAngle = endAngle - startAngle;
+  const valueAngle = startAngle + (clamped / 100) * sweepAngle;
+
+  const bgArcPath = (() => {
+    const x1 = cx + radius * Math.cos(startAngle);
+    const y1 = cy + radius * Math.sin(startAngle);
+    const x2 = cx + radius * Math.cos(endAngle);
+    const y2 = cy + radius * Math.sin(endAngle);
+    return `M${x1},${y1} A${radius},${radius} 0 0 1 ${x2},${y2}`;
+  })();
+
+  const valueArcPath = (() => {
+    const x1 = cx + radius * Math.cos(startAngle);
+    const y1 = cy + radius * Math.sin(startAngle);
+    const x2 = cx + radius * Math.cos(valueAngle);
+    const y2 = cy + radius * Math.sin(valueAngle);
+    const largeArc = (valueAngle - startAngle) > Math.PI ? 1 : 0;
+    return `M${x1},${y1} A${radius},${radius} 0 ${largeArc} 1 ${x2},${y2}`;
+  })();
+
+  const indicatorX = cx + (radius - strokeW) * Math.cos(valueAngle);
+  const indicatorY = cy + (radius - strokeW) * Math.sin(valueAngle);
+
+  const label = clamped < 30 ? 'Easy' : clamped < 55 ? 'Medium' : clamped < 80 ? 'Hard' : 'Extreme';
+  const labelColor = clamped < 30 ? '#CCFF00' : clamped < 55 ? '#c9d1d9' : clamped < 80 ? '#FF5500' : '#ef4444';
+
+  return (
+    <svg width={size} height={size * 0.8} viewBox={`0 0 ${size} ${size * 0.8}`} fill="none">
+      <path d={bgArcPath} stroke="#30363d" strokeWidth={strokeW} fill="none" strokeLinecap="round" />
+      <path d={valueArcPath} stroke="#CCFF00" strokeWidth={strokeW} fill="none" strokeLinecap="round" />
+      <circle cx={indicatorX} cy={indicatorY} r={3} fill="#CCFF00" />
+      <text
+        x={cx}
+        y={cy - 8}
+        textAnchor="middle"
+        fill="#c9d1d9"
+        fontSize={18}
+        fontWeight={700}
+        fontFamily="system-ui"
+      >
+        {clamped}
+      </text>
+      <text
+        x={cx}
+        y={cy + 8}
+        textAnchor="middle"
+        fill={labelColor}
+        fontSize={9}
+        fontWeight={600}
+        fontFamily="system-ui"
+      >
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+// ─── 8. PathToFinalRadar ──────────────────────────────────────────────
+function PathToFinalRadar({
+  stats,
+  size = 120,
+}: {
+  stats: { strength: number; fatigue: number; homeAdv: number; momentum: number; depth: number };
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = Math.max(1, (size - 24) / 2);
+  const labels = ['STR', 'FAT', 'HOME', 'MOM', 'DEP'];
+  const values = [stats.strength, 100 - stats.fatigue, stats.homeAdv, stats.momentum, stats.depth];
+  const axes = labels.length;
+
+  const axisAngles = labels.map((_, i) => (-Math.PI / 2) + (2 * Math.PI * i) / axes);
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+
+  const gridPolygons = gridLevels.map((level, li) => {
+    const pts = axisAngles.map(a => {
+      const px = cx + maxR * level * Math.cos(a);
+      const py = cy + maxR * level * Math.sin(a);
+      return `${px},${py}`;
+    });
+    return <polygon key={`path-grid-${li}`} points={pts.join(' ')} fill="none" stroke="#21262d" strokeWidth={0.5} />;
+  });
+
+  const axisLines = axisAngles.map((a, i) => (
+    <line key={`path-axis-${i}`} x1={cx} y1={cy} x2={cx + maxR * Math.cos(a)} y2={cy + maxR * Math.sin(a)} stroke="#21262d" strokeWidth={0.5} />
+  ));
+
+  const dataPoints = values.map((v, i) => {
+    const clamped = Math.min(100, Math.max(0, v));
+    const r = (clamped / 100) * maxR;
+    return { x: cx + r * Math.cos(axisAngles[i]), y: cy + r * Math.sin(axisAngles[i]) };
+  });
+  const dataPolygon = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const labelElements = axisAngles.map((a, i) => {
+    const labelR = maxR + 10;
+    return (
+      <text
+        key={`path-label-${i}`}
+        x={cx + labelR * Math.cos(a)}
+        y={cy + labelR * Math.sin(a) + 3}
+        textAnchor="middle"
+        fill="#8b949e"
+        fontSize={7}
+        fontFamily="system-ui"
+      >
+        {labels[i]}
+      </text>
+    );
+  });
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none">
+      {gridPolygons}
+      {axisLines}
+      <polygon points={dataPolygon} fill="#00E5FF" opacity={0.12} stroke="#00E5FF" strokeWidth={1.5} />
+      {dataPoints.map((p, i) => (
+        <circle key={`path-dot-${i}`} cx={p.x} cy={p.y} r={2} fill="#00E5FF" />
+      ))}
+      {labelElements}
+    </svg>
+  );
+}
+
+// ─── 9. CupGoalsTrendLine ─────────────────────────────────────────────
+function CupGoalsTrendLine({
+  goalsPerRound,
+  width = 200,
+  height = 60,
+}: {
+  goalsPerRound: number[];
+  width?: number;
+  height?: number;
+}) {
+  const padX = 8;
+  const padY = 8;
+  const chartW = width - padX * 2;
+  const chartH = height - padY * 2;
+  const data = goalsPerRound.slice(-8);
+  const maxGoals = Math.max(1, ...data);
+
+  const points = data.map((g, i) => {
+    const x = padX + (data.length > 1 ? (i / (data.length - 1)) * chartW : chartW / 2);
+    const y = padY + chartH - (g / maxGoals) * chartH;
+    return { x, y };
+  });
+
+  const linePath = points.reduce(
+    (acc, p, i) => (i === 0 ? `M${p.x},${p.y}` : `${acc} L${p.x},${p.y}`),
+    ''
+  );
+
+  const goalLabels = data.map((g, i) => (
+    <text
+      key={`goal-label-${i}`}
+      x={points[i].x}
+      y={points[i].y - 5}
+      textAnchor="middle"
+      fill="#c9d1d9"
+      fontSize={7}
+      fontWeight={600}
+      fontFamily="system-ui"
+    >
+      {g}
+    </text>
+  ));
+
+  const dotElements = points.map((p, i) => (
+    <circle key={`goal-dot-${i}`} cx={p.x} cy={p.y} r={2.5} fill="#FF5500" opacity={0.9} />
+  ));
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none">
+      <rect x={0} y={0} width={width} height={height} rx={4} fill="#0d1117" stroke="#30363d" strokeWidth={0.5} />
+      <line x1={padX} y1={padY + chartH} x2={padX + chartW} y2={padY + chartH} stroke="#21262d" strokeWidth={0.5} />
+      {linePath && <path d={linePath} stroke="#FF5500" strokeWidth={1.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />}
+      {dotElements}
+      {goalLabels}
+    </svg>
+  );
+}
+
+// ─── 10. TrophyChanceRing ─────────────────────────────────────────────
+function TrophyChanceRing({
+  probability,
+  size = 80,
+}: {
+  probability: number;
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = Math.max(1, (size - 12) / 2);
+  const strokeW = 5;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(100, Math.max(0, probability));
+  const dashLength = (clamped / 100) * circumference;
+  const gapLength = circumference - dashLength;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none">
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
+        stroke="#30363d"
+        strokeWidth={strokeW}
+        fill="none"
+      />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
+        stroke="#CCFF00"
+        strokeWidth={strokeW}
+        fill="none"
+        strokeDasharray={`${dashLength} ${gapLength}`}
+        strokeDashoffset={0}
+        strokeLinecap="round"
+        opacity={0.9}
+      />
+      <text
+        x={cx}
+        y={cy - 3}
+        textAnchor="middle"
+        fill="#c9d1d9"
+        fontSize={15}
+        fontWeight={700}
+        fontFamily="system-ui"
+      >
+        {clamped}%
+      </text>
+      <text
+        x={cx}
+        y={cy + 10}
+        textAnchor="middle"
+        fill="#8b949e"
+        fontSize={7}
+        fontFamily="system-ui"
+      >
+        TROPHY
+      </text>
+    </svg>
+  );
+}
+
+// ─── 11. KnockoutStageDonut ───────────────────────────────────────────
+function KnockoutStageDonut({
+  r32,
+  r16,
+  qf,
+  sf,
+  size = 100,
+}: {
+  r32: number;
+  r16: number;
+  qf: number;
+  sf: number;
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = Math.max(1, (size - 8) / 2);
+  const innerR = Math.max(1, outerR - 10);
+  const segments = [
+    { value: r32, color: '#FF5500', label: 'R32' },
+    { value: r16, color: '#CCFF00', label: 'R16' },
+    { value: qf, color: '#00E5FF', label: 'QF' },
+    { value: sf, color: '#666666', label: 'SF' },
+  ];
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+
+  const arcPaths = segments.reduce<{ d: string; color: string; label: string; angle: number }[]>((acc, seg, i) => {
+    if (total === 0 || seg.value === 0) return acc;
+    const prevEnd = acc.reduce((p, a) => p + a.angle, 0);
+    const angle = (seg.value / total) * 2 * Math.PI;
+    const startAngle = -Math.PI / 2 + prevEnd;
+    const endAngle = startAngle + angle;
+    const midAngle = startAngle + angle / 2;
+
+    const x1 = cx + outerR * Math.cos(startAngle);
+    const y1 = cy + outerR * Math.sin(startAngle);
+    const x2 = cx + outerR * Math.cos(endAngle);
+    const y2 = cy + outerR * Math.sin(endAngle);
+    const x3 = cx + innerR * Math.cos(endAngle);
+    const y3 = cy + innerR * Math.sin(endAngle);
+    const x4 = cx + innerR * Math.cos(startAngle);
+    const y4 = cy + innerR * Math.sin(startAngle);
+
+    const largeArc = angle > Math.PI ? 1 : 0;
+    return [
+      ...acc,
+      {
+        d: `M${x1},${y1} A${outerR},${outerR} 0 ${largeArc} 1 ${x2},${y2} L${x3},${y3} A${innerR},${innerR} 0 ${largeArc} 0 ${x4},${y4} Z`,
+        color: seg.color,
+        label: seg.label,
+        angle,
+      },
+    ];
+  }, []);
+
+  const legendItems = segments.map((s, i) => (
+    <g key={`ko-legend-${i}`}>
+      <rect x={4} y={i * 10} width={6} height={6} rx={1} fill={s.color} opacity={0.8} />
+      <text x={14} y={i * 10 + 5} fill="#8b949e" fontSize={6} fontFamily="system-ui">
+        {s.label}: {s.value}
+      </text>
+    </g>
+  ));
+
+  return (
+    <svg width={size + 30} height={size} viewBox={`0 0 ${size + 30} ${size}`} fill="none">
+      {arcPaths.map((arc, i) => (
+        <path key={`ko-seg-${i}`} d={arc.d} fill={arc.color} opacity={0.8} />
+      ))}
+      <circle cx={cx} cy={cy} r={innerR - 1} fill="#0d1117" />
+      <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize={12} fontWeight={700} fontFamily="system-ui">
+        {total}
+      </text>
+      <text x={cx} y={cy + 9} textAnchor="middle" fill="#8b949e" fontSize={7} fontFamily="system-ui">
+        apps
+      </text>
+      <g>{legendItems}</g>
+    </svg>
+  );
+}
+
 export default function CupBracket() {
   const gameState = useGameStore(state => state.gameState);
   const [selectedMatchDetail, setSelectedMatchDetail] = useState<string | null>(null);

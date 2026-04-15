@@ -710,7 +710,9 @@ export type GameScreen =
   | 'transfer_market_enhanced'
   | 'match_engine_simulation_enhanced'
   | 'contract_negotiation_enhanced'
-  | 'player_psychology_enhanced';
+  | 'player_psychology_enhanced'
+  | 'transfer_deadline_day_enhanced'
+  | 'squad_rotation_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
