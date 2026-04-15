@@ -7,7 +7,7 @@ import {
   MessageCircle, Heart, Share2, Users, TrendingUp, Star,
   Camera, Video, Link2, Send, Bell, Award, DollarSign,
   Eye, ThumbsUp, AtSign, Hash, Bookmark, Clock, Zap,
-  ChevronRight, Sparkles, Globe, Shield
+  ChevronRight, Sparkles, Globe, Shield, BarChart3
 } from 'lucide-react';
 
 // ============================================================
@@ -990,6 +990,125 @@ function ContractTimeline({ deals }: { deals: { brand: string; start: string; en
 }
 
 // ============================================================
+// SVG Path Helpers for Data Visualizations
+// ============================================================
+function buildHexPoints(cx: number, cy: number, radius: number, sides: number): string {
+  return Array.from({ length: sides }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+    return `${cx + radius * Math.cos(angle)},${cy + radius * Math.sin(angle)}`;
+  }).join(' ');
+}
+
+function buildRadarDataPoints(cx: number, cy: number, maxRadius: number, sides: number, values: number[]): string {
+  return values.map((v, i) => {
+    const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+    const r = (v / 100) * maxRadius;
+    return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+  }).join(' ');
+}
+
+function buildSemiArcPath(cx: number, cy: number, radius: number, startAngle: number, endAngle: number): string {
+  const x1 = cx + radius * Math.cos(startAngle);
+  const y1 = cy + radius * Math.sin(startAngle);
+  const x2 = cx + radius * Math.cos(endAngle);
+  const y2 = cy + radius * Math.sin(endAngle);
+  const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+  return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
+}
+
+function buildLinePath(points: { x: number; y: number }[]): string {
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+}
+
+function buildAreaPath(points: { x: number; y: number }[], baseY: number): string {
+  const linePart = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  return `${linePart} L ${points[points.length - 1].x} ${baseY} L ${points[0].x} ${baseY} Z`;
+}
+
+// ============================================================
+// Inline SVG Donut Helpers (rendered inside parent <svg>)
+// ============================================================
+interface DonutSegment { label: string; value: number; color: string }
+
+function ContentMixDonutInline({ segments }: { segments: DonutSegment[] }) {
+  const cx = 90;
+  const cy = 65;
+  const radius = 38;
+  const strokeWidth = 12;
+  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
+
+  const arcs = segments.reduce<Array<{ color: string; arcLength: number; offset: number; circumference: number }>>((result, seg) => {
+    const circumference = 2 * Math.PI * radius;
+    const pct = seg.value / total;
+    const gap = 3;
+    const arcLength = circumference * pct - gap;
+    const cumulative = result.reduce((sum, r) => sum + r.arcLength / circumference, 0);
+    const offset = circumference * (cumulative + pct / 2) - circumference * 0.25;
+    return [...result, { color: seg.color, arcLength, offset, circumference }];
+  }, []);
+
+  return (
+    <>
+      <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#21262d" strokeWidth={strokeWidth} />
+      {arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={arc.color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${Math.max(arc.arcLength, 0)} ${arc.circumference - arc.arcLength}`}
+          strokeDashoffset={arc.offset}
+          strokeLinecap="round"
+        />
+      ))}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize="8" fontFamily="sans-serif">Mix</text>
+    </>
+  );
+}
+
+function AudienceDemographicsDonutInline({ segments }: { segments: DonutSegment[] }) {
+  const cx = 90;
+  const cy = 60;
+  const radius = 35;
+  const strokeWidth = 12;
+  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
+
+  const arcs = segments.reduce<Array<{ color: string; arcLength: number; offset: number; circumference: number }>>((result, seg) => {
+    const circumference = 2 * Math.PI * radius;
+    const pct = seg.value / total;
+    const gap = 2;
+    const arcLength = circumference * pct - gap;
+    const cumulative = result.reduce((sum, r) => sum + r.arcLength / circumference, 0);
+    const offset = circumference * (cumulative + pct / 2) - circumference * 0.25;
+    return [...result, { color: seg.color, arcLength, offset, circumference }];
+  }, []);
+
+  return (
+    <>
+      <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#21262d" strokeWidth={strokeWidth} />
+      {arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={arc.color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${Math.max(arc.arcLength, 0)} ${arc.circumference - arc.arcLength}`}
+          strokeDashoffset={arc.offset}
+          strokeLinecap="round"
+        />
+      ))}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize="7" fontFamily="sans-serif">Fans</text>
+    </>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function SocialMediaHub(): React.JSX.Element {
@@ -1219,6 +1338,117 @@ export default function SocialMediaHub(): React.JSX.Element {
       active: true,
     })),
     [brandDeals]
+  );
+
+  // ============================================================
+  // Data for 11 New SVG Visualizations
+  // ============================================================
+
+  // 1. EngagementRadar — 5 axes (Likes/Comments/Shares/Saves/Views)
+  const engagementRadarValues = useMemo(
+    () => [
+      seededInt(baseSeed + 400, 40, 95),
+      seededInt(baseSeed + 401, 30, 85),
+      seededInt(baseSeed + 402, 20, 75),
+      seededInt(baseSeed + 403, 25, 80),
+      seededInt(baseSeed + 404, 50, 98),
+    ],
+    [baseSeed]
+  );
+
+  // 2. PlatformReachBars — 5 bars (Instagram/Twitter/TikTok/YouTube/Twitch followers)
+  const platformReachData = useMemo(
+    () => [
+      { label: 'Instagram', value: Math.round(150000 * (reputation / 50) * seededRange(baseSeed + 410, 0.7, 1.5)) },
+      { label: 'Twitter', value: Math.round(80000 * (reputation / 50) * seededRange(baseSeed + 411, 0.6, 1.8)) },
+      { label: 'TikTok', value: Math.round(300000 * (reputation / 50) * seededRange(baseSeed + 412, 0.5, 2.0)) },
+      { label: 'YouTube', value: Math.round(40000 * (reputation / 50) * seededRange(baseSeed + 413, 0.4, 1.6)) },
+      { label: 'Twitch', value: Math.round(25000 * (reputation / 50) * seededRange(baseSeed + 414, 0.3, 1.4)) },
+    ],
+    [baseSeed, reputation]
+  );
+
+  // 3. ContentMixDonut — 4 segments (Photos/Videos/Text/Stories)
+  const contentMixSegments = useMemo(
+    () => {
+      const raw = [
+        { label: 'Photos', value: seededInt(baseSeed + 420, 20, 50) },
+        { label: 'Videos', value: seededInt(baseSeed + 421, 15, 35) },
+        { label: 'Text', value: seededInt(baseSeed + 422, 10, 25) },
+        { label: 'Stories', value: seededInt(baseSeed + 423, 8, 30) },
+      ];
+      const colors = ['#CCFF00', '#FF5500', '#00E5FF', '#CCFF00'];
+      return raw.reduce<Array<{ label: string; value: number; color: string }>>((acc, item, idx) => {
+        acc.push({ label: item.label, value: item.value, color: colors[idx] });
+        return acc;
+      }, []);
+    },
+    [baseSeed]
+  );
+
+  // 4. AudienceDemographicsDonut — 5 segments (Local/National/International/Youth/Adult)
+  const audienceDemographicsSegments = useMemo(
+    () => {
+      const raw = [
+        { label: 'Local', value: seededInt(baseSeed + 430, 15, 35) },
+        { label: 'National', value: seededInt(baseSeed + 431, 20, 40) },
+        { label: 'International', value: seededInt(baseSeed + 432, 10, 30) },
+        { label: 'Youth', value: seededInt(baseSeed + 433, 25, 50) },
+        { label: 'Adult', value: seededInt(baseSeed + 434, 20, 45) },
+      ];
+      const colors = ['#FF5500', '#CCFF00', '#00E5FF', '#FF5500', '#CCFF00'];
+      return raw.reduce<Array<{ label: string; value: number; color: string }>>((acc, item, idx) => {
+        acc.push({ label: item.label, value: item.value, color: colors[idx] });
+        return acc;
+      }, []);
+    },
+    [baseSeed]
+  );
+
+  // 5. InfluenceScoreGauge — 0-100
+  const influenceScoreGauge = useMemo(
+    () => Math.min(100, Math.round(reputation * 0.65 + seededInt(baseSeed + 440, 10, 35))),
+    [baseSeed, reputation]
+  );
+
+  // 6. BrandValueGauge — 0-100
+  const brandValueGauge = useMemo(
+    () => Math.min(100, Math.round(reputation * 0.5 + seededInt(baseSeed + 441, 15, 40))),
+    [baseSeed, reputation]
+  );
+
+  // 7. FollowerGrowthLine — 8-week follower growth
+  const followerGrowth8Week = useMemo(
+    () => Array.from({ length: 8 }, (_, i) => seededInt(baseSeed + 450 + i, 1000, 25000)),
+    [baseSeed]
+  );
+
+  // 8. EngagementRateLine — 8-week engagement rate
+  const engagementRate8Week = useMemo(
+    () => Array.from({ length: 8 }, (_, i) => seededRange(baseSeed + 460 + i, 2.0, 12.0)),
+    [baseSeed]
+  );
+
+  // 9. PostPerformanceArea — 8-post performance
+  const postPerformance8 = useMemo(
+    () => Array.from({ length: 8 }, (_, i) => seededInt(baseSeed + 470 + i, 500, 15000)),
+    [baseSeed]
+  );
+
+  // 10. ViralMomentTimeline — 8 viral moments
+  const viralMoments = useMemo(
+    () => Array.from({ length: 8 }, (_, i) => ({
+      label: `W${i + 1}`,
+      intensity: seededInt(baseSeed + 480 + i, 10, 100),
+      caption: ['Goal', 'Assist', 'Red Card', 'Transfer Rumor', 'Interview', 'Hat-trick', 'Injury', 'Comeback'][i],
+    })),
+    [baseSeed]
+  );
+
+  // 11. SponsorAppealRing — 0-100
+  const sponsorAppealScore = useMemo(
+    () => Math.min(100, Math.round(reputation * 0.6 + seededInt(baseSeed + 490, 15, 40))),
+    [baseSeed, reputation]
   );
 
   // ============================================================
@@ -1992,6 +2222,440 @@ export default function SocialMediaHub(): React.JSX.Element {
             </div>
           </motion.div>
         )}
+
+        {/* ============================================================ */}
+        {/* 11 NEW SVG DATA VISUALIZATION SECTIONS                       */}
+        {/* ============================================================ */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+          className="mt-4"
+        >
+          <h2 className="text-sm font-bold text-[#c9d1d9] mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-[#FF5500]" />
+            Social Analytics Deep Dive
+          </h2>
+
+          {/* Row 1: EngagementRadar + PlatformReachBars */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+
+            {/* 1. EngagementRadar — Radar Chart (5-axis) — Stroke #FF5500 */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="h-3.5 w-3.5 text-[#FF5500]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Engagement Radar</h3>
+              </div>
+              <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 200 }} xmlns="http://www.w3.org/2000/svg">
+                {/* Background hex rings at 25/50/75/100% */}
+                {[25, 50, 75, 100].map((pct, li) => (
+                  <polygon
+                    key={li}
+                    points={buildHexPoints(100, 100, (pct / 100) * 75, 5)}
+                    fill="none"
+                    stroke="#21262d"
+                    strokeWidth="0.5"
+                  />
+                ))}
+                {/* Axis lines */}
+                {Array.from({ length: 5 }, (_, i) => {
+                  const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+                  return (
+                    <line
+                      key={i}
+                      x1={100}
+                      y1={100}
+                      x2={100 + 75 * Math.cos(angle)}
+                      y2={100 + 75 * Math.sin(angle)}
+                      stroke="#21262d"
+                      strokeWidth="0.5"
+                    />
+                  );
+                })}
+                {/* Data polygon */}
+                <polygon
+                  points={buildRadarDataPoints(100, 100, 75, 5, engagementRadarValues)}
+                  fill="#FF5500"
+                  fillOpacity="0.15"
+                  stroke="#FF5500"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+                {/* Data points */}
+                {engagementRadarValues.map((_, i) => {
+                  const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+                  const r = (engagementRadarValues[i] / 100) * 75;
+                  return (
+                    <circle
+                      key={i}
+                      cx={100 + r * Math.cos(angle)}
+                      cy={100 + r * Math.sin(angle)}
+                      r="3"
+                      fill="#FF5500"
+                    />
+                  );
+                })}
+                {/* Axis labels */}
+                {['Likes', 'Comments', 'Shares', 'Saves', 'Views'].map((label, i) => {
+                  const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+                  const lx = 100 + 88 * Math.cos(angle);
+                  const ly = 100 + 88 * Math.sin(angle);
+                  return (
+                    <text
+                      key={i}
+                      x={lx}
+                      y={ly}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="#8b949e"
+                      fontSize="8"
+                      fontFamily="sans-serif"
+                    >
+                      {label}
+                    </text>
+                  );
+                })}
+              </svg>
+              {/* Legend */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {['Likes', 'Comments', 'Shares', 'Saves', 'Views'].map((label, i) => (
+                  <span key={label} className="text-[10px] text-[#8b949e]">
+                    {label}: <span className="text-[#FF5500] font-bold">{engagementRadarValues[i]}%</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. PlatformReachBars — Horizontal Bar Chart (5 bars) — Fill #00E5FF */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="h-3.5 w-3.5 text-[#00E5FF]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Platform Reach</h3>
+              </div>
+              <svg viewBox="0 0 300 200" style={{ width: '100%', maxWidth: 300 }} xmlns="http://www.w3.org/2000/svg">
+                {platformReachData.map((item, i) => {
+                  const maxVal = Math.max(...platformReachData.map(d => d.value), 1);
+                  const y = 8 + i * 36;
+                  const barW = (item.value / maxVal) * 180;
+                  return (
+                    <g key={i}>
+                      <text x={0} y={y + 12} fill="#8b949e" fontSize="9" fontFamily="sans-serif">{item.label}</text>
+                      <rect x={65} y={y} width={180} height={22} fill="#21262d" rx="4" />
+                      <rect x={65} y={y} width={barW} height={22} fill="#00E5FF" fillOpacity="0.85" rx="4" />
+                      <text x={65 + barW + 5} y={y + 15} fill="#c9d1d9" fontSize="8" fontWeight="bold" fontFamily="sans-serif">
+                        {fmtNumber(item.value)}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+          </div>
+
+          {/* Row 2: ContentMixDonut + AudienceDemographicsDonut + InfluenceScoreGauge */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+
+            {/* 3. ContentMixDonut — Donut Chart (4 segments) — Stroke #CCFF00 */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Camera className="h-3.5 w-3.5 text-[#CCFF00]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Content Mix</h3>
+              </div>
+              <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 160 }} xmlns="http://www.w3.org/2000/svg">
+                <ContentMixDonutInline segments={contentMixSegments} />
+                {/* Legend below */}
+                {contentMixSegments.map((seg, i) => (
+                  <g key={i}>
+                    <circle cx={20} cy={140 + i * 14} r="4" fill={seg.color} />
+                    <text x={28} y={143 + i * 14} fill="#8b949e" fontSize="8" fontFamily="sans-serif">{seg.label}</text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+
+            {/* 4. AudienceDemographicsDonut — Donut Chart (5 segments) — Stroke #FF5500 */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-3.5 w-3.5 text-[#FF5500]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Audience Demographics</h3>
+              </div>
+              <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 160 }} xmlns="http://www.w3.org/2000/svg">
+                <AudienceDemographicsDonutInline segments={audienceDemographicsSegments} />
+                {audienceDemographicsSegments.map((seg, i) => (
+                  <g key={i}>
+                    <circle cx={20} cy={140 + i * 13} r="4" fill={seg.color} />
+                    <text x={28} y={143 + i * 13} fill="#8b949e" fontSize="8" fontFamily="sans-serif">{seg.label}</text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+
+            {/* 5. InfluenceScoreGauge — Semi-circular Gauge (0-100) — Stroke #00E5FF */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Star className="h-3.5 w-3.5 text-[#00E5FF]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Influence Score</h3>
+              </div>
+              <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 160 }} xmlns="http://www.w3.org/2000/svg">
+                {/* Background arc */}
+                <path
+                  d={buildSemiArcPath(100, 120, 70, Math.PI, 2 * Math.PI)}
+                  fill="none"
+                  stroke="#21262d"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                />
+                {/* Filled arc */}
+                <path
+                  d={buildSemiArcPath(100, 120, 70, Math.PI, Math.PI + (influenceScoreGauge / 100) * Math.PI)}
+                  fill="none"
+                  stroke="#00E5FF"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                />
+                <text x={100} y={110} textAnchor="middle" fill="#c9d1d9" fontSize="28" fontWeight="bold" fontFamily="sans-serif">
+                  {influenceScoreGauge}
+                </text>
+                <text x={100} y={128} textAnchor="middle" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+                  out of 100
+                </text>
+              </svg>
+            </div>
+          </div>
+
+          {/* Row 3: BrandValueGauge + SponsorAppealRing + FollowerGrowthLine */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+
+            {/* 6. BrandValueGauge — Semi-circular Gauge (0-100) — Stroke #CCFF00 */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-3.5 w-3.5 text-[#CCFF00]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Brand Value</h3>
+              </div>
+              <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 160 }} xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d={buildSemiArcPath(100, 120, 70, Math.PI, 2 * Math.PI)}
+                  fill="none"
+                  stroke="#21262d"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                />
+                <path
+                  d={buildSemiArcPath(100, 120, 70, Math.PI, Math.PI + (brandValueGauge / 100) * Math.PI)}
+                  fill="none"
+                  stroke="#CCFF00"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                />
+                <text x={100} y={110} textAnchor="middle" fill="#c9d1d9" fontSize="28" fontWeight="bold" fontFamily="sans-serif">
+                  {brandValueGauge}
+                </text>
+                <text x={100} y={128} textAnchor="middle" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+                  brand index
+                </text>
+              </svg>
+            </div>
+
+            {/* 7. FollowerGrowthLine — Line Chart (8 data points) — Stroke #FF5500 */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-3.5 w-3.5 text-[#FF5500]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Follower Growth (8 Weeks)</h3>
+              </div>
+              <svg viewBox="0 0 300 200" style={{ width: '100%', maxWidth: 300 }} xmlns="http://www.w3.org/2000/svg">
+                {(() => {
+                  const maxVal = Math.max(...followerGrowth8Week, 1);
+                  const padX = 35;
+                  const padY = 15;
+                  const chartW = 260;
+                  const chartH = 150;
+                  const pts = followerGrowth8Week.map((v, i) => ({
+                    x: padX + (i / (followerGrowth8Week.length - 1)) * chartW,
+                    y: padY + chartH - (v / maxVal) * chartH,
+                  }));
+                  return (
+                    <>
+                      <line x1={padX} y1={padY} x2={padX} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+                      <line x1={padX} y1={padY + chartH} x2={padX + chartW} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+                      <text x={padX - 4} y={padY + 4} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">{fmtNumber(maxVal)}</text>
+                      <text x={padX - 4} y={padY + chartH + 2} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">0</text>
+                      <path d={buildLinePath(pts)} fill="none" stroke="#FF5500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      {pts.map((p, i) => (
+                        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#0d1117" stroke="#FF5500" strokeWidth="2" />
+                      ))}
+                      {pts.map((p, i) => (
+                        <text key={`l${i}`} x={p.x} y={padY + chartH + 14} textAnchor="middle" fill="#484f58" fontSize="7" fontFamily="sans-serif">W{i + 1}</text>
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+
+            {/* 11. SponsorAppealRing — Circular Ring (0-100) — Stroke #FF5500 */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="h-3.5 w-3.5 text-[#FF5500]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Sponsor Appeal</h3>
+              </div>
+              <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 160 }} xmlns="http://www.w3.org/2000/svg">
+                {(() => {
+                  const strokeWidth = 12;
+                  const radius = 65;
+                  const circumference = 2 * Math.PI * radius;
+                  const offset = circumference - (sponsorAppealScore / 100) * circumference;
+                  return (
+                    <>
+                      <circle cx={100} cy={100} r={radius} fill="none" stroke="#21262d" strokeWidth={strokeWidth} />
+                      <circle
+                        cx={100}
+                        cy={100}
+                        r={radius}
+                        fill="none"
+                        stroke="#FF5500"
+                        strokeWidth={strokeWidth}
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                      />
+                      <text x={100} y={95} textAnchor="middle" fill="#c9d1d9" fontSize="26" fontWeight="bold" fontFamily="sans-serif">
+                        {sponsorAppealScore}
+                      </text>
+                      <text x={100} y={112} textAnchor="middle" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+                        appeal score
+                      </text>
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+          </div>
+
+          {/* Row 4: EngagementRateLine + PostPerformanceArea */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+
+            {/* 8. EngagementRateLine — Line Chart (8 data points) — Stroke #00E5FF */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Heart className="h-3.5 w-3.5 text-[#00E5FF]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Engagement Rate (8 Weeks)</h3>
+              </div>
+              <svg viewBox="0 0 300 200" style={{ width: '100%', maxWidth: 300 }} xmlns="http://www.w3.org/2000/svg">
+                {(() => {
+                  const maxVal = Math.max(...engagementRate8Week, 1);
+                  const padX = 35;
+                  const padY = 15;
+                  const chartW = 260;
+                  const chartH = 150;
+                  const pts = engagementRate8Week.map((v, i) => ({
+                    x: padX + (i / (engagementRate8Week.length - 1)) * chartW,
+                    y: padY + chartH - (v / maxVal) * chartH,
+                  }));
+                  return (
+                    <>
+                      <line x1={padX} y1={padY} x2={padX} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+                      <line x1={padX} y1={padY + chartH} x2={padX + chartW} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+                      <text x={padX - 4} y={padY + 4} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">{maxVal.toFixed(1)}%</text>
+                      <text x={padX - 4} y={padY + chartH + 2} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">0%</text>
+                      <path d={buildLinePath(pts)} fill="none" stroke="#00E5FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      {pts.map((p, i) => (
+                        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#0d1117" stroke="#00E5FF" strokeWidth="2" />
+                      ))}
+                      {pts.map((p, i) => (
+                        <text key={`l${i}`} x={p.x} y={padY + chartH + 14} textAnchor="middle" fill="#484f58" fontSize="7" fontFamily="sans-serif">W{i + 1}</text>
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+
+            {/* 9. PostPerformanceArea — Area Chart (8 data points) — Fill #CCFF00 at 20% */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="h-3.5 w-3.5 text-[#CCFF00]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Post Performance (Last 8)</h3>
+              </div>
+              <svg viewBox="0 0 300 200" style={{ width: '100%', maxWidth: 300 }} xmlns="http://www.w3.org/2000/svg">
+                {(() => {
+                  const maxVal = Math.max(...postPerformance8, 1);
+                  const padX = 35;
+                  const padY = 15;
+                  const chartW = 260;
+                  const chartH = 150;
+                  const baseY = padY + chartH;
+                  const pts = postPerformance8.map((v, i) => ({
+                    x: padX + (i / (postPerformance8.length - 1)) * chartW,
+                    y: padY + chartH - (v / maxVal) * chartH,
+                  }));
+                  return (
+                    <>
+                      <line x1={padX} y1={padY} x2={padX} y2={baseY} stroke="#21262d" strokeWidth="0.5" />
+                      <line x1={padX} y1={baseY} x2={padX + chartW} y2={baseY} stroke="#21262d" strokeWidth="0.5" />
+                      <text x={padX - 4} y={padY + 4} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">{fmtNumber(maxVal)}</text>
+                      <text x={padX - 4} y={baseY + 2} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">0</text>
+                      <path d={buildAreaPath(pts, baseY)} fill="#CCFF00" fillOpacity="0.2" />
+                      <path d={buildLinePath(pts)} fill="none" stroke="#CCFF00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      {pts.map((p, i) => (
+                        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#0d1117" stroke="#CCFF00" strokeWidth="2" />
+                      ))}
+                      {pts.map((p, i) => (
+                        <text key={`l${i}`} x={p.x} y={baseY + 14} textAnchor="middle" fill="#484f58" fontSize="7" fontFamily="sans-serif">P{i + 1}</text>
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+          </div>
+
+          {/* Row 5: ViralMomentTimeline */}
+          <div className="mb-3">
+
+            {/* 10. ViralMomentTimeline — Timeline (8 nodes) — Stroke #00E5FF */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-3.5 w-3.5 text-[#00E5FF]" />
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Viral Moments Timeline</h3>
+              </div>
+              <svg viewBox="0 0 300 200" style={{ width: '100%', maxWidth: 300 }} xmlns="http://www.w3.org/2000/svg">
+                {(() => {
+                  const padX = 25;
+                  const cy = 60;
+                  const chartW = 250;
+                  const maxIntensity = 100;
+                  return (
+                    <>
+                      {/* Base line */}
+                      <line x1={padX} y1={cy} x2={padX + chartW} y2={cy} stroke="#21262d" strokeWidth="1.5" />
+                      {viralMoments.map((moment, i) => {
+                        const x = padX + (i / (viralMoments.length - 1)) * chartW;
+                        const intensity = moment.intensity / maxIntensity;
+                        const nodeR = 6 + intensity * 8;
+                        return (
+                          <g key={i}>
+                            {/* Outer glow ring */}
+                            <circle cx={x} cy={cy} r={nodeR} fill="#00E5FF" fillOpacity={0.08 + intensity * 0.15} />
+                            {/* Node circle */}
+                            <circle cx={x} cy={cy} r={4} fill={intensity > 0.7 ? '#00E5FF' : '#30363d'} stroke="#00E5FF" strokeWidth="1.5" />
+                            {/* Vertical connector */}
+                            <line x1={x} y1={cy + nodeR + 2} x2={x} y2={cy + nodeR + 16} stroke="#30363d" strokeWidth="0.5" />
+                            {/* Week label */}
+                            <text x={x} y={cy + nodeR + 26} textAnchor="middle" fill="#484f58" fontSize="8" fontFamily="sans-serif">{moment.label}</text>
+                            {/* Caption */}
+                            <text x={x} y={cy + nodeR + 38} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontFamily="sans-serif">{moment.caption}</text>
+                            {/* Intensity label */}
+                            <text x={x} y={cy - nodeR - 6} textAnchor="middle" fill="#00E5FF" fontSize="8" fontWeight="bold" fontFamily="sans-serif">{moment.intensity}%</text>
+                          </g>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+          </div>
+        </motion.div>
       </AnimatePresence>
     </div>
   );

@@ -842,6 +842,85 @@ export default function PlayerComparison() {
     };
   }, [gameState, chosenTeammate]);
 
+  // ── 5-Axis Radar Data (compact) ──
+  const fiveAxisRadarData = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const dims = ['SPD', 'SHT', 'PAS', 'DRI', 'PHY'] as const;
+    const pAttrs = gameState.player.attributes;
+    const pVals = [pAttrs.pace, pAttrs.shooting, pAttrs.passing, pAttrs.dribbling, pAttrs.physical];
+    const tVals = [chosenTeammate.attributes.pace, chosenTeammate.attributes.shooting, chosenTeammate.attributes.passing, chosenTeammate.attributes.dribbling, chosenTeammate.attributes.physical];
+    return { dims: [...dims], pVals, tVals };
+  }, [gameState, chosenTeammate]);
+
+  // ── Donut Chart Data (4 attribute categories via reduce) ──
+  const donutChartData = useMemo(() => {
+    if (!gameState) return null;
+    const { attributes } = gameState.player;
+    type DonutSegment = { label: string; value: number; color: string; pct?: number };
+    const segments: DonutSegment[] = [
+      { label: 'Attack', value: attributes.pace + attributes.shooting + attributes.dribbling, color: '#FF5500' },
+      { label: 'Create', value: attributes.passing + attributes.dribbling, color: '#CCFF00' },
+      { label: 'Defend', value: attributes.defending + attributes.physical, color: '#00E5FF' },
+      { label: 'Growth', value: Math.max(0, gameState.player.potential - gameState.player.overall), color: '#8b949e' },
+    ];
+    return segments;
+  }, [gameState]);
+
+  // ── Gauge Data (0-100) ──
+  const gaugeData = useMemo(() => {
+    if (!gameState) return null;
+    const pAttrs = gameState.player.attributes;
+    const fitness = Math.max(0, Math.min(100, 50 + pAttrs.physical * 0.3 + pAttrs.pace * 0.2 - (gameState.player.age - 22) * 1.5));
+    return { overall: gameState.player.overall, fitness: Math.round(fitness) };
+  }, [gameState]);
+
+  // ── Area Chart Data (8 data points) ──
+  const areaChartData = useMemo(() => {
+    if (!gameState) return null;
+    const seed = seedHash(gameState.player.name + '-area');
+    const points: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const base = gameState.player.overall - 8 + i * 2;
+      const v = ((seed + i * 13) % 14) - 7;
+      points.push(Math.max(40, Math.min(95, base + v)));
+    }
+    return points;
+  }, [gameState]);
+
+  // ── Horizontal Bars Data (5 bars) ──
+  const horizontalBarsData = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const bars = ATTR_KEYS.slice(0, 5).map(key => ({
+      label: ATTR_META[key].short,
+      pVal: gameState.player.attributes[key],
+      tVal: chosenTeammate.attributes[key],
+    }));
+    return bars;
+  }, [gameState, chosenTeammate]);
+
+  // ── Timeline Data (8 nodes) ──
+  const timelineData = useMemo(() => {
+    if (!gameState) return null;
+    const milestones = ['Debut', 'First Goal', '10 Apps', 'First Assist', '50 Apps', 'Captain', '100 Apps', 'Legend'];
+    const seed = seedHash(gameState.player.name + '-timeline');
+    const ratings: number[] = milestones.map((_, i) => {
+      const base = 55 + i * 5;
+      const v = ((seed + i * 11) % 12) - 6;
+      return Math.max(40, Math.min(95, base + v));
+    });
+    return { milestones, ratings };
+  }, [gameState]);
+
+  // ── Ring Chart Data (0-100) ──
+  const ringChartData = useMemo(() => {
+    if (!gameState || !chosenTeammate) return null;
+    const pAttrs = gameState.player.attributes;
+    const tAttrs = chosenTeammate.attributes;
+    const pAvg = Math.round((pAttrs.pace + pAttrs.shooting + pAttrs.passing + pAttrs.dribbling + pAttrs.defending + pAttrs.physical) / 6);
+    const tAvg = Math.round((tAttrs.pace + tAttrs.shooting + tAttrs.passing + tAttrs.dribbling + tAttrs.defending + tAttrs.physical) / 6);
+    return { playerAvg: pAvg, teammateAvg: tAvg };
+  }, [gameState, chosenTeammate]);
+
   if (!gameState) return null;
 
   const { player, currentClub } = gameState;
@@ -2277,6 +2356,353 @@ export default function PlayerComparison() {
                 </Card>
               )}
             </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* 7 NEW GRITTY FUTURISM SVG DATA VISUALIZATION SECTIONS    */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+
+          {/* ── SVG 1: 5-Axis Compact Radar Chart ── */}
+          {fiveAxisRadarData && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.05 }}>
+              <Card className="bg-[#0d1117] border-[#21262d]">
+                <CardHeader className="pb-1 pt-2 px-3">
+                  <CardTitle className="text-[10px] text-[#484f58] font-bold tracking-widest uppercase">Compact Radar</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <svg viewBox="0 0 320 120" width="320" height="120" className="max-w-full">
+                    {/* Pentagon grid - 3 levels */}
+                    {[0.33, 0.66, 1.0].map((scale, li) => {
+                      const r = 42 * scale;
+                      const cx = 80; const cy = 60;
+                      const pts = [0,1,2,3,4].map(i => {
+                        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+                        return `${(cx + r * Math.cos(angle)).toFixed(1)},${(cy + r * Math.sin(angle)).toFixed(1)}`;
+                      }).join(' ');
+                      return <polygon key={li} points={pts} fill="none" stroke={li === 2 ? '#30363d' : '#161b22'} strokeWidth={0.5} />;
+                    })}
+                    {/* Axes */}
+                    {[0,1,2,3,4].map(i => {
+                      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+                      const cx = 80; const cy = 60;
+                      return <line key={i} x1={cx} y1={cy} x2={cx + 42 * Math.cos(angle)} y2={cy + 42 * Math.sin(angle)} stroke="#21262d" strokeWidth={0.4} />;
+                    })}
+                    {/* Player polygon */}
+                    <polygon
+                      points={fiveAxisRadarData.pVals.map((v, i) => {
+                        const r = (v / 100) * 42;
+                        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+                        return `${(80 + r * Math.cos(angle)).toFixed(1)},${(60 + r * Math.sin(angle)).toFixed(1)}`;
+                      }).join(' ')}
+                      fill="#FF5500" fillOpacity={0.15} stroke="#FF5500" strokeWidth={1.5} strokeLinejoin="round"
+                    />
+                    {/* Teammate polygon */}
+                    <polygon
+                      points={fiveAxisRadarData.tVals.map((v, i) => {
+                        const r = (v / 100) * 42;
+                        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+                        return `${(80 + r * Math.cos(angle)).toFixed(1)},${(60 + r * Math.sin(angle)).toFixed(1)}`;
+                      }).join(' ')}
+                      fill="#00E5FF" fillOpacity={0.08} stroke="#00E5FF" strokeWidth={1} strokeDasharray="3,2" strokeLinejoin="round"
+                    />
+                    {/* Axis labels */}
+                    {fiveAxisRadarData.dims.map((dim, i) => {
+                      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+                      const lx = 80 + 52 * Math.cos(angle);
+                      const ly = 60 + 52 * Math.sin(angle);
+                      return <text key={dim} x={lx} y={ly + 3} fill="#8b949e" fontSize={8} textAnchor="middle" fontFamily="monospace" fontWeight={700}>{dim}</text>;
+                    })}
+                    {/* Legend on right side */}
+                    <line x1="150" y1="30" x2="165" y2="30" stroke="#FF5500" strokeWidth={2} strokeLinecap="round" />
+                    <text x="170" y="33" fill="#c9d1d9" fontSize={8} fontFamily="monospace">{player.name.split(' ')[0]}</text>
+                    <line x1="150" y1="48" x2="165" y2="48" stroke="#00E5FF" strokeWidth={1} strokeDasharray="3,2" strokeLinecap="round" />
+                    <text x="170" y="51" fill="#8b949e" fontSize={8} fontFamily="monospace">{chosenTeammate?.name.split(' ')[0]}</text>
+                    {/* Stat summary */}
+                    <text x="150" y="78" fill="#484f58" fontSize={7} fontFamily="monospace">ATK CRE DEF PHY</text>
+                    <text x="150" y="92" fill="#FF5500" fontSize={8} fontFamily="monospace" fontWeight={700}>
+                      {fiveAxisRadarData.pVals.slice(0,3).map(v => v.toString().padStart(2)).join(' ')} {fiveAxisRadarData.pVals[4]}
+                    </text>
+                    <text x="150" y="106" fill="#00E5FF" fontSize={8} fontFamily="monospace" fontWeight={600}>
+                      {fiveAxisRadarData.tVals.slice(0,3).map(v => v.toString().padStart(2)).join(' ')} {fiveAxisRadarData.tVals[4]}
+                    </text>
+                  </svg>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── SVG 2: Donut Chart (4 segments via reduce, each has color) ── */}
+          {donutChartData && (() => {
+            const total = donutChartData.reduce((sum, s) => sum + s.value, 0);
+            const filteredSegments = donutChartData.filter((s): s is typeof s & { color: string } => Boolean(s.color));
+            let cumAngle = 0;
+            const paths = filteredSegments.map(seg => {
+              const pct = total > 0 ? seg.value / total : 0;
+              const startAngle = cumAngle;
+              cumAngle += pct * 2 * Math.PI;
+              const endAngle = cumAngle;
+              const cx = 60; const cy = 60; const r = 38; const innerR = 24;
+              const largeArc = pct > 0.5 ? 1 : 0;
+              const x1 = cx + r * Math.cos(startAngle - Math.PI / 2);
+              const y1 = cy + r * Math.sin(startAngle - Math.PI / 2);
+              const x2 = cx + r * Math.cos(endAngle - Math.PI / 2);
+              const y2 = cy + r * Math.sin(endAngle - Math.PI / 2);
+              const x3 = cx + innerR * Math.cos(endAngle - Math.PI / 2);
+              const y3 = cy + innerR * Math.sin(endAngle - Math.PI / 2);
+              const x4 = cx + innerR * Math.cos(startAngle - Math.PI / 2);
+              const y4 = cy + innerR * Math.sin(startAngle - Math.PI / 2);
+              const d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} L ${x3.toFixed(1)} ${y3.toFixed(1)} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4.toFixed(1)} ${y4.toFixed(1)} Z`;
+              return { ...seg, pct, d };
+            });
+            return (
+              <motion.div key="donut" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }}>
+                <Card className="bg-[#0d1117] border-[#21262d]">
+                  <CardHeader className="pb-1 pt-2 px-3">
+                    <CardTitle className="text-[10px] text-[#484f58] font-bold tracking-widest uppercase">Attribute Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <svg viewBox="0 0 320 120" width="320" height="120" className="max-w-full">
+                      {paths.map((seg, i) => (
+                        <motion.path key={i} d={seg.d} fill={seg.color} fillOpacity={0} stroke="#0d1117" strokeWidth={2} strokeLinejoin="round" animate={{ fillOpacity: 0.8 }} transition={{ duration: 0.5, delay: i * 0.1 }} />
+                      ))}
+                      {/* Center text */}
+                      <text x={60} y={57} fill="#c9d1d9" fontSize={16} fontWeight={900} textAnchor="middle" fontFamily="monospace">{total}</text>
+                      <text x={60} y={70} fill="#484f58" fontSize={7} textAnchor="middle" fontFamily="monospace">TOTAL PTS</text>
+                      {/* Legend */}
+                      {filteredSegments.map((seg, i) => (
+                        <g key={`leg-${i}`}>
+                          <rect x="120" y={18 + i * 22} width={10} height={10} fill={seg.color} opacity={0.85} rx="1" />
+                          <text x="136" y={27 + i * 22} fill="#c9d1d9" fontSize={9} fontFamily="monospace" fontWeight={600}>{seg.label}</text>
+                          <text x="210" y={27 + i * 22} fill="#8b949e" fontSize={9} fontFamily="monospace">{seg.value}pts</text>
+                          <text x="260" y={27 + i * 22} fill="#484f58" fontSize={8} fontFamily="monospace">{Math.round((seg.pct ?? 0) * 100)}%</text>
+                        </g>
+                      ))}
+                    </svg>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })()}
+
+          {/* ── SVG 3: Semi-Circular Gauge (0-100) ── */}
+          {gaugeData && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.15 }}>
+              <Card className="bg-[#0d1117] border-[#21262d]">
+                <CardHeader className="pb-1 pt-2 px-3">
+                  <CardTitle className="text-[10px] text-[#484f58] font-bold tracking-widest uppercase">Overall Gauge</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <svg viewBox="0 0 320 120" width="320" height="120" className="max-w-full">
+                    {/* Background arc */}
+                    <path d="M 40 100 A 60 60 0 0 1 160 100" fill="none" stroke="#21262d" strokeWidth={10} strokeLinecap="round" />
+                    {/* Value arc - OVR */}
+                    {(() => {
+                      const pct = gaugeData.overall / 100;
+                      const angle = Math.PI * pct;
+                      const x = 100 + 60 * Math.cos(Math.PI - angle);
+                      const y = 100 - 60 * Math.sin(angle);
+                      const largeArc = pct > 0.5 ? 1 : 0;
+                      return <motion.path d={`M 40 100 A 60 60 0 ${largeArc} 1 ${x.toFixed(1)} ${y.toFixed(1)}`} fill="none" stroke="#FF5500" strokeWidth={10} strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.2 }} />;
+                    })()}
+                    {/* Fitness arc - smaller */}
+                    <path d="M 185 105 A 45 45 0 0 1 275 105" fill="none" stroke="#161b22" strokeWidth={7} strokeLinecap="round" />
+                    {(() => {
+                      const pct = gaugeData.fitness / 100;
+                      const angle = Math.PI * pct;
+                      const x = 230 + 45 * Math.cos(Math.PI - angle);
+                      const y = 105 - 45 * Math.sin(angle);
+                      const largeArc = pct > 0.5 ? 1 : 0;
+                      return <motion.path d={`M 185 105 A 45 45 0 ${largeArc} 1 ${x.toFixed(1)} ${y.toFixed(1)}`} fill="none" stroke="#CCFF00" strokeWidth={7} strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.3 }} />;
+                    })()}
+                    {/* Labels */}
+                    <text x={100} y={80} fill="#c9d1d9" fontSize={22} fontWeight={900} textAnchor="middle" fontFamily="monospace">{gaugeData.overall}</text>
+                    <text x={100} y={94} fill="#484f58" fontSize={7} textAnchor="middle" fontFamily="monospace">OVR RATING</text>
+                    <text x={230} y={80} fill="#CCFF00" fontSize={16} fontWeight={900} textAnchor="middle" fontFamily="monospace">{gaugeData.fitness}</text>
+                    <text x={230} y={92} fill="#484f58" fontSize={7} textAnchor="middle" fontFamily="monospace">FITNESS</text>
+                    {/* Scale markers */}
+                    {[0, 25, 50, 75, 100].map(v => {
+                      const a = Math.PI * (1 - v / 100);
+                      const x = 100 + 68 * Math.cos(a);
+                      const y = 100 - 68 * Math.sin(a);
+                      return <text key={v} x={x} y={y} fill="#484f58" fontSize={6} textAnchor="middle" fontFamily="monospace">{v}</text>;
+                    })}
+                  </svg>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── SVG 4: Area Chart (8 data points, 20% fill) ── */}
+          {areaChartData && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }}>
+              <Card className="bg-[#0d1117] border-[#21262d]">
+                <CardHeader className="pb-1 pt-2 px-3">
+                  <CardTitle className="text-[10px] text-[#484f58] font-bold tracking-widest uppercase">Performance Trend</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <svg viewBox="0 0 320 120" width="320" height="120" className="max-w-full">
+                    {/* Grid */}
+                    <line x1="30" y1="10" x2="30" y2="95" stroke="#21262d" strokeWidth={0.5} />
+                    <line x1="30" y1="95" x2="310" y2="95" stroke="#30363d" strokeWidth={0.5} />
+                    {[40, 60, 80, 100].map(v => {
+                      const y = 95 - ((v - 40) / 60) * 85;
+                      return <line key={v} x1="30" y1={y} x2="310" y2={y} stroke="#161b22" strokeWidth={0.3} />;
+                    })}
+                    {/* Area fill (20% opacity) */}
+                    {(() => {
+                      const pts = areaChartData.map((v, i) => {
+                        const x = 30 + (i / 7) * 280;
+                        const y = 95 - ((v - 40) / 60) * 85;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                      });
+                      const linePoints = pts.join(' ');
+                      const areaPoints = `30,95 ${linePoints} 310,95`;
+                      return <polygon points={areaPoints} fill="#00E5FF" fillOpacity={0.2} stroke="none" />;
+                    })()}
+                    {/* Line */}
+                    <polyline
+                      points={areaChartData.map((v, i) => {
+                        const x = 30 + (i / 7) * 280;
+                        const y = 95 - ((v - 40) / 60) * 85;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                      }).join(' ')}
+                      fill="none" stroke="#00E5FF" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round"
+                    />
+                    {/* Data points */}
+                    {areaChartData.map((v, i) => {
+                      const x = 30 + (i / 7) * 280;
+                      const y = 95 - ((v - 40) / 60) * 85;
+                      return (
+                        <g key={`ap-${i}`}>
+                          <circle cx={x} cy={y} r={2.5} fill="#00E5FF" />
+                          <text x={x} y={y - 6} fill="#c9d1d9" fontSize={7} textAnchor="middle" fontFamily="monospace" fontWeight={700}>{v}</text>
+                          <text x={x} y={107} fill="#484f58" fontSize={6} textAnchor="middle" fontFamily="monospace">W{i + 1}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── SVG 5: Horizontal Bars Chart (5 bars) ── */}
+          {horizontalBarsData && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.25 }}>
+              <Card className="bg-[#0d1117] border-[#21262d]">
+                <CardHeader className="pb-1 pt-2 px-3">
+                  <CardTitle className="text-[10px] text-[#484f58] font-bold tracking-widest uppercase">Attribute Bars</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <svg viewBox="0 0 320 120" width="320" height="120" className="max-w-full">
+                    {horizontalBarsData.map((bar, i) => {
+                      const y = 10 + i * 21;
+                      const pW = (bar.pVal / 100) * 160;
+                      const tW = (bar.tVal / 100) * 160;
+                      return (
+                        <g key={bar.label}>
+                          <text x="28" y={y + 9} fill="#8b949e" fontSize={8} textAnchor="end" fontFamily="monospace" fontWeight={700}>{bar.label}</text>
+                          {/* Player bar */}
+                          <rect x="32" y={y + 1} width={pW} height={7} fill="#FF5500" opacity={0.85} rx="1" />
+                          <text x={pW + 36} y={y + 8} fill="#FF5500" fontSize={7} fontFamily="monospace" fontWeight={700}>{bar.pVal}</text>
+                          {/* Teammate bar */}
+                          <rect x="32" y={y + 10} width={tW} height={5} fill="#00E5FF" opacity={0.5} rx="1" />
+                          <text x={tW + 36} y={y + 15} fill="#00E5FF" fontSize={6} fontFamily="monospace">{bar.tVal}</text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── SVG 6: Timeline Chart (8 nodes) ── */}
+          {timelineData && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.3 }}>
+              <Card className="bg-[#0d1117] border-[#21262d]">
+                <CardHeader className="pb-1 pt-2 px-3">
+                  <CardTitle className="text-[10px] text-[#484f58] font-bold tracking-widest uppercase">Career Timeline</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <svg viewBox="0 0 320 120" width="320" height="120" className="max-w-full">
+                    {/* Timeline track */}
+                    <line x1="20" y1="55" x2="300" y2="55" stroke="#21262d" strokeWidth={2} strokeLinecap="round" />
+                    {/* Nodes and labels */}
+                    {timelineData.milestones.map((m, i) => {
+                      const x = 20 + (i / 7) * 280;
+                      const rating = timelineData.ratings[i];
+                      const color = rating >= 80 ? '#CCFF00' : rating >= 65 ? '#FF5500' : '#484f58';
+                      return (
+                        <g key={m}>
+                          <circle cx={x} cy={55} r={6} fill="#0d1117" stroke={color} strokeWidth={2} />
+                          <circle cx={x} cy={55} r={2.5} fill={color} />
+                          <text x={x} y={40} fill={color} fontSize={8} textAnchor="middle" fontFamily="monospace" fontWeight={700}>{rating}</text>
+                          <text x={x} y={78} fill="#8b949e" fontSize={6} textAnchor="middle" fontFamily="monospace">{m}</text>
+                        </g>
+                      );
+                    })}
+                    {/* Direction arrow */}
+                    <text x="290" y="48" fill="#484f58" fontSize={8} fontFamily="monospace">&#x25B6;</text>
+                    {/* Stats */}
+                    <text x="20" y="105" fill="#484f58" fontSize={7} fontFamily="monospace">START: {timelineData.ratings[0]}</text>
+                    <text x="100" y="105" fill="#CCFF00" fontSize={7} fontFamily="monospace">PEAK: {Math.max(...timelineData.ratings)}</text>
+                    <text x="200" y="105" fill="#00E5FF" fontSize={7} fontFamily="monospace">PROJ: {timelineData.ratings[7]}</text>
+                  </svg>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── SVG 7: Circular Ring Chart (0-100) ── */}
+          {ringChartData && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.35 }}>
+              <Card className="bg-[#0d1117] border-[#21262d]">
+                <CardHeader className="pb-1 pt-2 px-3">
+                  <CardTitle className="text-[10px] text-[#484f58] font-bold tracking-widest uppercase">Avg Attribute Ring</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <svg viewBox="0 0 320 120" width="320" height="120" className="max-w-full">
+                    {/* Player ring - background */}
+                    <circle cx={70} cy={60} r={42} fill="none" stroke="#21262d" strokeWidth={8} />
+                    {/* Player ring - value */}
+                    {(() => {
+                      const circumference = 2 * Math.PI * 42;
+                      const offset = circumference * (1 - ringChartData.playerAvg / 100);
+                      return <motion.circle cx={70} cy={60} r={42} fill="none" stroke="#FF5500" strokeWidth={8} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference} initial={{ strokeDashoffset: circumference }} animate={{ strokeDashoffset: offset }} transition={{ duration: 1, delay: 0.3 }} />;
+                    })()}
+                    {/* Player ring center */}
+                    <text x={70} y={57} fill="#FF5500" fontSize={18} fontWeight={900} textAnchor="middle" fontFamily="monospace">{ringChartData.playerAvg}</text>
+                    <text x={70} y={70} fill="#484f58" fontSize={7} textAnchor="middle" fontFamily="monospace">{player.name.split(' ')[0]}</text>
+
+                    {/* Teammate ring - background */}
+                    <circle cx={200} cy={60} r={42} fill="none" stroke="#21262d" strokeWidth={8} />
+                    {/* Teammate ring - value */}
+                    {(() => {
+                      const circumference = 2 * Math.PI * 42;
+                      const offset = circumference * (1 - ringChartData.teammateAvg / 100);
+                      return <motion.circle cx={200} cy={60} r={42} fill="none" stroke="#00E5FF" strokeWidth={8} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference} initial={{ strokeDashoffset: circumference }} animate={{ strokeDashoffset: offset }} transition={{ duration: 1, delay: 0.4 }} />;
+                    })()}
+                    {/* Teammate ring center */}
+                    <text x={200} y={57} fill="#00E5FF" fontSize={18} fontWeight={900} textAnchor="middle" fontFamily="monospace">{ringChartData.teammateAvg}</text>
+                    <text x={200} y={70} fill="#484f58" fontSize={7} textAnchor="middle" fontFamily="monospace">{chosenTeammate?.name.split(' ')[0]}</text>
+
+                    {/* VS divider */}
+                    <line x1="140" y1="25" x2="140" y2="95" stroke="#30363d" strokeWidth={1} strokeDasharray="3,3" />
+                    <text x="140" y="55" fill="#8b949e" fontSize={10} textAnchor="middle" fontWeight={900} fontFamily="monospace">VS</text>
+
+                    {/* Comparison stats */}
+                    <text x="275" y="42" fill="#484f58" fontSize={7} textAnchor="middle" fontFamily="monospace">DIFF</text>
+                    <text x="275" y="60" fill={ringChartData.playerAvg >= ringChartData.teammateAvg ? '#FF5500' : '#00E5FF'} fontSize={14} fontWeight={900} textAnchor="middle" fontFamily="monospace">
+                      {ringChartData.playerAvg > ringChartData.teammateAvg ? '+' : ''}{ringChartData.playerAvg - ringChartData.teammateAvg}
+                    </text>
+                    <text x="275" y="78" fill="#484f58" fontSize={7} textAnchor="middle" fontFamily="monospace">
+                      {ringChartData.playerAvg > ringChartData.teammateAvg ? player.name.split(' ')[0] : chosenTeammate?.name.split(' ')[0]} leads
+                    </text>
+                  </svg>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
 
           {/* Empty state for Advanced tab when no teammate selected */}

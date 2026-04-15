@@ -1389,6 +1389,592 @@ function EndorsementValueBars({
 }
 
 // ============================================================
+// Section 1: SVG MediaPersonaRadar (5-axis)
+// ============================================================
+function MediaPersonaRadar({
+  axes,
+  strokeColor,
+}: {
+  axes: { label: string; value: number }[];
+  strokeColor: string;
+}): React.JSX.Element {
+  const w = 320;
+  const h = 120;
+  const cx = 58;
+  const cy = 60;
+  const maxR = 40;
+  const count = axes.length;
+
+  const getPoint = (index: number, r: number) => {
+    const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  };
+
+  const bgLevels = [0.25, 0.5, 0.75, 1.0];
+  const dataPoints = axes.map((ax, i) => getPoint(i, (ax.value / 100) * maxR));
+  const dataPath =
+    dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      {bgLevels.map((level, li) => {
+        const pts = Array.from({ length: count }, (_, i) => getPoint(i, maxR * level));
+        const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+        return <path key={li} d={path} fill="none" stroke="#21262d" strokeWidth="0.5" />;
+      })}
+      {axes.map((_, i) => {
+        const p = getPoint(i, maxR);
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#21262d" strokeWidth="0.5" />;
+      })}
+      <path d={dataPath} fill={strokeColor} fillOpacity="0.15" stroke={strokeColor} strokeWidth="1.5" strokeLinejoin="round" />
+      {dataPoints.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={strokeColor} />)}
+      {axes.map((ax, i) => (
+        <text key={i} x={130} y={16 + i * 20} textAnchor="start" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+          {ax.label}: <tspan fill="#c9d1d9">{Math.round(ax.value)}</tspan>
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 2: SVG ContractNegotiationRadar (5-axis)
+// ============================================================
+function ContractNegotiationRadar({
+  axes,
+  strokeColor,
+}: {
+  axes: { label: string; value: number }[];
+  strokeColor: string;
+}): React.JSX.Element {
+  const w = 320;
+  const h = 120;
+  const cx = 58;
+  const cy = 60;
+  const maxR = 40;
+  const count = axes.length;
+
+  const getPoint = (index: number, r: number) => {
+    const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  };
+
+  const bgLevels = [0.25, 0.5, 0.75, 1.0];
+  const dataPoints = axes.map((ax, i) => getPoint(i, (ax.value / 100) * maxR));
+  const dataPath =
+    dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      {bgLevels.map((level, li) => {
+        const pts = Array.from({ length: count }, (_, i) => getPoint(i, maxR * level));
+        const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+        return <path key={li} d={path} fill="none" stroke="#21262d" strokeWidth="0.5" />;
+      })}
+      {axes.map((_, i) => {
+        const p = getPoint(i, maxR);
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#21262d" strokeWidth="0.5" />;
+      })}
+      <path d={dataPath} fill={strokeColor} fillOpacity="0.15" stroke={strokeColor} strokeWidth="1.5" strokeLinejoin="round" />
+      {dataPoints.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={strokeColor} />)}
+      {axes.map((ax, i) => (
+        <text key={i} x={130} y={16 + i * 20} textAnchor="start" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+          {ax.label}: <tspan fill="#c9d1d9">{Math.round(ax.value)}</tspan>
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 3: SVG ContentTypeDonut (5 segments via .reduce())
+// ============================================================
+function ContentTypeDonut({
+  segments,
+}: {
+  segments: { label: string; value: number; color: string }[];
+}): React.JSX.Element {
+  const w = 320;
+  const h = 120;
+  const cx = 58;
+  const cy = 60;
+  const radius = 32;
+  const strokeWidth = 14;
+  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
+
+  const arcs = segments.reduce<
+    Array<{ seg: { label: string; value: number; color: string }; startPct: number; endPct: number; arcLength: number; offset: number; circumference: number }>
+  >((result, seg) => {
+    const pct = seg.value / total;
+    const circumference = 2 * Math.PI * radius;
+    const gap = 4;
+    const arcLength = Math.max(0, circumference * pct - gap);
+    const cumulative = result.reduce((sum, r) => sum + (r.endPct - r.startPct), 0);
+    const offset = circumference * cumulative - circumference * 0.25;
+    return [...result, { seg, startPct: cumulative, endPct: cumulative + pct, arcLength, offset, circumference }];
+  }, []);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      {arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={arc.seg.color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${arc.arcLength} ${arc.circumference - arc.arcLength}`}
+          strokeDashoffset={arc.offset}
+          strokeLinecap="round"
+        />
+      ))}
+      <text x={cx} y={cy + 4} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="bold" fontFamily="sans-serif">
+        {fmtNumber(total)}
+      </text>
+      {arcs.map((arc, i) => {
+        const pctVal = Math.round((arc.endPct - arc.startPct) * 100);
+        return (
+          <text key={`lb-${i}`} x={120} y={16 + i * 20} textAnchor="start" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+            <tspan fill={arc.seg.color}>&#9632;</tspan> {arc.seg.label} <tspan fill="#c9d1d9">{pctVal}%</tspan>
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 4: SVG MediaReachDonut (4 segments via .reduce())
+// ============================================================
+function MediaReachDonut({
+  segments,
+}: {
+  segments: { label: string; value: number; color: string }[];
+}): React.JSX.Element {
+  const w = 320;
+  const h = 120;
+  const cx = 58;
+  const cy = 60;
+  const radius = 32;
+  const strokeWidth = 14;
+  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
+
+  const arcs = segments.reduce<
+    Array<{ seg: { label: string; value: number; color: string }; startPct: number; endPct: number; arcLength: number; offset: number; circumference: number }>
+  >((result, seg) => {
+    const pct = seg.value / total;
+    const circumference = 2 * Math.PI * radius;
+    const gap = 4;
+    const arcLength = Math.max(0, circumference * pct - gap);
+    const cumulative = result.reduce((sum, r) => sum + (r.endPct - r.startPct), 0);
+    const offset = circumference * cumulative - circumference * 0.25;
+    return [...result, { seg, startPct: cumulative, endPct: cumulative + pct, arcLength, offset, circumference }];
+  }, []);
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      {arcs.map((arc, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={arc.seg.color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${arc.arcLength} ${arc.circumference - arc.arcLength}`}
+          strokeDashoffset={arc.offset}
+          strokeLinecap="round"
+        />
+      ))}
+      <text x={cx} y={cy + 4} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="bold" fontFamily="sans-serif">
+        {fmtNumber(total)}
+      </text>
+      {arcs.map((arc, i) => {
+        const pctVal = Math.round((arc.endPct - arc.startPct) * 100);
+        return (
+          <text key={`lb-${i}`} x={120} y={20 + i * 24} textAnchor="start" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+            <tspan fill={arc.seg.color}>&#9632;</tspan> {arc.seg.label} <tspan fill="#c9d1d9">{pctVal}%</tspan>
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 5: SVG HeadlineSentimentGauge (semi-circular 0-100)
+// ============================================================
+function HeadlineSentimentGauge({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}): React.JSX.Element {
+  const w = 320;
+  const h = 120;
+  const cx = w / 2;
+  const cy = h - 12;
+  const radius = 80;
+  const strokeWidth = 10;
+
+  const pct = Math.min(value / 100, 1);
+  const circumference = Math.PI * radius;
+  const filled = circumference * pct;
+  const color = value >= 70 ? '#10b981' : value >= 45 ? '#f59e0b' : '#ef4444';
+  const sentimentLabel =
+    value >= 80 ? 'Positive' : value >= 60 ? 'Favorable' : value >= 40 ? 'Neutral' : 'Negative';
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      <path
+        d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+        fill="none"
+        stroke="#21262d"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <path
+        d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${filled} ${circumference}`}
+        strokeLinecap="round"
+      />
+      <text x={cx} y={cy - 18} textAnchor="middle" fill="#c9d1d9" fontSize="26" fontWeight="bold" fontFamily="sans-serif">
+        {value}
+      </text>
+      <text x={cx} y={cy - 2} textAnchor="middle" fill={color} fontSize="10" fontWeight="bold" fontFamily="sans-serif">
+        {sentimentLabel}
+      </text>
+      <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 6: SVG GlobalVisibilityGauge (semi-circular 0-100)
+// ============================================================
+function GlobalVisibilityGauge({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}): React.JSX.Element {
+  const w = 320;
+  const h = 120;
+  const cx = w / 2;
+  const cy = h - 12;
+  const radius = 80;
+  const strokeWidth = 10;
+
+  const pct = Math.min(value / 100, 1);
+  const circumference = Math.PI * radius;
+  const filled = circumference * pct;
+  const color = value >= 75 ? '#FF5500' : value >= 50 ? '#00E5FF' : '#CCFF00';
+  const tierLabel =
+    value >= 80 ? 'Global Star' : value >= 60 ? 'International' : value >= 40 ? 'National' : 'Local';
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      <path
+        d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+        fill="none"
+        stroke="#21262d"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <path
+        d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${filled} ${circumference}`}
+        strokeLinecap="round"
+      />
+      <text x={cx} y={cy - 18} textAnchor="middle" fill="#c9d1d9" fontSize="26" fontWeight="bold" fontFamily="sans-serif">
+        {value}
+      </text>
+      <text x={cx} y={cy - 2} textAnchor="middle" fill={color} fontSize="10" fontWeight="bold" fontFamily="sans-serif">
+        {tierLabel}
+      </text>
+      <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 7: SVG MediaMentionsArea (8 data points, 20% fill)
+// ============================================================
+function MediaMentionsArea({
+  data,
+  labels,
+  strokeColor,
+}: {
+  data: number[];
+  labels: string[];
+  strokeColor: string;
+}): React.JSX.Element {
+  const maxVal = Math.max(...data, 1);
+  const w = 320;
+  const h = 120;
+  const padX = 28;
+  const padY = 8;
+  const chartW = w - padX - 12;
+  const chartH = h - padY * 2 - 14;
+
+  const points = data.map((v, i) => ({
+    x: padX + (i / (data.length - 1)) * chartW,
+    y: padY + chartH - (v / maxVal) * chartH,
+  }));
+
+  const areaPath =
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') +
+    ` L ${points[points.length - 1].x} ${padY + chartH} L ${points[0].x} ${padY + chartH} Z`;
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      <line x1={padX} y1={padY} x2={padX} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+      <line x1={padX} y1={padY + chartH} x2={w - 12} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+      <text x={padX - 3} y={padY + 4} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+        {fmtNumber(maxVal)}
+      </text>
+      <text x={padX - 3} y={padY + chartH + 3} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+        0
+      </text>
+      <path d={areaPath} fill={strokeColor} fillOpacity="0.2" />
+      <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {points.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#0d1117" stroke={strokeColor} strokeWidth="1.5" />
+      ))}
+      {labels.map((label, i) => {
+        const x = padX + (i / (labels.length - 1)) * chartW;
+        return (
+          <text key={i} x={x} y={h - 3} textAnchor="middle" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+            {label}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 8: SVG SocialBuzzArea (8 data points, 20% fill)
+// ============================================================
+function SocialBuzzArea({
+  data,
+  labels,
+  strokeColor,
+}: {
+  data: number[];
+  labels: string[];
+  strokeColor: string;
+}): React.JSX.Element {
+  const maxVal = Math.max(...data, 1);
+  const w = 320;
+  const h = 120;
+  const padX = 28;
+  const padY = 8;
+  const chartW = w - padX - 12;
+  const chartH = h - padY * 2 - 14;
+
+  const points = data.map((v, i) => ({
+    x: padX + (i / (data.length - 1)) * chartW,
+    y: padY + chartH - (v / maxVal) * chartH,
+  }));
+
+  const areaPath =
+    points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') +
+    ` L ${points[points.length - 1].x} ${padY + chartH} L ${points[0].x} ${padY + chartH} Z`;
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      <line x1={padX} y1={padY} x2={padX} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+      <line x1={padX} y1={padY + chartH} x2={w - 12} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+      <text x={padX - 3} y={padY + 4} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+        {fmtNumber(maxVal)}
+      </text>
+      <text x={padX - 3} y={padY + chartH + 3} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+        0
+      </text>
+      <path d={areaPath} fill={strokeColor} fillOpacity="0.2" />
+      <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {points.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#0d1117" stroke={strokeColor} strokeWidth="1.5" />
+      ))}
+      {labels.map((label, i) => {
+        const x = padX + (i / (labels.length - 1)) * chartW;
+        return (
+          <text key={i} x={x} y={h - 3} textAnchor="middle" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+            {label}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 9: SVG HeadlineCoverageBars (5 bars)
+// ============================================================
+function HeadlineCoverageBars({
+  data,
+}: {
+  data: { label: string; value: number; color: string }[];
+}): React.JSX.Element {
+  const maxVal = 100;
+  const w = 320;
+  const h = 120;
+  const padX = 60;
+  const barH = 14;
+  const gap = 5;
+  const chartW = w - padX - 50;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      {data.map((d, i) => {
+        const y = 6 + i * (barH + gap);
+        const barWidth = (d.value / maxVal) * chartW;
+        return (
+          <g key={i}>
+            <text x={padX - 5} y={y + barH / 2 + 4} textAnchor="end" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+              {d.label}
+            </text>
+            <rect x={padX} y={y} width={chartW} height={barH} fill="#21262d" rx="3" />
+            <rect x={padX} y={y} width={barWidth} height={barH} fill={d.color} rx="3" />
+            <text x={padX + barWidth + 5} y={y + barH / 2 + 4} textAnchor="start" fill="#c9d1d9" fontSize="9" fontWeight="bold" fontFamily="sans-serif">
+              {d.value}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 10: SVG BrandMomentumLine (8 data points)
+// ============================================================
+function BrandMomentumLine({
+  data,
+  labels,
+  strokeColor,
+}: {
+  data: number[];
+  labels: string[];
+  strokeColor: string;
+}): React.JSX.Element {
+  const maxVal = 100;
+  const w = 320;
+  const h = 120;
+  const padX = 28;
+  const padY = 8;
+  const chartW = w - padX - 12;
+  const chartH = h - padY * 2 - 14;
+
+  const points = data.map((v, i) => ({
+    x: padX + (i / (data.length - 1)) * chartW,
+    y: padY + chartH - (v / maxVal) * chartH,
+  }));
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      <line x1={padX} y1={padY} x2={padX} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+      <line x1={padX} y1={padY + chartH} x2={w - 12} y2={padY + chartH} stroke="#21262d" strokeWidth="0.5" />
+      {[
+        { y: padY, label: '100' },
+        { y: padY + chartH / 2, label: '50' },
+        { y: padY + chartH, label: '0' },
+      ].map((tick, i) => (
+        <text key={i} x={padX - 3} y={tick.y + 3} textAnchor="end" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+          {tick.label}
+        </text>
+      ))}
+      <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {points.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#0d1117" stroke={strokeColor} strokeWidth="1.5" />
+      ))}
+      {labels.map((label, i) => {
+        const x = padX + (i / (labels.length - 1)) * chartW;
+        return (
+          <text key={i} x={x} y={h - 3} textAnchor="middle" fill="#484f58" fontSize="7" fontFamily="sans-serif">
+            {label}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ============================================================
+// Section 11: SVG OverallMediaScoreRing (circular ring 0-100)
+// ============================================================
+function OverallMediaScoreRing({
+  value,
+  label,
+  strokeColor,
+}: {
+  value: number;
+  label: string;
+  strokeColor: string;
+}): React.JSX.Element {
+  const w = 320;
+  const h = 120;
+  const cx = 58;
+  const cy = 60;
+  const strokeWidth = 10;
+  const radius = 32;
+  const circumference = 2 * Math.PI * radius;
+  const filledLen = (value / 100) * circumference;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', maxWidth: 320 }} xmlns="http://www.w3.org/2000/svg">
+      <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#21262d" strokeWidth={strokeWidth} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${filledLen} ${circumference - filledLen}`}
+        strokeDashoffset={-circumference * 0.25}
+        strokeLinecap="round"
+      />
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize="22" fontWeight="bold" fontFamily="sans-serif">
+        {value}
+      </text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize="8" fontFamily="sans-serif">
+        / 100
+      </text>
+      <text x={130} y={50} textAnchor="start" fill="#c9d1d9" fontSize="11" fontWeight="bold" fontFamily="sans-serif">
+        {label}
+      </text>
+      <text x={130} y={68} textAnchor="start" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+        Combined media score across
+      </text>
+      <text x={130} y={82} textAnchor="start" fill="#8b949e" fontSize="9" fontFamily="sans-serif">
+        sentiment, reach &amp; engagement
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
 // Tab definitions
 // ============================================================
 const TABS: TabDef[] = [
@@ -1592,6 +2178,81 @@ export default function MediaInteraction(): React.JSX.Element {
       color: '#6366f1',
     },
   ];
+
+  // ---- Data Visualization Dashboard: Section Data ----
+
+  // Section 1: MediaPersonaRadar (5-axis)
+  const mediaPersonaAxes = [
+    { label: 'Confidence', value: Math.min(100, 30 + morale * 0.5) },
+    { label: 'Articulation', value: Math.min(100, 25 + avgRating * 10) },
+    { label: 'Charisma', value: Math.min(100, 35 + reputation * 0.4) },
+    { label: 'Resilience', value: Math.min(100, 20 + overall * 0.5) },
+    { label: 'Influence', value: Math.min(100, 15 + reputation * 0.6) },
+  ];
+
+  // Section 2: ContractNegotiationRadar (5-axis)
+  const contractNegotiationAxes = [
+    { label: 'Leverage', value: Math.min(100, reputation * 0.8) },
+    { label: 'Market Value', value: Math.min(100, overall * 0.9) },
+    { label: 'Demand', value: Math.min(100, 20 + seasonGoals * 3) },
+    { label: 'Agent Skill', value: Math.min(100, agentQuality * 1.2) },
+    { label: 'Fan Pressure', value: Math.min(100, 15 + reputation * 0.5 + (traits.includes('fan_favorite') ? 20 : 0)) },
+  ];
+
+  // Section 3: ContentTypeDonut (5 segments)
+  const contentTypeSegments = [
+    { label: 'Photos', value: seededInt(seed + 200, 25, 40), color: '#FF5500' },
+    { label: 'Text', value: seededInt(seed + 201, 15, 30), color: '#CCFF00' },
+    { label: 'Video', value: seededInt(seed + 202, 10, 25), color: '#00E5FF' },
+    { label: 'Stories', value: seededInt(seed + 203, 10, 20), color: '#10b981' },
+    { label: 'Reposts', value: seededInt(seed + 204, 5, 15), color: '#f59e0b' },
+  ];
+
+  // Section 4: MediaReachDonut (4 segments)
+  const mediaReachSegments = [
+    { label: 'TV', value: seededInt(seed + 210, 30, 45), color: '#FF5500' },
+    { label: 'Online', value: seededInt(seed + 211, 25, 40), color: '#00E5FF' },
+    { label: 'Print', value: seededInt(seed + 212, 10, 20), color: '#CCFF00' },
+    { label: 'Radio', value: seededInt(seed + 213, 10, 20), color: '#f59e0b' },
+  ];
+
+  // Section 5: HeadlineSentimentGauge (0-100)
+  const headlineSentiment = Math.min(100, Math.max(10, Math.round(avgMood * 0.8 + reputation * 0.2)));
+
+  // Section 6: GlobalVisibilityGauge (0-100)
+  const globalVisibility = Math.min(100, Math.round(20 + reputation * 0.6 + seasonGoals * 2 + appearances * 0.3));
+
+  // Section 7: MediaMentionsArea (8 data points)
+  const mediaMentionsData = Array.from({ length: 8 }, (_, i) =>
+    seededInt(seed + 220 + i, 500, 5000) * (1 + reputation / 100)
+  );
+  const mentionLabels = Array.from({ length: 8 }, (_, i) => `W${week - 7 + i}`);
+
+  // Section 8: SocialBuzzArea (8 data points)
+  const socialBuzzData = Array.from({ length: 8 }, (_, i) =>
+    seededInt(seed + 230 + i, 1000, 8000) * (1 + form / 10)
+  );
+  const buzzLabels = Array.from({ length: 8 }, (_, i) => `W${week - 7 + i}`);
+
+  // Section 9: HeadlineCoverageBars (5 bars)
+  const headlineCoverageBars = [
+    { label: 'Local', value: seededInt(seed + 240, 40, 90), color: '#CCFF00' },
+    { label: 'National', value: seededInt(seed + 241, 30, 80), color: '#00E5FF' },
+    { label: 'Continental', value: seededInt(seed + 242, 10, 50), color: '#FF5500' },
+    { label: 'Global', value: seededInt(seed + 243, 5, 30), color: '#f59e0b' },
+    { label: 'Social', value: seededInt(seed + 244, 50, 95), color: '#10b981' },
+  ];
+
+  // Section 10: BrandMomentumLine (8 data points)
+  const brandMomentumData = Array.from({ length: 8 }, (_, i) =>
+    Math.max(10, Math.min(100, imageScore + seededRange(seed + 250 + i * 3, -25, 25)))
+  );
+  const momentumLabels = Array.from({ length: 8 }, (_, i) => `W${week - 7 + i}`);
+
+  // Section 11: OverallMediaScoreRing (0-100)
+  const overallMediaScore = Math.min(100, Math.round(
+    avgMood * 0.3 + responseRate * 0.3 + imageScore * 0.25 + globalVisibility * 0.15
+  ));
 
   // ---- Render tab content ----
   const renderTabContent = (): React.JSX.Element => {
@@ -2236,6 +2897,167 @@ export default function MediaInteraction(): React.JSX.Element {
       {/* Content */}
       <div className="px-4 py-4 max-w-lg mx-auto pb-24">
         {renderTabContent()}
+
+        {/* ============================================================ */}
+        {/* Data Visualization Dashboard — 11 Gritty Futurism Sections */}
+        {/* ============================================================ */}
+        <div className="mt-6 space-y-4">
+          <p className="text-xs text-[#484f58] uppercase tracking-widest font-medium">Data Visualization Dashboard</p>
+
+          {/* Section 1: SVG MediaPersonaRadar */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#FF5500]" /> Media Persona Radar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MediaPersonaRadar axes={mediaPersonaAxes} strokeColor="#FF5500" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 2: SVG ContractNegotiationRadar */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#00E5FF]" /> Contract Negotiation Radar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ContractNegotiationRadar axes={contractNegotiationAxes} strokeColor="#00E5FF" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 3: SVG ContentTypeDonut */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#CCFF00]" /> Content Type Breakdown
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ContentTypeDonut segments={contentTypeSegments} />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 4: SVG MediaReachDonut */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#FF5500]" /> Media Reach Distribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MediaReachDonut segments={mediaReachSegments} />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 5: SVG HeadlineSentimentGauge */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#10b981]" /> Headline Sentiment
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <HeadlineSentimentGauge value={headlineSentiment} label="Headline Sentiment Score" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 6: SVG GlobalVisibilityGauge */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#FF5500]" /> Global Visibility
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <GlobalVisibilityGauge value={globalVisibility} label="Global Visibility Index" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 7: SVG MediaMentionsArea */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#FF5500]" /> Media Mentions Trend
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MediaMentionsArea data={mediaMentionsData} labels={mentionLabels} strokeColor="#FF5500" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 8: SVG SocialBuzzArea */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#CCFF00]" /> Social Buzz Index
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SocialBuzzArea data={socialBuzzData} labels={buzzLabels} strokeColor="#CCFF00" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 9: SVG HeadlineCoverageBars */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#00E5FF]" /> Headline Coverage by Region
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <HeadlineCoverageBars data={headlineCoverageBars} />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 10: SVG BrandMomentumLine */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#00E5FF]" /> Brand Momentum Trend
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BrandMomentumLine data={brandMomentumData} labels={momentumLabels} strokeColor="#00E5FF" />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Section 11: SVG OverallMediaScoreRing */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }}>
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#c9d1d9] text-xs flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-[#CCFF00]" /> Overall Media Score
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <OverallMediaScoreRing value={overallMediaScore} label="Media Composite" strokeColor="#CCFF00" />
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

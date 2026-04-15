@@ -1935,6 +1935,830 @@ function WeatherTipsPanel({ weatherType }: { weatherType: WeatherType }) {
 }
 
 // ────────────────────────────────────────────────────────────
+// SVG Helper Functions
+// ────────────────────────────────────────────────────────────
+
+function buildHexPoints(cx: number, cy: number, radius: number, sides: number): string {
+  return Array.from({ length: sides }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+    return `${cx + radius * Math.cos(angle)},${cy + radius * Math.sin(angle)}`;
+  }).join(' ');
+}
+
+function buildRadarDataPoints(cx: number, cy: number, maxRadius: number, sides: number, values: number[]): string {
+  return Array.from({ length: sides }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+    const r = (values[i] / 100) * maxRadius;
+    return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+  }).join(' ');
+}
+
+function buildLinePath(points: { x: number; y: number }[]): string {
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+}
+
+function buildAreaPath(points: { x: number; y: number }[], baseY: number): string {
+  const linePart = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  return `${linePart} L${points[points.length - 1].x},${baseY} L${points[0].x},${baseY} Z`;
+}
+
+function buildSemiArcPath(cx: number, cy: number, radius: number, startAngle: number, endAngle: number): string {
+  const x1 = cx + radius * Math.cos(startAngle);
+  const y1 = cy + radius * Math.sin(startAngle);
+  const x2 = cx + radius * Math.cos(endAngle);
+  const y2 = cy + radius * Math.sin(endAngle);
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  return `M${x1},${y1} A${radius},${radius} 0 ${largeArc} 1 ${x2},${y2}`;
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 1 — WeatherConditionRadar (5-axis radar)
+// ────────────────────────────────────────────────────────────
+
+function WeatherConditionRadar() {
+  const cx = 100, cy = 100, maxR = 70, sides = 5;
+  const labels = ['Temp', 'Humid', 'Wind', 'Rain', 'Vis'];
+  const values = [65, 80, 45, 70, 55];
+  const strokeColor = '#FF5500';
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Thermometer className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Weather Condition Radar</span>
+      </div>
+      <svg viewBox="0 0 200 200" className="w-full">
+        {[25, 50, 75].map(r => (
+          <polygon
+            key={r}
+            points={buildHexPoints(cx, cy, (r / 100) * maxR, sides)}
+            fill="none"
+            stroke="#21262d"
+            strokeWidth="0.5"
+          />
+        ))}
+        {Array.from({ length: sides }, (_, i) => {
+          const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+          return (
+            <line
+              key={`axis-${i}`}
+              x1={cx}
+              y1={cy}
+              x2={cx + maxR * Math.cos(angle)}
+              y2={cy + maxR * Math.sin(angle)}
+              stroke="#21262d"
+              strokeWidth="0.5"
+            />
+          );
+        })}
+        <motion.polygon
+          points={buildRadarDataPoints(cx, cy, maxR, sides, values)}
+          fill={strokeColor}
+          fillOpacity="0.15"
+          stroke={strokeColor}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {Array.from({ length: sides }, (_, i) => {
+          const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+          const r = (values[i] / 100) * maxR;
+          return (
+            <circle
+              key={`dot-${i}`}
+              cx={cx + r * Math.cos(angle)}
+              cy={cy + r * Math.sin(angle)}
+              r="3"
+              fill={strokeColor}
+            />
+          );
+        })}
+        {labels.map((label, i) => {
+          const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+          const lx = cx + (maxR + 16) * Math.cos(angle);
+          const ly = cy + (maxR + 16) * Math.sin(angle);
+          return (
+            <text
+              key={label}
+              x={lx}
+              y={ly}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b949e"
+              fontSize="8"
+              fontWeight="600"
+            >
+              {label}
+            </text>
+          );
+        })}
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Temperature / Humidity / Wind / Rain / Visibility</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 2 — WeatherImpactBars (horizontal bar chart)
+// ────────────────────────────────────────────────────────────
+
+function WeatherImpactBars() {
+  const strokeColor = '#00E5FF';
+  const bars: { label: string; value: number }[] = [
+    { label: 'Pace', value: -8 },
+    { label: 'Shooting', value: -10 },
+    { label: 'Passing', value: 8 },
+    { label: 'Defending', value: 5 },
+    { label: 'Physical', value: -12 },
+  ];
+  const maxAbs = Math.max(...bars.map(b => Math.abs(b.value)));
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <BarChart3 className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Weather Impact on Attributes</span>
+      </div>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {bars.map((bar, i) => {
+          const barY = 15 + i * 35;
+          const barWidth = (Math.abs(bar.value) / maxAbs) * 180;
+          const isNeg = bar.value < 0;
+          const barX = isNeg ? 90 - barWidth : 90;
+          return (
+            <g key={bar.label}>
+              <text x="10" y={barY + 10} fill="#8b949e" fontSize="9" fontWeight="600" textAnchor="start">{bar.label}</text>
+              <line x1="90" y1={barY - 2} x2="90" y2={barY + 16} stroke="#30363d" strokeWidth="0.5" />
+              <motion.rect
+                x={barX}
+                y={barY}
+                width={barWidth}
+                height="14"
+                fill={strokeColor}
+                rx="2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.7 }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+              />
+              <text
+                x={isNeg ? 90 - barWidth - 5 : 90 + barWidth + 5}
+                y={barY + 11}
+                fill={isNeg ? '#f87171' : '#4ade80'}
+                fontSize="8"
+                fontWeight="bold"
+                textAnchor={isNeg ? 'end' : 'start'}
+              >
+                {bar.value > 0 ? '+' : ''}{bar.value}%
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 3 — SeasonWeatherDistributionDonut (4 segments)
+// ────────────────────────────────────────────────────────────
+
+function SeasonWeatherDistributionDonut() {
+  const strokeColor = '#CCFF00';
+  const data = [
+    { label: 'Sunny', value: 12 },
+    { label: 'Rainy', value: 9 },
+    { label: 'Windy', value: 7 },
+    { label: 'Snowy', value: 4 },
+  ];
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const cx = 100, cy = 100, radius = 65;
+
+  const segmentsWithAngles = data.reduce<{ label: string; value: number; color: string; startAngle: number; endAngle: number }[]>((acc, item, idx) => {
+    const colors = ['#CCFF00', '#00E5FF', '#FF5500', '#8b949e'];
+    const prevAngle = acc.length > 0 ? acc[acc.length - 1].endAngle : -Math.PI / 2;
+    const sliceAngle = (item.value / total) * Math.PI * 2;
+    acc.push({ label: item.label, value: item.value, color: colors[idx] ?? '#30363d', startAngle: prevAngle, endAngle: prevAngle + sliceAngle });
+    return acc;
+  }, []);
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Calendar className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Season Weather Distribution</span>
+      </div>
+      <svg viewBox="0 0 200 200" className="w-full">
+        {segmentsWithAngles.map((seg) => {
+          const { startAngle, endAngle } = seg;
+          const sliceAngle = endAngle - startAngle;
+
+          const x1 = cx + radius * Math.cos(startAngle);
+          const y1 = cy + radius * Math.sin(startAngle);
+          const x2 = cx + radius * Math.cos(endAngle);
+          const y2 = cy + radius * Math.sin(endAngle);
+          const largeArc = sliceAngle > Math.PI ? 1 : 0;
+
+          const midAngle = startAngle + sliceAngle / 2;
+          const labelR = radius + 14;
+          const lx = cx + labelR * Math.cos(midAngle);
+          const ly = cy + labelR * Math.sin(midAngle);
+
+          return (
+            <g key={seg.label}>
+              <motion.path
+                d={`M${x1},${y1} A${radius},${radius} 0 ${largeArc} 1 ${x2},${y2}`}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth="16"
+                strokeLinecap="butt"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ duration: 0.5 }}
+              />
+              <text
+                x={lx}
+                y={ly}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#8b949e"
+                fontSize="7"
+                fontWeight="600"
+              >
+                {seg.label}
+              </text>
+            </g>
+          );
+        })}
+        <text x={cx} y={cy - 5} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="bold">
+          {total}
+        </text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize="7">
+          matches
+        </text>
+      </svg>
+      <div className="flex items-center justify-center gap-3 mt-2">
+        {segmentsWithAngles.map(seg => (
+          <div key={seg.label} className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: seg.color }} />
+            <span className="text-[8px] text-[#8b949e]">{seg.label}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 4 — WeatherReadinessGauge (semi-circular gauge)
+// ────────────────────────────────────────────────────────────
+
+function WeatherReadinessGauge() {
+  const strokeColor = '#00E5FF';
+  const percentage = 72;
+  const cx = 100, cy = 120, radius = 70;
+  const startAngle = Math.PI;
+  const endAngle = Math.PI + (percentage / 100) * Math.PI;
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Shield className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Weather Readiness Gauge</span>
+      </div>
+      <svg viewBox="0 0 200 200" className="w-full">
+        {/* Background arc */}
+        <path
+          d={buildSemiArcPath(cx, cy, radius, startAngle, startAngle + Math.PI)}
+          fill="none"
+          stroke="#21262d"
+          strokeWidth="12"
+          strokeLinecap="round"
+        />
+        {/* Value arc */}
+        <motion.path
+          d={buildSemiArcPath(cx, cy, radius, startAngle, endAngle)}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="12"
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        />
+        {/* Center text */}
+        <text x={cx} y={cy - 10} textAnchor="middle" fill={strokeColor} fontSize="28" fontWeight="bold">
+          {percentage}
+        </text>
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize="8">
+          / 100
+        </text>
+        {/* Scale labels */}
+        <text x={cx - radius - 8} y={cy + 20} textAnchor="middle" fill="#484f58" fontSize="7">0</text>
+        <text x={cx} y={cy - radius - 6} textAnchor="middle" fill="#484f58" fontSize="7">50</text>
+        <text x={cx + radius + 8} y={cy + 20} textAnchor="middle" fill="#484f58" fontSize="7">100</text>
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Overall match readiness in current conditions</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 5 — TemperatureTrendLine (8 data points)
+// ────────────────────────────────────────────────────────────
+
+function TemperatureTrendLine() {
+  const strokeColor = '#FF5500';
+  const data = [18, 22, 14, 8, 12, 24, 28, 16];
+  const labels = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const padL = 35, padR = 10, padT = 20, padB = 30;
+  const chartW = 300 - padL - padR;
+  const chartH = 200 - padT - padB;
+
+  const points: { x: number; y: number }[] = data.map((v, i) => ({
+    x: padL + (i / (data.length - 1)) * chartW,
+    y: padT + chartH - ((v - min) / range) * chartH,
+  }));
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <TrendingUp className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Temperature Trend (8 Matches)</span>
+      </div>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map(frac => {
+          const gy = padT + chartH * (1 - frac);
+          return (
+            <line
+              key={frac}
+              x1={padL}
+              y1={gy}
+              x2={300 - padR}
+              y2={gy}
+              stroke="#21262d"
+              strokeWidth="0.5"
+            />
+          );
+        })}
+        {/* Y-axis labels */}
+        {[0, 1].map(frac => {
+          const val = min + frac * range;
+          const gy = padT + chartH * (1 - frac);
+          return (
+            <text
+              key={frac}
+              x={padL - 5}
+              y={gy + 3}
+              textAnchor="end"
+              fill="#484f58"
+              fontSize="7"
+            >
+              {Math.round(val)}°
+            </text>
+          );
+        })}
+        {/* Line */}
+        <motion.path
+          d={buildLinePath(points)}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {/* Data points */}
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill={strokeColor} />
+        ))}
+        {/* X-axis labels */}
+        {labels.map((label, i) => (
+          <text
+            key={label}
+            x={points[i].x}
+            y={200 - 8}
+            textAnchor="middle"
+            fill="#8b949e"
+            fontSize="7"
+          >
+            {label}
+          </text>
+        ))}
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Match-day temperature across recent games</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 6 — PerformanceInWeatherArea (area chart)
+// ────────────────────────────────────────────────────────────
+
+function PerformanceInWeatherArea() {
+  const fillColor = '#CCFF00';
+  const data = [72, 65, 58, 80, 48, 62, 55, 74];
+  const labels = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const padL = 35, padR = 10, padT = 20, padB = 30;
+  const chartW = 300 - padL - padR;
+  const chartH = 200 - padT - padB;
+  const baseY = padT + chartH;
+
+  const points: { x: number; y: number }[] = data.map((v, i) => ({
+    x: padL + (i / (data.length - 1)) * chartW,
+    y: padT + chartH - ((v - min) / range) * chartH,
+  }));
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <TrendingUp className="h-3.5 w-3.5" style={{ color: fillColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Performance in Weather (Area)</span>
+      </div>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Grid lines */}
+        {[0, 0.5, 1].map(frac => {
+          const gy = padT + chartH * (1 - frac);
+          return (
+            <line key={frac} x1={padL} y1={gy} x2={300 - padR} y2={gy} stroke="#21262d" strokeWidth="0.5" />
+          );
+        })}
+        {/* Area fill */}
+        <motion.path
+          d={buildAreaPath(points, baseY)}
+          fill={fillColor}
+          fillOpacity="0.2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {/* Line */}
+        <motion.path
+          d={buildLinePath(points)}
+          fill="none"
+          stroke={fillColor}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {/* Data points */}
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill={fillColor} />
+        ))}
+        {/* X-axis labels */}
+        {labels.map((label, i) => (
+          <text key={label} x={points[i].x} y={200 - 8} textAnchor="middle" fill="#8b949e" fontSize="7">
+            {label}
+          </text>
+        ))}
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Player performance ratings in varying conditions</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 7 — MatchWeatherTimeline (8 nodes horizontal)
+// ────────────────────────────────────────────────────────────
+
+function MatchWeatherTimeline() {
+  const strokeColor = '#00E5FF';
+  const matches: { label: string; weather: WeatherType; result: string }[] = [
+    { label: 'GW12', weather: 'sunny', result: 'W 3-1' },
+    { label: 'GW13', weather: 'rainy', result: 'D 1-1' },
+    { label: 'GW14', weather: 'windy', result: 'L 0-2' },
+    { label: 'GW15', weather: 'cloudy', result: 'W 2-0' },
+    { label: 'GW16', weather: 'snowy', result: 'L 1-3' },
+    { label: 'GW17', weather: 'rainy', result: 'W 2-1' },
+    { label: 'GW18', weather: 'sunny', result: 'W 4-0' },
+    { label: 'GW19', weather: 'foggy', result: 'D 0-0' },
+  ];
+  const nodeSpacing = 300 / (matches.length + 1);
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Calendar className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Match Weather Timeline</span>
+      </div>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Connecting line */}
+        <line
+          x1={nodeSpacing}
+          y1={50}
+          x2={nodeSpacing * matches.length}
+          y2={50}
+          stroke="#30363d"
+          strokeWidth="1"
+        />
+        {/* Nodes */}
+        {matches.map((m, i) => {
+          const nx = nodeSpacing * (i + 1);
+          const isWin = m.result.startsWith('W');
+          const isLoss = m.result.startsWith('L');
+          const dotColor = isWin ? '#4ade80' : isLoss ? '#f87171' : '#facc15';
+          return (
+            <g key={m.label}>
+              <circle cx={nx} cy={50} r="6" fill="#0d1117" stroke={strokeColor} strokeWidth="1.5" />
+              <circle cx={nx} cy={50} r="3" fill={dotColor} />
+              <text x={nx} y={75} textAnchor="middle" fill="#c9d1d9" fontSize="8" fontWeight="600">
+                {m.label}
+              </text>
+              <text x={nx} y={90} textAnchor="middle" fill="#8b949e" fontSize="7">
+                {m.weather}
+              </text>
+              <text
+                x={nx}
+                y={115}
+                textAnchor="middle"
+                fill={dotColor}
+                fontSize="8"
+                fontWeight="bold"
+              >
+                {m.result}
+              </text>
+            </g>
+          );
+        })}
+        {/* Legend */}
+        <circle cx="80" cy="145" r="3" fill="#4ade80" />
+        <text x="88" y="148" fill="#8b949e" fontSize="7">Win</text>
+        <circle cx="120" cy="145" r="3" fill="#facc15" />
+        <text x="128" y="148" fill="#8b949e" fontSize="7">Draw</text>
+        <circle cx="165" cy="145" r="3" fill="#f87171" />
+        <text x="173" y="148" fill="#8b949e" fontSize="7">Loss</text>
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Recent match results with weather conditions</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 8 — AdaptabilityRing (circular ring 0-100)
+// ────────────────────────────────────────────────────────────
+
+function AdaptabilityRing() {
+  const strokeColor = '#FF5500';
+  const percentage = 78;
+  const cx = 100, cy = 100, radius = 70;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - percentage / 100);
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Star className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Weather Adaptability Ring</span>
+      </div>
+      <svg viewBox="0 0 200 200" className="w-full">
+        {/* Background ring */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke="#21262d"
+          strokeWidth="10"
+        />
+        {/* Value ring */}
+        <motion.circle
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          style={{ transformOrigin: `${cx}px ${cy}px` }}
+        />
+        {/* Center text */}
+        <text x={cx} y={cy - 5} textAnchor="middle" fill={strokeColor} fontSize="28" fontWeight="bold">
+          {percentage}
+        </text>
+        <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize="8">
+          adaptability
+        </text>
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Player weather adaptability score</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 9 — StaminaWeatherRadar (5-axis radar)
+// ────────────────────────────────────────────────────────────
+
+function StaminaWeatherRadar() {
+  const cx = 100, cy = 100, maxR = 70, sides = 5;
+  const labels = ['Endur', 'Recover', 'Hydrat', 'Speed', 'Focus'];
+  const values = [55, 70, 85, 40, 65];
+  const strokeColor = '#CCFF00';
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Flame className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Stamina & Weather Factor Radar</span>
+      </div>
+      <svg viewBox="0 0 200 200" className="w-full">
+        {[25, 50, 75].map(r => (
+          <polygon
+            key={r}
+            points={buildHexPoints(cx, cy, (r / 100) * maxR, sides)}
+            fill="none"
+            stroke="#21262d"
+            strokeWidth="0.5"
+          />
+        ))}
+        {Array.from({ length: sides }, (_, i) => {
+          const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+          return (
+            <line
+              key={`axis-${i}`}
+              x1={cx}
+              y1={cy}
+              x2={cx + maxR * Math.cos(angle)}
+              y2={cy + maxR * Math.sin(angle)}
+              stroke="#21262d"
+              strokeWidth="0.5"
+            />
+          );
+        })}
+        <motion.polygon
+          points={buildRadarDataPoints(cx, cy, maxR, sides, values)}
+          fill={strokeColor}
+          fillOpacity="0.15"
+          stroke={strokeColor}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {Array.from({ length: sides }, (_, i) => {
+          const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+          const r = (values[i] / 100) * maxR;
+          return (
+            <circle
+              key={`dot-${i}`}
+              cx={cx + r * Math.cos(angle)}
+              cy={cy + r * Math.sin(angle)}
+              r="3"
+              fill={strokeColor}
+            />
+          );
+        })}
+        {labels.map((label, i) => {
+          const angle = (Math.PI * 2 * i) / sides - Math.PI / 2;
+          const lx = cx + (maxR + 16) * Math.cos(angle);
+          const ly = cy + (maxR + 16) * Math.sin(angle);
+          return (
+            <text
+              key={label}
+              x={lx}
+              y={ly}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b949e"
+              fontSize="8"
+              fontWeight="600"
+            >
+              {label}
+            </text>
+          );
+        })}
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Endurance / Recovery / Hydration / Speed / Focus</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 10 — TacticalEfficiencyBars (horizontal bar chart)
+// ────────────────────────────────────────────────────────────
+
+function TacticalEfficiencyBars() {
+  const strokeColor = '#FF5500';
+  const bars: { label: string; value: number }[] = [
+    { label: 'Press', value: 82 },
+    { label: 'Counter', value: 65 },
+    { label: 'Possess', value: 90 },
+    { label: 'Set Piece', value: 45 },
+    { label: 'Aerial', value: 58 },
+  ];
+  const maxVal = Math.max(...bars.map(b => b.value));
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <TrendingUp className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Tactical Efficiency in Weather</span>
+      </div>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {bars.map((bar, i) => {
+          const barY = 15 + i * 35;
+          const barWidth = (bar.value / maxVal) * 180;
+          return (
+            <g key={bar.label}>
+              <text x="10" y={barY + 10} fill="#8b949e" fontSize="9" fontWeight="600" textAnchor="start">
+                {bar.label}
+              </text>
+              <rect x="80" y={barY} width="180" height="14" fill="#0d1117" rx="2" />
+              <motion.rect
+                x="80"
+                y={barY}
+                width={barWidth}
+                height="14"
+                fill={strokeColor}
+                rx="2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.7 }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+              />
+              <text x={80 + barWidth + 5} y={barY + 11} fill={strokeColor} fontSize="8" fontWeight="bold" textAnchor="start">
+                {bar.value}%
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// SVG 11 — InjuryRiskGauge (semi-circular gauge)
+// ────────────────────────────────────────────────────────────
+
+function InjuryRiskGauge() {
+  const strokeColor = '#00E5FF';
+  const percentage = 35;
+  const cx = 100, cy = 120, radius = 70;
+  const startAngle = Math.PI;
+  const endAngle = Math.PI + (percentage / 100) * Math.PI;
+
+  return (
+    <Card className="!p-3">
+      <div className="flex items-center gap-1.5 mb-3">
+        <AlertTriangle className="h-3.5 w-3.5" style={{ color: strokeColor }} />
+        <span className="text-[10px] font-semibold uppercase text-[#8b949e] tracking-wide">Injury Risk Gauge</span>
+      </div>
+      <svg viewBox="0 0 200 200" className="w-full">
+        {/* Background arc */}
+        <path
+          d={buildSemiArcPath(cx, cy, radius, startAngle, startAngle + Math.PI)}
+          fill="none"
+          stroke="#21262d"
+          strokeWidth="12"
+          strokeLinecap="round"
+        />
+        {/* Value arc */}
+        <motion.path
+          d={buildSemiArcPath(cx, cy, radius, startAngle, endAngle)}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="12"
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        />
+        {/* Center text */}
+        <text x={cx} y={cy - 10} textAnchor="middle" fill={strokeColor} fontSize="28" fontWeight="bold">
+          {percentage}
+        </text>
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize="8">
+          risk level
+        </text>
+        {/* Scale labels */}
+        <text x={cx - radius - 8} y={cy + 20} textAnchor="middle" fill="#484f58" fontSize="7">Low</text>
+        <text x={cx} y={cy - radius - 6} textAnchor="middle" fill="#484f58" fontSize="7">Med</text>
+        <text x={cx + radius + 8} y={cy + 20} textAnchor="middle" fill="#484f58" fontSize="7">High</text>
+      </svg>
+      <p className="text-[10px] text-[#8b949e] mt-1 text-center">Injury risk assessment for current weather</p>
+    </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
 // GitCompareArrows import alias (re-using from lucide-react)
 // ────────────────────────────────────────────────────────────
 
@@ -2117,6 +2941,49 @@ export default function MatchWeatherEffects() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Data Visualization Section ── */}
+        <section className="mt-8 mb-6">
+          <SectionTitle
+            icon={<BarChart3 className="h-4 w-4 text-[#FF5500]" />}
+            title="Weather Data Visualizations"
+            subtitle="Advanced analytics & SVG charts"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* SVG 1 — WeatherConditionRadar */}
+            <WeatherConditionRadar />
+
+            {/* SVG 2 — WeatherImpactBars */}
+            <WeatherImpactBars />
+
+            {/* SVG 3 — SeasonWeatherDistributionDonut */}
+            <SeasonWeatherDistributionDonut />
+
+            {/* SVG 4 — WeatherReadinessGauge */}
+            <WeatherReadinessGauge />
+
+            {/* SVG 5 — TemperatureTrendLine */}
+            <TemperatureTrendLine />
+
+            {/* SVG 6 — PerformanceInWeatherArea */}
+            <PerformanceInWeatherArea />
+
+            {/* SVG 7 — MatchWeatherTimeline */}
+            <MatchWeatherTimeline />
+
+            {/* SVG 8 — AdaptabilityRing */}
+            <AdaptabilityRing />
+
+            {/* SVG 9 — StaminaWeatherRadar */}
+            <StaminaWeatherRadar />
+
+            {/* SVG 10 — TacticalEfficiencyBars */}
+            <TacticalEfficiencyBars />
+
+            {/* SVG 11 — InjuryRiskGauge */}
+            <InjuryRiskGauge />
+          </div>
+        </section>
       </div>
     </div>
   );

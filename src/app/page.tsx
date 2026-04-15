@@ -50,6 +50,8 @@ import CareerEventsEnhanced from '@/components/game/CareerEventsEnhanced';
 import TrainingGroundEnhanced from '@/components/game/TrainingGroundEnhanced';
 import YouthAcademyEnhanced from '@/components/game/YouthAcademyEnhanced';
 import PersonalFinancesEnhanced from '@/components/game/PersonalFinancesEnhanced';
+import StadiumAtmosphereEnhanced from '@/components/game/StadiumAtmosphereEnhanced';
+import PlayerCareerTimelineEnhanced from '@/components/game/PlayerCareerTimelineEnhanced';
 import FanEngagement from '@/components/game/FanEngagement';
 import WorldFootballNews from '@/components/game/WorldFootballNews';
 import HallOfFame from '@/components/game/HallOfFame';
@@ -303,6 +305,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   training_ground_enhanced: TrainingGroundEnhanced,
   youth_academy_enhanced: YouthAcademyEnhanced,
   personal_finances_enhanced: PersonalFinancesEnhanced,
+  stadium_atmosphere_enhanced: StadiumAtmosphereEnhanced,
+  player_career_timeline_enhanced: PlayerCareerTimelineEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -420,6 +424,8 @@ const gameScreens: GameScreen[] = [
   'training_ground_enhanced',
   'youth_academy_enhanced',
   'personal_finances_enhanced',
+  'stadium_atmosphere_enhanced',
+  'player_career_timeline_enhanced',
 ];
 
 export default function Home() {
