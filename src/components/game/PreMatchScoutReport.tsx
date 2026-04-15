@@ -311,6 +311,41 @@ function getMoraleTip(morale: number): string {
 }
 
 // ============================================================
+// SVG Helper functions
+// ============================================================
+
+const W3_ORANGE = '#FF5500';
+const W3_LIME = '#CCFF00';
+const W3_CYAN = '#00E5FF';
+const W3_GRAY = '#666666';
+
+function polarToCart(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
+  const rad = (angleDeg - 90) * (Math.PI / 180);
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  const start = polarToCart(cx, cy, r, endAngle);
+  const end = polarToCart(cx, cy, r, startAngle);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
+}
+
+function buildPointsStr(coords: { x: number; y: number }[]): string {
+  return coords.reduce((acc, pt, i) => {
+    const sep = i === 0 ? '' : ' ';
+    return `${acc}${sep}${pt.x},${pt.y}`;
+  }, '');
+}
+
+function buildPolylineStr(coords: { x: number; y: number }[]): string {
+  return coords.reduce((acc, pt, i) => {
+    const sep = i === 0 ? '' : ' ';
+    return `${acc}${sep}${pt.x},${pt.y}`;
+  }, '');
+}
+
+// ============================================================
 // Sub-components
 // ============================================================
 
@@ -583,6 +618,7 @@ export default function PreMatchScoutReport() {
     tacticalApproach,
     moraleTip,
     qualityGap,
+    opponentStanding,
   } = data;
 
   const { currentWeek, currentSeason } = gameState;
@@ -1039,6 +1075,320 @@ export default function PreMatchScoutReport() {
                   <div className={`text-xs font-semibold ${TEXT_PRIMARY}`}>Morale Boost Tip</div>
                   <p className={`text-xs leading-relaxed ${TEXT_SECONDARY} mt-1`}>{moraleTip}</p>
                 </div>
+              </div>
+            </InfoCard>
+          </motion.div>
+
+          {/* ============================================ */}
+          {/* 7. Advanced Scout Visualizations (11 SVGs)     */}
+          {/* ============================================ */}
+          <motion.div variants={staggerChild}>
+            <InfoCard className="space-y-4">
+              <SectionTitle>Advanced Scout Analytics</SectionTitle>
+
+              {/* SVG 1: Match Prediction Donut */}
+              <div className="flex justify-center">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                  <circle cx="80" cy="80" r="55" fill="none" stroke="#21262d" strokeWidth="18" />
+                  {(() => {
+                    const segments = [
+                      { pct: predictions.winPct, color: W3_CYAN },
+                      { pct: predictions.drawPct, color: W3_LIME },
+                      { pct: predictions.lossPct, color: W3_ORANGE },
+                    ];
+                    let startAngle = 0;
+                    return segments.map((seg, i) => {
+                      const arcAngle = (seg.pct / 100) * 360;
+                      const path = describeArc(80, 80, 55, startAngle, startAngle + arcAngle - 0.5);
+                      const midAngle = startAngle + arcAngle / 2;
+                      const labelPt = polarToCart(80, 80, 36, midAngle);
+                      const nextStart = startAngle + arcAngle;
+                      startAngle = nextStart;
+                      return (
+                        <g key={i}>
+                          <path d={path} fill="none" stroke={seg.color} strokeWidth="18" strokeOpacity="0.85" />
+                          <text x={labelPt.x} y={labelPt.y} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="10" fontWeight="bold">{seg.pct}%</text>
+                        </g>
+                      );
+                    });
+                  })()}
+                  <text x="80" y="76" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="bold">Prediction</text>
+                  <text x="80" y="90" textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize="8">{predictions.predictedScore}</text>
+                </svg>
+              </div>
+
+              {/* SVG 2 & 3: Opponent Strength Radar + H2H Timeline */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className={`text-[10px] ${TEXT_SECONDARY} mb-1 text-center`}>Opponent Strength</div>
+                  <svg width="150" height="140" viewBox="0 0 150 140">
+                    {(() => {
+                      const axes = ['ATK', 'DEF', 'MID', 'PAC', 'SET'];
+                      const values = [
+                        playingStyle === 'Attacking' ? 78 : playingStyle === 'Balanced' ? 60 : 45,
+                        playingStyle === 'Defensive' ? 80 : playingStyle === 'Balanced' ? 65 : 42,
+                        opponent.quality > 75 ? 75 : 55,
+                        opponent.quality > 78 ? 82 : 60,
+                        playingStyle === 'Attacking' ? 70 : 50,
+                      ];
+                      const cx = 75, cy = 70, maxR = 50;
+                      const n = axes.length;
+                      const gridPts = (r: number) => {
+                        const pts: { x: number; y: number }[] = [];
+                        for (let i = 0; i < n; i++) pts.push(polarToCart(cx, cy, r, (i * 360) / n));
+                        return buildPointsStr(pts);
+                      };
+                      const dataPts = buildPointsStr(values.map((v, i) => polarToCart(cx, cy, (v / 100) * maxR, (i * 360) / n)));
+                      return (
+                        <g>
+                          {[20, 35, 50].map((r, i) => <polygon key={i} points={gridPts(r)} fill="none" stroke="#21262d" strokeWidth="0.5" />)}
+                          {axes.map((_, i) => <line key={i} x1={cx} y1={cy} x2={polarToCart(cx, cy, maxR, (i * 360) / n).x} y2={polarToCart(cx, cy, maxR, (i * 360) / n).y} stroke="#21262d" strokeWidth="0.5" />)}
+                          <polygon points={dataPts} fill={W3_LIME} fillOpacity="0.15" stroke={W3_LIME} strokeWidth="1.5" />
+                          {axes.map((label, i) => {
+                            const lp = polarToCart(cx, cy, maxR + 14, (i * 360) / n);
+                            return <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize="8">{label}</text>;
+                          })}
+                        </g>
+                      );
+                    })()}
+                  </svg>
+                </div>
+                <div>
+                  <div className={`text-[10px] ${TEXT_SECONDARY} mb-1 text-center`}>H2H Timeline</div>
+                  <svg width="150" height="140" viewBox="0 0 150 140">
+                    <line x1="20" y1="70" x2="130" y2="70" stroke="#30363d" strokeWidth="1" />
+                    {(() => {
+                      const hash = (gameState.currentClub.name + opponent.name).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+                      const results: ('W' | 'D' | 'L')[] = [];
+                      for (let i = 0; i < 8; i++) {
+                        const r = ((hash * (i + 1) * 7) % 10);
+                        results.push(r < 4 ? 'W' : r < 6 ? 'D' : 'L');
+                      }
+                      return results.map((res, i) => {
+                        const x = 25 + (i * 14);
+                        const color = res === 'W' ? W3_CYAN : res === 'D' ? W3_LIME : W3_ORANGE;
+                        return (
+                          <g key={i}>
+                            <circle cx={x} cy="70" r="6" fill={color} fillOpacity="0.8" stroke="#0d1117" strokeWidth="1.5" />
+                            <text x={x} y="55" textAnchor="middle" fill="#8b949e" fontSize="7">{res}</text>
+                          </g>
+                        );
+                      });
+                    })()}
+                  </svg>
+                </div>
+              </div>
+
+              {/* SVG 4: Formation Effectiveness Bars */}
+              <div>
+                <div className={`text-[10px] ${TEXT_SECONDARY} mb-2`}>Formation Effectiveness vs Opponent</div>
+                {(() => {
+                  const formations = ['4-3-3', '4-4-2', '4-2-3-1', '3-5-2'];
+                  const effValues = [72 + (qualityGap > 0 ? qualityGap : 0), 65 + (qualityGap > -5 ? qualityGap : -5), 68 + (isHome ? 5 : -5), 55 + (qualityGap > 0 ? qualityGap * 0.5 : -10)];
+                  return formations.map((f, i) => {
+                    const pct = Math.max(20, Math.min(95, effValues[i]));
+                    return (
+                      <div key={i} className="flex items-center gap-2 mb-1.5">
+                        <span className={`text-[10px] ${TEXT_SECONDARY} w-12`}>{f}</span>
+                        <div className="flex-1 h-2 bg-[#21262d] rounded overflow-hidden">
+                          <div className="h-full rounded" style={{ width: `${pct}%`, backgroundColor: pct > 70 ? W3_CYAN : pct > 55 ? W3_LIME : W3_ORANGE }} />
+                        </div>
+                        <span className="text-[10px] font-bold text-[#c9d1d9] w-8 text-right">{Math.round(pct)}%</span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* SVG 5 & 6: Quality Butterfly + Key Player Radar */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className={`text-[10px] ${TEXT_SECONDARY} mb-1 text-center`}>Quality Comparison</div>
+                  <svg width="150" height="130" viewBox="0 0 150 130">
+                    {(() => {
+                      const metrics = ['OVR', 'Gls', 'DEF', 'Pos', 'Spd'];
+                      const you = [gameState.currentClub.quality, gameState.player.overall, 68, 50, 72];
+                      const opp = [opponent.quality, opponent.quality - 5, 72, 48, 68];
+                      return metrics.map((m, i) => {
+                        const y = 18 + i * 22;
+                        const youPct = Math.min(100, you[i]);
+                        const oppPct = Math.min(100, opp[i]);
+                        return (
+                          <g key={i}>
+                            <text x="2" y={y + 3} fill="#8b949e" fontSize="7">{m}</text>
+                            <rect x="20" y={y - 4} width={(youPct / 100) * 45} height="7" rx="1" fill={W3_LIME} fillOpacity="0.7" />
+                            <rect x="85" y={y - 4} width={(oppPct / 100) * 45} height="7" rx="1" fill={W3_ORANGE} fillOpacity="0.7" />
+                            <text x="68" y={y + 3} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontWeight="bold">{you[i]}</text>
+                            <text x="133" y={y + 3} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontWeight="bold">{opp[i]}</text>
+                          </g>
+                        );
+                      });
+                    })()}
+                    <text x="50" y="10" textAnchor="middle" fill={W3_LIME} fontSize="7">You</text>
+                    <text x="115" y="10" textAnchor="middle" fill={W3_ORANGE} fontSize="7">Opp</text>
+                  </svg>
+                </div>
+                <div>
+                  <div className={`text-[10px] ${TEXT_SECONDARY} mb-1 text-center`}>Key Player Stats</div>
+                  <svg width="150" height="130" viewBox="0 0 150 130">
+                    {(() => {
+                      const axes = ['PAC', 'SHO', 'PAS', 'PHY', 'TEC'];
+                      const vals = [70 + Math.floor(Math.random() * 15), keyPlayer.rating - 5 + Math.floor(Math.random() * 10), 65 + Math.floor(Math.random() * 15), 60 + Math.floor(Math.random() * 15), keyPlayer.rating - 10 + Math.floor(Math.random() * 12)];
+                      const cx = 75, cy = 65, maxR = 42, n = axes.length;
+                      const gridPts = (r: number) => {
+                        const pts: { x: number; y: number }[] = [];
+                        for (let i = 0; i < n; i++) pts.push(polarToCart(cx, cy, r, (i * 360) / n));
+                        return buildPointsStr(pts);
+                      };
+                      const dataPts = buildPointsStr(vals.map((v, i) => polarToCart(cx, cy, (v / 100) * maxR, (i * 360) / n)));
+                      return (
+                        <g>
+                          {[14, 28, 42].map((r, i) => <polygon key={i} points={gridPts(r)} fill="none" stroke="#21262d" strokeWidth="0.5" />)}
+                          {axes.map((_, i) => <line key={i} x1={cx} y1={cy} x2={polarToCart(cx, cy, maxR, (i * 360) / n).x} y2={polarToCart(cx, cy, maxR, (i * 360) / n).y} stroke="#21262d" strokeWidth="0.5" />)}
+                          <polygon points={dataPts} fill={W3_ORANGE} fillOpacity="0.15" stroke={W3_ORANGE} strokeWidth="1.5" />
+                          {axes.map((label, i) => {
+                            const lp = polarToCart(cx, cy, maxR + 12, (i * 360) / n);
+                            return <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize="7">{label}</text>;
+                          })}
+                        </g>
+                      );
+                    })()}
+                  </svg>
+                </div>
+              </div>
+
+              {/* SVG 7: Goal Probability Area Chart */}
+              <div>
+                <div className={`text-[10px] ${TEXT_SECONDARY} mb-2`}>Expected Goals (Last 8 Matches)</div>
+                <svg width="100%" height="100" viewBox="0 0 280 100" preserveAspectRatio="xMidYMid meet">
+                  <line x1="20" y1="80" x2="270" y2="80" stroke="#21262d" strokeWidth="0.5" />
+                  {(() => {
+                    const hash = (gameState.currentClub.name + opponent.name).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+                    const goals = Array.from({ length: 8 }, (_, i) => 0.5 + ((hash * (i + 3)) % 20) / 10);
+                    const maxG = 3;
+                    const areaPts = goals.map((g, i) => ({
+                      x: 30 + i * 30,
+                      y: 80 - (Math.min(g, maxG) / maxG) * 65,
+                    }));
+                    const closedArea = buildPointsStr([
+                      { x: areaPts[0].x, y: 80 },
+                      ...areaPts,
+                      { x: areaPts[areaPts.length - 1].x, y: 80 },
+                    ]);
+                    const linePts = buildPolylineStr(areaPts);
+                    return (
+                      <g>
+                        {[0, 1, 2, 3].map((v, i) => {
+                          const y = 80 - (v / maxG) * 65;
+                          return <line key={i} x1="20" y1={y} x2="270" y2={y} stroke="#21262d" strokeWidth="0.3" strokeOpacity="0.5" />;
+                        })}
+                        <polygon points={closedArea} fill={W3_CYAN} fillOpacity="0.15" />
+                        <polyline points={linePts} fill="none" stroke={W3_CYAN} strokeWidth="1.5" />
+                        {areaPts.map((pt, i) => (
+                          <g key={i}>
+                            <circle cx={pt.x} cy={pt.y} r="3" fill={W3_CYAN} />
+                            <text x={pt.x} y="92" textAnchor="middle" fill="#8b949e" fontSize="7">W{i + 1}</text>
+                          </g>
+                        ))}
+                      </g>
+                    );
+                  })()}
+                </svg>
+              </div>
+
+              {/* SVG 8 & 9: Venue Advantage Ring + Tactical Matchup */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col items-center">
+                  <div className={`text-[10px] ${TEXT_SECONDARY} mb-1`}>Venue Advantage</div>
+                  <svg width="100" height="100" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#21262d" strokeWidth="10" />
+                    {(() => {
+                      const advantage = isHome ? 65 + Math.abs(qualityGap) * 0.5 : 35 + Math.max(0, -qualityGap) * 0.5;
+                      const pct = Math.min(95, Math.max(20, advantage));
+                      const circumference = 2 * Math.PI * 35;
+                      const offset = circumference - (pct / 100) * circumference;
+                      return (
+                        <circle cx="50" cy="50" r="35" fill="none" stroke={W3_ORANGE} strokeWidth="10"
+                          strokeDasharray={circumference.toFixed(2)} strokeDashoffset={offset.toFixed(2)} strokeLinecap="round" />
+                      );
+                    })()}
+                    <text x="50" y="47" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="14" fontWeight="bold">{isHome ? 'H' : 'A'}</text>
+                    <text x="50" y="60" textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize="7">{isHome ? 'HOME' : 'AWAY'}</text>
+                  </svg>
+                </div>
+                <div>
+                  <div className={`text-[10px] ${TEXT_SECONDARY} mb-2`}>Tactical Matchup</div>
+                  {(() => {
+                    const attrs = ['Press', 'Tempo', 'Width', 'Depth', 'Flanks', 'Central'];
+                    const youVals = [72, 65, 68, 60, 70, 75];
+                    const oppVals = [playingStyle === 'Attacking' ? 78 : 55, 62, 60, playingStyle === 'Defensive' ? 80 : 50, 55, 68];
+                    return attrs.map((attr, i) => (
+                      <div key={i} className="flex items-center gap-1.5 mb-1">
+                        <span className={`text-[9px] ${TEXT_SECONDARY} w-10`}>{attr}</span>
+                        <div className="flex-1 flex gap-0.5">
+                          <div className="h-1.5 rounded-l" style={{ width: `${youVals[i] / 2}%`, backgroundColor: W3_LIME }} />
+                          <div className="h-1.5 rounded-r" style={{ width: `${oppVals[i] / 2}%`, backgroundColor: W3_ORANGE }} />
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              {/* SVG 10: Form vs Quality Scatter */}
+              <div>
+                <div className={`text-[10px] ${TEXT_SECONDARY} mb-2`}>Form vs Quality Correlation</div>
+                <svg width="100%" height="90" viewBox="0 0 280 90" preserveAspectRatio="xMidYMid meet">
+                  <line x1="30" y1="10" x2="30" y2="75" stroke="#21262d" strokeWidth="0.5" />
+                  <line x1="30" y1="75" x2="270" y2="75" stroke="#21262d" strokeWidth="0.5" />
+                  <text x="15" y="15" textAnchor="middle" fill="#8b949e" fontSize="7">Good</text>
+                  <text x="15" y="70" textAnchor="middle" fill="#8b949e" fontSize="7">Poor</text>
+                  <text x="150" y="85" textAnchor="middle" fill="#8b949e" fontSize="7">Team Quality</text>
+                  {(() => {
+                    const hash = (gameState.currentClub.name + opponent.name).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+                    const teams = Array.from({ length: 8 }, (_, i) => ({
+                      quality: 55 + ((hash * (i + 1)) % 30),
+                      form: 30 + ((hash * (i + 2)) % 50),
+                      isTop: i < 3,
+                    }));
+                    return teams.map((t, i) => {
+                      const x = 30 + (t.quality / 90) * 235;
+                      const y = 75 - (t.form / 100) * 62;
+                      return <circle key={i} cx={Math.min(268, Math.max(35, x))} cy={Math.max(12, Math.min(72, y))} r="4" fill={t.isTop ? W3_CYAN : W3_ORANGE} fillOpacity="0.8" />;
+                    });
+                  })()}
+                  <circle cx="268" cy="14" r="3" fill={W3_CYAN} fillOpacity="0.8" />
+                  <text x="260" y="12" textAnchor="end" fill="#8b949e" fontSize="6">Top 6</text>
+                  <circle cx="268" cy="24" r="3" fill={W3_ORANGE} fillOpacity="0.8" />
+                  <text x="260" y="24" textAnchor="end" fill="#8b949e" fontSize="6">Bottom</text>
+                </svg>
+              </div>
+
+              {/* SVG 11: Scouting Confidence Gauge */}
+              <div className="flex justify-center">
+                <svg width="200" height="90" viewBox="0 0 200 90">
+                  {(() => {
+                    const confidence = Math.min(95, 50 + (opponentStanding ? Math.min(opponentStanding.played, 20) * 2 : 10));
+                    const cx = 100, radius = 70;
+                    const startAngle = Math.PI;
+                    const endAngle = 2 * Math.PI;
+                    const valueAngle = startAngle + (confidence / 100) * Math.PI;
+                    const arcPath = `M ${cx - radius} ${50} A ${radius} ${radius} 0 0 1 ${cx + radius} 50`;
+                    const valEndX = cx + radius * Math.cos(valueAngle);
+                    const valEndY = 50 + radius * Math.sin(valueAngle);
+                    const largeArc = confidence > 50 ? 1 : 0;
+                    const valuePath = `M ${cx - radius} 50 A ${radius} ${radius} 0 ${largeArc} 1 ${valEndX.toFixed(1)} ${valEndY.toFixed(1)}`;
+                    const color = confidence > 70 ? W3_LIME : confidence > 40 ? W3_ORANGE : '#ef4444';
+                    return (
+                      <g>
+                        <path d={arcPath} fill="none" stroke="#21262d" strokeWidth="10" strokeLinecap="round" />
+                        <path d={valuePath} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" />
+                        <text x={cx} y="42" textAnchor="middle" dominantBaseline="middle" fill={color} fontSize="16" fontWeight="bold">{Math.round(confidence)}</text>
+                        <text x={cx} y="58" textAnchor="middle" dominantBaseline="middle" fill="#8b949e" fontSize="9">Scouting Confidence</text>
+                      </g>
+                    );
+                  })()}
+                </svg>
               </div>
             </InfoCard>
           </motion.div>

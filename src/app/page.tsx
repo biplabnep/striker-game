@@ -140,6 +140,8 @@ import CareerJournalEnhanced from '@/components/game/CareerJournalEnhanced';
 import CareerLegacyProfileEnhanced from '@/components/game/CareerLegacyProfileEnhanced';
 import InjuryRecoveryEnhanced from '@/components/game/InjuryRecoveryEnhanced';
 import SkillChallengesEnhanced from '@/components/game/SkillChallengesEnhanced';
+import DailyRoutineEnhanced from '@/components/game/DailyRoutineEnhanced';
+import SetPieceTrainerEnhanced from '@/components/game/SetPieceTrainerEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -275,6 +277,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   career_legacy_profile_enhanced: CareerLegacyProfileEnhanced,
   injury_recovery_enhanced: InjuryRecoveryEnhanced,
   skill_challenges_enhanced: SkillChallengesEnhanced,
+  daily_routine_enhanced: DailyRoutineEnhanced,
+  set_piece_trainer_enhanced: SetPieceTrainerEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -378,6 +382,8 @@ const gameScreens: GameScreen[] = [
   'career_legacy_profile_enhanced',
   'injury_recovery_enhanced',
   'skill_challenges_enhanced',
+  'daily_routine_enhanced',
+  'set_piece_trainer_enhanced',
 ];
 
 export default function Home() {

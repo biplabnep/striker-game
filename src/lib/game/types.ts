@@ -704,7 +704,9 @@ export type GameScreen =
   | 'career_journal_enhanced'
   | 'career_legacy_profile_enhanced'
   | 'injury_recovery_enhanced'
-  | 'skill_challenges_enhanced';
+  | 'skill_challenges_enhanced'
+  | 'daily_routine_enhanced'
+  | 'set_piece_trainer_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';
