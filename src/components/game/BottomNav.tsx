@@ -70,6 +70,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'transfer_market', icon: <Store className="h-5 w-5" />, label: 'Market' },
       { screen: 'transfer_market_enhanced', icon: <Store className="h-5 w-5" />, label: 'Market+' },
       { screen: 'personal_finances', icon: <Wallet className="h-5 w-5" />, label: 'Finances' },
+      { screen: 'personal_finances_enhanced', icon: <Landmark className="h-5 w-5" />, label: 'Finances+' },
       { screen: 'transfer_negotiation', icon: <Handshake className="h-5 w-5" />, label: 'Negotiate' },
       { screen: 'contract_negotiation_enhanced', icon: <FileText className="h-5 w-5" />, label: 'Contract+' },
       { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },
@@ -140,6 +141,7 @@ const moreCategories: NavCategory[] = [
     icon: <Shield className="h-4 w-4" />,
     items: [
       { screen: 'youth_academy', icon: <GraduationCap className="h-5 w-5" />, label: 'Academy' },
+      { screen: 'youth_academy_enhanced', icon: <UsersRound className="h-5 w-5" />, label: 'Academy+' },
       { screen: 'youth_academy_deep_dive', icon: <Baby className="h-5 w-5" />, label: 'Youth Deep' },
       { screen: 'relationships', icon: <Users className="h-5 w-5" />, label: 'Team' },
       { screen: 'daily_routine_hub', icon: <Calendar className="h-5 w-5" />, label: 'Routine' },

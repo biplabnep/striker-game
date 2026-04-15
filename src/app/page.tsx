@@ -48,6 +48,8 @@ import MediaInterviewEnhanced from '@/components/game/MediaInterviewEnhanced';
 import SponsorSystemEnhanced from '@/components/game/SponsorSystemEnhanced';
 import CareerEventsEnhanced from '@/components/game/CareerEventsEnhanced';
 import TrainingGroundEnhanced from '@/components/game/TrainingGroundEnhanced';
+import YouthAcademyEnhanced from '@/components/game/YouthAcademyEnhanced';
+import PersonalFinancesEnhanced from '@/components/game/PersonalFinancesEnhanced';
 import FanEngagement from '@/components/game/FanEngagement';
 import WorldFootballNews from '@/components/game/WorldFootballNews';
 import HallOfFame from '@/components/game/HallOfFame';
@@ -299,6 +301,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   sponsor_system_enhanced: SponsorSystemEnhanced,
   career_events_enhanced: CareerEventsEnhanced,
   training_ground_enhanced: TrainingGroundEnhanced,
+  youth_academy_enhanced: YouthAcademyEnhanced,
+  personal_finances_enhanced: PersonalFinancesEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -414,6 +418,8 @@ const gameScreens: GameScreen[] = [
   'sponsor_system_enhanced',
   'career_events_enhanced',
   'training_ground_enhanced',
+  'youth_academy_enhanced',
+  'personal_finances_enhanced',
 ];
 
 export default function Home() {

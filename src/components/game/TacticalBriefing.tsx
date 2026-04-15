@@ -724,6 +724,589 @@ function AttributeBar({
 }
 
 // ============================================================
+// Web3 "Gritty Futurism" SVG Visualizations
+// ============================================================
+
+// --- 1. FormationStrengthRadar ---
+function FormationStrengthRadar({ values }: { values: number[] }) {
+  const cx = 150;
+  const cy = 115;
+  const maxR = 70;
+  const labels = ['Def Shape', 'Mid Ctrl', 'Att Width', 'Pressing', 'Trans Spd'];
+
+  const axisAngles = labels.map((_, i) => -Math.PI / 2 + (2 * Math.PI * i) / labels.length);
+
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+  const gridPolygons = gridLevels.map((level) =>
+    axisAngles
+      .map((angle) => `${cx + maxR * level * Math.cos(angle)},${cy + maxR * level * Math.sin(angle)}`)
+      .join(' ')
+  );
+
+  const dataPoints = values.reduce(
+    (acc, val, i) => {
+      const r = maxR * (val / 100);
+      const x = cx + r * Math.cos(axisAngles[i]);
+      const y = cy + r * Math.sin(axisAngles[i]);
+      return i === 0 ? `${x},${y}` : `${acc} ${x},${y}`;
+    },
+    ''
+  );
+
+  const axisLines = axisAngles.map((angle) => ({
+    x2: cx + maxR * Math.cos(angle),
+    y2: cy + maxR * Math.sin(angle),
+  }));
+
+  const labelPositions = labels.map((label, i) => ({
+    x: cx + (maxR + 20) * Math.cos(axisAngles[i]),
+    y: cy + (maxR + 20) * Math.sin(axisAngles[i]),
+    label,
+    value: values[i],
+  }));
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full" fill="none">
+      {gridPolygons.map((points, i) => (
+        <polygon key={`fs-grid-${i}`} points={points} stroke="#111111" strokeWidth="1" />
+      ))}
+      {axisLines.map((line, i) => (
+        <line key={`fs-axis-${i}`} x1={cx} y1={cy} x2={line.x2} y2={line.y2} stroke="#111111" strokeWidth="1" />
+      ))}
+      <polygon points={dataPoints} fill="#FF5500" fillOpacity="0.12" stroke="#FF5500" strokeWidth="2" strokeLinejoin="round" />
+      {axisAngles.map((angle, i) => {
+        const r = maxR * (values[i] / 100);
+        return (
+          <circle key={`fs-dot-${i}`} cx={cx + r * Math.cos(angle)} cy={cy + r * Math.sin(angle)} r="3" fill="#FF5500" />
+        );
+      })}
+      {labelPositions.map((lp, i) => (
+        <text key={`fs-lbl-${i}`} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+          {lp.label} {lp.value}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// --- 2. SetPieceStrategyBars ---
+function SetPieceStrategyBars({ values }: { values: number[] }) {
+  const labels = ['Corner Acc', 'FK Threat', 'Throw-in', 'Counter SP', 'Pen Conv'];
+  const barMax = 180;
+
+  const avgValue = values.reduce((sum, v) => sum + v, 0) / values.length;
+
+  const bars = values.reduce(
+    (acc, val, i) => [
+      ...acc,
+      { label: labels[i], value: val, width: barMax * (val / 100) },
+    ],
+    [] as { label: string; value: number; width: number }[]
+  );
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full">
+      {bars.map((bar, i) => (
+        <g key={`sp-bar-${i}`}>
+          <text x="5" y={24 + i * 32} fill="#c9d1d9" fontSize="9" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace" dominantBaseline="middle">
+            {bar.label}
+          </text>
+          <rect x="82" y={16 + i * 32} width={barMax} height="16" fill="#111111" rx="2" />
+          <rect x="82" y={16 + i * 32} width={bar.width} height="16" fill="#00E5FF" fillOpacity="0.8" rx="2" />
+          <text x={bar.width + 88} y={24 + i * 32} fill="#c9d1d9" fontSize="9" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace" dominantBaseline="middle">
+            {bar.value}%
+          </text>
+        </g>
+      ))}
+      <text x="150" y="192" textAnchor="middle" fill="#666666" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        AVG STRATEGY SCORE: {Math.round(avgValue)}%
+      </text>
+    </svg>
+  );
+}
+
+// --- 3. OpponentWeaknessDonut ---
+function OpponentWeaknessDonut({ values }: { values: number[] }) {
+  const labels = ['Left Side', 'Right Side', 'Central', 'Set Pieces'];
+  const cx = 100;
+  const cy = 88;
+  const outerR = 52;
+  const innerR = 32;
+
+  const total = values.reduce((sum, v) => sum + v, 0);
+
+  const segments = values.reduce(
+    (acc, val, i) => {
+      const startAngle = acc.cumulative;
+      const sweep = (val / total) * 2 * Math.PI;
+      const endAngle = startAngle + sweep;
+      const midAngle = startAngle + sweep / 2;
+
+      const outerSX = cx + outerR * Math.cos(startAngle);
+      const outerSY = cy + outerR * Math.sin(startAngle);
+      const outerEX = cx + outerR * Math.cos(endAngle);
+      const outerEY = cy + outerR * Math.sin(endAngle);
+      const innerSX = cx + innerR * Math.cos(startAngle);
+      const innerSY = cy + innerR * Math.sin(startAngle);
+      const innerEX = cx + innerR * Math.cos(endAngle);
+      const innerEY = cy + innerR * Math.sin(endAngle);
+
+      const largeArc = sweep > Math.PI ? 1 : 0;
+      const path = `M ${outerSX} ${outerSY} A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEX} ${outerEY} L ${innerEX} ${innerEY} A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerSX} ${innerSY} Z`;
+
+      const labelX = cx + (outerR + 20) * Math.cos(midAngle);
+      const labelY = cy + (outerR + 20) * Math.sin(midAngle);
+
+      return {
+        arcs: [...acc.arcs, { path, labelX, labelY, label: labels[i], percent: Math.round((val / total) * 100) }],
+        cumulative: endAngle,
+      };
+    },
+    { arcs: [] as { path: string; labelX: number; labelY: number; label: string; percent: number }[], cumulative: -Math.PI / 2 }
+  );
+
+  return (
+    <svg viewBox="0 0 200 180" className="w-full">
+      {segments.arcs.map((seg, i) => (
+        <path key={`ow-seg-${i}`} d={seg.path} fill="#CCFF00" fillOpacity={0.12 + i * 0.08} stroke="#CCFF00" strokeWidth="1.5" strokeLinejoin="round" />
+      ))}
+      {segments.arcs.map((seg, i) => (
+        <text key={`ow-lbl-${i}`} x={seg.labelX} y={seg.labelY} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+          {seg.label} {seg.percent}%
+        </text>
+      ))}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="10" fontWeight="600" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        {total}
+      </text>
+      <text x={cx} y={172} textAnchor="middle" fill="#666666" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        WEAKNESS INDEX
+      </text>
+    </svg>
+  );
+}
+
+// --- 4. PressingTriggerTimeline ---
+function PressingTriggerTimeline() {
+  const nodes = [
+    { label: 'GK Dist', intensity: 85 },
+    { label: 'CB Pass', intensity: 70 },
+    { label: 'Mid Turn', intensity: 90 },
+    { label: 'Back Pass', intensity: 55 },
+    { label: 'Switch', intensity: 72 },
+    { label: 'Dribble', intensity: 82 },
+    { label: 'Misctrl', intensity: 95 },
+    { label: 'Set Pce', intensity: 63 },
+  ];
+
+  const startX = 25;
+  const endX = 275;
+  const y = 100;
+  const spacing = (endX - startX) / (nodes.length - 1);
+
+  const avgIntensity = Math.round(nodes.reduce((sum, n) => sum + n.intensity, 0) / nodes.length);
+
+  const nodeData = nodes.reduce(
+    (acc, node, i) => {
+      const x = startX + i * spacing;
+      const topY = y - 28 - (node.intensity / 100) * 38;
+      const r = 4 + (node.intensity / 100) * 7;
+      return [...acc, { x, topY, r, ...node }];
+    },
+    [] as { x: number; topY: number; r: number; label: string; intensity: number }[]
+  );
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full">
+      <line x1={startX} y1={y} x2={endX} y2={y} stroke="#111111" strokeWidth="2" strokeLinecap="round" />
+      {nodeData.map((nd, i) => (
+        <g key={`pt-node-${i}`}>
+          <line x1={nd.x} y1={y} x2={nd.x} y2={nd.topY} stroke="#FF5500" strokeWidth="1.5" strokeOpacity={0.3 + (nd.intensity / 100) * 0.7} strokeLinecap="round" />
+          <circle cx={nd.x} cy={nd.topY} r={nd.r} fill="#FF5500" fillOpacity={0.12 + (nd.intensity / 100) * 0.35} stroke="#FF5500" strokeWidth="1.5" />
+          <text x={nd.x} y={nd.topY} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+            {nd.intensity}
+          </text>
+          <text x={nd.x} y={y + 16} textAnchor="middle" fill="#666666" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+            {nd.label}
+          </text>
+        </g>
+      ))}
+      <text x="150" y="190" textAnchor="middle" fill="#666666" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        AVG PRESSING INTENSITY: {avgIntensity}
+      </text>
+    </svg>
+  );
+}
+
+// --- 5. BuildupPlayArea ---
+function BuildupPlayArea() {
+  const dataPoints = [
+    { label: 'Own 3rd', value: 72 },
+    { label: 'Mid L', value: 65 },
+    { label: 'Mid C', value: 80 },
+    { label: 'Mid R', value: 68 },
+    { label: 'Fin L', value: 55 },
+    { label: 'Fin C', value: 85 },
+    { label: 'Fin R', value: 60 },
+    { label: 'Box', value: 45 },
+  ];
+
+  const startX = 30;
+  const endX = 270;
+  const baseY = 158;
+  const spacing = (endX - startX) / (dataPoints.length - 1);
+
+  const linePath = dataPoints.reduce(
+    (acc, point, i) => {
+      const x = startX + i * spacing;
+      const y = baseY - (point.value / 100) * 100;
+      return i === 0 ? `M ${x} ${y}` : `${acc} L ${x} ${y}`;
+    },
+    ''
+  );
+
+  const areaPath = `${linePath} L ${endX} ${baseY} L ${startX} ${baseY} Z`;
+
+  const avgValue = Math.round(dataPoints.reduce((sum, p) => sum + p.value, 0) / dataPoints.length);
+
+  const plotPoints = dataPoints.map((point, i) => ({
+    x: startX + i * spacing,
+    y: baseY - (point.value / 100) * 100,
+    ...point,
+  }));
+
+  return (
+    <svg viewBox="0 0 300 200" className="w-full">
+      {[25, 50, 75, 100].map((level) => (
+        <line key={`bu-grid-${level}`} x1={startX} y1={baseY - level} x2={endX} y2={baseY - level} stroke="#111111" strokeWidth="1" />
+      ))}
+      <line x1={startX} y1={baseY} x2={endX} y2={baseY} stroke="#111111" strokeWidth="1.5" strokeLinecap="round" />
+      <path d={areaPath} fill="#00E5FF" fillOpacity="0.2" />
+      <path d={linePath} fill="none" stroke="#00E5FF" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {plotPoints.map((pt, i) => (
+        <g key={`bu-pt-${i}`}>
+          <circle cx={pt.x} cy={pt.y} r="3" fill="#00E5FF" />
+          <text x={pt.x} y={pt.y - 8} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{pt.value}</text>
+          <text x={pt.x} y={baseY + 12} textAnchor="middle" fill="#666666" fontSize="6" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{pt.label}</text>
+        </g>
+      ))}
+      <text x="150" y="192" textAnchor="middle" fill="#666666" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        BUILDUP EFFECTIVENESS AVG: {avgValue}
+      </text>
+    </svg>
+  );
+}
+
+// --- 6. DefensiveLineGauge ---
+function DefensiveLineGauge({ value }: { value: number }) {
+  const cx = 150;
+  const cy = 125;
+  const r = 65;
+
+  const bgStartX = cx + r * Math.cos(Math.PI);
+  const bgStartY = cy + r * Math.sin(Math.PI);
+  const bgEndX = cx + r * Math.cos(2 * Math.PI);
+  const bgEndY = cy + r * Math.sin(2 * Math.PI);
+  const bgPath = `M ${bgStartX} ${bgStartY} A ${r} ${r} 0 1 1 ${bgEndX} ${bgEndY}`;
+
+  const valueAngle = Math.PI + (value / 100) * Math.PI;
+  const valEndX = cx + r * Math.cos(valueAngle);
+  const valEndY = cy + r * Math.sin(valueAngle);
+  const largeArc = value > 50 ? 1 : 0;
+  const valPath = `M ${bgStartX} ${bgStartY} A ${r} ${r} 0 ${largeArc} 1 ${valEndX} ${valEndY}`;
+
+  const needleAngle = Math.PI + (value / 100) * Math.PI;
+  const needleLen = r - 14;
+  const needleEndX = cx + needleLen * Math.cos(needleAngle);
+  const needleEndY = cy + needleLen * Math.sin(needleAngle);
+
+  const ticks = [0, 25, 50, 75, 100].reduce(
+    (acc, tick) => {
+      const angle = Math.PI + (tick / 100) * Math.PI;
+      return [...acc, { x: cx + (r + 10) * Math.cos(angle), y: cy + (r + 10) * Math.sin(angle), label: tick }];
+    },
+    [] as { x: number; y: number; label: number }[]
+  );
+
+  return (
+    <svg viewBox="0 0 300 170" className="w-full" fill="none">
+      <path d={bgPath} stroke="#111111" strokeWidth="12" strokeLinecap="round" />
+      <path d={valPath} stroke="#CCFF00" strokeWidth="12" strokeLinecap="round" />
+      <line x1={cx} y1={cy} x2={needleEndX} y2={needleEndY} stroke="#CCFF00" strokeWidth="2" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="4" fill="#CCFF00" />
+      <text x={cx} y={cy - 20} textAnchor="middle" fill="#c9d1d9" fontSize="22" fontWeight="700" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{value}</text>
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#666666" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">DEF LINE QUALITY</text>
+      {ticks.map((tick) => (
+        <text key={`dl-tick-${tick.label}`} x={tick.x} y={tick.y + 4} textAnchor="middle" fill="#666666" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{tick.label}</text>
+      ))}
+    </svg>
+  );
+}
+
+// --- 7. TransitionEfficiencyRadar ---
+function TransitionEfficiencyRadar({ values }: { values: number[] }) {
+  const cx = 100;
+  const cy = 88;
+  const maxR = 55;
+  const labels = ['Def\u2192Off', 'Off\u2192Def', 'Turnover', 'Counter', 'Recovery'];
+
+  const axisAngles = labels.map((_, i) => -Math.PI / 2 + (2 * Math.PI * i) / labels.length);
+
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+  const gridPolygons = gridLevels.map((level) =>
+    axisAngles
+      .map((angle) => `${cx + maxR * level * Math.cos(angle)},${cy + maxR * level * Math.sin(angle)}`)
+      .join(' ')
+  );
+
+  const dataPoints = values.reduce(
+    (acc, val, i) => {
+      const r = maxR * (val / 100);
+      const x = cx + r * Math.cos(axisAngles[i]);
+      const y = cy + r * Math.sin(axisAngles[i]);
+      return i === 0 ? `${x},${y}` : `${acc} ${x},${y}`;
+    },
+    ''
+  );
+
+  const axisLines = axisAngles.map((angle) => ({
+    x2: cx + maxR * Math.cos(angle),
+    y2: cy + maxR * Math.sin(angle),
+  }));
+
+  const labelPositions = labels.map((label, i) => ({
+    x: cx + (maxR + 18) * Math.cos(axisAngles[i]),
+    y: cy + (maxR + 18) * Math.sin(axisAngles[i]),
+    label,
+    value: values[i],
+  }));
+
+  return (
+    <svg viewBox="0 0 200 175" className="w-full" fill="none">
+      {gridPolygons.map((points, i) => (
+        <polygon key={`te-grid-${i}`} points={points} stroke="#111111" strokeWidth="1" />
+      ))}
+      {axisLines.map((line, i) => (
+        <line key={`te-axis-${i}`} x1={cx} y1={cy} x2={line.x2} y2={line.y2} stroke="#111111" strokeWidth="1" />
+      ))}
+      <polygon points={dataPoints} fill="#00E5FF" fillOpacity="0.12" stroke="#00E5FF" strokeWidth="2" strokeLinejoin="round" />
+      {axisAngles.map((angle, i) => {
+        const r = maxR * (values[i] / 100);
+        return (
+          <circle key={`te-dot-${i}`} cx={cx + r * Math.cos(angle)} cy={cy + r * Math.sin(angle)} r="3" fill="#00E5FF" />
+        );
+      })}
+      {labelPositions.map((lp, i) => (
+        <text key={`te-lbl-${i}`} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+          {lp.label} {lp.value}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// --- 8. PossessionStrategyDonut ---
+function PossessionStrategyDonut({ values }: { values: number[] }) {
+  const labels = ['Short', 'Long', 'Dribbles', 'Crosses'];
+  const cx = 100;
+  const cy = 88;
+  const outerR = 52;
+  const innerR = 32;
+
+  const total = values.reduce((sum, v) => sum + v, 0);
+
+  const segments = values.reduce(
+    (acc, val, i) => {
+      const startAngle = acc.cumulative;
+      const sweep = (val / total) * 2 * Math.PI;
+      const endAngle = startAngle + sweep;
+      const midAngle = startAngle + sweep / 2;
+
+      const outerSX = cx + outerR * Math.cos(startAngle);
+      const outerSY = cy + outerR * Math.sin(startAngle);
+      const outerEX = cx + outerR * Math.cos(endAngle);
+      const outerEY = cy + outerR * Math.sin(endAngle);
+      const innerSX = cx + innerR * Math.cos(startAngle);
+      const innerSY = cy + innerR * Math.sin(startAngle);
+      const innerEX = cx + innerR * Math.cos(endAngle);
+      const innerEY = cy + innerR * Math.sin(endAngle);
+
+      const largeArc = sweep > Math.PI ? 1 : 0;
+      const path = `M ${outerSX} ${outerSY} A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEX} ${outerEY} L ${innerEX} ${innerEY} A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerSX} ${innerSY} Z`;
+
+      const labelX = cx + (outerR + 20) * Math.cos(midAngle);
+      const labelY = cy + (outerR + 20) * Math.sin(midAngle);
+
+      return {
+        arcs: [...acc.arcs, { path, labelX, labelY, label: labels[i], percent: Math.round((val / total) * 100) }],
+        cumulative: endAngle,
+      };
+    },
+    { arcs: [] as { path: string; labelX: number; labelY: number; label: string; percent: number }[], cumulative: -Math.PI / 2 }
+  );
+
+  return (
+    <svg viewBox="0 0 200 180" className="w-full">
+      {segments.arcs.map((seg, i) => (
+        <path key={`ps-seg-${i}`} d={seg.path} fill="#FF5500" fillOpacity={0.12 + i * 0.08} stroke="#FF5500" strokeWidth="1.5" strokeLinejoin="round" />
+      ))}
+      {segments.arcs.map((seg, i) => (
+        <text key={`ps-lbl-${i}`} x={seg.labelX} y={seg.labelY} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+          {seg.label} {seg.percent}%
+        </text>
+      ))}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="10" fontWeight="600" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        {total}
+      </text>
+      <text x={cx} y={172} textAnchor="middle" fill="#666666" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        POSSESSION STRATEGY
+      </text>
+    </svg>
+  );
+}
+
+// --- 9. PlayerRoleHeatmap ---
+function PlayerRoleHeatmap({ position }: { position: string }) {
+  const cols = 5;
+  const rows = 3;
+  const cellW = 38;
+  const cellH = 32;
+  const gap = 4;
+  const offsetX = 52;
+  const offsetY = 18;
+
+  const seed = position.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+
+  const rawHeat = Array.from({ length: rows * cols }, (_, i) => ((seed * 31 + i * 17) % 100));
+
+  const maxVal = rawHeat.reduce((max, v) => (v > max ? v : max), 0);
+
+  const cells = rawHeat.reduce(
+    (acc, val, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = offsetX + col * (cellW + gap);
+      const y = offsetY + row * (cellH + gap);
+      const normalized = val / Math.max(maxVal, 1);
+      const color = normalized > 0.7 ? '#FF5500' : normalized > 0.4 ? '#CCFF00' : '#00E5FF';
+      const opacity = 0.15 + normalized * 0.5;
+      return [...acc, { x, y, val, color, opacity, col, row }];
+    },
+    [] as { x: number; y: number; val: number; color: string; opacity: number; col: number; row: number }[]
+  );
+
+  const zoneLabels = ['DEF', 'MID', 'ATT'];
+
+  return (
+    <svg viewBox="0 0 300 170" className="w-full">
+      {zoneLabels.map((label, i) => (
+        <text key={`rh-zone-${i}`} x="12" y={offsetY + i * (cellH + gap) + cellH / 2 + 3} fill="#666666" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace" textAnchor="end" dominantBaseline="middle">
+          {label}
+        </text>
+      ))}
+      {cells.map((cell) => (
+        <g key={`rh-cell-${cell.col}-${cell.row}`}>
+          <rect x={cell.x} y={cell.y} width={cellW} height={cellH} fill={cell.color} fillOpacity={cell.opacity} rx="2" stroke="#111111" strokeWidth="0.5" />
+          <text x={cell.x + cellW / 2} y={cell.y + cellH / 2} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="9" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+            {cell.val}
+          </text>
+        </g>
+      ))}
+      <text x="150" y="164" textAnchor="middle" fill="#666666" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        {position} POSITIONING HEAT MAP
+      </text>
+    </svg>
+  );
+}
+
+// --- 10. TacticalFlexibilityRing ---
+function TacticalFlexibilityRing({ value }: { value: number }) {
+  const cx = 100;
+  const cy = 82;
+  const r = 52;
+
+  const startAngle = -Math.PI / 2;
+  const valueAngle = startAngle + (value / 100) * 2 * Math.PI;
+  const sX = cx + r * Math.cos(startAngle);
+  const sY = cy + r * Math.sin(startAngle);
+  const eX = cx + r * Math.cos(valueAngle);
+  const eY = cy + r * Math.sin(valueAngle);
+  const largeArc = value / 100 > 0.5 ? 1 : 0;
+  const arcPath = `M ${sX} ${sY} A ${r} ${r} 0 ${largeArc} 1 ${eX} ${eY}`;
+  const fullCirclePath = `M ${sX} ${sY} A ${r} ${r} 0 1 1 ${sX} ${sY}`;
+
+  const markers = [0, 25, 50, 75, 100].reduce(
+    (acc, pct) => {
+      const angle = -Math.PI / 2 + (pct / 100) * 2 * Math.PI;
+      return [...acc, { x: cx + (r + 12) * Math.cos(angle), y: cy + (r + 12) * Math.sin(angle), label: pct }];
+    },
+    [] as { x: number; y: number; label: number }[]
+  );
+
+  return (
+    <svg viewBox="0 0 200 168" className="w-full" fill="none">
+      <path d={fullCirclePath} stroke="#111111" strokeWidth="10" strokeLinecap="round" />
+      <path d={arcPath} stroke="#CCFF00" strokeWidth="10" strokeLinecap="round" />
+      <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="middle" fill="#c9d1d9" fontSize="22" fontWeight="700" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{value}</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="middle" fill="#666666" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">FLEXIBILITY</text>
+      {markers.map((m) => (
+        <text key={`tf-mk-${m.label}`} x={m.x} y={m.y + 4} textAnchor="middle" fill="#666666" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{m.label}</text>
+      ))}
+    </svg>
+  );
+}
+
+// --- 11. MatchPlanTimeline ---
+function MatchPlanTimeline() {
+  const phases = [
+    { label: 'Kick Off', time: "0'" },
+    { label: 'Settle', time: "15'" },
+    { label: 'Control', time: "30'" },
+    { label: 'HT', time: "45'" },
+    { label: 'Adjust', time: "60'" },
+    { label: 'Push', time: "70'" },
+    { label: 'Fresh', time: "80'" },
+    { label: 'Final', time: "90'" },
+  ];
+
+  const startX = 25;
+  const endX = 275;
+  const y = 88;
+  const spacing = (endX - startX) / (phases.length - 1);
+
+  const avgTime = Math.round(
+    phases.reduce((sum, p) => sum + parseInt(p.time, 10), 0) / phases.length
+  );
+
+  const phaseData = phases.reduce(
+    (acc, phase, i) => {
+      const x = startX + i * spacing;
+      return [...acc, { ...phase, x }];
+    },
+    [] as { label: string; time: string; x: number }[]
+  );
+
+  return (
+    <svg viewBox="0 0 300 170" className="w-full" fill="none">
+      <line x1={startX} y1={y} x2={endX} y2={y} stroke="#111111" strokeWidth="2" strokeLinecap="round" />
+      {phaseData.map((pd, i) => {
+        const isActive = i < 4;
+        return (
+          <g key={`mp-phase-${i}`}>
+            <circle cx={pd.x} cy={y} r="8" fill={isActive ? '#00E5FF' : '#111111'} fillOpacity={isActive ? 0.2 : 1} stroke="#00E5FF" strokeWidth="1.5" />
+            <text x={pd.x} y={y} textAnchor="middle" dominantBaseline="middle" fill={isActive ? '#00E5FF' : '#666666'} fontSize="7" fontWeight="600" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{i + 1}</text>
+            <text x={pd.x} y={y - 16} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{pd.time}</text>
+            <text x={pd.x} y={y + 20} textAnchor="middle" fill="#666666" fontSize="6" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">{pd.label}</text>
+          </g>
+        );
+      })}
+      <text x="150" y="160" textAnchor="middle" fill="#666666" fontSize="8" fontFamily="'Monaspace Neon', 'Space Grotesk', monospace">
+        MATCH PLAN — {phaseData.length} PHASES — AVG {avgTime}&apos;
+      </text>
+    </svg>
+  );
+}
+
+// ============================================================
 // Tab 1 — Next Match
 // ============================================================
 
@@ -1389,6 +1972,67 @@ function AnalysisTab() {
           </div>
         </InfoCard>
       </motion.div>
+
+      {/* Formation Strength Radar */}
+      <motion.div variants={staggerChild}>
+        <InfoCard>
+          <SectionTitle>Formation Strength Profile — {gameState.currentClub?.name ?? 'Unknown Club'}</SectionTitle>
+          <FormationStrengthRadar values={[
+            Math.min(99, Math.round(attributes.defending * 0.85 + (100 - oppSquadQuality) * 0.12 + 5)),
+            Math.min(99, Math.round(attributes.passing * 0.8 + 12)),
+            Math.min(99, Math.round(attributes.dribbling * 0.7 + 22)),
+            Math.min(99, Math.round(attributes.physical * 0.7 + 18)),
+            Math.min(99, Math.round((attributes.pace + attributes.physical) / 2 * 0.75 + 15)),
+          ]} />
+        </InfoCard>
+      </motion.div>
+
+      {/* Buildup Play + Transition Efficiency */}
+      <motion.div variants={staggerChild}>
+        <div className="grid grid-cols-2 gap-3">
+          <InfoCard>
+            <SectionTitle>Buildup Play</SectionTitle>
+            <BuildupPlayArea />
+          </InfoCard>
+          <InfoCard>
+            <SectionTitle>Transitions</SectionTitle>
+            <TransitionEfficiencyRadar values={[
+              Math.min(99, Math.round(attributes.pace * 0.65 + attributes.passing * 0.35 + 8)),
+              Math.min(99, Math.round(attributes.defending * 0.7 + 18)),
+              Math.min(99, Math.round((attributes.physical + attributes.defending) / 2 + 5)),
+              Math.min(99, Math.round(attributes.pace * 0.8 + 12)),
+              Math.min(99, Math.round((attributes.passing + attributes.physical) / 2 + 5)),
+            ]} />
+          </InfoCard>
+        </div>
+      </motion.div>
+
+      {/* Possession Strategy + Pressing Triggers */}
+      <motion.div variants={staggerChild}>
+        <div className="grid grid-cols-2 gap-3">
+          <InfoCard>
+            <SectionTitle>Possession Strategy</SectionTitle>
+            <PossessionStrategyDonut values={[
+              Math.round(attributes.passing * 0.75 + 10),
+              Math.round(100 - attributes.passing * 0.55 + 5),
+              Math.round(attributes.dribbling * 0.5 + 18),
+              Math.round(attributes.passing * 0.4 + 8),
+            ]} />
+          </InfoCard>
+          <InfoCard>
+            <SectionTitle>Pressing Triggers</SectionTitle>
+            <PressingTriggerTimeline />
+          </InfoCard>
+        </div>
+      </motion.div>
+
+      {/* Player Role Heatmap */}
+      <motion.div variants={staggerChild}>
+        <InfoCard>
+          <SectionTitle>Role Heatmap ({player.position})</SectionTitle>
+          <PlayerRoleHeatmap position={player.position} />
+        </InfoCard>
+      </motion.div>
     </motion.div>
   );
 }
@@ -1534,6 +2178,22 @@ function WeaknessesTab() {
             </p>
           </div>
         </InfoCard>
+      </motion.div>
+
+      {/* Weakness Distribution + Defensive Line */}
+      <motion.div variants={staggerChild}>
+        <div className="grid grid-cols-2 gap-3">
+          <InfoCard>
+            <SectionTitle>Weakness Zones</SectionTitle>
+            <OpponentWeaknessDonut values={
+              oppStyle === 'Attacking' ? [35, 35, 20, 10] : oppStyle === 'Defensive' ? [15, 15, 40, 30] : [25, 25, 30, 20]
+            } />
+          </InfoCard>
+          <InfoCard>
+            <SectionTitle>Defensive Line</SectionTitle>
+            <DefensiveLineGauge value={Math.min(99, Math.round(playerSquadQuality * 0.6 + (100 - oppSquadQuality) * 0.2 + 5))} />
+          </InfoCard>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -2389,6 +3049,20 @@ function SetPiecesTab() {
           </div>
         </InfoCard>
       </motion.div>
+
+      {/* Set Piece Strategy Profile */}
+      <motion.div variants={staggerChild}>
+        <InfoCard>
+          <SectionTitle>Set Piece Strategy Profile</SectionTitle>
+          <SetPieceStrategyBars values={[
+            Math.min(99, Math.round(attributes.passing * 0.7 + 22)),
+            Math.min(99, Math.round(attributes.shooting * 0.6 + 28)),
+            Math.min(99, Math.round(attributes.physical * 0.5 + 32)),
+            Math.min(99, Math.round(attributes.pace * 0.6 + 22)),
+            Math.min(99, Math.round(attributes.shooting * 0.75 + 15)),
+          ]} />
+        </InfoCard>
+      </motion.div>
     </motion.div>
   );
 }
@@ -2854,6 +3528,22 @@ function MatchPlanTab() {
             </div>
           </div>
         </InfoCard>
+      </motion.div>
+
+      {/* Tactical Flexibility + Match Plan Timeline */}
+      <motion.div variants={staggerChild}>
+        <div className="grid grid-cols-2 gap-3">
+          <InfoCard>
+            <SectionTitle>Tactical Flexibility</SectionTitle>
+            <TacticalFlexibilityRing value={Math.min(99, Math.round(
+              (player.attributes.passing + player.attributes.physical + player.attributes.dribbling) / 3 * 0.75 + 18
+            ))} />
+          </InfoCard>
+          <InfoCard>
+            <SectionTitle>Match Plan Phases</SectionTitle>
+            <MatchPlanTimeline />
+          </InfoCard>
+        </div>
       </motion.div>
     </motion.div>
   );

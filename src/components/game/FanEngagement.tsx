@@ -1871,6 +1871,532 @@ function SupporterChants({ data }: { data: ReturnType<typeof generateChantsData>
 }
 
 // ============================================================
+// Web3 "Gritty Futurism" SVG Visualizations
+// ============================================================
+
+const WEB3_FONT = "'Monaspace Neon', 'Space Grotesk', monospace";
+
+// 1. FanBaseGrowthLine — 8-point line chart showing fan base growth over seasons. Stroke: #00E5FF
+function FanBaseGrowthLine({ growthHistory }: { growthHistory: number[] }) {
+  const W = 300, H = 200, PX = 40, PY = 20, PW = W - PX - 15, PH = H - PY - 35;
+  const pts = growthHistory.slice(-8);
+  const stats = pts.reduce(
+    (a, v) => ({ min: Math.min(a.min, v), max: Math.max(a.max, v) }),
+    { min: Infinity, max: -Infinity }
+  );
+  const range = stats.max - stats.min || 1;
+  const coords = pts.reduce<string[]>((acc, v, i) => {
+    const x = PX + (i / Math.max(pts.length - 1, 1)) * PW;
+    const y = PY + PH - ((v - stats.min) / range) * PH;
+    acc.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    return acc;
+  }, []);
+  const lineStr = coords.join(' ');
+  const areaStr = `${lineStr} ${(PX + PW).toFixed(1)},${(PY + PH).toFixed(1)} ${PX.toFixed(1)},${(PY + PH).toFixed(1)}`;
+  const seasonLabels = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: WEB3_FONT }}>FAN BASE GROWTH</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+          const gy = PY + PH - f * PH;
+          return (
+            <g key={`g-${i}`}>
+              <line x1={PX} y1={gy} x2={PX + PW} y2={gy} stroke="#1a1a1a" strokeWidth="0.5" />
+              <text x={PX - 5} y={gy + 3} textAnchor="end" fill="#666666" fontSize="8" fontFamily={WEB3_FONT}>{formatNumber(Math.round(stats.min + f * range))}</text>
+            </g>
+          );
+        })}
+        <polygon points={areaStr} fill="#00E5FF" opacity="0.06" />
+        <polyline points={lineStr} fill="none" stroke="#00E5FF" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {pts.map((v, i) => {
+          const cx = PX + (i / Math.max(pts.length - 1, 1)) * PW;
+          const cy = PY + PH - ((v - stats.min) / range) * PH;
+          return <circle key={`d-${i}`} cx={cx} cy={cy} r="3" fill="#00E5FF" stroke="#0a0a0a" strokeWidth="1.5" />;
+        })}
+        {seasonLabels.map((l, i) => {
+          const lx = PX + (i / Math.max(seasonLabels.length - 1, 1)) * PW;
+          return <text key={`l-${i}`} x={lx} y={H - 10} textAnchor="middle" fill="#666666" fontSize="8" fontFamily={WEB3_FONT}>{l}</text>;
+        })}
+      </svg>
+      <p className="text-[9px] mt-1" style={{ color: '#888888', fontFamily: WEB3_FONT }}>Fan base growth across 8 seasons</p>
+    </div>
+  );
+}
+
+// 2. FanDemographicsDonut — 5-segment donut (Local/National/International/Youth/Families). Stroke: #FF5500
+function FanDemographicsDonut({ demographics }: { demographics: { local: number; national: number; international: number } }) {
+  const CX = 150, CY = 95, R = 65, SW = 20;
+  const circ = 2 * Math.PI * R;
+  const colors = ['#FF5500', '#CCFF00', '#00E5FF', '#FF5500', '#888888'];
+  const rawSegments = [
+    { label: 'Local', value: demographics.local },
+    { label: 'National', value: demographics.national },
+    { label: 'International', value: demographics.international },
+    { label: 'Youth', value: 0 },
+    { label: 'Families', value: 0 },
+  ];
+  const usedTotal = rawSegments.slice(0, 3).reduce((s, seg) => s + seg.value, 0);
+  rawSegments[3].value = Math.max(0, Math.round((100 - usedTotal) * 0.6));
+  rawSegments[4].value = Math.max(0, 100 - usedTotal - rawSegments[3].value);
+  const total = rawSegments.reduce((s, seg) => s + seg.value, 0) || 1;
+
+  const arcs = rawSegments.reduce<Array<{ label: string; value: number; color: string; dashArray: string; dashOffset: number; arcLen: number }>>(
+    (acc, seg, i) => {
+      const prevLen = acc.reduce((s, a) => s + a.arcLen, 0);
+      const arcLen = (seg.value / total) * circ;
+      acc.push({ label: seg.label, value: seg.value, color: colors[i], dashArray: `${arcLen.toFixed(2)} ${(circ - arcLen).toFixed(2)}`, dashOffset: -prevLen, arcLen });
+      return acc;
+    },
+    []
+  );
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: WEB3_FONT }}>FAN DEMOGRAPHICS</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {arcs.map((arc, i) => (
+          <circle key={`arc-${i}`} cx={CX} cy={CY} r={R} fill="none" stroke={arc.color} strokeWidth={SW}
+            strokeDasharray={arc.dashArray} strokeDashoffset={arc.dashOffset} strokeLinecap="butt" />
+        ))}
+        <text x={CX} y={CY - 4} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="bold" fontFamily={WEB3_FONT}>{total}%</text>
+        <text x={CX} y={CY + 12} textAnchor="middle" fill="#666666" fontSize="8" fontFamily={WEB3_FONT}>distribution</text>
+      </svg>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+        {arcs.map((arc, i) => (
+          <span key={`lg-${i}`} className="flex items-center gap-1 text-[8px]" style={{ color: '#888888', fontFamily: WEB3_FONT }}>
+            <span className="w-2 h-2 rounded-sm inline-block shrink-0" style={{ backgroundColor: arc.color }} />
+            {arc.label} {arc.value}%
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 3. FanSatisfactionRadar — 5-axis radar (Match Experience/Stadium/Communication/Player Access/Merchandise). Stroke: #CCFF00
+function FanSatisfactionRadar({ playerName, week, form, reputation }: { playerName: string; week: number; form: number; reputation: number }) {
+  const W = 300, H = 200, CX = 150, CY = 105, R = 70;
+  const axisLabels = ['Match Exp', 'Stadium', 'Comms', 'Access', 'Merch'];
+  const scores = [
+    Math.min(100, Math.max(10, form * 10 + seededInt(playerName, week, 'fs1', -5, 20))),
+    Math.min(100, Math.max(10, 50 + seededInt(playerName, week, 'fs2', 5, 35))),
+    Math.min(100, Math.max(10, 40 + reputation + seededInt(playerName, week, 'fs3', -5, 25))),
+    Math.min(100, Math.max(10, 30 + reputation * 2 + seededInt(playerName, week, 'fs4', -5, 15))),
+    Math.min(100, Math.max(10, 45 + seededInt(playerName, week, 'fs5', -5, 30))),
+  ];
+  const angles = axisLabels.reduce<number[]>((acc, _, i) => {
+    acc.push(-Math.PI / 2 + i * (2 * Math.PI / 5));
+    return acc;
+  }, []);
+
+  const gridLevels = [0.25, 0.5, 0.75, 1];
+  const dataPoly = scores.reduce<string[]>((acc, v, i) => {
+    const x = CX + Math.cos(angles[i]) * R * (v / 100);
+    const y = CY + Math.sin(angles[i]) * R * (v / 100);
+    acc.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    return acc;
+  }, []).join(' ');
+
+  const avgScore = Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-1" style={{ color: '#CCFF00', fontFamily: WEB3_FONT }}>FAN SATISFACTION RADAR</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {gridLevels.map((level, li) => {
+          const gridPts = angles.reduce<string[]>((acc, angle) => {
+            const x = CX + Math.cos(angle) * R * level;
+            const y = CY + Math.sin(angle) * R * level;
+            acc.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+            return acc;
+          }, []).join(' ');
+          return <polygon key={`grid-${li}`} points={gridPts} fill="none" stroke="#1a1a1a" strokeWidth="0.5" />;
+        })}
+        {angles.map((angle, i) => {
+          const x = CX + Math.cos(angle) * R;
+          const y = CY + Math.sin(angle) * R;
+          return <line key={`axis-${i}`} x1={CX} y1={CY} x2={x} y2={y} stroke="#1a1a1a" strokeWidth="0.5" />;
+        })}
+        <polygon points={dataPoly} fill="#CCFF00" opacity="0.1" stroke="#CCFF00" strokeWidth="1.5" strokeLinejoin="round" />
+        {scores.map((v, i) => {
+          const x = CX + Math.cos(angles[i]) * R * (v / 100);
+          const y = CY + Math.sin(angles[i]) * R * (v / 100);
+          return <circle key={`pt-${i}`} cx={x} cy={y} r="3" fill="#CCFF00" />;
+        })}
+        {axisLabels.map((label, i) => {
+          const lx = CX + Math.cos(angles[i]) * (R + 14);
+          const ly = CY + Math.sin(angles[i]) * (R + 14);
+          return <text key={`lbl-${i}`} x={lx} y={ly + 3} textAnchor="middle" fill="#c9d1d9" fontSize="8" fontFamily={WEB3_FONT}>{label}</text>;
+        })}
+        <text x={CX} y={CY + 3} textAnchor="middle" fill="#CCFF00" fontSize="14" fontWeight="bold" fontFamily={WEB3_FONT}>{avgScore}</text>
+      </svg>
+      <p className="text-[9px] mt-1" style={{ color: '#888888', fontFamily: WEB3_FONT }}>Average satisfaction across 5 dimensions</p>
+    </div>
+  );
+}
+
+// 4. SocialMediaReachArea — 8-point area chart showing social media follower growth. Fill: #FF5500 at 20%, stroke: #FF5500
+function SocialMediaReachArea({ socialFollowers, playerName, week, reputation }: { socialFollowers: number; playerName: string; week: number; reputation: number }) {
+  const W = 300, H = 200, PX = 40, PY = 20, PW = W - PX - 15, PH = H - PY - 35;
+  const base = socialFollowers * 0.4;
+  const data = Array.from({ length: 8 }, (_, i) =>
+    Math.max(100, base + seededInt(playerName, week - 7 + i, `smr${i}`, -300, 1500) + reputation * 20 * (i / 7))
+  );
+  const stats = data.reduce(
+    (a, v) => ({ min: Math.min(a.min, v), max: Math.max(a.max, v) }),
+    { min: Infinity, max: -Infinity }
+  );
+  const range = stats.max - stats.min || 1;
+  const coords = data.reduce<string[]>((acc, v, i) => {
+    const x = PX + (i / Math.max(data.length - 1, 1)) * PW;
+    const y = PY + PH - ((v - stats.min) / range) * PH;
+    acc.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    return acc;
+  }, []);
+  const lineStr = coords.join(' ');
+  const areaStr = `${lineStr} ${(PX + PW).toFixed(1)},${(PY + PH).toFixed(1)} ${PX.toFixed(1)},${(PY + PH).toFixed(1)}`;
+  const weekLabels = data.map((_, i) => `W${week - 7 + i}`);
+
+  const growthPct = data.length >= 2 ? Math.round(((data[data.length - 1] - data[0]) / Math.max(data[0], 1)) * 100) : 0;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: WEB3_FONT }}>SOCIAL MEDIA REACH</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+          const gy = PY + PH - f * PH;
+          return (
+            <g key={`g-${i}`}>
+              <line x1={PX} y1={gy} x2={PX + PW} y2={gy} stroke="#1a1a1a" strokeWidth="0.5" />
+              <text x={PX - 5} y={gy + 3} textAnchor="end" fill="#666666" fontSize="8" fontFamily={WEB3_FONT}>{formatNumber(Math.round(stats.min + f * range))}</text>
+            </g>
+          );
+        })}
+        <polygon points={areaStr} fill="#FF5500" opacity="0.2" />
+        <polyline points={lineStr} fill="none" stroke="#FF5500" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {data.map((v, i) => {
+          const cx = PX + (i / Math.max(data.length - 1, 1)) * PW;
+          const cy = PY + PH - ((v - stats.min) / range) * PH;
+          return <circle key={`d-${i}`} cx={cx} cy={cy} r="3" fill="#FF5500" stroke="#0a0a0a" strokeWidth="1.5" />;
+        })}
+        {weekLabels.map((l, i) => {
+          const lx = PX + (i / Math.max(weekLabels.length - 1, 1)) * PW;
+          return <text key={`l-${i}`} x={lx} y={H - 10} textAnchor="middle" fill="#666666" fontSize="8" fontFamily={WEB3_FONT}>{l}</text>;
+        })}
+      </svg>
+      <p className="text-[9px] mt-1" style={{ color: '#888888', fontFamily: WEB3_FONT }}>Follower growth: {growthPct > 0 ? '+' : ''}{growthPct}% over 8 weeks</p>
+    </div>
+  );
+}
+
+// 5. FanMoodGauge — Semi-circular gauge (0-100) showing current fan mood/sentiment. Stroke: #00E5FF
+function FanMoodGauge({ moodScore }: { moodScore: number }) {
+  const CX = 150, CY = 120, R = 80;
+  const circ = 2 * Math.PI * R;
+  const semiCirc = Math.PI * R;
+  const valueArc = (Math.min(100, Math.max(0, moodScore)) / 100) * semiCirc;
+  const scoreColor = moodScore >= 70 ? '#00E5FF' : moodScore >= 40 ? '#CCFF00' : '#FF5500';
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: WEB3_FONT }}>FAN MOOD GAUGE</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Background arc (top half) */}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#111111" strokeWidth="14"
+          strokeDasharray={`${semiCirc.toFixed(2)} ${semiCirc.toFixed(2)}`}
+          strokeDashoffset={`${semiCirc.toFixed(2)}`} strokeLinecap="butt" />
+        {/* Value arc */}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke={scoreColor} strokeWidth="14"
+          strokeDasharray={`${valueArc.toFixed(2)} ${(circ - valueArc).toFixed(2)}`}
+          strokeDashoffset={`${semiCirc.toFixed(2)}`} strokeLinecap="round" />
+        {/* Tick marks */}
+        {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+          const angle = Math.PI - f * Math.PI;
+          const ix = CX + Math.cos(angle) * (R - 12);
+          const iy = CY - Math.sin(angle) * (R - 12);
+          const ox = CX + Math.cos(angle) * (R + 12);
+          const oy = CY - Math.sin(angle) * (R + 12);
+          return (
+            <g key={`tick-${i}`}>
+              <line x1={ix} y1={iy} x2={ox} y2={oy} stroke="#333333" strokeWidth="1" strokeLinecap="round" />
+              <text x={ox + (f < 0.5 ? -8 : f > 0.5 ? 8 : 0)} y={oy + (f === 0.5 ? -6 : 4)} textAnchor={f < 0.5 ? 'end' : f > 0.5 ? 'start' : 'middle'} fill="#666666" fontSize="9" fontFamily={WEB3_FONT}>{Math.round(f * 100)}</text>
+            </g>
+          );
+        })}
+        {/* Center text */}
+        <text x={CX} y={CY - 10} textAnchor="middle" fill={scoreColor} fontSize="28" fontWeight="bold" fontFamily={WEB3_FONT}>{moodScore}</text>
+        <text x={CX} y={CY + 8} textAnchor="middle" fill="#c9d1d9" fontSize="10" fontFamily={WEB3_FONT}>MOOD INDEX</text>
+        <text x={CX} y={CY + 22} textAnchor="middle" fill="#888888" fontSize="8" fontFamily={WEB3_FONT}>{moodScore >= 80 ? 'ECSTATIC' : moodScore >= 60 ? 'HAPPY' : moodScore >= 40 ? 'NEUTRAL' : moodScore >= 20 ? 'FRUSTRATED' : 'ANGRY'}</text>
+      </svg>
+    </div>
+  );
+}
+
+// 6. EngagementChannelBars — 5 horizontal bars (In-Stadium/Online/TV/Radio/Merchandise). Fill: #CCFF00
+function EngagementChannelBars({ playerName, week, reputation }: { playerName: string; week: number; reputation: number }) {
+  const W = 300, H = 200, PX = 85, PW = W - PX - 30;
+  const channels = [
+    { label: 'In-Stadium', value: Math.min(100, 60 + reputation + seededInt(playerName, week, 'ec1', 5, 30)) },
+    { label: 'Online', value: Math.min(100, 50 + reputation * 1.5 + seededInt(playerName, week, 'ec2', 5, 25)) },
+    { label: 'TV', value: Math.min(100, 40 + reputation + seededInt(playerName, week, 'ec3', 5, 35)) },
+    { label: 'Radio', value: Math.min(100, 20 + reputation * 0.5 + seededInt(playerName, week, 'ec4', 5, 25)) },
+    { label: 'Merch', value: Math.min(100, 35 + reputation + seededInt(playerName, week, 'ec5', 5, 30)) },
+  ];
+  const barH = 18;
+  const gap = 10;
+  const totalH = channels.length * (barH + gap) - gap;
+  const startY = (H - totalH) / 2;
+  const maxVal = channels.reduce((m, c) => Math.max(m, c.value), 0) || 1;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#CCFF00', fontFamily: WEB3_FONT }}>ENGAGEMENT BY CHANNEL</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {channels.map((ch, i) => {
+          const y = startY + i * (barH + gap);
+          const barW = (ch.value / maxVal) * PW;
+          return (
+            <g key={`ch-${i}`}>
+              <rect x={PX} y={y} width={PW} height={barH} fill="#111111" rx="2" />
+              <rect key={`bf-${i}`} x={PX} y={y} width={barW} height={barH} fill="#CCFF00" rx="2" />
+              <text x={PX - 5} y={y + barH / 2 + 3} textAnchor="end" fill="#c9d1d9" fontSize="9" fontFamily={WEB3_FONT}>{ch.label}</text>
+              <text x={PX + barW + 5} y={y + barH / 2 + 3} fill="#c9d1d9" fontSize="9" fontFamily={WEB3_FONT}>{ch.value}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 7. LoyaltyProgramRing — Circular ring (0-100) showing loyalty program participation rate. Stroke: #FF5500
+function LoyaltyProgramRing({ currentPoints, maxPoints }: { currentPoints: number; maxPoints: number }) {
+  const CX = 150, CY = 100, R = 70, SW = 14;
+  const circ = 2 * Math.PI * R;
+  const rate = Math.min(100, Math.max(0, Math.round((currentPoints / Math.max(maxPoints, 1)) * 100)));
+  const valueArc = (rate / 100) * circ;
+  const startOffset = circ * 0.25;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: WEB3_FONT }}>LOYALTY PARTICIPATION</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Background ring */}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#111111" strokeWidth={SW} />
+        {/* Value ring */}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#FF5500" strokeWidth={SW}
+          strokeDasharray={`${valueArc.toFixed(2)} ${(circ - valueArc).toFixed(2)}`}
+          strokeDashoffset={`${startOffset.toFixed(2)}`} strokeLinecap="round" />
+        {/* Center text */}
+        <text x={CX} y={CY - 8} textAnchor="middle" fill="#FF5500" fontSize="24" fontWeight="bold" fontFamily={WEB3_FONT}>{rate}%</text>
+        <text x={CX} y={CY + 10} textAnchor="middle" fill="#c9d1d9" fontSize="10" fontFamily={WEB3_FONT}>PARTICIPATION</text>
+        <text x={CX} y={CY + 24} textAnchor="middle" fill="#888888" fontSize="8" fontFamily={WEB3_FONT}>{formatNumber(currentPoints)} / {formatNumber(maxPoints)} pts</text>
+      </svg>
+    </div>
+  );
+}
+
+// 8. MatchDayAttendanceLine — 8-point line chart showing attendance trends. Stroke: #00E5FF
+function MatchDayAttendanceLine({ playerName, week, reputation, form }: { playerName: string; week: number; reputation: number; form: number }) {
+  const W = 300, H = 200, PX = 45, PY = 20, PW = W - PX - 15, PH = H - PY - 35;
+  const base = 35000 + reputation * 1500;
+  const data = Array.from({ length: 8 }, (_, i) =>
+    Math.max(10000, base + seededInt(playerName, week - 7 + i, `mdl${i}`, -5000, 15000) + (form > 7 ? 3000 : 0))
+  );
+  const stats = data.reduce(
+    (a, v) => ({ min: Math.min(a.min, v), max: Math.max(a.max, v) }),
+    { min: Infinity, max: -Infinity }
+  );
+  const range = stats.max - stats.min || 1;
+  const coords = data.reduce<string[]>((acc, v, i) => {
+    const x = PX + (i / Math.max(data.length - 1, 1)) * PW;
+    const y = PY + PH - ((v - stats.min) / range) * PH;
+    acc.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    return acc;
+  }, []);
+  const lineStr = coords.join(' ');
+  const areaStr = `${lineStr} ${(PX + PW).toFixed(1)},${(PY + PH).toFixed(1)} ${PX.toFixed(1)},${(PY + PH).toFixed(1)}`;
+  const matchLabels = data.map((_, i) => `MD${week - 7 + i}`);
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: WEB3_FONT }}>MATCHDAY ATTENDANCE</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {[0, 0.25, 0.5, 0.75, 1].map((f, i) => {
+          const gy = PY + PH - f * PH;
+          return (
+            <g key={`g-${i}`}>
+              <line x1={PX} y1={gy} x2={PX + PW} y2={gy} stroke="#1a1a1a" strokeWidth="0.5" />
+              <text x={PX - 5} y={gy + 3} textAnchor="end" fill="#666666" fontSize="7" fontFamily={WEB3_FONT}>{formatNumber(Math.round(stats.min + f * range))}</text>
+            </g>
+          );
+        })}
+        <polygon points={areaStr} fill="#00E5FF" opacity="0.06" />
+        <polyline points={lineStr} fill="none" stroke="#00E5FF" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {data.map((v, i) => {
+          const cx = PX + (i / Math.max(data.length - 1, 1)) * PW;
+          const cy = PY + PH - ((v - stats.min) / range) * PH;
+          return <circle key={`d-${i}`} cx={cx} cy={cy} r="3" fill="#00E5FF" stroke="#0a0a0a" strokeWidth="1.5" />;
+        })}
+        {matchLabels.map((l, i) => {
+          const lx = PX + (i / Math.max(matchLabels.length - 1, 1)) * PW;
+          return <text key={`l-${i}`} x={lx} y={H - 10} textAnchor="middle" fill="#666666" fontSize="7" fontFamily={WEB3_FONT}>{l}</text>;
+        })}
+      </svg>
+      <p className="text-[9px] mt-1" style={{ color: '#888888', fontFamily: WEB3_FONT }}>Attendance trend over 8 matchdays</p>
+    </div>
+  );
+}
+
+// 9. FanInteractionRadar — 5-axis radar (Meet&Greet/Community Events/Online Q&A/Surveys/Feedback). Stroke: #CCFF00
+function FanInteractionRadar({ playerName, week, reputation }: { playerName: string; week: number; reputation: number }) {
+  const W = 300, H = 200, CX = 150, CY = 105, R = 70;
+  const axisLabels = ['Meet&Greet', 'Events', 'Q&A', 'Surveys', 'Feedback'];
+  const scores = [
+    Math.min(100, Math.max(10, 30 + reputation * 2 + seededInt(playerName, week, 'fi1', -5, 25))),
+    Math.min(100, Math.max(10, 45 + reputation + seededInt(playerName, week, 'fi2', -5, 30))),
+    Math.min(100, Math.max(10, 55 + reputation * 1.5 + seededInt(playerName, week, 'fi3', -5, 20))),
+    Math.min(100, Math.max(10, 25 + reputation + seededInt(playerName, week, 'fi4', -5, 35))),
+    Math.min(100, Math.max(10, 40 + reputation * 1.5 + seededInt(playerName, week, 'fi5', -5, 25))),
+  ];
+  const angles = axisLabels.reduce<number[]>((acc, _, i) => {
+    acc.push(-Math.PI / 2 + i * (2 * Math.PI / 5));
+    return acc;
+  }, []);
+
+  const gridLevels = [0.25, 0.5, 0.75, 1];
+  const dataPoly = scores.reduce<string[]>((acc, v, i) => {
+    const x = CX + Math.cos(angles[i]) * R * (v / 100);
+    const y = CY + Math.sin(angles[i]) * R * (v / 100);
+    acc.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    return acc;
+  }, []).join(' ');
+
+  const avgScore = Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-1" style={{ color: '#CCFF00', fontFamily: WEB3_FONT }}>FAN INTERACTION RADAR</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {gridLevels.map((level, li) => {
+          const gridPts = angles.reduce<string[]>((acc, angle) => {
+            const x = CX + Math.cos(angle) * R * level;
+            const y = CY + Math.sin(angle) * R * level;
+            acc.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+            return acc;
+          }, []).join(' ');
+          return <polygon key={`grid-${li}`} points={gridPts} fill="none" stroke="#1a1a1a" strokeWidth="0.5" />;
+        })}
+        {angles.map((angle, i) => {
+          const x = CX + Math.cos(angle) * R;
+          const y = CY + Math.sin(angle) * R;
+          return <line key={`axis-${i}`} x1={CX} y1={CY} x2={x} y2={y} stroke="#1a1a1a" strokeWidth="0.5" />;
+        })}
+        <polygon points={dataPoly} fill="#CCFF00" opacity="0.1" stroke="#CCFF00" strokeWidth="1.5" strokeLinejoin="round" />
+        {scores.map((v, i) => {
+          const x = CX + Math.cos(angles[i]) * R * (v / 100);
+          const y = CY + Math.sin(angles[i]) * R * (v / 100);
+          return <circle key={`pt-${i}`} cx={x} cy={y} r="3" fill="#CCFF00" />;
+        })}
+        {axisLabels.map((label, i) => {
+          const lx = CX + Math.cos(angles[i]) * (R + 14);
+          const ly = CY + Math.sin(angles[i]) * (R + 14);
+          return <text key={`lbl-${i}`} x={lx} y={ly + 3} textAnchor="middle" fill="#c9d1d9" fontSize="8" fontFamily={WEB3_FONT}>{label}</text>;
+        })}
+        <text x={CX} y={CY + 3} textAnchor="middle" fill="#CCFF00" fontSize="14" fontWeight="bold" fontFamily={WEB3_FONT}>{avgScore}</text>
+      </svg>
+      <p className="text-[9px] mt-1" style={{ color: '#888888', fontFamily: WEB3_FONT }}>Average interaction score: {avgScore}</p>
+    </div>
+  );
+}
+
+// 10. SeasonTicketDonut — 4-segment donut (Season/Individual/Premium/Youth). Stroke: #00E5FF
+function SeasonTicketDonut({ playerName, week, reputation }: { playerName: string; week: number; reputation: number }) {
+  const CX = 150, CY = 95, R = 65, SW = 20;
+  const circ = 2 * Math.PI * R;
+  const rawValues = [
+    seededInt(playerName, week, 'st1', 35, 55),
+    seededInt(playerName, week, 'st2', 20, 35),
+    seededInt(playerName, week, 'st3', 5, 15),
+    seededInt(playerName, week, 'st4', 10, 25),
+  ];
+  const total = rawValues.reduce((s, v) => s + v, 0) || 1;
+  const colors = ['#00E5FF', '#CCFF00', '#FF5500', '#888888'];
+  const labels = ['Season', 'Individual', 'Premium', 'Youth'];
+
+  const arcs = rawValues.reduce<Array<{ label: string; value: number; color: string; dashArray: string; dashOffset: number; arcLen: number }>>(
+    (acc, val, i) => {
+      const prevLen = acc.reduce((s, a) => s + a.arcLen, 0);
+      const arcLen = (val / total) * circ;
+      acc.push({ label: labels[i], value: Math.round((val / total) * 100), color: colors[i], dashArray: `${arcLen.toFixed(2)} ${(circ - arcLen).toFixed(2)}`, dashOffset: -prevLen, arcLen });
+      return acc;
+    },
+    []
+  );
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: WEB3_FONT }}>TICKET TYPE SPLIT</p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {arcs.map((arc, i) => (
+          <circle key={`arc-${i}`} cx={CX} cy={CY} r={R} fill="none" stroke={arc.color} strokeWidth={SW}
+            strokeDasharray={arc.dashArray} strokeDashoffset={arc.dashOffset} strokeLinecap="butt" />
+        ))}
+        <text x={CX} y={CY - 4} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="bold" fontFamily={WEB3_FONT}>{formatNumber(total * 100)}</text>
+        <text x={CX} y={CY + 10} textAnchor="middle" fill="#666666" fontSize="8" fontFamily={WEB3_FONT}>tickets</text>
+      </svg>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
+        {arcs.map((arc, i) => (
+          <span key={`lg-${i}`} className="flex items-center gap-1 text-[8px]" style={{ color: '#888888', fontFamily: WEB3_FONT }}>
+            <span className="w-2 h-2 rounded-sm inline-block shrink-0" style={{ backgroundColor: arc.color }} />
+            {arc.label} {arc.value}%
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 11. BrandAmbassadorBars — 5 horizontal bars showing top 5 fan engagement metrics. Fill: #FF5500
+function BrandAmbassadorBars({ playerName, week, brandScore, reputation }: { playerName: string; week: number; brandScore: number; reputation: number }) {
+  const W = 300, H = 200, PX = 95, PW = W - PX - 30;
+  const metrics = [
+    { label: 'Social Reach', value: Math.min(100, 40 + reputation * 2 + seededInt(playerName, week, 'ba1', 5, 30)) },
+    { label: 'Fan Events', value: Math.min(100, 35 + reputation + seededInt(playerName, week, 'ba2', 5, 35)) },
+    { label: 'Content', value: Math.min(100, 30 + brandScore * 0.4 + seededInt(playerName, week, 'ba3', 5, 25)) },
+    { label: 'Community', value: Math.min(100, 25 + reputation * 1.5 + seededInt(playerName, week, 'ba4', 5, 30)) },
+    { label: 'Merch Sales', value: Math.min(100, 30 + reputation + seededInt(playerName, week, 'ba5', 5, 35)) },
+  ];
+  const barH = 18;
+  const gap = 10;
+  const totalH = metrics.length * (barH + gap) - gap;
+  const startY = (H - totalH) / 2;
+  const maxVal = metrics.reduce((m, c) => Math.max(m, c.value), 0) || 1;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: WEB3_FONT }}>BRAND AMBASSADOR METRICS</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {metrics.map((m, i) => {
+          const y = startY + i * (barH + gap);
+          const barW = (m.value / maxVal) * PW;
+          return (
+            <g key={`m-${i}`}>
+              <rect x={PX} y={y} width={PW} height={barH} fill="#111111" rx="2" />
+              <rect key={`bf-${i}`} x={PX} y={y} width={barW} height={barH} fill="#FF5500" rx="2" />
+              <text x={PX - 5} y={y + barH / 2 + 3} textAnchor="end" fill="#c9d1d9" fontSize="9" fontFamily={WEB3_FONT}>{m.label}</text>
+              <text x={PX + barW + 5} y={y + barH / 2 + 3} fill="#c9d1d9" fontSize="9" fontFamily={WEB3_FONT}>{m.value}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -2158,6 +2684,21 @@ export default function FanEngagement() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.22 }}>
               <MerchandiseSalesCard playerName={player.name} reputation={playerReputation} week={week} />
             </motion.div>
+
+            {/* Web3 SVG: Fan Mood Gauge */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.24 }}>
+              <FanMoodGauge moodScore={fanData.moodScore} />
+            </motion.div>
+
+            {/* Web3 SVG: Fan Base Growth Line */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.26 }}>
+              <FanBaseGrowthLine growthHistory={fanData.growthHistory} />
+            </motion.div>
+
+            {/* Web3 SVG: Season Ticket Donut */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.28 }}>
+              <SeasonTicketDonut playerName={player.name} week={week} reputation={playerReputation} />
+            </motion.div>
           </TabsContent>
 
           {/* ====== TAB 2: SOCIAL MEDIA ====== */}
@@ -2202,6 +2743,16 @@ export default function FanEngagement() {
                   {currentPosts.map((p, i) => <SocialPostCard key={p.id} post={p} index={i} />)}
                 </CardContent>
               </Card>
+            </motion.div>
+
+            {/* Web3 SVG: Social Media Reach Area */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.12 }}>
+              <SocialMediaReachArea socialFollowers={communityData.socialFollowers} playerName={player.name} week={week} reputation={playerReputation} />
+            </motion.div>
+
+            {/* Web3 SVG: Fan Demographics Donut */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.14 }}>
+              <FanDemographicsDonut demographics={fanData.demographics} />
             </motion.div>
           </TabsContent>
 
@@ -2346,6 +2897,16 @@ export default function FanEngagement() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Web3 SVG: Fan Satisfaction Radar */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.17 }}>
+              <FanSatisfactionRadar playerName={player.name} week={week} form={player.form} reputation={playerReputation} />
+            </motion.div>
+
+            {/* Web3 SVG: Brand Ambassador Bars */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.19 }}>
+              <BrandAmbassadorBars playerName={player.name} week={week} brandScore={brandScore.overall} reputation={playerReputation} />
+            </motion.div>
           </TabsContent>
 
           {/* ====== TAB 5: FAN COMMUNITY HUB ====== */}
@@ -2353,12 +2914,22 @@ export default function FanEngagement() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
               <FanCommunityHub data={communityData} totalFans={fanData.totalFans} />
             </motion.div>
+
+            {/* Web3 SVG: Engagement Channel Bars */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.1 }}>
+              <EngagementChannelBars playerName={player.name} week={week} reputation={playerReputation} />
+            </motion.div>
           </TabsContent>
 
           {/* ====== TAB 6: FAN LOYALTY PROGRAM ====== */}
           <TabsContent value="loyalty" className="mt-3 space-y-3">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
               <FanLoyaltyProgram data={loyaltyData} />
+            </motion.div>
+
+            {/* Web3 SVG: Loyalty Program Ring */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.1 }}>
+              <LoyaltyProgramRing currentPoints={loyaltyData.currentPoints} maxPoints={loyaltyData.tiers[loyaltyData.tiers.length - 1].threshold} />
             </motion.div>
           </TabsContent>
 
@@ -2369,6 +2940,16 @@ export default function FanEngagement() {
             </motion.div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.1 }}>
               <FanInteractionEvents data={eventsData} />
+            </motion.div>
+
+            {/* Web3 SVG: MatchDay Attendance Line */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.15 }}>
+              <MatchDayAttendanceLine playerName={player.name} week={week} reputation={playerReputation} form={player.form} />
+            </motion.div>
+
+            {/* Web3 SVG: Fan Interaction Radar */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.17 }}>
+              <FanInteractionRadar playerName={player.name} week={week} reputation={playerReputation} />
             </motion.div>
           </TabsContent>
 

@@ -1,6 +1,6 @@
 ---
-Task ID: 98
-Agent: main (cron Cycle 98)
+Task ID: 99
+Agent: main (cron Cycle 99)
 
 ## Current Project Status Assessment
 - **Project:** Elite Striker — 100% client-side football career simulation SPA
@@ -9,9 +9,9 @@ Agent: main (cron Cycle 98)
 - **Lint:** 0 errors, 0 warnings
 - **TypeScript:** 0 errors across entire src/
 - **Uncodixify Compliance:** 100% across all components
-- **Total Screens:** 145 registered GameScreen types (+2 from Cycle 98: career_events_enhanced, training_ground_enhanced)
-- **Component Files:** 159 in src/components/game/
-- **Total Lines:** ~279,158 lines across game components (+4,674 from Cycle 97 baseline of ~274,484)
+- **Total Screens:** 147 registered GameScreen types (+2 from Cycle 99: youth_academy_enhanced, personal_finances_enhanced)
+- **Component Files:** 161 in src/components/game/
+- **Total Lines:** ~284,827 lines across game components (+5,669 from Cycle 98 baseline of ~279,158)
 - **Architecture:** Direct imports in page.tsx, categorized BottomNav with search/recent/quick access
 - **Known Issue:** Turbopack dynamic imports cause 503 — direct imports used instead
 - **QA Status:** Static verification only (tsc + lint clean)
@@ -19,62 +19,62 @@ Agent: main (cron Cycle 98)
 ## Completed Modifications
 
 ### Phase 1: QA Testing
-- tsc --noEmit: 0 errors in src/ (clean baseline from Cycle 97)
+- tsc --noEmit: 0 errors in src/ (clean baseline from Cycle 98)
 - eslint: 0 errors, 0 warnings
-- Clean baseline — no bugs to fix from Cycle 97
+- Clean baseline — no bugs to fix from Cycle 98
 
 ### Phase 2: Style Improvements — 2 Screens Enhanced
 
-#### InternationalTournament.tsx (enhanced, 3,644 lines, was 3,058, +19%)
-- **SVG TournamentJourneyTimeline:** 8-node horizontal campaign progression timeline, stroke `#FF5500`, milestone nodes `#CCFF00`
-- **SVG NationalTeamPerformanceRadar:** 5-axis radar (Attack/Defense/Midfield/Teamwork/Discipline), stroke `#00E5FF`
-- **SVG InternationalGoalsArea:** 8-point area chart showing goals across international matches, fill `#FF5500` at 20%
-- **SVG OpponentConfederationDonut:** 5-segment donut (UEFA/CONMEBOL/CONCACAF/CAF/AFC) via `.reduce()`, stroke `#00E5FF`
-- **SVG WorldRankingProgressionLine:** 8-point FIFA ranking trajectory line chart, stroke `#CCFF00`
-- **SVG TrophyAspirationBars:** 5 horizontal bars (Group/QF/SF/Final/Winner) probability, fill `#FF5500`
-- **SVG InternationalExperienceRing:** Circular ring (0-100) for cap experience, stroke `#CCFF00`
-- **SVG ContinentalComparisonRadar:** 5-axis radar across confederations, stroke `#00E5FF`
-- **SVG InternationalFormGauge:** Semi-circular gauge (0-100) for current form, stroke `#FF5500`
-- **SVG CallUpFrequencyBars:** 5 horizontal bars by competition type, fill `#CCFF00`
-- **SVG InternationalCareerDonut:** 4-segment (Started/Benched/Subbed/Unused) via `.reduce()`, stroke `#00E5FF`
+#### TacticalBriefing.tsx (enhanced, 3,661 lines, was 2,971, +23%)
+- **SVG FormationStrengthRadar:** 5-axis radar (Def Shape/Midfield/Attack Width/Press/Transition). Stroke: #FF5500
+- **SVG SetPieceStrategyBars:** 5 horizontal bars (Corner/FK/Throw-in/Counter/Penalty). Fill: #00E5FF
+- **SVG OpponentWeaknessDonut:** 4-segment donut (Left/Right/Central/Set Pieces) via `.reduce()`. Stroke: #CCFF00
+- **SVG PressingTriggerTimeline:** 8-node horizontal timeline for pressing zones. Stroke: #FF5500
+- **SVG BuildupPlayArea:** 8-point area chart for buildup effectiveness. Fill: #00E5FF at 20%
+- **SVG DefensiveLineGauge:** Semi-circular gauge (0-100) for defensive line quality. Stroke: #CCFF00
+- **SVG TransitionEfficiencyRadar:** 5-axis radar (Def→Off/Off→Def/Turnover/Counter/Shape). Stroke: #00E5FF
+- **SVG PossessionStrategyDonut:** 4-segment donut (Short/Long/Dribbles/Crosses) via `.reduce()`. Stroke: #FF5500
+- **SVG PlayerRoleHeatmap:** 5x3 grid heatmap with intensity coloring. Fill: #FF5500/#CCFF00/#00E5FF
+- **SVG TacticalFlexibilityRing:** Circular ring (0-100) for tactical flexibility. Stroke: #CCFF00
+- **SVG MatchPlanTimeline:** 8-node timeline showing tactical plan phases. Stroke: #00E5FF
 
-#### MatchDay.tsx (enhanced, 3,611 lines, was 3,028, +19%)
-- **SVG PreMatchReadinessGauge:** Semi-circular gauge (0-100) for player readiness, stroke `#CCFF00`
-- **SVG OpponentAnalysisRadar:** 5-axis radar (ATK/DEF/SET/CTR/POS), stroke `#FF5500`
-- **SVG FormComparisonBars:** 5 horizontal bars (W/D/L/GF/GA) home vs away, fill `#00E5FF`
-- **SVG SetPieceThreatRing:** Dual circular rings (0-100) for both teams, stroke `#CCFF00`/`#FF5500`
-- **SVG MatchExpectationDonut:** 4-segment (Win/Draw/Loss/ET) via `.reduce()`, stroke `#00E5FF`
-- **SVG KeyPlayerMatchupRadar:** 5-axis radar (PAC/SHO/PAS/DEF/PHY) vs opponent, stroke `#CCFF00`
-- **SVG HistoricalH2HTimeline:** 8-node H2H results timeline, stroke `#CCFF00`
-- **SVG PositionalBattleArea:** 8-point area chart across pitch zones, fill `#00E5FF`
-- **SVG PostMatchRatingDistribution:** 5 horizontal bars (9+/8+/7+/6+/5-) via `.reduce()`, fill `#00E5FF`
-- **SVG SubstitutionReadinessBars:** 5 horizontal bars for bench readiness, fill `#FF5500`
-- **SVG MatchDayWeatherImpact:** 5 horizontal bars for weather effects, fill `#FF5500`
+#### FanEngagement.tsx (enhanced, 2,966 lines, was 2,385, +24%)
+- **SVG FanBaseGrowthLine:** 8-point line chart showing fan base growth. Stroke: #00E5FF
+- **SVG FanDemographicsDonut:** 5-segment donut (Local/National/International/Youth/Families) via `.reduce()`. Stroke: #FF5500
+- **SVG FanSatisfactionRadar:** 5-axis radar (Match/Stadium/Comms/Access/Merch). Stroke: #CCFF00
+- **SVG SocialMediaReachArea:** 8-point area chart showing follower growth. Fill: #FF5500 at 20%
+- **SVG FanMoodGauge:** Semi-circular gauge (0-100) for fan sentiment. Stroke: #00E5FF
+- **SVG EngagementChannelBars:** 5 horizontal bars (Stadium/Online/TV/Radio/Merch). Fill: #CCFF00
+- **SVG LoyaltyProgramRing:** Circular ring (0-100) for loyalty participation. Stroke: #FF5500
+- **SVG MatchDayAttendanceLine:** 8-point line chart for attendance trends. Stroke: #00E5FF
+- **SVG FanInteractionRadar:** 5-axis radar (Meet&Greet/Events/Q&A/Surveys/Feedback). Stroke: #CCFF00
+- **SVG SeasonTicketDonut:** 4-segment donut (Season/Individual/Premium/Youth) via `.reduce()`. Stroke: #00E5FF
+- **SVG BrandAmbassadorBars:** 5 horizontal bars for engagement metrics. Fill: #FF5500
 
 ### Phase 3: New Feature Screens — 2 New Components
 
-#### CareerEventsEnhanced.tsx (NEW, 1,866 lines, 4 Tabs, 12 SVGs)
-- **Career Milestones Tab:** SVG MilestoneProgressGauge (semi-circular), CareerTrajectoryArea (8-pt area), MilestoneCategoryRadar (5-axis)
-- **Life Events Tab:** SVG LifeEventFrequencyBars (5 bars), EventImpactTimeline (8-node), CareerSatisfactionRing (circular)
-- **Transfer Sagas Tab:** SVG TransferHistoryLine (8-pt), ClubLoyaltyDonut (4-seg via `.reduce()`), TransferSuccessRadar (5-axis)
-- **Season Highlights Tab:** SVG SeasonComparisonBars (5 bars), HighlightReelTimeline (8-node), SeasonGradeRing (circular)
-- **Registered:** career_events_enhanced → Career category, BottomNav (Sparkles icon)
+#### YouthAcademyEnhanced.tsx (NEW, 1,844 lines, 4 Tabs, 12 SVGs)
+- **Prospects Tab:** SVG ProspectPotentialRadar (5-axis), YouthPoolDonut (4-seg via `.reduce()`), StarProspectGauge (semi-circular)
+- **Development Tab:** SVG TrainingProgressArea (8-pt area), DevelopmentPathRadar (5-axis), SatisfactionRing (circular)
+- **Scouting Tab:** SVG ScoutingNetworkRadar (5-axis), ScoutReportBars (5 bars), RecruitmentPipelineDonut (5-seg via `.reduce()`)
+- **Graduates Tab:** SVG GraduationRateLine (8-pt), GraduateSuccessBars (5 bars), AcademyReputationRing (circular)
+- **Registered:** youth_academy_enhanced → Club category, BottomNav (UsersRound icon)
 
-#### TrainingGroundEnhanced.tsx (NEW, 1,637 lines, 4 Tabs, 12 SVGs)
-- **Facilities Tab:** SVG FacilityQualityRadar (5-axis), FacilityUpgradeProgressBars (5 bars), TrainingCapacityDonut (4-seg)
-- **Drills Tab:** SVG DrillEffectivenessArea (8-pt area), SkillFocusRadar (5-axis), DrillCompletionRing (circular)
-- **Fitness Tab:** SVG FitnessLevelBars (5 bars), FitnessTrendLine (8-pt), InjuryRiskGauge (semi-circular)
-- **Recovery Tab:** SVG RecoveryProtocolTimeline (8-node), RecoveryEffectivenessDonut (5-seg via `.reduce()`), OverallWellnessRing (circular)
-- **Registered:** training_ground_enhanced → Match category, BottomNav (Warehouse icon)
+#### PersonalFinancesEnhanced.tsx (NEW, 2,552 lines, 4 Tabs, 12 SVGs)
+- **Income Tab:** SVG IncomeSourceDonut (5-seg via `.reduce()`), IncomeTrendLine (8-pt), ContractValueGauge (semi-circular)
+- **Expenses Tab:** SVG ExpenseCategoryBars (5 bars), SpendingTrendArea (8-pt area), SavingsRateRing (circular)
+- **Investments Tab:** SVG InvestmentPortfolioDonut (4-seg via `.reduce()`), InvestmentReturnRadar (5-axis), FinancialAdvisorRatingRing (circular)
+- **Net Worth Tab:** SVG NetWorthProgressionLine (8-pt), WealthComparisonBars (5 bars), FinancialHealthRadar (5-axis)
+- **Registered:** personal_finances_enhanced → Career category, BottomNav (Landmark icon)
 
-### Phase 4: Bug Fixes (4 TS errors across 2 files)
-- **CareerEventsEnhanced.tsx (3 errors):** `GameEvent` has no `.category` → removed filter, used `.length`; `GameEvent` has `.choices` not `.choice` → fixed to `e.choices[0]?.effects.reputation`
-- **TrainingGroundEnhanced.tsx (1 error):** `trainingCapacitySegments` missing `color` property → added `color` field to each segment object
+### Phase 4: Bug Fixes (19 TS errors + 1 ESLint warning across 2 files)
+- **PersonalFinancesEnhanced.tsx (2 errors):** `lineCoords` function parameter type `{ season: number }[]` didn't match callers using `{ month: number }[]` → changed to `{ [key: string]: number }[]` generic type
+- **YouthAcademyEnhanced.tsx (17 errors + 1 warning):** Helper functions typed `players` as singular object instead of array `{ players: { ... } }` → fixed all 6 functions to use `{ players: { ... }[] }`. `PlayerAttributes` interface not assignable to `Record<string, number>` → changed cast to `as unknown as` with compatible shape. Unused eslint-disable comment → removed
 
 ### Phase 5: Registration (4-Piece Pattern)
-- **types.ts:** Added `| 'career_events_enhanced' | 'training_ground_enhanced'` to GameScreen union
+- **types.ts:** Added `| 'youth_academy_enhanced' | 'personal_finances_enhanced'` to GameScreen union
 - **page.tsx:** 2 new imports + 2 screenComponents entries + 2 gameScreens array entries
-- **BottomNav.tsx:** career_events_enhanced → Career (Sparkles icon), training_ground_enhanced → Match (Warehouse icon)
+- **BottomNav.tsx:** youth_academy_enhanced → Club (UsersRound icon), personal_finances_enhanced → Career (Landmark icon)
 - **4-piece completeness verified** via grep across all 3 files
 
 ### Phase 6: Compilation Verification
@@ -82,12 +82,12 @@ Agent: main (cron Cycle 98)
 - **0 ESLint errors, 0 warnings**
 
 Stage Summary:
-- **QA passed** — clean baseline (0 TS / 0 lint) from Cycle 97
-- **2 screens enhanced** (InternationalTournament 3,644 lines +11 SVGs, MatchDay 3,611 lines +11 SVGs)
-- **2 new screens** (CareerEventsEnhanced 1,866 lines +12 SVGs, TrainingGroundEnhanced 1,637 lines +12 SVGs)
-- **4 TS errors fixed** across 2 files (CareerEventsEnhanced, TrainingGroundEnhanced)
-- **145 total GameScreen types** — verified (0 TS / 0 lint)
-- **159 component files**, ~279,158 total lines (+4,674 from Cycle 97)
+- **QA passed** — clean baseline (0 TS / 0 lint) from Cycle 98
+- **2 screens enhanced** (TacticalBriefing 3,661 lines +11 SVGs, FanEngagement 2,966 lines +11 SVGs)
+- **2 new screens** (YouthAcademyEnhanced 1,844 lines +12 SVGs, PersonalFinancesEnhanced 2,552 lines +12 SVGs)
+- **19 TS errors + 1 ESLint warning fixed** across 2 files
+- **147 total GameScreen types** — verified (0 TS / 0 lint)
+- **161 component files**, ~284,827 total lines (+5,669 from Cycle 98)
 - **100% Uncodixify compliant, 0 TS errors, 0 lint errors**
 
 ## Unresolved Issues or Risks
@@ -95,14 +95,14 @@ Stage Summary:
 - **Most systems visual-only** — not connected to actual game state
 - **Duplicate components:** 22+ pairs across the codebase
 - **Stadium systems duplicated** across StadiumBuilder/FacilitiesUpgrades/StadiumAtmosphere
-- **Large files:** FanChants (3,949), MatchDayLive (3,946), PreSeasonTrainingCamp (3,820), CupBracket (3,760), MatchDay (3,611), InternationalTournament (3,644), ContinentalPanel (3,678)
-- **BottomNav "More" menu** continues to grow (now 101+ items across 7 categories)
-- **Rate limiting** — Sub-agent API calls occasionally hitting 429 rate limits
+- **Large files:** FanChants (3,949), MatchDayLive (3,946), PreSeasonTrainingCamp (3,820), CupBracket (3,760), InternationalTournament (3,644), ContinentalPanel (3,678), TacticalBriefing (3,661), MatchDay (3,611)
+- **BottomNav "More" menu** continues to grow (now 103+ items across 7 categories)
+- **Rate limiting** — 1 subagent returned empty response, requiring retry
 
 ## Priority Recommendations
-1. **Styling** — SkillChallenges (2,926), TacticalBriefing (2,971), FanEngagement (2,385) enhancement with Web3 SVGs
-2. **New features** — YouthAcademyEnhanced, WeatherSystemEnhanced, PlayerComparisonEnhanced (already has file but verify completeness)
+1. **Styling** — SkillChallenges (2,926), ScoutingNetwork (2,685), TrainingPanel (2,458) enhancement with Web3 SVGs
+2. **New features** — TrophyCabinetEnhanced, JerseyNumberEnhanced, InjuryReportEnhanced
 3. **Cleanup** — Remove 22+ duplicate components, consolidate stadium systems
 4. **Integration** — Connect visual-only systems to game state
-5. **Performance** — Monitor bundle size with 159 component files and ~279K lines
-6. **Rate limiting mitigation** — All 4 parallel tasks completed without rate-limit issues this cycle
+5. **Performance** — Monitor bundle size with 161 component files and ~285K lines
+6. **Rate limiting mitigation** — 1/4 tasks failed on first attempt; retried successfully
