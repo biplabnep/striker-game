@@ -136,6 +136,8 @@ import CoachCareerEnhanced from '@/components/game/CoachCareerEnhanced';
 import SeasonTrainingEnhanced from '@/components/game/SeasonTrainingEnhanced';
 import WeatherEnhanced from '@/components/game/WeatherEnhanced';
 import DraftSystemEnhanced from '@/components/game/DraftSystemEnhanced';
+import CareerJournalEnhanced from '@/components/game/CareerJournalEnhanced';
+import CareerLegacyProfileEnhanced from '@/components/game/CareerLegacyProfileEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -267,6 +269,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   season_training_enhanced: SeasonTrainingEnhanced,
   weather_enhanced: WeatherEnhanced,
   draft_system_enhanced: DraftSystemEnhanced,
+  career_journal_enhanced: CareerJournalEnhanced,
+  career_legacy_profile_enhanced: CareerLegacyProfileEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -366,6 +370,8 @@ const gameScreens: GameScreen[] = [
   'season_training_enhanced',
   'weather_enhanced',
   'draft_system_enhanced',
+  'career_journal_enhanced',
+  'career_legacy_profile_enhanced',
 ];
 
 export default function Home() {

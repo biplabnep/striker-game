@@ -700,7 +700,9 @@ export type GameScreen =
   | 'coach_career_enhanced'
   | 'season_training_enhanced'
   | 'weather_enhanced'
-  | 'draft_system_enhanced';
+  | 'draft_system_enhanced'
+  | 'career_journal_enhanced'
+  | 'career_legacy_profile_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

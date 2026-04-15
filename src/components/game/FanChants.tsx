@@ -1001,6 +1001,635 @@ function Beer(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
 }
 
 // ============================================================
+// Web3 SVG 1: ChantCategoryDistributionDonut
+// ============================================================
+function ChantCategoryDistributionDonut({ chants }: { chants: Chant[] }) {
+  const categories = ['Classic', 'Modern', 'Player-specific', 'Rivalry'] as const;
+  const colors = ['#FF5500', '#CCFF00', '#00E5FF', '#666'];
+  const data = categories.reduce((acc, cat, idx) => {
+    const count = chants.filter(c => c.category === cat).length;
+    acc.push({ label: cat, value: count, color: colors[idx] });
+    return acc;
+  }, [] as { label: string; value: number; color: string }[]);
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const cx = 60;
+  const cy = 55;
+  const outerR = 42;
+  const innerR = 24;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const segments = data.reduce<{ pathD: string; color: string; label: string; value: number; endDeg: number }[]>(
+    (acc, item) => {
+      const startDeg = acc.length > 0 ? acc[acc.length - 1].endDeg : 0;
+      const sweep = (item.value / total) * 360;
+      const endDeg = startDeg + sweep;
+      const oS = { x: cx + outerR * Math.cos(toRad(startDeg)), y: cy + outerR * Math.sin(toRad(startDeg)) };
+      const oE = { x: cx + outerR * Math.cos(toRad(endDeg)), y: cy + outerR * Math.sin(toRad(endDeg)) };
+      const iE = { x: cx + innerR * Math.cos(toRad(endDeg)), y: cy + innerR * Math.sin(toRad(endDeg)) };
+      const iS = { x: cx + innerR * Math.cos(toRad(startDeg)), y: cy + innerR * Math.sin(toRad(startDeg)) };
+      const la = sweep > 180 ? 1 : 0;
+      const p = `M ${oS.x} ${oS.y} A ${outerR} ${outerR} 0 ${la} 1 ${oE.x} ${oE.y} L ${iE.x} ${iE.y} A ${innerR} ${innerR} 0 ${la} 0 ${iS.x} ${iS.y} Z`;
+      return [...acc, { pathD: p, color: item.color, label: item.label, value: item.value, endDeg }];
+    },
+    []
+  );
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Chant Categories</p>
+      <svg viewBox="0 0 120 115" className="w-32 h-32 mx-auto">
+        {segments.map((seg, i) => (
+          <motion.path
+            key={seg.label}
+            d={seg.pathD}
+            fill={seg.color}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.4, delay: i * 0.08 }}
+          />
+        ))}
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="bold">{total}</text>
+        <text x={cx} y={cy + 9} textAnchor="middle" fill="#8b949e" fontSize="7">chants</text>
+        {data.map((item, i) => {
+          const lx = i < 2 ? 5 : 65;
+          const ly = 95 + (i % 2) * 12;
+          return (
+            <g key={item.label}>
+              <rect x={lx} y={ly} width="7" height="7" rx="1" fill={item.color} opacity="0.85" />
+              <text x={lx + 10} y={ly + 6.5} fill="#8b949e" fontSize="6">{item.label} ({item.value})</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 2: ChantPopularityBars
+// ============================================================
+function ChantPopularityBars({ chants }: { chants: Chant[] }) {
+  const top6 = [...chants].sort((a, b) => b.timesSung - a.timesSung).slice(0, 6);
+  const maxVal = Math.max(...top6.map(c => c.timesSung), 1);
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Top Chants by Times Sung</p>
+      <svg viewBox="0 0 260 148" className="w-full">
+        {top6.map((c, i) => {
+          const barW = Math.max(2, (c.timesSung / maxVal) * 130);
+          const y = i * 24 + 2;
+          const barColor = i === 0 ? '#FF5500' : '#CCFF00';
+          return (
+            <g key={c.id}>
+              <text x="0" y={y + 11} fill="#8b949e" fontSize="7.5" textAnchor="start">
+                {c.title.length > 18 ? c.title.slice(0, 18) + '\u2026' : c.title}
+              </text>
+              <rect x="105" y={y} width="130" height="16" rx="2" fill="#21262d" />
+              <motion.rect
+                x="105" y={y} width={barW} height="16" rx="2"
+                fill={barColor}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.85 }}
+                transition={{ duration: 0.4, delay: i * 0.06 }}
+              />
+              <text x={barW + 108} y={y + 12} fill="#c9d1d9" fontSize="7" fontWeight="bold">
+                {c.timesSung}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 3: ChantEraTimeline
+// ============================================================
+function ChantEraTimeline({ chants }: { chants: Chant[] }) {
+  const uniqueYears = chants
+    .reduce((acc, c) => {
+      if (!acc.includes(c.originYear)) acc.push(c.originYear);
+      return acc;
+    }, [] as number[])
+    .sort((a, b) => a - b)
+    .slice(0, 8);
+  const padX = 20;
+  const lineY = 50;
+  const lineEndX = 260;
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Chant Origin Timeline</p>
+      <svg viewBox="0 0 280 90" className="w-full">
+        <line x1={padX} y1={lineY} x2={lineEndX} y2={lineY} stroke="#21262d" strokeWidth="1.5" />
+        {uniqueYears.map((year, i) => {
+          const x = padX + (i / Math.max(uniqueYears.length - 1, 1)) * (lineEndX - padX);
+          return (
+            <g key={`${year}-${i}`}>
+              <motion.circle
+                cx={x} cy={lineY} r="5"
+                fill="#00E5FF"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.9 }}
+                transition={{ duration: 0.3, delay: i * 0.06 }}
+              />
+              <circle cx={x} cy={lineY} r="8" fill="none" stroke="#00E5FF" strokeWidth="1" opacity="0.3" />
+              <text x={x} y={lineY + 20} textAnchor="middle" fill="#c9d1d9" fontSize="7" fontWeight="bold">
+                {year}
+              </text>
+              <text x={x} y={lineY - 14} textAnchor="middle" fill="#8b949e" fontSize="5.5">
+                {i === 0 ? 'First' : i === uniqueYears.length - 1 ? 'Latest' : ''}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 4: TifoComplexityRadar
+// ============================================================
+function TifoComplexityRadar({ tifos }: { tifos: TifoDisplay[] }) {
+  const axes = [
+    { label: 'Team Spirit', cat: 'Team Spirit' as TifoCategory },
+    { label: 'Player Tribute', cat: 'Player Tribute' as TifoCategory },
+    { label: 'Rivalry', cat: 'Rivalry' as TifoCategory },
+    { label: 'Historical', cat: 'Historical' as TifoCategory },
+    { label: 'European Night', cat: 'European Night' as TifoCategory },
+  ];
+  const catAvgs = axes.reduce((acc, axis) => {
+    const matching = tifos.filter(t => t.category === axis.cat);
+    const avg = matching.length > 0
+      ? matching.reduce((s, t) => s + t.complexity, 0) / matching.length
+      : 2;
+    acc.push({ label: axis.label, value: avg });
+    return acc;
+  }, [] as { label: string; value: number }[]);
+  const cx = 100;
+  const cy = 80;
+  const maxR = 52;
+  const angleStep = (2 * Math.PI) / 5;
+  const polarToCart = (index: number, radius: number) => ({
+    x: cx + radius * Math.cos(angleStep * index - Math.PI / 2),
+    y: cy + radius * Math.sin(angleStep * index - Math.PI / 2),
+  });
+  const gridLevels = [0.25, 0.5, 0.75, 1.0];
+  const dataPoints = catAvgs.map((d, i) => {
+    const pt = polarToCart(i, (d.value / 5) * maxR);
+    return `${pt.x},${pt.y}`;
+  }).join(' ');
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Tifo Complexity Radar</p>
+      <svg viewBox="0 0 200 175" className="w-full">
+        {gridLevels.map((level, li) => {
+          const gridPts = axes.map((_a, i) => {
+            const gp = polarToCart(i, maxR * level);
+            return `${gp.x},${gp.y}`;
+          }).join(' ');
+          return <polygon key={li} points={gridPts} fill="none" stroke="#21262d" strokeWidth="0.8" />;
+        })}
+        {axes.map((_a, i) => {
+          const endPt = polarToCart(i, maxR);
+          return <line key={i} x1={cx} y1={cy} x2={endPt.x} y2={endPt.y} stroke="#30363d" strokeWidth="0.6" />;
+        })}
+        <motion.polygon
+          points={dataPoints}
+          fill="#FF5500"
+          fillOpacity="0.15"
+          stroke="#FF5500"
+          strokeWidth="1.5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {catAvgs.map((d, i) => {
+          const labelPt = polarToCart(i, maxR + 14);
+          const dotPt = polarToCart(i, (d.value / 5) * maxR);
+          return (
+            <g key={d.label}>
+              <text x={labelPt.x} y={labelPt.y + 3} textAnchor="middle" fill="#8b949e" fontSize="6.5">
+                {d.label}
+              </text>
+              <circle cx={dotPt.x} cy={dotPt.y} r="3" fill="#FF5500" />
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 5: TifoMoraleImpactBars
+// ============================================================
+function TifoMoraleImpactBars({ tifos }: { tifos: TifoDisplay[] }) {
+  const top4 = [...tifos].sort((a, b) => b.moraleBoost - a.moraleBoost).slice(0, 4);
+  const maxVal = Math.max(...top4.map(t => t.moraleBoost), 1);
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Top Tifo Morale Boost</p>
+      <svg viewBox="0 0 260 115" className="w-full">
+        {top4.map((t, i) => {
+          const barW = Math.max(2, (t.moraleBoost / maxVal) * 130);
+          const y = i * 26 + 2;
+          return (
+            <g key={t.id}>
+              <text x="0" y={y + 12} fill="#8b949e" fontSize="7.5" textAnchor="start">
+                {t.title.length > 20 ? t.title.slice(0, 20) + '\u2026' : t.title}
+              </text>
+              <rect x="105" y={y} width="130" height="18" rx="2" fill="#21262d" />
+              <motion.rect
+                x="105" y={y} width={barW} height="18" rx="2"
+                fill="#CCFF00"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.8 }}
+                transition={{ duration: 0.35, delay: i * 0.07 }}
+              />
+              <text x={barW + 108} y={y + 13} fill="#c9d1d9" fontSize="7" fontWeight="bold">
+                +{t.moraleBoost}%
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 6: TifoCategoryDonut
+// ============================================================
+function TifoCategoryDonut({ tifos }: { tifos: TifoDisplay[] }) {
+  const catDefs: { label: string; cat: TifoCategory; color: string }[] = [
+    { label: 'Team Spirit', cat: 'Team Spirit', color: '#FF5500' },
+    { label: 'Player Tribute', cat: 'Player Tribute', color: '#CCFF00' },
+    { label: 'Rivalry', cat: 'Rivalry', color: '#00E5FF' },
+    { label: 'Historical', cat: 'Historical', color: '#666' },
+    { label: 'European Night', cat: 'European Night', color: '#FF5500' },
+  ];
+  const data = catDefs.map(cd => ({
+    ...cd,
+    value: tifos.filter(t => t.category === cd.cat).length,
+  }));
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const cx = 60;
+  const cy = 55;
+  const outerR = 42;
+  const innerR = 24;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const segments = data.reduce<{ pathD: string; color: string; label: string; value: number; endDeg: number }[]>(
+    (acc, item) => {
+      const startDeg = acc.length > 0 ? acc[acc.length - 1].endDeg : 0;
+      const sweep = (item.value / total) * 360;
+      const endDeg = startDeg + sweep;
+      const oS = { x: cx + outerR * Math.cos(toRad(startDeg)), y: cy + outerR * Math.sin(toRad(startDeg)) };
+      const oE = { x: cx + outerR * Math.cos(toRad(endDeg)), y: cy + outerR * Math.sin(toRad(endDeg)) };
+      const iE = { x: cx + innerR * Math.cos(toRad(endDeg)), y: cy + innerR * Math.sin(toRad(endDeg)) };
+      const iS = { x: cx + innerR * Math.cos(toRad(startDeg)), y: cy + innerR * Math.sin(toRad(startDeg)) };
+      const la = sweep > 180 ? 1 : 0;
+      const p = `M ${oS.x} ${oS.y} A ${outerR} ${outerR} 0 ${la} 1 ${oE.x} ${oE.y} L ${iE.x} ${iE.y} A ${innerR} ${innerR} 0 ${la} 0 ${iS.x} ${iS.y} Z`;
+      return [...acc, { pathD: p, color: item.color, label: item.label, value: item.value, endDeg }];
+    },
+    []
+  );
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Tifo Categories</p>
+      <svg viewBox="0 0 120 130" className="w-32 h-36 mx-auto">
+        {segments.map((seg, i) => (
+          <motion.path
+            key={seg.label}
+            d={seg.pathD}
+            fill={seg.color}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.85 }}
+            transition={{ duration: 0.4, delay: i * 0.08 }}
+          />
+        ))}
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#c9d1d9" fontSize="14" fontWeight="bold">{total}</text>
+        <text x={cx} y={cy + 9} textAnchor="middle" fill="#8b949e" fontSize="7">tifos</text>
+        {data.map((item, i) => {
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          const lx = col === 0 ? 3 : 62;
+          const ly = 100 + row * 11;
+          return (
+            <g key={item.label}>
+              <rect x={lx} y={ly} width="6" height="6" rx="1" fill={item.color} opacity="0.85" />
+              <text x={lx + 9} y={ly + 5.5} fill="#8b949e" fontSize="5.5">{item.label} ({item.value})</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 7: AtmosphereHistoryTrend
+// ============================================================
+function AtmosphereHistoryTrend({ history }: { history: AtmosphereHistory[] }) {
+  const padL = 30;
+  const padB = 25;
+  const padT = 8;
+  const chartW = 220;
+  const chartH = 80;
+  const maxVal = 100;
+  const points = history.map((h, i) => {
+    const px = padL + (i / Math.max(history.length - 1, 1)) * chartW;
+    const py = padT + chartH - (h.rating / maxVal) * chartH;
+    return { px, py, rating: h.rating, opponent: h.opponent };
+  });
+  const lineStr = points.map(p => `${p.px},${p.py}`).join(' ');
+  const areaStr = `${padL},${padT + chartH} ${lineStr} ${padL + chartW},${padT + chartH}`;
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Atmosphere Trend</p>
+      <svg viewBox="0 0 260 130" className="w-full">
+        {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+          const gy = padT + chartH - frac * chartH;
+          return (
+            <g key={i}>
+              <line x1={padL} y1={gy} x2={padL + chartW} y2={gy} stroke="#21262d" strokeWidth="0.5" />
+              <text x={padL - 3} y={gy + 3} textAnchor="end" fill="#484f58" fontSize="6">{Math.round(frac * 100)}</text>
+            </g>
+          );
+        })}
+        <line x1={padL} y1={padT + chartH} x2={padL + chartW} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+        <motion.polygon
+          points={areaStr}
+          fill="#00E5FF"
+          fillOpacity="0.12"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        <motion.polyline
+          points={lineStr}
+          fill="none"
+          stroke="#00E5FF"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.px} cy={p.py} r="3" fill="#00E5FF" />
+            <text x={p.px} y={p.py - 7} textAnchor="middle" fill="#c9d1d9" fontSize="6">{p.rating}</text>
+            <text x={p.px} y={padT + chartH + 13} textAnchor="middle" fill="#8b949e" fontSize="5.5">
+              {p.opponent.length > 6 ? p.opponent.slice(0, 6) + '\u2026' : p.opponent}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 8: AttendanceCapacityRing
+// ============================================================
+function AttendanceCapacityRing({ currentAttendance, stadiumCapacity }: {
+  currentAttendance: number;
+  stadiumCapacity: number;
+}) {
+  const ratio = Math.min(1, currentAttendance / Math.max(stadiumCapacity, 1));
+  const cx = 80;
+  const cy = 75;
+  const outerR = 55;
+  const ringW = 10;
+  const sweepAngle = ratio * 360;
+  const toRad = (deg: number) => (deg - 90) * Math.PI / 180;
+  const bgEnd = { x: cx + outerR * Math.cos(toRad(359.9)), y: cy + outerR * Math.sin(toRad(359.9)) };
+  const bgStart = { x: cx + outerR * Math.cos(toRad(0)), y: cy + outerR * Math.sin(toRad(0)) };
+  const bgArc = `M ${bgStart.x} ${bgStart.y} A ${outerR} ${outerR} 0 1 1 ${bgEnd.x} ${bgEnd.y}`;
+  const valEnd = { x: cx + outerR * Math.cos(toRad(sweepAngle)), y: cy + outerR * Math.sin(toRad(sweepAngle)) };
+  const la = sweepAngle > 180 ? 1 : 0;
+  const valArc = `M ${bgStart.x} ${bgStart.y} A ${outerR} ${outerR} 0 ${la} 1 ${valEnd.x} ${valEnd.y}`;
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Attendance / Capacity</p>
+      <svg viewBox="0 0 160 115" className="w-40 h-28 mx-auto">
+        <path d={bgArc} fill="none" stroke="#21262d" strokeWidth={ringW} strokeLinecap="round" />
+        <motion.path
+          d={valArc}
+          fill="none"
+          stroke="#FF5500"
+          strokeWidth={ringW}
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        />
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="bold">
+          {Math.round(ratio * 100)}%
+        </text>
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize="7">
+          {formatNumber(currentAttendance)} / {formatNumber(stadiumCapacity)}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 9: HomeVsAwayGauge
+// ============================================================
+function HomeVsAwayGauge({ homeRating, awayRating }: { homeRating: number; awayRating: number }) {
+  const cx = 80;
+  const cy = 68;
+  const r = 50;
+  const sw = 8;
+  const polarToCart = (deg: number) => {
+    const rad = (deg * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+  const bgStart = polarToCart(180);
+  const bgEnd = polarToCart(0);
+  const bgPath = `M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 0 0 ${bgEnd.x} ${bgEnd.y}`;
+  const homeAngle = 180 - (homeRating / 100) * 180;
+  const homeEnd = polarToCart(homeAngle);
+  const homeSweep = 180 - homeAngle;
+  const homeLargeArc = homeSweep > 180 ? 1 : 0;
+  const homePath = `M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 ${homeLargeArc} 0 ${homeEnd.x} ${homeEnd.y}`;
+  const awayR = r - 14;
+  const awayBgStart = polarToCart(180);
+  const awayBgEnd = polarToCart(0);
+  const awayBgPath = `M ${awayBgStart.x} ${awayBgStart.y} A ${awayR} ${awayR} 0 0 0 ${awayBgEnd.x} ${awayBgEnd.y}`;
+  const awayAngle = 180 - (awayRating / 100) * 180;
+  const awayEnd = { x: cx + awayR * Math.cos((awayAngle * Math.PI) / 180), y: cy + awayR * Math.sin((awayAngle * Math.PI) / 180) };
+  const awaySweep = 180 - awayAngle;
+  const awayLargeArc = awaySweep > 180 ? 1 : 0;
+  const awayPath = `M ${awayBgStart.x} ${awayBgStart.y} A ${awayR} ${awayR} 0 ${awayLargeArc} 0 ${awayEnd.x} ${awayEnd.y}`;
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Home vs Away Atmosphere</p>
+      <svg viewBox="0 0 160 100" className="w-40 h-24 mx-auto">
+        <path d={bgPath} fill="none" stroke="#21262d" strokeWidth={sw} strokeLinecap="round" />
+        <motion.path
+          d={homePath}
+          fill="none"
+          stroke="#CCFF00"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ duration: 0.7 }}
+        />
+        <path d={awayBgPath} fill="none" stroke="#161b22" strokeWidth={sw} strokeLinecap="round" />
+        <motion.path
+          d={awayPath}
+          fill="none"
+          stroke="#FF5500"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+        />
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#c9d1d9" fontSize="12" fontWeight="bold">
+          {homeRating} / {awayRating}
+        </text>
+        {/* Legend */}
+        <rect x="10" y={cy + 18} width="8" height="6" rx="1" fill="#CCFF00" opacity="0.9" />
+        <text x="21" y={cy + 23} fill="#8b949e" fontSize="6">Home {homeRating}</text>
+        <rect x="80" y={cy + 18} width="8" height="6" rx="1" fill="#FF5500" opacity="0.9" />
+        <text x="91" y={cy + 23} fill="#8b949e" fontSize="6">Away {awayRating}</text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 10: MarchFanCountArea
+// ============================================================
+function MarchFanCountArea({ estimatedFans }: { estimatedFans: number }) {
+  const matchCount = 8;
+  const base = Math.max(200, estimatedFans - 800);
+  const fanData = Array.from({ length: matchCount }).map((_, i) => ({
+    label: `M${i + 1}`,
+    value: base + Math.round(Math.abs(Math.sin(i * 1.7 + 0.5) * 600)) + i * 30,
+  }));
+  const maxVal = Math.max(...fanData.map(d => d.value), 1);
+  const padL = 30;
+  const padB = 20;
+  const padT = 8;
+  const chartW = 220;
+  const chartH = 75;
+  const linePoints = fanData.map((d, i) => {
+    const px = padL + (i / (matchCount - 1)) * chartW;
+    const py = padT + chartH - (d.value / maxVal) * chartH;
+    return `${px},${py}`;
+  }).join(' ');
+  const areaStr = `${padL},${padT + chartH} ${linePoints} ${padL + chartW},${padT + chartH}`;
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Fan March Attendance Trend</p>
+      <svg viewBox="0 0 260 125" className="w-full">
+        {[0, 0.5, 1].map((frac, i) => {
+          const gy = padT + chartH - frac * chartH;
+          return <line key={i} x1={padL} y1={gy} x2={padL + chartW} y2={gy} stroke="#21262d" strokeWidth="0.5" />;
+        })}
+        <line x1={padL} y1={padT + chartH} x2={padL + chartW} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+        <motion.polygon
+          points={areaStr}
+          fill="#CCFF00"
+          fillOpacity="0.12"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        <motion.polyline
+          points={linePoints}
+          fill="none"
+          stroke="#CCFF00"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        />
+        {fanData.map((d, i) => {
+          const px = padL + (i / (matchCount - 1)) * chartW;
+          const py = padT + chartH - (d.value / maxVal) * chartH;
+          return (
+            <g key={d.label}>
+              <circle cx={px} cy={py} r="3" fill="#CCFF00" />
+              <text x={px} y={padT + chartH + 14} textAnchor="middle" fill="#8b949e" fontSize="6">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
+// Web3 SVG 11: MarchMomentImpactScatter
+// ============================================================
+function MarchMomentImpactScatter({ moments }: { moments: MarchMoment[] }) {
+  const momentLabels = ['Drum Circle', 'Scarf Tunnel', 'Flare Display', 'Chant Chain', 'Flag Wave', 'Pyro Show', 'Tifo Unveil', 'Final Push'];
+  const scatterData = momentLabels.map((label, i) => ({
+    x: 10 + i * 11,
+    y: 15 + Math.abs(Math.sin(i * 2.3 + 1.2)) * 65,
+    label,
+    isActual: i < moments.length,
+  }));
+  const padL = 30;
+  const padB = 25;
+  const padT = 8;
+  const padR = 10;
+  const chartW = 210;
+  const chartH = 85;
+  return (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+      <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">March Moment Excitement</p>
+      <svg viewBox="0 0 260 130" className="w-full">
+        {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
+          const gy = padT + chartH - frac * chartH;
+          return (
+            <g key={i}>
+              <line x1={padL} y1={gy} x2={padL + chartW} y2={gy} stroke="#21262d" strokeWidth="0.5" />
+              <line x1={padL + frac * chartW} y1={padT} x2={padL + frac * chartW} y2={padT + chartH} stroke="#21262d" strokeWidth="0.3" />
+            </g>
+          );
+        })}
+        <line x1={padL} y1={padT + chartH} x2={padL + chartW} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+        <line x1={padL} y1={padT} x2={padL} y2={padT + chartH} stroke="#30363d" strokeWidth="1" />
+        <text x={padL + chartW / 2} y={padT + chartH + 18} textAnchor="middle" fill="#8b949e" fontSize="6">Time</text>
+        <text x={8} y={padT + chartH / 2} textAnchor="middle" fill="#8b949e" fontSize="6"
+          style={{ writingMode: 'vertical-rl' } as React.CSSProperties}
+        >Excitement</text>
+        {scatterData.map((d, i) => {
+          const px = padL + (d.x / 100) * chartW;
+          const py = padT + chartH - (d.y / 100) * chartH;
+          const dotColor = d.isActual ? '#00E5FF' : '#FF5500';
+          return (
+            <g key={d.label}>
+              <motion.circle
+                cx={px} cy={py} r="5"
+                fill={dotColor}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.85 }}
+                transition={{ duration: 0.3, delay: i * 0.06 }}
+              />
+              <text x={px} y={py + 14} textAnchor="middle" fill="#484f58" fontSize="5">
+                {d.label.length > 6 ? d.label.slice(0, 6) + '\u2026' : d.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
 // Tab 1: Chants Library
 // ============================================================
 function ChantsTab({ chants, playerName, clubName, activeChantId, setActiveChantId }: {
@@ -1171,6 +1800,19 @@ function ChantsTab({ chants, playerName, clubName, activeChantId, setActiveChant
           <p className="text-xs text-[#8b949e]">No chants match your search.</p>
         </div>
       )}
+
+      {/* ---- Web3 SVG Visualizations ---- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+          <ChantCategoryDistributionDonut chants={chants} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+          <ChantPopularityBars chants={chants} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="sm:col-span-2">
+          <ChantEraTimeline chants={chants} />
+        </motion.div>
+      </div>
     </div>
   );
 }
@@ -1272,6 +1914,19 @@ function TifoTab({ tifos }: { tifos: TifoDisplay[] }) {
         </div>
         <ChevronRight className="h-4 w-4 text-[#30363d] shrink-0" />
       </motion.div>
+
+      {/* ---- Web3 SVG Visualizations ---- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+          <TifoComplexityRadar tifos={tifos} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+          <TifoCategoryDonut tifos={tifos} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="sm:col-span-2">
+          <TifoMoraleImpactBars tifos={tifos} />
+        </motion.div>
+      </div>
     </div>
   );
 }
@@ -1443,6 +2098,19 @@ function AtmosphereTab({ data }: { data: ReturnType<typeof generateAtmosphereDas
           ))}
         </div>
       </div>
+
+      {/* ---- Web3 SVG Visualizations ---- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+          <AtmosphereHistoryTrend history={data.history} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+          <AttendanceCapacityRing currentAttendance={data.currentAttendance} stadiumCapacity={data.stadiumCapacity} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="sm:col-span-2">
+          <HomeVsAwayGauge homeRating={data.homeRating} awayRating={data.awayRating} />
+        </motion.div>
+      </div>
     </div>
   );
 }
@@ -1607,6 +2275,16 @@ function MarchTab({ data }: { data: ReturnType<typeof generateFanMarchData> }) {
         <Footprints className="h-4 w-4" />
         Join the March
       </button>
+
+      {/* ---- Web3 SVG Visualizations ---- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+          <MarchFanCountArea estimatedFans={data.estimatedFans} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+          <MarchMomentImpactScatter moments={data.moments} />
+        </motion.div>
+      </div>
     </div>
   );
 }
