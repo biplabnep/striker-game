@@ -1566,6 +1566,701 @@ function SvgSetPieceEfficiencyBars({ corners, freeKicks, penalties }: {
 }
 
 // ============================================================
+// Web3 Gritty Futurism — 11 SVG Data Visualizations
+// Color tokens: OLED Black #000000, Electric Orange #FF5500,
+//   Neon Lime #CCFF00, Cyan Blue #00E5FF, Dark #0a0a0a/#111111,
+//   Muted #666666/#888888
+// Font: 'Monaspace Neon', 'Space Grotesk', monospace
+// ============================================================
+const W3_FONT = "'Monaspace Neon', 'Space Grotesk', monospace";
+const W3_ORANGE = '#FF5500';
+const W3_LIME = '#CCFF00';
+const W3_CYAN = '#00E5FF';
+const W3_DARK = '#0a0a0a';
+const W3_MUTED = '#666666';
+const W3_TEXT = '#c9d1d9';
+
+// --- 1. Web3MatchEventTimeline ---
+function Web3MatchEventTimeline({ events, currentMinute }: { events: MatchEvent[]; currentMinute: number }) {
+  const w = 300;
+  const h = 200;
+  const padX = 24;
+  const trackY = 100;
+  const trackW = w - padX * 2;
+
+  const significantEvents = events
+    .filter(e => ['goal', 'yellow_card', 'red_card', 'substitution', 'save'].includes(e.type))
+    .slice(-8);
+
+  const eightNodes = Array.from({ length: 8 }, (_, i) => {
+    const baseMin = (i + 1) * 11;
+    const matched = significantEvents.find(e => Math.abs(e.minute - baseMin) < 8);
+    if (matched) {
+      const nodeColor = matched.type === 'goal' ? W3_LIME : W3_ORANGE;
+      return { minute: matched.minute, label: matched.minute + "'", color: nodeColor, type: matched.type, isEmpty: false };
+    }
+    return { minute: 0, label: '', color: W3_MUTED, type: 'chance' as const, isEmpty: true };
+  });
+
+  const xForMin = (min: number) => padX + (min / 90) * trackW;
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_LIME, fontFamily: W3_FONT }}>
+        Match Event Timeline
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {/* Track line */}
+        <line x1={padX} y1={trackY} x2={padX + trackW} y2={trackY} stroke={W3_ORANGE} strokeWidth="2" opacity="0.4" />
+        <line x1={padX} y1={trackY} x2={padX + (currentMinute / 90) * trackW} y2={trackY} stroke={W3_ORANGE} strokeWidth="2" opacity="0.9" />
+        {/* Half line */}
+        <line x1={xForMin(45)} y1={trackY - 20} x2={xForMin(45)} y2={trackY + 20} stroke={W3_MUTED} strokeWidth="0.8" strokeDasharray="3,3" />
+        {/* Nodes */}
+        {eightNodes.map((node, i) => {
+          const x = xForMin(node.minute || (i + 1) * 11);
+          return (
+            <g key={`w3tl-${i}`}>
+              {!node.isEmpty ? (
+                <>
+                  <circle key={`w3tl-o-${i}`} cx={x} cy={trackY} r="8" fill={node.color} opacity="0.2" />
+                  <circle key={`w3tl-c-${i}`} cx={x} cy={trackY} r="4" fill={node.color} />
+                  <text key={`w3tl-t-${i}`} x={x} y={trackY - 14} textAnchor="middle" fill={W3_TEXT} fontSize="6" fontFamily={W3_FONT}>{node.label}</text>
+                </>
+              ) : (
+                <circle key={`w3tl-d-${i}`} cx={x} cy={trackY} r="2" fill={W3_MUTED} opacity="0.3" />
+              )}
+            </g>
+          );
+        })}
+        {/* Current minute needle */}
+        {currentMinute > 0 && (
+          <circle key="w3tl-needle" cx={xForMin(currentMinute)} cy={trackY} r="3" fill="#ffffff" opacity="0.9" />
+        )}
+        {/* Labels */}
+        <text x={padX} y={h - 8} fill={W3_MUTED} fontSize="6" fontFamily={W3_FONT}>0&apos;</text>
+        <text x={padX + trackW} y={h - 8} fill={W3_MUTED} fontSize="6" fontFamily={W3_FONT} textAnchor="end">90&apos;</text>
+        <text x={padX + trackW / 2} y="16" textAnchor="middle" fill={W3_MUTED} fontSize="6" fontFamily={W3_FONT}>MATCH EVENTS</text>
+        {/* Legend */}
+        <circle cx={padX} cy={h - 20} r="3" fill={W3_LIME} />
+        <text x={padX + 8} y={h - 17} fill={W3_TEXT} fontSize="5" fontFamily={W3_FONT}>Goal</text>
+        <circle cx={padX + 40} cy={h - 20} r="3" fill={W3_ORANGE} />
+        <text x={padX + 48} y={h - 17} fill={W3_TEXT} fontSize="5" fontFamily={W3_FONT}>Card/Sub</text>
+      </svg>
+    </div>
+  );
+}
+
+// --- 2. Web3PossessionRing ---
+function Web3PossessionRing({ homePct, awayPct }: { homePct: number; awayPct: number }) {
+  const w = 300;
+  const h = 200;
+  const cx = w / 2;
+  const cy = h / 2;
+  const rOuter = 70;
+  const rInner = 50;
+  const circumference = 2 * Math.PI * rOuter;
+  const homeLen = (homePct / 100) * circumference;
+  const awayLen = (awayPct / 100) * circumference;
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_CYAN, fontFamily: W3_FONT }}>
+        Possession Ring
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {/* Outer ring - Home (Cyan) */}
+        <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={W3_MUTED} strokeWidth="16" opacity="0.2" />
+        <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={W3_CYAN} strokeWidth="16"
+          strokeDasharray={`${homeLen} ${circumference - homeLen}`}
+          strokeDashoffset={circumference / 4}
+          opacity="0.8" />
+        {/* Inner ring - Away (Orange) */}
+        <circle cx={cx} cy={cy} r={rInner} fill="none" stroke={W3_MUTED} strokeWidth="10" opacity="0.2" />
+        <circle cx={cx} cy={cy} r={rInner} fill="none" stroke={W3_ORANGE} strokeWidth="10"
+          strokeDasharray={`${(awayPct / 100) * 2 * Math.PI * rInner} ${2 * Math.PI * rInner - (awayPct / 100) * 2 * Math.PI * rInner}`}
+          strokeDashoffset={(2 * Math.PI * rInner) / 4}
+          opacity="0.8" />
+        {/* Center text */}
+        <text x={cx} y={cy - 6} textAnchor="middle" fill={W3_TEXT} fontSize="22" fontFamily={W3_FONT} fontWeight="bold">
+          {homePct}% - {awayPct}%
+        </text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill={W3_MUTED} fontSize="7" fontFamily={W3_FONT}>POSSESSION</text>
+        {/* Labels */}
+        <circle cx="20" cy={h - 16} r="4" fill={W3_CYAN} opacity="0.8" />
+        <text x="28" y={h - 13} fill={W3_TEXT} fontSize="6" fontFamily={W3_FONT}>HOME</text>
+        <circle cx={w - 60} cy={h - 16} r="4" fill={W3_ORANGE} opacity="0.8" />
+        <text x={w - 52} y={h - 13} fill={W3_TEXT} fontSize="6" fontFamily={W3_FONT}>AWAY</text>
+      </svg>
+    </div>
+  );
+}
+
+// --- 3. Web3ShotDistributionRadar ---
+function Web3ShotDistributionRadar({ stats }: { stats: { onTarget: number; offTarget: number; blocked: number; insideBox: number; outsideBox: number } }) {
+  const w = 300;
+  const h = 200;
+  const cx = w / 2;
+  const cy = h / 2 + 8;
+  const maxR = 70;
+  const axes = [
+    { label: 'ON TGT', value: stats.onTarget },
+    { label: 'OFF TGT', value: stats.offTarget },
+    { label: 'BLOCKED', value: stats.blocked },
+    { label: 'IN BOX', value: stats.insideBox },
+    { label: 'OUT BOX', value: stats.outsideBox },
+  ];
+  const maxVal = axes.reduce<number>((m, a) => Math.max(m, a.value), 1);
+  const angleStep = (2 * Math.PI) / axes.length;
+  const startAngle = -Math.PI / 2;
+
+  const points = axes.reduce<Array<{ x: number; y: number }>>((pts, axis, i) => {
+    const angle = startAngle + i * angleStep;
+    const r = (axis.value / maxVal) * maxR;
+    pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+    return pts;
+  }, []);
+
+  const pathStr = points.reduce<string>((path, p, i) =>
+    path + `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)} `, '');
+
+  const gridLines = [0.25, 0.5, 0.75, 1].map(fraction => {
+    const gridPts = axes.map((_, i) => {
+      const angle = startAngle + i * angleStep;
+      const gr = fraction * maxR;
+      return { x: cx + gr * Math.cos(angle), y: cy + gr * Math.sin(angle) };
+    });
+    return gridPts.reduce<string>((gp, p, i) =>
+      gp + `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)} `, '') + 'Z';
+  });
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_ORANGE, fontFamily: W3_FONT }}>
+        Shot Distribution Radar
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {/* Grid rings */}
+        {gridLines.map((gp, i) => (
+          <path key={`w3radar-grid-${i}`} d={gp} fill="none" stroke={W3_MUTED} strokeWidth="0.5" opacity="0.3" />
+        ))}
+        {/* Axis lines */}
+        {axes.map((_, i) => {
+          const angle = startAngle + i * angleStep;
+          return (
+            <line key={`w3radar-axis-${i}`}
+              x1={cx} y1={cy}
+              x2={cx + maxR * Math.cos(angle)} y2={cy + maxR * Math.sin(angle)}
+              stroke={W3_MUTED} strokeWidth="0.5" opacity="0.3" />
+          );
+        })}
+        {/* Data shape */}
+        <path d={pathStr} fill={W3_ORANGE} opacity="0.15" />
+        <path d={pathStr} fill="none" stroke={W3_ORANGE} strokeWidth="2" />
+        {/* Data points */}
+        {points.map((p, i) => (
+          <circle key={`w3radar-pt-${i}`} cx={p.x} cy={p.y} r="3" fill={W3_ORANGE} />
+        ))}
+        {/* Labels */}
+        {axes.map((axis, i) => {
+          const angle = startAngle + i * angleStep;
+          const lx = cx + (maxR + 16) * Math.cos(angle);
+          const ly = cy + (maxR + 16) * Math.sin(angle);
+          return (
+            <g key={`w3radar-lbl-${i}`}>
+              <text x={lx} y={ly} textAnchor="middle" fill={W3_TEXT} fontSize="6" fontFamily={W3_FONT}>{axis.label}</text>
+              <text x={lx} y={ly + 8} textAnchor="middle" fill={W3_LIME} fontSize="5" fontFamily={W3_FONT}>{axis.value}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// --- 4. Web3PlayerRatingBars ---
+function Web3PlayerRatingBars({ players }: { players: { name: string; rating: number }[] }) {
+  const w = 300;
+  const h = 200;
+  const padX = 90;
+  const padY = 18;
+  const barH = 22;
+  const gap = 10;
+  const trackW = w - padX - 40;
+
+  const top5 = players.slice(0, 5);
+  const maxRating = top5.reduce<number>((m, p) => Math.max(m, p.rating), 5);
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_CYAN, fontFamily: W3_FONT }}>
+        Player Rating Bars
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {top5.map((player, i) => {
+          const y = padY + i * (barH + gap);
+          const barW = Math.max(4, (player.rating / 10) * trackW);
+          const isHighest = player.rating === maxRating && maxRating > 6;
+          const fillColor = isHighest ? W3_LIME : W3_CYAN;
+          return (
+            <g key={`w3rating-${i}`}>
+              <text x={padX - 6} y={y + barH - 6} textAnchor="end" fill={W3_TEXT} fontSize="7" fontFamily={W3_FONT}>
+                {player.name.length > 14 ? player.name.slice(0, 13) + '.' : player.name}
+              </text>
+              <rect x={padX} y={y} width={trackW} height={barH} fill="#111111" rx="2" />
+              <rect x={padX} y={y} width={barW} height={barH} fill={fillColor} opacity="0.7" rx="2" />
+              <text x={padX + barW + 4} y={y + barH - 6} fill={W3_TEXT} fontSize="8" fontFamily={W3_FONT} fontWeight="bold">
+                {player.rating.toFixed(1)}
+              </text>
+            </g>
+          );
+        })}
+        {/* Legend */}
+        <rect x={padX} y={h - 14} width="8" height="6" fill={W3_CYAN} opacity="0.7" rx="1" />
+        <text x={padX + 12} y={h - 9} fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>Standard</text>
+        <rect x={padX + 60} y={h - 14} width="8" height="6" fill={W3_LIME} opacity="0.7" rx="1" />
+        <text x={padX + 72} y={h - 9} fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>Highest</text>
+      </svg>
+    </div>
+  );
+}
+
+// --- 5. Web3MatchMomentumLine ---
+function Web3MatchMomentumLine({ history }: { history: { minute: number; home: number; away: number }[] }) {
+  const w = 300;
+  const h = 200;
+  const padX = 30;
+  const padY = 20;
+  const trackW = w - padX - 10;
+  const trackH = h - padY - 24;
+  const midY = padY + trackH / 2;
+
+  const eightPoints = Array.from({ length: 8 }, (_, i) => {
+    const targetMinute = (i + 1) * 11;
+    const closest = history.reduce<{ minute: number; home: number; away: number }>((best, entry) =>
+      Math.abs(entry.minute - targetMinute) < Math.abs(best.minute - targetMinute) ? entry : best, history[0]);
+    return closest;
+  });
+
+  const linePoints = eightPoints.reduce<Array<{ x: number; y: number }>>((pts, entry, i) => {
+    const x = padX + (i / 7) * trackW;
+    const diff = entry.home - entry.away;
+    const y = Math.max(padY, Math.min(padY + trackH, midY - (diff / 60) * (trackH / 2)));
+    pts.push({ x, y });
+    return pts;
+  }, []);
+
+  const linePath = linePoints.reduce<string>((path, p, i) =>
+    path + `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)} `, '');
+
+  const areaPath = `${linePath}L${linePoints[linePoints.length - 1].x.toFixed(1)},${midY}L${linePoints[0].x.toFixed(1)},${midY}Z`;
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#CCFF00]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_LIME, fontFamily: W3_FONT }}>
+        Match Momentum Line
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        <line x1={padX} y1={midY} x2={padX + trackW} y2={midY} stroke={W3_MUTED} strokeWidth="0.5" strokeDasharray="4,4" opacity="0.4" />
+        {/* Half line */}
+        <line x1={padX + trackW / 2} y1={padY} x2={padX + trackW / 2} y2={padY + trackH} stroke={W3_MUTED} strokeWidth="0.5" strokeDasharray="2,3" opacity="0.3" />
+        {/* Area fill */}
+        <path d={areaPath} fill={W3_LIME} opacity="0.1" />
+        {/* Line */}
+        <path d={linePath} fill="none" stroke={W3_LIME} strokeWidth="2" />
+        {/* Points */}
+        {linePoints.map((p, i) => (
+          <circle key={`w3mom-${i}`} cx={p.x} cy={p.y} r="3" fill={W3_LIME} opacity="0.9" />
+        ))}
+        {/* Labels */}
+        <text x={padX - 4} y={padY + 4} textAnchor="end" fill={W3_CYAN} fontSize="6" fontFamily={W3_FONT}>HOME</text>
+        <text x={padX - 4} y={padY + trackH - 2} textAnchor="end" fill={W3_ORANGE} fontSize="6" fontFamily={W3_FONT}>AWAY</text>
+        {/* Time labels */}
+        {[0, 2, 4, 6, 7].map(i => (
+          <text key={`w3mom-lbl-${i}`} x={linePoints[i].x} y={h - 6} textAnchor="middle" fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>
+            {eightPoints[i].minute}&apos;
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// --- 6. Web3PassingNetworkRings ---
+function Web3PassingNetworkRings({ accuracy }: { accuracy: number }) {
+  const w = 300;
+  const h = 200;
+  const cx = w / 2;
+  const cy = h / 2 + 4;
+  const tiers = [
+    { label: '90%+', min: 90, r: 72, color: W3_CYAN },
+    { label: '80%+', min: 80, r: 56, color: W3_CYAN },
+    { label: '70%+', min: 70, r: 40, color: W3_CYAN },
+    { label: '60%+', min: 60, r: 24, color: W3_CYAN },
+  ];
+
+  const activeTierIndex = tiers.reduce<number>((best, tier, i) =>
+    accuracy >= tier.min ? i : best, -1);
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_CYAN, fontFamily: W3_FONT }}>
+        Passing Network Rings
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {/* Concentric rings */}
+        {tiers.map((tier, i) => {
+          const isActive = i <= activeTierIndex;
+          return (
+            <g key={`w3ring-${i}`}>
+              <circle cx={cx} cy={cy} r={tier.r} fill="none" stroke={tier.color} strokeWidth="1.5"
+                opacity={isActive ? 0.8 : 0.15} />
+              <text x={cx + tier.r + 4} y={cy - 2} fill={isActive ? W3_CYAN : W3_MUTED} fontSize="5" fontFamily={W3_FONT}>{tier.label}</text>
+            </g>
+          );
+        })}
+        {/* Center node */}
+        <circle cx={cx} cy={cy} r="6" fill={activeTierIndex >= 0 ? tiers[activeTierIndex].color : W3_MUTED} opacity="0.8" />
+        <text x={cx} y={cy + 3} textAnchor="middle" fill="#000000" fontSize="6" fontFamily={W3_FONT} fontWeight="bold">
+          {accuracy}%
+        </text>
+        {/* Cross-hair lines */}
+        <line x1={cx - 80} y1={cy} x2={cx + 80} y2={cy} stroke={W3_MUTED} strokeWidth="0.3" opacity="0.3" />
+        <line x1={cx} y1={cy - 80} x2={cx} y2={cy + 80} stroke={W3_MUTED} strokeWidth="0.3" opacity="0.3" />
+        {/* Accuracy tier indicator */}
+        <text x={cx} y={h - 6} textAnchor="middle" fill={W3_TEXT} fontSize="6" fontFamily={W3_FONT}>
+          PASS ACCURACY: {accuracy >= 90 ? 'ELITE' : accuracy >= 80 ? 'STRONG' : accuracy >= 70 ? 'AVERAGE' : 'BELOW AVG'}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// --- 7. Web3GoalExpectationArea ---
+function Web3GoalExpectationArea({ events }: { events: MatchEvent[] }) {
+  const w = 300;
+  const h = 200;
+  const padX = 24;
+  const padY = 16;
+  const trackW = w - padX - 10;
+  const trackH = h - padY - 26;
+
+  const eightPeriods = Array.from({ length: 8 }, (_, i) => {
+    const startMin = i * (90 / 8);
+    const endMin = (i + 1) * (90 / 8);
+    const periodXg = events
+      .filter(e => e.minute >= startMin && e.minute < endMin)
+      .reduce<number>((sum, e) => {
+        if (e.type === 'goal') return sum + 0.35;
+        if (e.type === 'save') return sum + 0.2;
+        if (e.type === 'chance') return sum + 0.1;
+        return sum + 0.02;
+      }, 0);
+    return periodXg;
+  });
+
+  const maxXg = eightPeriods.reduce<number>((m, v) => Math.max(m, v), 0.1);
+
+  const areaPoints = eightPeriods.reduce<Array<{ x: number; y: number }>>((pts, xg, i) => {
+    pts.push({
+      x: padX + (i / 7) * trackW,
+      y: padY + trackH - (xg / maxXg) * trackH,
+    });
+    return pts;
+  }, []);
+
+  const linePath = areaPoints.reduce<string>((path, p, i) =>
+    path + `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)} `, '');
+  const areaPath = `${linePath}L${areaPoints[areaPoints.length - 1].x.toFixed(1)},${padY + trackH}L${areaPoints[0].x.toFixed(1)},${padY + trackH}Z`;
+
+  const totalXg = eightPeriods.reduce<number>((t, v) => t + v, 0);
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_ORANGE, fontFamily: W3_FONT }}>
+        Goal Expectation Area
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        <line x1={padX} y1={padY + trackH} x2={padX + trackW} y2={padY + trackH} stroke={W3_MUTED} strokeWidth="0.5" opacity="0.4" />
+        {/* Area */}
+        <path d={areaPath} fill={W3_ORANGE} opacity="0.2" />
+        {/* Line */}
+        <path d={linePath} fill="none" stroke={W3_ORANGE} strokeWidth="2" />
+        {/* Points */}
+        {areaPoints.map((p, i) => (
+          <circle key={`w3xg-${i}`} cx={p.x} cy={p.y} r="3" fill={W3_ORANGE} />
+        ))}
+        {/* Total xG label */}
+        <text x={padX + 2} y={padY + 6} fill={W3_ORANGE} fontSize="8" fontFamily={W3_FONT} fontWeight="bold">
+          xG: {totalXg.toFixed(2)}
+        </text>
+        {/* Time labels */}
+        {eightPeriods.map((_, i) => {
+          const minLabel = Math.round(i * (90 / 8));
+          return (
+            <text key={`w3xg-lbl-${i}`} x={padX + (i / 7) * trackW} y={h - 6} textAnchor="middle" fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>
+              {minLabel}&apos;
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// --- 8. Web3TacticalFormationBars ---
+function Web3TacticalFormationBars({ scores }: { scores: Record<string, number> }) {
+  const w = 300;
+  const h = 200;
+  const padX = 80;
+  const padY = 14;
+  const barH = 22;
+  const gap = 10;
+  const trackW = w - padX - 36;
+
+  const metrics = [
+    { label: 'DEF SOLIDITY', key: 'defensive', value: scores.defensive ?? 65 },
+    { label: 'MID CTRL', key: 'midfield', value: scores.midfield ?? 60 },
+    { label: 'ATT WIDTH', key: 'attackWidth', value: scores.attackWidth ?? 55 },
+    { label: 'PRESS INT', key: 'pressing', value: scores.pressing ?? 50 },
+    { label: 'TRANS SPD', key: 'transition', value: scores.transition ?? 58 },
+  ];
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#CCFF00]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_LIME, fontFamily: W3_FONT }}>
+        Tactical Formation Bars
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {metrics.map((m, i) => {
+          const y = padY + i * (barH + gap);
+          const barW = Math.max(4, (m.value / 100) * trackW);
+          return (
+            <g key={`w3tac-${i}`}>
+              <text x={padX - 4} y={y + barH - 6} textAnchor="end" fill={W3_TEXT} fontSize="6" fontFamily={W3_FONT}>{m.label}</text>
+              <rect x={padX} y={y} width={trackW} height={barH} fill="#111111" rx="2" />
+              <rect x={padX} y={y} width={barW} height={barH} fill={W3_LIME} opacity="0.6" rx="2" />
+              <text x={padX + barW + 4} y={y + barH - 6} fill={W3_TEXT} fontSize="7" fontFamily={W3_FONT} fontWeight="bold">{m.value}</text>
+            </g>
+          );
+        })}
+        <text x={w / 2} y={h - 4} textAnchor="middle" fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>FORMATION SHAPE SCORES (0-100)</text>
+      </svg>
+    </div>
+  );
+}
+
+// --- 9. Web3SetPieceEfficiencyDonut ---
+function Web3SetPieceEfficiencyDonut({ data }: { data: { label: string; total: number; success: number }[] }) {
+  const w = 300;
+  const h = 200;
+  const cx = w / 2;
+  const cy = h / 2 + 2;
+  const r = 60;
+  const circumference = 2 * Math.PI * r;
+
+  const segments = data.reduce<Array<{ label: string; len: number; color: string; pct: number }>>((segs, item) => {
+    const totalAll = data.reduce<number>((t, d) => t + d.total, 0) || 1;
+    const itemLen = (item.total / totalAll) * circumference;
+    const efficiency = item.total > 0 ? (item.success / item.total) * 100 : 0;
+    const color = efficiency >= 30 ? W3_CYAN : efficiency >= 15 ? W3_LIME : W3_ORANGE;
+    segs.push({ label: item.label, len: itemLen, color, pct: efficiency });
+    return segs;
+  }, []);
+
+  const segmentOffsets = segments.reduce<Array<{ label: string; len: number; color: string; pct: number; dashOffset: number }>>((renderSegs, seg, i) => {
+    const prevLen = renderSegs.slice(0, i).reduce<number>((sum, s) => sum + s.len, 0);
+    renderSegs.push({ ...seg, dashOffset: circumference / 4 - prevLen });
+    return renderSegs;
+  }, []);
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#00E5FF]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_CYAN, fontFamily: W3_FONT }}>
+        Set Piece Efficiency Donut
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {/* Background ring */}
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={W3_MUTED} strokeWidth="14" opacity="0.15" />
+        {/* Segments */}
+        {segmentOffsets.map((seg, i) => (
+          <circle key={`w3donut-${i}`} cx={cx} cy={cy} r={r} fill="none"
+            stroke={seg.color} strokeWidth="14"
+            strokeDasharray={`${seg.len} ${circumference - seg.len}`}
+            strokeDashoffset={seg.dashOffset}
+            opacity="0.75" />
+        ))}
+        {/* Center text */}
+        <text x={cx} y={cy - 2} textAnchor="middle" fill={W3_TEXT} fontSize="8" fontFamily={W3_FONT}>SET PIECES</text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill={W3_MUTED} fontSize="6" fontFamily={W3_FONT}>EFFICIENCY</text>
+        {/* Legend */}
+        {segments.map((seg, i) => {
+          const lx = 16 + i * 74;
+          return (
+            <g key={`w3donut-legend-${i}`}>
+              <circle cx={lx} cy={h - 12} r="4" fill={seg.color} opacity="0.75" />
+              <text x={lx + 8} y={h - 9} fill={W3_TEXT} fontSize="5.5" fontFamily={W3_FONT}>{seg.label}</text>
+              <text x={lx + 8} y={h - 2} fill={seg.color} fontSize="5" fontFamily={W3_FONT}>{seg.pct.toFixed(0)}%</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// --- 10. Web3SubstitutionImpactGauge ---
+function Web3SubstitutionImpactGauge({ impact }: { impact: number }) {
+  const w = 300;
+  const h = 200;
+  const cx = w / 2;
+  const cy = 140;
+  const r = 90;
+  const clampedImpact = Math.max(0, Math.min(100, impact));
+
+  // Build arc path for the background and filled arcs (semi-circle, 180 degrees)
+  const bgArcD = `M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`;
+
+  const filledAngle = (clampedImpact / 100) * Math.PI;
+  const endX = cx + r * Math.cos(Math.PI - filledAngle);
+  const endY = cy - r * Math.sin(filledAngle);
+  const largeArc = clampedImpact > 50 ? 1 : 0;
+  const filledArcD = `M${cx - r},${cy} A${r},${r} 0 ${largeArc} 1 ${endX.toFixed(1)},${endY.toFixed(1)}`;
+
+  const impactLabel = clampedImpact >= 75 ? 'HIGH IMPACT' : clampedImpact >= 50 ? 'MODERATE' : clampedImpact >= 25 ? 'LOW' : 'MINIMAL';
+  const impactColor = clampedImpact >= 75 ? W3_LIME : clampedImpact >= 50 ? W3_CYAN : W3_ORANGE;
+
+  // Tick marks
+  const ticks = Array.from({ length: 11 }, (_, i) => {
+    const angle = Math.PI - (i / 10) * Math.PI;
+    const innerX = cx + (r - 8) * Math.cos(angle);
+    const innerY = cy - (r - 8) * Math.sin(angle);
+    const outerX = cx + r * Math.cos(angle);
+    const outerY = cy - r * Math.sin(angle);
+    return { innerX, innerY, outerX, outerY, value: i * 10 };
+  });
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#CCFF00]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_LIME, fontFamily: W3_FONT }}>
+        Substitution Impact Gauge
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {/* Background arc */}
+        <path d={bgArcD} fill="none" stroke={W3_MUTED} strokeWidth="10" strokeLinecap="round" opacity="0.2" />
+        {/* Filled arc */}
+        <path d={filledArcD} fill="none" stroke={W3_LIME} strokeWidth="10" strokeLinecap="round" opacity="0.8" />
+        {/* Ticks */}
+        {ticks.map((t, i) => (
+          <g key={`w3gauge-tick-${i}`}>
+            <line x1={t.innerX} y1={t.innerY} x2={t.outerX} y2={t.outerY} stroke={W3_MUTED} strokeWidth="0.8" opacity="0.4" />
+            {i % 2 === 0 && (
+              <text key={`w3gauge-tick-lbl-${i}`}
+                x={cx + (r + 14) * Math.cos(Math.PI - (i / 10) * Math.PI)}
+                y={cy - (r + 14) * Math.sin((i / 10) * Math.PI) + 2}
+                textAnchor="middle" fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>{t.value}</text>
+            )}
+          </g>
+        ))}
+        {/* Center value */}
+        <text x={cx} y={cy - 16} textAnchor="middle" fill={impactColor} fontSize="28" fontFamily={W3_FONT} fontWeight="bold">
+          {clampedImpact}
+        </text>
+        <text x={cx} y={cy + 4} textAnchor="middle" fill={W3_TEXT} fontSize="7" fontFamily={W3_FONT}>{impactLabel}</text>
+        <text x={cx} y={cy + 16} textAnchor="middle" fill={W3_MUTED} fontSize="6" fontFamily={W3_FONT}>/ 100</text>
+      </svg>
+    </div>
+  );
+}
+
+// --- 11. Web3LiveMatchHeatmap ---
+function Web3LiveMatchHeatmap({ gridData }: { gridData: number[][] }) {
+  const w = 300;
+  const h = 200;
+  const rows = 4;
+  const cols = 6;
+  const padX = 10;
+  const padY = 14;
+  const cellW = (w - padX * 2) / cols;
+  const cellH = (h - padY - 24) / rows;
+
+  const flatMax = gridData.reduce<number>((m, row) =>
+    Math.max(m, row.reduce<number>((rm, cell) => Math.max(rm, cell), 0)), 0) || 1;
+
+  const colorForIntensity = (intensity: number): string => {
+    if (intensity >= 0.75) return W3_LIME;
+    if (intensity >= 0.4) return W3_ORANGE;
+    if (intensity >= 0.15) return W3_CYAN;
+    return '#111111';
+  };
+
+  return (
+    <div className="bg-[#0a0a0a] border border-[#FF5500]/20 p-3">
+      <p className="text-[9px] font-semibold tracking-widest uppercase mb-2" style={{ color: W3_ORANGE, fontFamily: W3_FONT }}>
+        Live Match Heatmap
+      </p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '200px' }}>
+        <rect x="0" y="0" width={w} height={h} fill={W3_DARK} />
+        {/* Grid cells */}
+        {gridData.slice(0, rows).map((row, r) =>
+          row.slice(0, cols).map((val, c) => {
+            const intensity = val / flatMax;
+            const fillColor = colorForIntensity(intensity);
+            return (
+              <g key={`w3hm-${r}-${c}`}>
+                <rect
+                  x={padX + c * cellW + 1}
+                  y={padY + r * cellH + 1}
+                  width={cellW - 2}
+                  height={cellH - 2}
+                  fill={fillColor}
+                  opacity={0.15 + intensity * 0.65}
+                  rx="2"
+                />
+                {intensity > 0.3 && (
+                  <text
+                    key={`w3hm-v-${r}-${c}`}
+                    x={padX + c * cellW + cellW / 2}
+                    y={padY + r * cellH + cellH / 2 + 3}
+                    textAnchor="middle"
+                    fill={W3_TEXT}
+                    fontSize="6"
+                    fontFamily={W3_FONT}
+                    opacity="0.8"
+                  >
+                    {val.toFixed(1)}
+                  </text>
+                )}
+              </g>
+            );
+          })
+        )}
+        {/* Row labels */}
+        {['ATT', 'MID', 'DEF', 'GK'].map((label, i) => (
+          <text key={`w3hm-rl-${i}`} x={padX - 2} y={padY + i * cellH + cellH / 2 + 2} textAnchor="end" fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>{label}</text>
+        ))}
+        {/* Legend */}
+        <rect x={padX} y={h - 12} width="8" height="6" fill={W3_LIME} opacity="0.7" rx="1" />
+        <text x={padX + 12} y={h - 7} fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>High</text>
+        <rect x={padX + 40} y={h - 12} width="8" height="6" fill={W3_ORANGE} opacity="0.7" rx="1" />
+        <text x={padX + 52} y={h - 7} fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>Med</text>
+        <rect x={padX + 78} y={h - 12} width="8" height="6" fill={W3_CYAN} opacity="0.7" rx="1" />
+        <text x={padX + 90} y={h - 7} fill={W3_MUTED} fontSize="5" fontFamily={W3_FONT}>Low</text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function MatchDayLive() {
@@ -2205,6 +2900,23 @@ export default function MatchDayLive() {
           </div>
         </motion.div>
 
+        {/* Web3 Pre-Match Visualizations */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.16 }}>
+          <Web3PossessionRing homePct={homeClub.quality > awayClub.quality ? 55 : 45} awayPct={homeClub.quality > awayClub.quality ? 45 : 55} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.17 }}>
+          <Web3TacticalFormationBars scores={{
+            defensive: Math.round(40 + homeClub.quality * 0.4),
+            midfield: Math.round(45 + homeClub.quality * 0.35),
+            attackWidth: Math.round(35 + homeClub.quality * 0.3),
+            pressing: Math.round(30 + homeClub.quality * 0.45),
+            transition: Math.round(38 + homeClub.quality * 0.38),
+          }} />
+        </motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.18 }}>
+          <Web3PassingNetworkRings accuracy={Math.round(70 + homeClub.quality * 0.2)} />
+        </motion.div>
+
         {/* Start Match Button */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.2 }}>
           <Button
@@ -2611,6 +3323,22 @@ export default function MatchDayLive() {
         </Card>
 
         {/* ========== End SVG Data Visualizations ========== */}
+
+        {/* ========== Web3 Gritty Futurism SVG Visualizations (Live) ========== */}
+
+        {/* Web3 Match Event Timeline */}
+        <Web3MatchEventTimeline events={visibleEvents} currentMinute={matchMinute} />
+
+        {/* Web3 Possession Ring (Live) */}
+        <Web3PossessionRing homePct={liveStats.homePossession} awayPct={liveStats.awayPossession} />
+
+        {/* Web3 Match Momentum Line */}
+        <Web3MatchMomentumLine history={momentumHistory} />
+
+        {/* Web3 Goal Expectation Area */}
+        <Web3GoalExpectationArea events={visibleEvents} />
+
+        {/* ========== End Web3 SVG Visualizations (Live) ========== */}
 
         {/* Player Live Stats Grid */}
         <div className="bg-[#161b22] rounded-lg border border-[#fbbf24]/30 p-3">
@@ -3122,6 +3850,65 @@ export default function MatchDayLive() {
             </div>
           </motion.div>
         )}
+
+        {/* ========== Web3 Gritty Futurism SVG Visualizations (Full Time) ========== */}
+
+        {/* Web3 Shot Distribution Radar */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.3 }}>
+          <Web3ShotDistributionRadar stats={{
+            onTarget: liveStats.homeShotsOnTarget + liveStats.awayShotsOnTarget,
+            offTarget: (liveStats.homeShots - liveStats.homeShotsOnTarget) + (liveStats.awayShots - liveStats.awayShotsOnTarget),
+            blocked: Math.round((liveStats.homeShots + liveStats.awayShots) * 0.15),
+            insideBox: Math.round((liveStats.homeShots + liveStats.awayShots) * 0.6),
+            outsideBox: Math.round((liveStats.homeShots + liveStats.awayShots) * 0.4),
+          }} />
+        </motion.div>
+
+        {/* Web3 Player Rating Bars */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.31 }}>
+          <Web3PlayerRatingBars players={(() => {
+            const hPositions = FORMATIONS[hFormation] || FORMATIONS[DEFAULT_FORMATION];
+            const hGoals: Record<number, number> = {};
+            matchEvents.forEach(e => {
+              if (e.type === 'goal' && e.team === 'home') {
+                const idx = lineups.home.indexOf(e.playerName || '');
+                if (idx >= 0) hGoals[idx] = (hGoals[idx] || 0) + 1;
+              }
+            });
+            return hPositions.map((p, i) => ({
+              name: lineups.home[i] || `Player ${i + 1}`,
+              rating: parseFloat((6.0 + (hGoals[i] || 0) * 0.9 + (Math.sin(i * 2.7 + 1.3) * 0.5 + 0.5) * 1.2).toFixed(1)),
+            })).sort((a, b) => b.rating - a.rating).slice(0, 5);
+          })()} />
+        </motion.div>
+
+        {/* Web3 Set Piece Efficiency Donut */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.32 }}>
+          <Web3SetPieceEfficiencyDonut data={[
+            { label: 'Corners', total: setPieceStatsData.cornersTotal, success: setPieceStatsData.cornerGoals },
+            { label: 'FKicks', total: setPieceStatsData.freeKicksTotal, success: setPieceStatsData.freeKickGoals },
+            { label: 'Pens', total: Math.max(1, Math.round(matchMinute / 45)), success: matchEvents.filter(e => e.type === 'goal' && e.detail?.toLowerCase().includes('penalty')).length },
+            { label: 'Thr-in', total: setPieceStatsData.throwInsHome + setPieceStatsData.throwInsAway, success: Math.round((setPieceStatsData.throwInsHome + setPieceStatsData.throwInsAway) * 0.02) },
+          ]} />
+        </motion.div>
+
+        {/* Web3 Substitution Impact Gauge */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.33 }}>
+          <Web3SubstitutionImpactGauge impact={Math.round(
+            matchEvents.filter(e => e.type === 'substitution').reduce<number>((impact, e, i) => {
+              const subEvents = matchEvents.filter(ev => ev.minute > e.minute && ev.minute <= e.minute + 15);
+              const positiveImpact = subEvents.filter(ev => ev.type === 'goal' || ev.type === 'save').length;
+              return impact + positiveImpact * 25;
+            }, 15)
+          )} />
+        </motion.div>
+
+        {/* Web3 Live Match Heatmap */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.34 }}>
+          <Web3LiveMatchHeatmap gridData={heatMapData.home} />
+        </motion.div>
+
+        {/* ========== End Web3 SVG Visualizations (Full Time) ========== */}
 
         {/* Post-Match Actions */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.3 }} className="space-y-2">

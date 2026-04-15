@@ -2203,6 +2203,672 @@ function MatchDayExperience({
 }
 
 // ============================================================
+// WEB3 "GRITTY FUTURISM" SVG VISUALIZATIONS
+// ============================================================
+
+// 1. EuropeanJourneyTimeline – Horizontal timeline with 8 nodes
+function EuropeanJourneyTimeline({
+  knockoutRound,
+  eliminated,
+}: {
+  knockoutRound: number;
+  eliminated: boolean;
+}) {
+  const milestones = [
+    { label: 'Qualifiers', idx: 0 },
+    { label: 'Group MD1', idx: 1 },
+    { label: 'Group MD3', idx: 2 },
+    { label: 'Group MD6', idx: 3 },
+    { label: 'R16', idx: 4 },
+    { label: 'QF', idx: 5 },
+    { label: 'SF', idx: 6 },
+    { label: 'Final', idx: 7 },
+  ];
+  const padX = 25;
+  const padY = 60;
+  const w = 250;
+  const step = (w - padX * 2) / (milestones.length - 1);
+
+  const reachedIdx = milestones.reduce((acc, m) => {
+    if (eliminated && m.idx > knockoutRound) return acc;
+    if (!eliminated && m.idx > knockoutRound) return acc;
+    return m.idx <= knockoutRound ? m.idx : acc;
+  }, 0);
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        EUROPEAN JOURNEY TIMELINE
+      </p>
+      <svg viewBox="0 0 300 120" className="w-full">
+        {/* Base line */}
+        <line x1={padX} y1={padY} x2={padX + step * (milestones.length - 1)} y2={padY} stroke="#333" strokeWidth="2" />
+        {/* Completed line */}
+        <line x1={padX} y1={padY} x2={padX + step * reachedIdx} y2={padY} stroke="#FF5500" strokeWidth="2" />
+        {milestones.map((m) => {
+          const x = padX + m.idx * step;
+          const isReached = m.idx <= reachedIdx;
+          const isCurrent = m.idx === reachedIdx;
+          return (
+            <g key={m.label}>
+              <circle key={`n-${m.idx}`} cx={x} cy={padY} r={isCurrent ? 6 : 4} fill={isReached ? '#CCFF00' : '#333'} stroke={isCurrent ? '#CCFF00' : '#555'} strokeWidth="1" />
+              <text key={`l-${m.idx}`} x={x} y={padY + 18} textAnchor="middle" fill={isReached ? '#c9d1d9' : '#666'} fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{m.label}</text>
+              {isCurrent && <text key={`a-${m.idx}`} x={x} y={padY - 14} textAnchor="middle" fill="#CCFF00" fontSize="7" fontWeight="600">HERE</text>}
+            </g>
+          );
+        })}
+        <text x={150} y={20} textAnchor="middle" fill="#888" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>Continental Campaign Progression</text>
+      </svg>
+    </div>
+  );
+}
+
+// 2. GroupStagePositionRadar – 5-axis radar (no transforms)
+function GroupStagePositionRadar({
+  fixtures,
+  playerClubId,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+}) {
+  const axes = ['Attack', 'Defense', 'Midfield', 'Discipline', 'Consistency'];
+  const cx = 150;
+  const cy = 105;
+  const maxR = 70;
+  const n = axes.length;
+
+  const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+  const values = played.reduce(
+    (acc, f) => {
+      const isHome = f.homeClubId === playerClubId;
+      const gf = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+      const ga = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+      acc[0] += gf;       // Attack
+      acc[1] += (ga === 0 ? 20 : 0); // Defense
+      acc[2] += gf + ga;   // Midfield
+      acc[3] += 10;        // Discipline (base)
+      acc[4] += (gf > ga ? 20 : gf === ga ? 10 : 0); // Consistency
+      return acc;
+    },
+    [0, 0, 0, 0, 0]
+  );
+  const maxVals = values.map(v => Math.min(100, v));
+  const normVals = maxVals.map(v => (v / 100) * maxR);
+
+  const axisPoints = axes.map((_, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+    return { x: cx + Math.cos(angle) * maxR, y: cy + Math.sin(angle) * maxR };
+  });
+  const valuePoints = normVals.map((r, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+    return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
+  });
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        GROUP STAGE RADAR
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Grid rings */}
+        {[0.25, 0.5, 0.75, 1].map((pct, ri) => {
+          const ringPts = axes.map((_, i) => {
+            const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+            return { x: cx + Math.cos(angle) * maxR * pct, y: cy + Math.sin(angle) * maxR * pct };
+          });
+          const d = ringPts.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x},${pt.y}`).join(' ') + 'Z';
+          return <path key={`ring-${ri}`} d={d} fill="none" stroke="#222" strokeWidth="0.5" />;
+        })}
+        {/* Axis lines */}
+        {axisPoints.map((pt, i) => (
+          <line key={`ax-${i}`} x1={cx} y1={cy} x2={pt.x} y2={pt.y} stroke="#222" strokeWidth="0.5" />
+        ))}
+        {/* Data shape */}
+        <path d={valuePoints.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x},${pt.y}`).join(' ') + 'Z'} fill="#00E5FF" fillOpacity="0.15" stroke="#00E5FF" strokeWidth="1.5" />
+        {/* Data dots */}
+        {valuePoints.map((pt, i) => (
+          <circle key={`dot-${i}`} cx={pt.x} cy={pt.y} r="3" fill="#00E5FF" />
+        ))}
+        {/* Labels */}
+        {axisPoints.map((pt, i) => {
+          const lx = cx + (pt.x - cx) * 1.18;
+          const ly = cy + (pt.y - cy) * 1.18;
+          return <text key={`lbl-${i}`} x={lx} y={ly} textAnchor="middle" fill="#c9d1d9" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{axes[i]}</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 3. CoefficientProgressionLine – 8-point line chart
+function CoefficientProgressionLine({
+  currentClub,
+  currentSeason,
+}: {
+  currentClub: { id: string };
+  currentSeason: number;
+}) {
+  const seasons = Array.from({ length: 8 }, (_, i) => currentSeason - 7 + i);
+  const data = seasons.reduce((acc, s) => {
+    const seed = (currentClub.id.charCodeAt(0) * 11 + s * 7) % 100;
+    acc.push(30 + seed * 0.7);
+    return acc;
+  }, [] as number[]);
+  const maxVal = Math.max(...data, 1);
+  const padX = 35;
+  const padY = 20;
+  const chartW = 230;
+  const chartH = 130;
+  const stepX = chartW / Math.max(data.length - 1, 1);
+
+  const points = data.map((v, i) => ({
+    x: padX + i * stepX,
+    y: padY + chartH - (v / maxVal) * chartH,
+  }));
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#CCFF00', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        UEFA COEFFICIENT TRAJECTORY
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((pct, gi) => {
+          const y = padY + chartH - pct * chartH;
+          return <line key={`g-${gi}`} x1={padX} y1={y} x2={padX + chartW} y2={y} stroke="#1a1a1a" strokeWidth="0.5" />;
+        })}
+        {/* Line */}
+        <polyline points={points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#CCFF00" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {/* Dots */}
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="#CCFF00" />
+        ))}
+        {/* Season labels */}
+        {seasons.map((s, i) => (
+          <text key={`s-${i}`} x={padX + i * stepX} y={padY + chartH + 14} textAnchor="middle" fill="#666" fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{String(s).slice(2)}</text>
+        ))}
+        <text x={150} y={12} textAnchor="middle" fill="#888" fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>Seasons → Coefficient Points</text>
+      </svg>
+    </div>
+  );
+}
+
+// 4. OpponentNationDonut – 5-segment donut via .reduce()
+function OpponentNationDonut({
+  fixtures,
+  playerClubId,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+}) {
+  const nations = ['Spain', 'Germany', 'Italy', 'France', 'England'];
+  const opponents = fixtures.filter(f => f.homeClubId !== playerClubId && f.awayClubId !== playerClubId ? false : f.homeClubId !== playerClubId || f.awayClubId !== playerClubId);
+  const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+  const segments = played.reduce(
+    (acc, f) => {
+      const oppId = f.homeClubId === playerClubId ? f.awayClubId : f.homeClubId;
+      const nationIdx = (oppId.charCodeAt(0) * 3 + oppId.charCodeAt(Math.max(0, oppId.length - 1))) % nations.length;
+      acc[nationIdx] = (acc[nationIdx] || 0) + 1;
+      return acc;
+    },
+    [] as number[]
+  );
+  const total = segments.reduce((a, b) => a + b, 0) || 5;
+  const filled = segments.map(s => s || 1);
+  const cx = 100;
+  const cy = 100;
+  const outerR = 65;
+  const innerR = 40;
+  const colors = ['#FF5500', '#CCFF00', '#00E5FF', '#888888', '#666666'];
+
+  const arcPaths = filled.reduce((acc, val, i) => {
+    const startAngle = acc.cumAngle;
+    const sweep = (val / filled.reduce((a, b) => a + b, 0)) * 2 * Math.PI;
+    const endAngle = startAngle + sweep;
+    const x1o = cx + Math.cos(startAngle) * outerR;
+    const y1o = cy + Math.sin(startAngle) * outerR;
+    const x2o = cx + Math.cos(endAngle) * outerR;
+    const y2o = cy + Math.sin(endAngle) * outerR;
+    const x1i = cx + Math.cos(endAngle) * innerR;
+    const y1i = cy + Math.sin(endAngle) * innerR;
+    const x2i = cx + Math.cos(startAngle) * innerR;
+    const y2i = cy + Math.sin(startAngle) * innerR;
+    const large = sweep > Math.PI ? 1 : 0;
+    acc.paths.push(
+      <path key={`arc-${i}`} d={`M${x1o},${y1o} A${outerR},${outerR} 0 ${large} 1 ${x2o},${y2o} L${x1i},${y1i} A${innerR},${innerR} 0 ${large} 0 ${x2i},${y2i} Z`} fill={colors[i]} opacity="0.8" />
+    );
+    const midAngle = startAngle + sweep / 2;
+    const lx = cx + Math.cos(midAngle) * (outerR + 16);
+    const ly = cy + Math.sin(midAngle) * (outerR + 16);
+    acc.labels.push(
+      <text key={`lbl-${i}`} x={lx} y={ly} textAnchor="middle" fill="#c9d1d9" fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{nations[i]}</text>
+    );
+    acc.cumAngle = endAngle;
+    return acc;
+  }, { paths: [] as React.ReactNode[], labels: [] as React.ReactNode[], cumAngle: -Math.PI / 2 });
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        OPPONENT NATIONS DISTRIBUTION
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {arcPaths.paths}
+        {arcPaths.labels}
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="#888" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{total} matches</text>
+      </svg>
+    </div>
+  );
+}
+
+// 5. ContinentalGoalsArea – 8-point area chart
+function ContinentalGoalsArea({
+  fixtures,
+  playerClubId,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+}) {
+  const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId)).slice(0, 8);
+  const data = played.map(f => {
+    const isHome = f.homeClubId === playerClubId;
+    return isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+  });
+  while (data.length < 3) data.push(0);
+  const maxVal = Math.max(...data, 1);
+  const padX = 30;
+  const padY = 15;
+  const chartW = 240;
+  const chartH = 140;
+  const stepX = chartW / Math.max(data.length - 1, 1);
+
+  const points = data.map((v, i) => ({
+    x: padX + i * stepX,
+    y: padY + chartH - (v / maxVal) * chartH,
+  }));
+  const areaD = `M${padX},${padY + chartH} ` + points.map((p, i) => `L${p.x},${p.y}`).join(' ') + ` L${padX + (data.length - 1) * stepX},${padY + chartH} Z`;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        GOALS PER CONTINENTAL MATCH
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {[0, 0.25, 0.5, 0.75, 1].map((pct, gi) => {
+          const y = padY + chartH - pct * chartH;
+          return <line key={`g-${gi}`} x1={padX} y1={y} x2={padX + chartW} y2={y} stroke="#1a1a1a" strokeWidth="0.5" />;
+        })}
+        <path d={areaD} fill="#00E5FF" fillOpacity="0.2" />
+        <polyline points={points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#00E5FF" strokeWidth="1.5" strokeLinejoin="round" />
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#00E5FF" />
+        ))}
+        {data.map((_, i) => (
+          <text key={`md-${i}`} x={padX + i * stepX} y={padY + chartH + 14} textAnchor="middle" fill="#666" fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>M{i + 1}</text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// 6. AwayPerformanceBars – 5 horizontal bars
+function AwayPerformanceBars({
+  fixtures,
+  playerClubId,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+}) {
+  const awayPlayed = fixtures.filter(f => f.played && f.awayClubId === playerClubId);
+  const stats = awayPlayed.reduce(
+    (acc, f) => {
+      const gf = f.awayScore ?? 0;
+      const ga = f.homeScore ?? 0;
+      if (gf > ga) acc[0]++;
+      else if (gf === ga) acc[1]++;
+      else acc[2]++;
+      acc[3] += gf;
+      acc[4] += ga;
+      return acc;
+    },
+    [0, 0, 0, 0, 0] as number[]
+  );
+  const labels = ['Wins', 'Draws', 'Losses', 'Goals Scored', 'Goals Conceded'];
+  const maxVal = Math.max(...stats, 1);
+  const barH = 20;
+  const gap = 8;
+  const startX = 90;
+  const maxBarW = 170;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#CCFF00', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        AWAY CONTINENTAL PERFORMANCE
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {labels.map((label, i) => {
+          const barW = Math.max(2, (stats[i] / maxVal) * maxBarW);
+          const y = 15 + i * (barH + gap);
+          return (
+            <g key={label}>
+              <text x={startX - 5} y={y + barH / 2 + 3} textAnchor="end" fill="#c9d1d9" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{label}</text>
+              <rect key={`bar-${i}`} x={startX} y={y} width={barW} height={barH} rx="2" fill="#CCFF00" opacity="0.8" />
+              <text key={`val-${i}`} x={startX + barW + 5} y={y + barH / 2 + 3} fill="#c9d1d9" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{stats[i]}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 7. KnockoutStageAdvancementRing – Circular ring for KO advancement
+function KnockoutStageAdvancementRing({
+  knockoutRound,
+  eliminated,
+}: {
+  knockoutRound: number;
+  eliminated: boolean;
+}) {
+  const stages = 4;
+  const reached = eliminated ? Math.min(knockoutRound, stages) : Math.min(knockoutRound, stages);
+  const pct = (reached / stages) * 100;
+  const cx = 150;
+  const cy = 100;
+  const r = 60;
+  const strokeW = 14;
+  const circumference = 2 * Math.PI * r;
+  const filledLen = (pct / 100) * circumference;
+
+  const stageLabels = ['R16', 'QF', 'SF', 'Final'];
+  const stageAngles = stageLabels.map((_, i) => -Math.PI / 2 + (i / stages) * 2 * Math.PI);
+  const stagePositions = stageAngles.map(a => ({
+    x: cx + Math.cos(a) * (r + 22),
+    y: cy + Math.sin(a) * (r + 22),
+  }));
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        KO ADVANCEMENT RATE
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#222" strokeWidth={strokeW} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#FF5500" strokeWidth={strokeW} strokeDasharray={`${filledLen} ${circumference}`} strokeDashoffset="0" strokeLinecap="butt" />
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="700" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{pct}%</text>
+        {stagePositions.map((pos, i) => (
+          <text key={`sl-${i}`} x={pos.x} y={pos.y + 3} textAnchor="middle" fill={i < reached ? '#FF5500' : '#666'} fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{stageLabels[i]}</text>
+        ))}
+        {stageAngles.map((a, i) => {
+          const nx = cx + Math.cos(a) * (r - 24);
+          const ny = cy + Math.sin(a) * (r - 24);
+          return <circle key={`nd-${i}`} cx={nx} cy={ny} r="2" fill={i < reached ? '#FF5500' : '#333'} />;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 8. CompetitionExperienceGauge – Semi-circular gauge 0-100
+function CompetitionExperienceGauge({
+  fixtures,
+  playerClubId,
+  currentSeason,
+  currentClub,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+  currentSeason: number;
+  currentClub: { id: string };
+}) {
+  const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+  const baseExp = played.reduce((acc, f) => {
+    const isHome = f.homeClubId === playerClubId;
+    const gf = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+    const ga = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+    return acc + (gf > ga ? 12 : gf === ga ? 6 : 3);
+  }, 0);
+  const histBonus = ((currentClub.id.charCodeAt(0) * 3 + currentSeason) % 8) * 5;
+  const score = Math.min(100, baseExp + histBonus);
+  const cx = 150;
+  const cy = 140;
+  const r = 80;
+  const startAngle = Math.PI;
+  const endAngle = 2 * Math.PI;
+  const scoreAngle = startAngle + (score / 100) * Math.PI;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        CONTINENTAL EXPERIENCE LEVEL
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {/* Background arc */}
+        <path d={`M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`} fill="none" stroke="#222" strokeWidth="14" strokeLinecap="butt" />
+        {/* Score arc */}
+        {score > 0 && (
+          <path d={`M${cx - r},${cy} A${r},${r} 0 ${score > 50 ? 1 : 0} 1 ${cx + Math.cos(scoreAngle) * r},${cy + Math.sin(scoreAngle) * r}`} fill="none" stroke="#00E5FF" strokeWidth="14" strokeLinecap="butt" />
+        )}
+        <text x={cx} y={cy - 10} textAnchor="middle" fill="#c9d1d9" fontSize="24" fontWeight="700" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{score}</text>
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#888" fontSize="9" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>/ 100</text>
+        {/* Tick marks */}
+        {[0, 25, 50, 75, 100].map((val) => {
+          const a = startAngle + (val / 100) * Math.PI;
+          const ix = cx + Math.cos(a) * (r - 10);
+          const iy = cy + Math.sin(a) * (r - 10);
+          const ox = cx + Math.cos(a) * (r + 2);
+          const oy = cy + Math.sin(a) * (r + 2);
+          return (
+            <g key={`tick-${val}`}>
+              <line x1={ix} y1={iy} x2={ox} y2={oy} stroke="#555" strokeWidth="1.5" />
+              <text x={cx + Math.cos(a) * (r + 14)} y={cy + Math.sin(a) * (r + 14) + 3} textAnchor="middle" fill="#666" fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{val}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 9. HistoricalPerformanceRadar – 5-axis radar (historical)
+function HistoricalPerformanceRadar({
+  fixtures,
+  playerClubId,
+  currentSeason,
+  currentClub,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+  currentSeason: number;
+  currentClub: { id: string };
+}) {
+  const axes = ['Best Run', 'Group Perf', 'KO Record', 'Away Record', 'Goal Record'];
+  const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+  const histSeed = (currentClub.id.charCodeAt(0) * 7 + currentSeason) % 20;
+
+  const values = played.reduce(
+    (acc, f) => {
+      const isHome = f.homeClubId === playerClubId;
+      const gf = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+      const ga = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+      acc[0] += (gf > ga ? 15 : 5); // Best Run
+      acc[1] += (gf >= 2 ? 10 : 5);  // Group Perf
+      acc[2] += (gf > ga ? 12 : 4);  // KO Record
+      if (!isHome) acc[3] += (gf > ga ? 15 : 5); // Away Record
+      acc[4] += gf * 3;              // Goal Record
+      return acc;
+    },
+    [histSeed, histSeed, histSeed, 0, histSeed] as number[]
+  );
+
+  const cx = 150;
+  const cy = 105;
+  const maxR = 70;
+  const n = axes.length;
+  const maxVals = values.map(v => Math.min(100, v));
+  const normVals = maxVals.map(v => (v / 100) * maxR);
+
+  const axisPoints = axes.map((_, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+    return { x: cx + Math.cos(angle) * maxR, y: cy + Math.sin(angle) * maxR };
+  });
+  const valuePoints = normVals.map((r, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+    return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
+  });
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#CCFF00', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        HISTORICAL PERFORMANCE RADAR
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {[0.25, 0.5, 0.75, 1].map((pct, ri) => {
+          const ringPts = axes.map((_, i) => {
+            const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+            return { x: cx + Math.cos(angle) * maxR * pct, y: cy + Math.sin(angle) * maxR * pct };
+          });
+          const d = ringPts.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x},${pt.y}`).join(' ') + 'Z';
+          return <path key={`ring-${ri}`} d={d} fill="none" stroke="#222" strokeWidth="0.5" />;
+        })}
+        {axisPoints.map((pt, i) => (
+          <line key={`ax-${i}`} x1={cx} y1={cy} x2={pt.x} y2={pt.y} stroke="#222" strokeWidth="0.5" />
+        ))}
+        <path d={valuePoints.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x},${pt.y}`).join(' ') + 'Z'} fill="#CCFF00" fillOpacity="0.15" stroke="#CCFF00" strokeWidth="1.5" />
+        {valuePoints.map((pt, i) => (
+          <circle key={`dot-${i}`} cx={pt.x} cy={pt.y} r="3" fill="#CCFF00" />
+        ))}
+        {axisPoints.map((pt, i) => {
+          const lx = cx + (pt.x - cx) * 1.18;
+          const ly = cy + (pt.y - cy) * 1.18;
+          return <text key={`lbl-${i}`} x={lx} y={ly} textAnchor="middle" fill="#c9d1d9" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{axes[i]}</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 10. ContinentalRevenueBars – 5 horizontal revenue bars
+function ContinentalRevenueBars({
+  fixtures,
+  playerClubId,
+  currentSeason,
+  currentClub,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+  currentClub: { id: string };
+  currentSeason: number;
+}) {
+  const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+  const baseSeed = (currentClub.id.charCodeAt(0) * 13 + currentSeason) % 40 + 10;
+  const multiplier = played.length || 1;
+  const revenueData = [
+    { label: 'Prize Money', value: baseSeed * multiplier * 3 },
+    { label: 'TV Rights', value: baseSeed * multiplier * 2 },
+    { label: 'Gate Receipts', value: baseSeed * multiplier },
+    { label: 'Merchandise', value: baseSeed * multiplier * 1.5 },
+    { label: 'Sponsorship', value: baseSeed * multiplier * 2.5 },
+  ];
+  const maxVal = Math.max(...revenueData.map(d => d.value), 1);
+  const barH = 18;
+  const gap = 10;
+  const startX = 95;
+  const maxBarW = 165;
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#FF5500', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        CONTINENTAL REVENUE BREAKDOWN
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {revenueData.map((d, i) => {
+          const barW = Math.max(2, (d.value / maxVal) * maxBarW);
+          const y = 10 + i * (barH + gap);
+          return (
+            <g key={d.label}>
+              <text x={startX - 5} y={y + barH / 2 + 3} textAnchor="end" fill="#c9d1d9" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{d.label}</text>
+              <rect key={`bar-${i}`} x={startX} y={y} width={barW} height={barH} rx="2" fill="#FF5500" opacity="0.8" />
+              <text key={`val-${i}`} x={startX + barW + 5} y={y + barH / 2 + 3} fill="#c9d1d9" fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{d.value}M</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// 11. SeasonProgressDonut – 4-segment donut via .reduce()
+function SeasonProgressDonut({
+  fixtures,
+  playerClubId,
+  currentSeason,
+  currentClub,
+}: {
+  fixtures: ContinentalFixture[];
+  playerClubId: string;
+  currentSeason: number;
+  currentClub: { id: string };
+}) {
+  const played = fixtures.filter(f => f.played && (f.homeClubId === playerClubId || f.awayClubId === playerClubId));
+  const seed = (currentClub.id.charCodeAt(0) * 5 + currentSeason * 3) % 30;
+  const segments = [
+    { label: 'Group Stage', value: seed + played.filter(f => f.stage === 'group').length * 8 },
+    { label: 'KO Stage', value: Math.max(0, seed - 5 + played.filter(f => f.stage !== 'group').length * 10) },
+    { label: 'Final', value: Math.max(0, Math.floor(seed / 6)) },
+    { label: 'Did Not Qualify', value: Math.max(0, 5 - seed) + 2 },
+  ];
+  const total = segments.reduce((a, s) => a + s.value, 0) || 4;
+  const cx = 100;
+  const cy = 100;
+  const outerR = 65;
+  const innerR = 40;
+  const colors = ['#00E5FF', '#CCFF00', '#FF5500', '#666666'];
+
+  const arcResult = segments.reduce(
+    (acc, seg, i) => {
+      const startAngle = acc.cumAngle;
+      const sweep = (seg.value / total) * 2 * Math.PI;
+      const endAngle = startAngle + sweep;
+      const x1o = cx + Math.cos(startAngle) * outerR;
+      const y1o = cy + Math.sin(startAngle) * outerR;
+      const x2o = cx + Math.cos(endAngle) * outerR;
+      const y2o = cy + Math.sin(endAngle) * outerR;
+      const x1i = cx + Math.cos(endAngle) * innerR;
+      const y1i = cy + Math.sin(endAngle) * innerR;
+      const x2i = cx + Math.cos(startAngle) * innerR;
+      const y2i = cy + Math.sin(startAngle) * innerR;
+      const large = sweep > Math.PI ? 1 : 0;
+      acc.paths.push(
+        <path key={`arc-${i}`} d={`M${x1o},${y1o} A${outerR},${outerR} 0 ${large} 1 ${x2o},${y2o} L${x1i},${y1i} A${innerR},${innerR} 0 ${large} 0 ${x2i},${y2i} Z`} fill={colors[i]} opacity="0.8" />
+      );
+      const midAngle = startAngle + sweep / 2;
+      const lx = cx + Math.cos(midAngle) * (outerR + 18);
+      const ly = cy + Math.sin(midAngle) * (outerR + 18);
+      acc.labels.push(
+        <text key={`lbl-${i}`} x={lx} y={ly} textAnchor="middle" fill="#c9d1d9" fontSize="7" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{seg.label}</text>
+      );
+      acc.cumAngle = endAngle;
+      return acc;
+    },
+    { paths: [] as React.ReactNode[], labels: [] as React.ReactNode[], cumAngle: -Math.PI / 2 }
+  );
+
+  return (
+    <div className="rounded-lg p-3" style={{ backgroundColor: '#0a0a0a', border: '1px solid #333' }}>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: '#00E5FF', fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>
+        SEASON PROGRESS DISTRIBUTION
+      </p>
+      <svg viewBox="0 0 300 200" className="w-full">
+        {arcResult.paths}
+        {arcResult.labels}
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="#888" fontSize="8" style={{ fontFamily: "'Monaspace Neon','Space Grotesk',monospace" }}>{currentSeason}</text>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 
@@ -2809,6 +3475,15 @@ export default function ContinentalPanel() {
               />
             </div>
 
+            {/* Web3 SVG: European Journey Timeline */}
+            <EuropeanJourneyTimeline knockoutRound={continentalKnockoutRound} eliminated={continentalEliminated} />
+
+            {/* Web3 SVG: Competition Experience Gauge */}
+            <CompetitionExperienceGauge fixtures={continentalFixtures} playerClubId={currentClub.id} currentSeason={currentSeason} currentClub={currentClub} />
+
+            {/* Web3 SVG: Continental Revenue Bars */}
+            <ContinentalRevenueBars fixtures={continentalFixtures} playerClubId={currentClub.id} currentSeason={currentSeason} currentClub={currentClub} />
+
             {/* Match schedule */}
             <div className="rounded-lg bg-[#161b22] border border-[#30363d] p-4">
               <h3 className="text-sm font-semibold text-[#c9d1d9] mb-2">
@@ -2901,6 +3576,12 @@ export default function ContinentalPanel() {
                     playerClubId={currentClub.id}
                   />
                 )}
+                {/* Web3 SVG: Group Stage Position Radar */}
+                <GroupStagePositionRadar fixtures={continentalFixtures} playerClubId={currentClub.id} />
+                {/* Web3 SVG: Opponent Nation Donut */}
+                <OpponentNationDonut fixtures={continentalFixtures} playerClubId={currentClub.id} />
+                {/* Web3 SVG: Continental Goals Area */}
+                <ContinentalGoalsArea fixtures={continentalFixtures} playerClubId={currentClub.id} />
               </>
             ) : (
               <div className="text-center py-8 text-[#8b949e] text-sm">
@@ -2932,6 +3613,12 @@ export default function ContinentalPanel() {
                   playerClubId={currentClub.id}
                   eliminated={continentalEliminated}
                 />
+                {/* Web3 SVG: Away Performance Bars */}
+                <AwayPerformanceBars fixtures={continentalFixtures} playerClubId={currentClub.id} />
+                {/* Web3 SVG: KO Advancement Ring */}
+                <KnockoutStageAdvancementRing knockoutRound={continentalKnockoutRound} eliminated={continentalEliminated} />
+                {/* Web3 SVG: Historical Performance Radar */}
+                <HistoricalPerformanceRadar fixtures={continentalFixtures} playerClubId={currentClub.id} currentSeason={currentSeason} currentClub={currentClub} />
               </>
             ) : (
               <div className="text-center py-8 text-[#8b949e] text-sm">
@@ -2961,6 +3648,8 @@ export default function ContinentalPanel() {
               currentSeason={currentSeason}
               continentalCompetition={continentalCompetition}
             />
+            {/* Web3 SVG: Coefficient Progression Line */}
+            <CoefficientProgressionLine currentClub={currentClub} currentSeason={currentSeason} />
           </motion.div>
         )}
 
@@ -2979,6 +3668,8 @@ export default function ContinentalPanel() {
               currentClub={currentClub}
               currentSeason={currentSeason}
             />
+            {/* Web3 SVG: Season Progress Donut */}
+            <SeasonProgressDonut fixtures={continentalFixtures} playerClubId={currentClub.id} currentSeason={currentSeason} currentClub={currentClub} />
           </motion.div>
         )}
       </Tabs>
