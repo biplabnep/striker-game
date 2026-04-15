@@ -119,6 +119,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'scouting_network_enhanced', icon: <Search className="h-5 w-5" />, label: 'Scouting+' },
       { screen: 'coach_career_enhanced', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach+' },
       { screen: 'season_training_enhanced', icon: <Dumbbell className="h-5 w-5" />, label: 'Season Train+' },
+      { screen: 'weather_enhanced', icon: <CloudSun className="h-5 w-5" />, label: 'Weather+' },
+      { screen: 'draft_system_enhanced', icon: <UsersRound className="h-5 w-5" />, label: 'Draft+' },
     ],
   },
   {

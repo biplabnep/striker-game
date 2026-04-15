@@ -134,6 +134,8 @@ import TacticalBoardEnhanced from '@/components/game/TacticalBoardEnhanced';
 import ScoutingNetworkEnhanced from '@/components/game/ScoutingNetworkEnhanced';
 import CoachCareerEnhanced from '@/components/game/CoachCareerEnhanced';
 import SeasonTrainingEnhanced from '@/components/game/SeasonTrainingEnhanced';
+import WeatherEnhanced from '@/components/game/WeatherEnhanced';
+import DraftSystemEnhanced from '@/components/game/DraftSystemEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -263,6 +265,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   scouting_network_enhanced: ScoutingNetworkEnhanced,
   coach_career_enhanced: CoachCareerEnhanced,
   season_training_enhanced: SeasonTrainingEnhanced,
+  weather_enhanced: WeatherEnhanced,
+  draft_system_enhanced: DraftSystemEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -360,6 +364,8 @@ const gameScreens: GameScreen[] = [
   'scouting_network_enhanced',
   'coach_career_enhanced',
   'season_training_enhanced',
+  'weather_enhanced',
+  'draft_system_enhanced',
 ];
 
 export default function Home() {

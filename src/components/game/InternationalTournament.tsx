@@ -2510,6 +2510,549 @@ export default function InternationalTournament() {
           </motion.div>
         </TabsContent>
       </Tabs>
+
+      {/* ============================================================ */}
+      {/* SVG Data Visualization Sections */}
+      {/* ============================================================ */}
+      <div className="mt-6 space-y-3">
+        <h2 className="text-xs font-bold text-[#8b949e] uppercase tracking-wider px-1">
+          Analytics
+        </h2>
+
+        {/* 1. SVG Tournament Progress Ring */}
+        {(() => {
+          const roundNames = ['Group Stage', 'R16', 'QF', 'SF', 'Final', 'Winner'];
+          const totalRounds = roundNames.length;
+          const capsVal = tournamentData.caps ?? 0;
+          const goalsVal = tournamentData.goals ?? 0;
+          const historyLen = tournamentData.history.length;
+          const reachedRound = Math.min(historyLen + Math.floor(goalsVal / 5), totalRounds);
+          const progress = reachedRound / totalRounds;
+          const ringRadius = 38;
+          const ringCircumference = 2 * Math.PI * ringRadius;
+          const ringDash = `${progress * ringCircumference} ${ringCircumference}`;
+          const roundLabel = roundNames[reachedRound - 1] ?? roundNames[0];
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#FF5500]/20 border border-[#FF5500]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#FF5500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">Tournament Progress Ring</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#FF5500]">{roundLabel}</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="60" cy="60" r={ringRadius} fill="none" stroke="#21262d" strokeWidth="8"/>
+                <circle cx="60" cy="60" r={ringRadius} fill="none" stroke="#FF5500" strokeWidth="8"
+                  strokeDasharray={ringDash} strokeDashoffset={ringCircumference * 0.25}
+                  strokeLinecap="round"/>
+                <text x="60" y="56" textAnchor="middle" fill="#FF5500" fontSize="20" fontWeight="700">{reachedRound}</text>
+                <text x="60" y="72" textAnchor="middle" fill="#8b949e" fontSize="8">of {totalRounds} rounds</text>
+                {roundNames.map((rn, i) => {
+                  const dotX = 150 + (i / (totalRounds - 1)) * 140;
+                  const filled = i < reachedRound;
+                  return (
+                    <g key={rn}>
+                      <circle cx={dotX} cy="50" r="4" fill={filled ? '#FF5500' : '#21262d'} stroke={filled ? '#FF5500' : '#30363d'} strokeWidth="1"/>
+                      <text x={dotX} y="70" textAnchor="middle" fill={filled ? '#c9d1d9' : '#484f58'} fontSize="7">{rn}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 2. SVG International Goals Donut */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'goals_donut');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const totalGoals = tournamentData.goals ?? 0;
+          const segments = [
+            { label: 'Group', value: Math.max(1, Math.floor(sr(baseSeed) * totalGoals + 2)), color: '#CCFF00' },
+            { label: 'Knockout', value: Math.max(1, Math.floor(sr(baseSeed + 1) * totalGoals + 1)), color: '#00E5FF' },
+            { label: 'Friendly', value: Math.max(1, Math.floor(sr(baseSeed + 2) * totalGoals + 3)), color: '#FF5500' },
+            { label: 'Qualifiers', value: Math.max(1, Math.floor(sr(baseSeed + 3) * totalGoals + 4)), color: '#666666' },
+          ];
+          const segTotal = segments.reduce((a, s) => a + s.value, 0);
+          let cumulative = 0;
+          const donutR = 36;
+          const donutC = 2 * Math.PI * donutR;
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#CCFF00]/20 border border-[#CCFF00]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">International Goals Donut</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#CCFF00]">{segTotal} goals</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                {segments.map((seg) => {
+                  const pct = seg.value / segTotal;
+                  const dashLen = pct * donutC;
+                  const dashOff = donutC * 0.25 - cumulative * donutC;
+                  cumulative += pct;
+                  return (
+                    <g key={seg.label}>
+                      <circle cx="60" cy="60" r={donutR} fill="none" stroke={seg.color} strokeWidth="10"
+                        strokeDasharray={`${dashLen} ${donutC - dashLen}`} strokeDashoffset={dashOff}/>
+                    </g>
+                  );
+                })}
+                <text x="60" y="57" textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="700">{segTotal}</text>
+                <text x="60" y="70" textAnchor="middle" fill="#8b949e" fontSize="7">total</text>
+                {segments.map((seg, i) => {
+                  const ly = 30 + i * 22;
+                  return (
+                    <g key={seg.label + '-legend'}>
+                      <rect x="160" y={ly - 5} width="10" height="10" rx="2" fill={seg.color}/>
+                      <text x="176" y={ly + 4} fill="#c9d1d9" fontSize="8">{seg.label}: {seg.value}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 3. SVG National Team Rating Area Chart */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'rating_area');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const quality = getTeamQuality(nationInfo.name);
+          const ratings = Array.from({ length: 8 }, (_, i) => {
+            const base = quality - 8 + Math.floor(sr(baseSeed + i) * 16);
+            return Math.max(40, Math.min(99, base));
+          });
+          const pad = { t: 10, b: 20, l: 30, r: 10 };
+          const cW = 320 - pad.l - pad.r;
+          const cH = 120 - pad.t - pad.b;
+          const minR = 40;
+          const maxR = 100;
+          const range = maxR - minR;
+          const pts = ratings.map((r, i) => ({
+            x: pad.l + (i / 7) * cW,
+            y: pad.t + cH - ((r - minR) / range) * cH,
+          }));
+          const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+          const areaPath = `${linePath} L${pts[7].x},${pad.t + cH} L${pts[0].x},${pad.t + cH} Z`;
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#00E5FF]/20 border border-[#00E5FF]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">National Team Rating Area</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#00E5FF]">FIFA Rating</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                {[50, 60, 70, 80, 90].map(v => {
+                  const y = pad.t + cH - ((v - minR) / range) * cH;
+                  return (
+                    <g key={v}>
+                      <line x1={pad.l} y1={y} x2={320 - pad.r} y2={y} stroke="#21262d" strokeWidth="0.5"/>
+                      <text x={pad.l - 4} y={y + 3} textAnchor="end" fill="#484f58" fontSize="7">{v}</text>
+                    </g>
+                  );
+                })}
+                <path d={areaPath} fill="#00E5FF" fillOpacity="0.1"/>
+                <path d={linePath} fill="none" stroke="#00E5FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                {pts.map((p, i) => (
+                  <g key={i}>
+                    <circle cx={p.x} cy={p.y} r="2.5" fill="#0d1117" stroke="#00E5FF" strokeWidth="1.5"/>
+                    <text x={p.x} y={120 - 4} textAnchor="middle" fill="#484f58" fontSize="6">P{i + 1}</text>
+                  </g>
+                ))}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 4. SVG Caps Milestone Gauge */}
+        {(() => {
+          const capsVal = tournamentData.caps ?? 0;
+          const milestone = 100;
+          const pct = Math.min(capsVal / milestone, 1);
+          const gaugeR = 44;
+          const gaugeCx = 160;
+          const gaugeCy = 100;
+          const startAngle = Math.PI;
+          const endAngle = 0;
+          const fillAngle = startAngle + pct * (endAngle - startAngle);
+          const arcPath = `M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 ${pct > 0.5 ? 1 : 0} 1 ${gaugeCx + Math.cos(fillAngle) * gaugeR} ${gaugeCy - Math.sin(fillAngle) * gaugeR}`;
+          const bgArcPath = `M ${gaugeCx - gaugeR} ${gaugeCy} A ${gaugeR} ${gaugeR} 0 1 1 ${gaugeCx + gaugeR} ${gaugeCy}`;
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#CCFF00]/20 border border-[#CCFF00]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">Caps Milestone Gauge</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#CCFF00]">{capsVal}/100</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                <path d={bgArcPath} fill="none" stroke="#21262d" strokeWidth="10" strokeLinecap="round"/>
+                {pct > 0.01 && (
+                  <path d={arcPath} fill="none" stroke="#CCFF00" strokeWidth="10" strokeLinecap="round"/>
+                )}
+                <text x={gaugeCx} y={gaugeCy - 10} textAnchor="middle" fill="#CCFF00" fontSize="22" fontWeight="700">{capsVal}</text>
+                <text x={gaugeCx} y={gaugeCy + 6} textAnchor="middle" fill="#8b949e" fontSize="8">caps</text>
+                <text x={gaugeCx - gaugeR - 5} y={gaugeCy + 14} textAnchor="middle" fill="#484f58" fontSize="7">0</text>
+                <text x={gaugeCx + gaugeR + 5} y={gaugeCy + 14} textAnchor="middle" fill="#484f58" fontSize="7">100</text>
+                <text x={gaugeCx} y={gaugeCy + 16} textAnchor="middle" fill={capsVal >= 100 ? '#CCFF00' : '#484f58'} fontSize="7">{capsVal >= 100 ? 'CENTURION!' : `${milestone - capsVal} to go`}</text>
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 5. SVG International Trophies Bars */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'trophies');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const trophies = [
+            { label: 'World Cup', count: Math.floor(sr(baseSeed) * 4) },
+            { label: 'Continental', count: Math.floor(sr(baseSeed + 1) * 5) },
+            { label: 'Confederation', count: Math.floor(sr(baseSeed + 2) * 3) },
+            { label: 'Friendly Cup', count: Math.floor(sr(baseSeed + 3) * 6) },
+          ];
+          const maxCount = trophies.reduce((mx, t) => Math.max(mx, t.count), 1);
+          const totalTrophies = trophies.reduce((a, t) => a + t.count, 0);
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#FF5500]/20 border border-[#FF5500]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#FF5500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 6 9 6 9zm12 0h1.5a2.5 2.5 0 000-5C17 4 18 9 18 9zM6 9h12"/><path d="M6 9a6 6 0 0012 0"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">International Trophies</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#FF5500]">{totalTrophies} total</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                {trophies.map((t, i) => {
+                  const barW = maxCount > 0 ? (t.count / maxCount) * 200 : 4;
+                  const barY = 16 + i * 26;
+                  return (
+                    <g key={t.label}>
+                      <text x="90" y={barY + 10} textAnchor="end" fill="#c9d1d9" fontSize="8">{t.label}</text>
+                      <rect x="96" y={barY} width="200" height="16" rx="3" fill="#21262d"/>
+                      <rect x="96" y={barY} width={Math.max(barW, 4)} height="16" rx="3" fill="#FF5500" fillOpacity="0.8"/>
+                      <text x={96 + Math.max(barW, 4) + 6} y={barY + 12} fill="#c9d1d9" fontSize="8" fontWeight="600">{t.count}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 6. SVG Tournament Match Results Timeline */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'match_timeline');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const results = Array.from({ length: 8 }, (_, i) => {
+            const r = sr(baseSeed + i);
+            return r < 0.5 ? 'W' : r < 0.75 ? 'D' : 'L';
+          });
+          const wCount = results.reduce((a, r) => a + (r === 'W' ? 1 : 0), 0);
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#00E5FF]/20 border border-[#00E5FF]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">Match Results Timeline</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#00E5FF]">{wCount}W / {results.length} matches</span>
+              </div>
+              <svg viewBox="0 0 320 80" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                <line x1="30" y1="40" x2="290" y2="40" stroke="#30363d" strokeWidth="2"/>
+                {results.map((r, i) => {
+                  const cx = 40 + (i / 7) * 250;
+                  const color = r === 'W' ? '#34d399' : r === 'D' ? '#fbbf24' : '#ef4444';
+                  return (
+                    <g key={i}>
+                      <circle cx={cx} cy="40" r="10" fill="#161b22" stroke={color} strokeWidth="2"/>
+                      <text x={cx} y="44" textAnchor="middle" fill={color} fontSize="10" fontWeight="700">{r}</text>
+                      <text x={cx} y="65" textAnchor="middle" fill="#484f58" fontSize="7">M{i + 1}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 7. SVG Player Contribution Radar */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'radar');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const axes = ['Goals', 'Assists', 'Minutes', 'Clean Sheets', 'MOTM'];
+          const values = axes.map((_, i) => 0.3 + sr(baseSeed + i) * 0.7);
+          const cx = 160;
+          const cy = 60;
+          const maxR = 42;
+          const levels = [0.25, 0.5, 0.75, 1.0];
+          const angleStep = (2 * Math.PI) / axes.length;
+          const startAngle = -Math.PI / 2;
+          const dataPoints = values.map((v, i) => ({
+            x: cx + Math.cos(startAngle + i * angleStep) * maxR * v,
+            y: cy + Math.sin(startAngle + i * angleStep) * maxR * v,
+          }));
+          const dataPath = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#00E5FF]/20 border border-[#00E5FF]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">Player Contribution Radar</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#00E5FF]">Int&apos;l Career</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                {levels.map((lv) => (
+                  <polygon key={lv}
+                    points={axes.map((_, i) => {
+                      const px = cx + Math.cos(startAngle + i * angleStep) * maxR * lv;
+                      const py = cy + Math.sin(startAngle + i * angleStep) * maxR * lv;
+                      return `${px},${py}`;
+                    }).join(' ')}
+                    fill="none" stroke="#21262d" strokeWidth="0.5"/>
+                ))}
+                {axes.map((_, i) => (
+                  <line key={i} x1={cx} y1={cy} x2={cx + Math.cos(startAngle + i * angleStep) * maxR} y2={cy + Math.sin(startAngle + i * angleStep) * maxR} stroke="#21262d" strokeWidth="0.5"/>
+                ))}
+                <path d={dataPath} fill="#00E5FF" fillOpacity="0.15" stroke="#00E5FF" strokeWidth="1.5"/>
+                {dataPoints.map((p, i) => (
+                  <g key={i}>
+                    <circle cx={p.x} cy={p.y} r="3" fill="#0d1117" stroke="#00E5FF" strokeWidth="1.5"/>
+                  </g>
+                ))}
+                {axes.map((label, i) => {
+                  const lx = cx + Math.cos(startAngle + i * angleStep) * (maxR + 14);
+                  const ly = cy + Math.sin(startAngle + i * angleStep) * (maxR + 14);
+                  return (
+                    <text key={label} x={lx} y={ly + 3} textAnchor="middle" fill="#8b949e" fontSize="7">{label}</text>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 8. SVG Qualification Campaign Bars */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'qual_campaign');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const teamNames = [nationInfo.name, 'Wales', 'Georgia', 'Armenia', 'Latvia', 'Andorra'];
+          const teamPoints = teamNames.map((_, i) => Math.floor(sr(baseSeed + i) * 18) + (i === 0 ? 8 : 0));
+          const maxPts = teamPoints.reduce((mx, p) => Math.max(mx, p), 1);
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#CCFF00]/20 border border-[#CCFF00]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">Qualification Campaign</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#CCFF00]">Group Standings</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                {teamNames.map((name, i) => {
+                  const barW = maxPts > 0 ? (teamPoints[i] / maxPts) * 180 : 4;
+                  const barY = 8 + i * 18;
+                  const isPlayer = i === 0;
+                  return (
+                    <g key={name}>
+                      <text x="78" y={barY + 10} textAnchor="end" fill={isPlayer ? '#CCFF00' : '#c9d1d9'} fontSize="8" fontWeight={isPlayer ? 700 : 400}>{name}</text>
+                      <rect x="84" y={barY} width="180" height="13" rx="2" fill="#21262d"/>
+                      <rect x="84" y={barY} width={Math.max(barW, 4)} height="13" rx="2" fill={isPlayer ? '#CCFF00' : '#30363d'} fillOpacity={isPlayer ? 0.8 : 0.5}/>
+                      <text x={84 + Math.max(barW, 4) + 6} y={barY + 10} fill={isPlayer ? '#CCFF00' : '#c9d1d9'} fontSize="8" fontWeight="600">{teamPoints[i]}pts</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 9. SVG International Form Donut */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'form_donut');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const formSegments = [
+            { label: 'Won', value: Math.floor(sr(baseSeed) * 5) + 2, color: '#CCFF00' },
+            { label: 'Drawn', value: Math.floor(sr(baseSeed + 1) * 4) + 1, color: '#666666' },
+            { label: 'Lost', value: Math.floor(sr(baseSeed + 2) * 3) + 1, color: '#FF5500' },
+          ];
+          const formTotal = formSegments.reduce((a, s) => a + s.value, 0);
+          let fCumulative = 0;
+          const fDonutR = 36;
+          const fDonutC = 2 * Math.PI * fDonutR;
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#CCFF00]/20 border border-[#CCFF00]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">International Form</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#CCFF00]">Last {formTotal}</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                {formSegments.map((seg) => {
+                  const pct = seg.value / formTotal;
+                  const dashLen = pct * fDonutC;
+                  const dashOff = fDonutC * 0.25 - fCumulative * fDonutC;
+                  fCumulative += pct;
+                  return (
+                    <g key={seg.label}>
+                      <circle cx="60" cy="60" r={fDonutR} fill="none" stroke={seg.color} strokeWidth="12"
+                        strokeDasharray={`${dashLen} ${fDonutC - dashLen}`} strokeDashoffset={dashOff}/>
+                    </g>
+                  );
+                })}
+                <text x="60" y="57" textAnchor="middle" fill="#c9d1d9" fontSize="16" fontWeight="700">{formSegments[0].value}W</text>
+                <text x="60" y="70" textAnchor="middle" fill="#8b949e" fontSize="7">{formSegments[1].value}D {formSegments[2].value}L</text>
+                {formSegments.map((seg, i) => {
+                  const ly = 30 + i * 24;
+                  return (
+                    <g key={seg.label + '-fl'}>
+                      <rect x="160" y={ly - 6} width="12" height="12" rx="2" fill={seg.color}/>
+                      <text x="180" y={ly + 4} fill="#c9d1d9" fontSize="9">{seg.label}: {seg.value}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 10. SVG World Ranking Trend Line */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'ranking_trend');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const baseRank = getFifaRanking(nationInfo.name);
+          const rankings = Array.from({ length: 8 }, (_, i) => {
+            const variation = Math.floor(sr(baseSeed + i) * 30) - 15;
+            return Math.max(1, baseRank + variation);
+          });
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
+          const pad = { t: 12, b: 20, l: 30, r: 10 };
+          const cW = 320 - pad.l - pad.r;
+          const cH = 120 - pad.t - pad.b;
+          const minRank = Math.min(...rankings) - 2;
+          const maxRank = Math.max(...rankings) + 2;
+          const rankRange = maxRank - minRank || 1;
+          const rankPts = rankings.map((r, i) => ({
+            x: pad.l + (i / 7) * cW,
+            y: pad.t + cH - ((r - minRank) / rankRange) * cH,
+          }));
+          const rankLinePath = rankPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#FF5500]/20 border border-[#FF5500]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#FF5500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">World Ranking Trend</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#FF5500]">#{rankings[rankings.length - 1]}</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                {[Math.floor(minRank), Math.floor((minRank + maxRank) / 2), Math.ceil(maxRank)].map(v => {
+                  const y = pad.t + cH - ((v - minRank) / rankRange) * cH;
+                  return (
+                    <g key={v}>
+                      <line x1={pad.l} y1={y} x2={320 - pad.r} y2={y} stroke="#21262d" strokeWidth="0.5"/>
+                      <text x={pad.l - 4} y={y + 3} textAnchor="end" fill="#484f58" fontSize="7">#{v}</text>
+                    </g>
+                  );
+                })}
+                <path d={rankLinePath} fill="none" stroke="#FF5500" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                {rankPts.map((p, i) => (
+                  <g key={i}>
+                    <circle cx={p.x} cy={p.y} r="3" fill="#0d1117" stroke="#FF5500" strokeWidth="1.5"/>
+                    <text x={p.x} y={p.y - 6} textAnchor="middle" fill="#c9d1d9" fontSize="6">#{rankings[i]}</text>
+                    <text x={p.x} y={120 - 4} textAnchor="middle" fill="#484f58" fontSize="6">{months[i]}</text>
+                  </g>
+                ))}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+        {/* 11. SVG National Team Comparison Butterfly */}
+        {(() => {
+          const baseSeed = hashCode(nationInfo.name + 'butterfly');
+          const sr = (s: number) => { const x = Math.sin(s * 9301 + 49297); return x - Math.floor(x); };
+          const metrics = ['Goals', 'Assists', 'Passes', 'Tackles', 'Aerial'];
+          const playerStats = metrics.map((_, i) => 0.4 + sr(baseSeed + i) * 0.6);
+          const avgStats = metrics.map((_, i) => 0.3 + sr(baseSeed + i + 20) * 0.5);
+          const cx = 160;
+          const halfW = 110;
+          const barH = 10;
+          const gap = 22;
+          const startY = 10;
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+              className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#00E5FF]/20 border border-[#00E5FF]/30 flex items-center justify-center">
+                    <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                  </div>
+                  <h3 className="text-xs font-bold text-[#c9d1d9]">Team Comparison Butterfly</h3>
+                </div>
+                <span className="text-[9px] font-bold text-[#00E5FF]">Player vs Avg</span>
+              </div>
+              <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                <line x1={cx} y1="5" x2={cx} y2="115" stroke="#30363d" strokeWidth="0.5"/>
+                <text x={cx - halfW - 4} y="12" textAnchor="end" fill="#00E5FF" fontSize="7">YOU</text>
+                <text x={cx + halfW + 4} y="12" textAnchor="start" fill="#666666" fontSize="7">AVG</text>
+                {metrics.map((metric, i) => {
+                  const y = startY + i * gap;
+                  const pBarW = playerStats[i] * halfW;
+                  const aBarW = avgStats[i] * halfW;
+                  return (
+                    <g key={metric}>
+                      <rect x={cx - pBarW} y={y} width={pBarW} height={barH} rx="2" fill="#00E5FF" fillOpacity="0.7"/>
+                      <rect x={cx} y={y} width={aBarW} height={barH} rx="2" fill="#666666" fillOpacity="0.5"/>
+                      <text x={cx} y={y + barH + 4} textAnchor="middle" fill="#8b949e" fontSize="7">{metric}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </motion.div>
+          );
+        })()}
+
+      </div>
     </div>
   );
 }
