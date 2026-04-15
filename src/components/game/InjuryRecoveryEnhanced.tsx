@@ -1493,11 +1493,13 @@ function MentalReadinessCard({ playerName, week }: { playerName: string; week: n
 /* ════════════════════════════════════════════════════════════
    Tab 1: Status Panel
    ════════════════════════════════════════════════════════════ */
-function StatusTab({ playerName, week, fitness, injuryWeeks }: {
+function StatusTab({ playerName, week, fitness, injuryWeeks, currentInjury, injuryRisk }: {
   playerName: string;
   week: number;
   fitness: number;
   injuryWeeks: number;
+  currentInjury: any;
+  injuryRisk: any;
 }): React.JSX.Element {
   const overallStatus = useMemo(() => {
     const injuryFactor = injuryWeeks > 0 ? Math.max(0, 100 - injuryWeeks * 12) : 100;
@@ -1593,10 +1595,15 @@ function StatusTab({ playerName, week, fitness, injuryWeeks }: {
 /* ════════════════════════════════════════════════════════════
    Tab 2: Treatment Panel
    ════════════════════════════════════════════════════════════ */
-function TreatmentTab({ playerName, week, facilities }: {
+function TreatmentTab({ playerName, week, facilities, currentInjury, recoveryPlan, onStartRecovery, onCompleteSession, onAddSetback }: {
   playerName: string;
   week: number;
   facilities: number;
+  currentInjury: any;
+  recoveryPlan: any;
+  onStartRecovery: (injuryId: string, method: any) => void;
+  onCompleteSession: (sessionId: string) => void;
+  onAddSetback: (sessionId: string, setback: any) => void;
 }): React.JSX.Element {
   return (
     <div className="space-y-3">
@@ -1663,9 +1670,10 @@ function TreatmentTab({ playerName, week, facilities }: {
 /* ════════════════════════════════════════════════════════════
    Tab 3: Prevention Panel
    ════════════════════════════════════════════════════════════ */
-function PreventionTab({ playerName, week }: {
+function PreventionTab({ playerName, week, injuryRisk }: {
   playerName: string;
   week: number;
+  injuryRisk: any;
 }): React.JSX.Element {
   const preventionTips = useMemo(() => [
     {
@@ -1763,10 +1771,12 @@ function PreventionTab({ playerName, week }: {
 /* ════════════════════════════════════════════════════════════
    Tab 4: Return Panel
    ════════════════════════════════════════════════════════════ */
-function ReturnTab({ playerName, week, injuryWeeks }: {
+function ReturnTab({ playerName, week, injuryWeeks, currentInjury, recoveryPlan }: {
   playerName: string;
   week: number;
   injuryWeeks: number;
+  currentInjury: any;
+  recoveryPlan: any;
 }): React.JSX.Element {
   const matchReadiness = useMemo(() => {
     if (injuryWeeks <= 0) return 95;
@@ -1864,6 +1874,12 @@ function ReturnTab({ playerName, week, injuryWeeks }: {
 export default function InjuryRecoveryEnhanced() {
   const [activeTab, setActiveTab] = useState(0);
   const gameState = useGameStore(state => state.gameState);
+  const startRecoverySession = useGameStore(state => state.startRecoverySession);
+  const updateRecoveryProgress = useGameStore(state => state.updateRecoveryProgress);
+  const completeRecoverySession = useGameStore(state => state.completeRecoverySession);
+  const addRecoverySetback = useGameStore(state => state.addRecoverySetback);
+  const generateRecoveryPlan = useGameStore(state => state.generateRecoveryPlan);
+  const calculateInjuryRisk = useGameStore(state => state.calculateInjuryRisk);
 
   const playerName = gameState?.player.name ?? 'Player';
   const week = gameState?.currentWeek ?? 1;
@@ -1871,6 +1887,23 @@ export default function InjuryRecoveryEnhanced() {
   const injuryWeeks = gameState?.player.injuryWeeks ?? 0;
   const facilities = gameState?.currentClub.facilities ?? 65;
   const clubName = gameState?.currentClub.name ?? 'Club';
+  const currentInjury = gameState?.currentInjury ?? null;
+  const injuries = gameState?.injuries ?? [];
+
+  const handleStartRecovery = (injuryId: string, method: any) => {
+    startRecoverySession(injuryId, method);
+  };
+
+  const handleCompleteSession = (sessionId: string) => {
+    completeRecoverySession(sessionId);
+  };
+
+  const handleAddSetback = (sessionId: string, setback: any) => {
+    addRecoverySetback(sessionId, setback);
+  };
+
+  const recoveryPlan = currentInjury ? generateRecoveryPlan(currentInjury.id) : null;
+  const injuryRisk = calculateInjuryRisk();
 
   if (!gameState) {
     return <></>;
@@ -1908,16 +1941,42 @@ export default function InjuryRecoveryEnhanced() {
       {/* Tab Content */}
       <motion.div key={`tab-content-${activeTab}`} {...fadeIn} transition={{ duration: 0.2 }}>
         {activeTab === 0 && (
-          <StatusTab playerName={playerName} week={week} fitness={fitness} injuryWeeks={injuryWeeks} />
+          <StatusTab 
+            playerName={playerName} 
+            week={week} 
+            fitness={fitness} 
+            injuryWeeks={injuryWeeks}
+            currentInjury={currentInjury}
+            injuryRisk={injuryRisk}
+          />
         )}
         {activeTab === 1 && (
-          <TreatmentTab playerName={playerName} week={week} facilities={facilities} />
+          <TreatmentTab 
+            playerName={playerName} 
+            week={week} 
+            facilities={facilities}
+            currentInjury={currentInjury}
+            recoveryPlan={recoveryPlan}
+            onStartRecovery={handleStartRecovery}
+            onCompleteSession={handleCompleteSession}
+            onAddSetback={handleAddSetback}
+          />
         )}
         {activeTab === 2 && (
-          <PreventionTab playerName={playerName} week={week} />
+          <PreventionTab 
+            playerName={playerName} 
+            week={week}
+            injuryRisk={injuryRisk}
+          />
         )}
         {activeTab === 3 && (
-          <ReturnTab playerName={playerName} week={week} injuryWeeks={injuryWeeks} />
+          <ReturnTab 
+            playerName={playerName} 
+            week={week} 
+            injuryWeeks={injuryWeeks}
+            currentInjury={currentInjury}
+            recoveryPlan={recoveryPlan}
+          />
         )}
       </motion.div>
 

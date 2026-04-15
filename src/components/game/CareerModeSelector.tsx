@@ -37,7 +37,7 @@ import {
 // Types
 // ============================================================
 
-type CareerModeId = 'player_career' | 'coach_career' | 'player_manager' | 'fantasy_draft' | 'international';
+type CareerModeId = 'player_career' | 'coach_career' | 'fantasy_draft' | 'international';
 type ModeStatus = 'active' | 'available' | 'locked';
 type DifficultyLevel = 'easy' | 'normal' | 'hard' | 'legendary';
 
@@ -65,7 +65,6 @@ interface FeatureComparison {
   feature: string;
   playerCareer: boolean;
   coachCareer: boolean;
-  playerManager: boolean;
   fantasyDraft: boolean;
   international: boolean;
 }
@@ -103,7 +102,6 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
 const MODE_ACCENT_COLORS: Record<CareerModeId, string> = {
   player_career: '#34d399',
   coach_career: '#60a5fa',
-  player_manager: '#f59e0b',
   fantasy_draft: '#a78bfa',
   international: '#f472b6',
 };
@@ -111,22 +109,21 @@ const MODE_ACCENT_COLORS: Record<CareerModeId, string> = {
 const MODE_BG_COLORS: Record<CareerModeId, string> = {
   player_career: 'bg-[#34d399]/5',
   coach_career: 'bg-[#60a5fa]/5',
-  player_manager: 'bg-[#f59e0b]/5',
   fantasy_draft: 'bg-[#a78bfa]/5',
   international: 'bg-[#f472b6]/5',
 };
 
 const FEATURE_COMPARISONS: FeatureComparison[] = [
-  { feature: 'Play Matches', playerCareer: true, coachCareer: false, playerManager: true, fantasyDraft: false, international: true },
-  { feature: 'Manage Squad', playerCareer: false, coachCareer: true, playerManager: true, fantasyDraft: true, international: false },
-  { feature: 'Tactics', playerCareer: false, coachCareer: true, playerManager: true, fantasyDraft: true, international: false },
-  { feature: 'Transfers', playerCareer: true, coachCareer: true, playerManager: true, fantasyDraft: true, international: false },
-  { feature: 'Training', playerCareer: true, coachCareer: true, playerManager: true, fantasyDraft: false, international: true },
-  { feature: 'Youth Academy', playerCareer: true, coachCareer: true, playerManager: true, fantasyDraft: false, international: false },
-  { feature: 'Draft System', playerCareer: false, coachCareer: false, playerManager: false, fantasyDraft: true, international: false },
-  { feature: 'International Duty', playerCareer: true, coachCareer: false, playerManager: false, fantasyDraft: false, international: true },
-  { feature: 'Tournaments', playerCareer: false, coachCareer: true, playerManager: true, fantasyDraft: true, international: true },
-  { feature: 'Board Expectations', playerCareer: false, coachCareer: true, playerManager: true, fantasyDraft: false, international: false },
+  { feature: 'Play Matches', playerCareer: true, coachCareer: false, fantasyDraft: false, international: true },
+  { feature: 'Manage Squad', playerCareer: false, coachCareer: true, fantasyDraft: true, international: false },
+  { feature: 'Tactics', playerCareer: false, coachCareer: true, fantasyDraft: true, international: false },
+  { feature: 'Transfers', playerCareer: true, coachCareer: true, fantasyDraft: true, international: false },
+  { feature: 'Training', playerCareer: true, coachCareer: true, fantasyDraft: false, international: true },
+  { feature: 'Youth Academy', playerCareer: true, coachCareer: true, fantasyDraft: false, international: false },
+  { feature: 'Draft System', playerCareer: false, coachCareer: false, fantasyDraft: true, international: false },
+  { feature: 'International Duty', playerCareer: true, coachCareer: false, fantasyDraft: false, international: true },
+  { feature: 'Tournaments', playerCareer: false, coachCareer: true, fantasyDraft: true, international: true },
+  { feature: 'Board Expectations', playerCareer: false, coachCareer: true, fantasyDraft: false, international: false },
 ];
 
 // ============================================================
@@ -200,20 +197,6 @@ function CoachCareerIllustration() {
   );
 }
 
-function PlayerManagerIllustration() {
-  return (
-    <svg viewBox="0 0 80 80" className="w-16 h-16" fill="none">
-      <rect x="8" y="8" width="64" height="64" rx="12" fill="#f59e0b" opacity="0.1" />
-      <circle cx="30" cy="30" r="8" fill="#f59e0b" opacity="0.3" />
-      <circle cx="52" cy="30" r="8" fill="#f59e0b" opacity="0.3" />
-      <path d="M18 55 C18 44, 24 40, 30 40 C36 40, 42 44, 42 55" fill="#f59e0b" opacity="0.25" />
-      <path d="M40 55 C40 44, 46 40, 52 40 C58 40, 64 44, 64 55" fill="#f59e0b" opacity="0.25" />
-      <rect x="32" y="42" width="16" height="3" rx="1.5" fill="#f59e0b" opacity="0.5" />
-      <rect x="34" y="48" width="12" height="3" rx="1.5" fill="#f59e0b" opacity="0.4" />
-    </svg>
-  );
-}
-
 function FantasyDraftIllustration() {
   return (
     <svg viewBox="0 0 80 80" className="w-16 h-16" fill="none">
@@ -247,7 +230,6 @@ function InternationalIllustration() {
 const MODE_ILLUSTRATIONS: Record<CareerModeId, () => React.ReactNode> = {
   player_career: PlayerCareerIllustration,
   coach_career: CoachCareerIllustration,
-  player_manager: PlayerManagerIllustration,
   fantasy_draft: FantasyDraftIllustration,
   international: InternationalIllustration,
 };
@@ -298,7 +280,6 @@ export default function CareerModeSelector() {
   const careerModes = useMemo<CareerModeConfig[]>(() => {
     const season = careerSummary.season;
     const hasCoachingUnlocks = season >= 3;
-    const hasPlayerManagerUnlocks = season >= 5 && (gameState?.player.overall ?? 0) >= 80;
 
     const modes: CareerModeConfig[] = [
       {
@@ -322,17 +303,6 @@ export default function CareerModeSelector() {
         recommended: season >= 3 && season < 5,
         accentColor: MODE_ACCENT_COLORS.coach_career,
         bgColor: MODE_BG_COLORS.coach_career,
-      },
-      {
-        id: 'player_manager',
-        title: 'Player-Manager',
-        description: 'Play and manage — the ultimate dual role',
-        icon: <Briefcase className="h-6 w-6" />,
-        unlockRequirement: 'Requires Coach Level 2 & 80+ OVR',
-        status: hasPlayerManagerUnlocks ? 'available' : 'locked',
-        recommended: season >= 5,
-        accentColor: MODE_ACCENT_COLORS.player_manager,
-        bgColor: MODE_BG_COLORS.player_manager,
       },
       {
         id: 'fantasy_draft',
@@ -545,7 +515,6 @@ export default function CareerModeSelector() {
     const screenMap: Record<CareerModeId, string> = {
       player_career: 'dashboard',
       coach_career: 'coach_career',
-      player_manager: 'manager_office',
       fantasy_draft: 'fantasy_draft',
       international: 'international_tournament',
     };
@@ -737,13 +706,6 @@ export default function CareerModeSelector() {
                             isUnlocked={mode.status !== 'locked'}
                           />
                         )}
-                        {mode.id === 'player_manager' && (
-                          <PlayerManagerDetails
-                            season={careerSummary.season}
-                            overall={careerSummary.overall}
-                            isUnlocked={mode.status !== 'locked'}
-                          />
-                        )}
                         {mode.id === 'fantasy_draft' && (
                           <FantasyDraftDetails
                             season={careerSummary.season}
@@ -836,7 +798,6 @@ export default function CareerModeSelector() {
                     <th className="text-left text-xs font-semibold text-[#8b949e] px-4 py-3">Feature</th>
                     <th className="text-center text-xs font-semibold px-3 py-3" style={{ color: MODE_ACCENT_COLORS.player_career }}>Player</th>
                     <th className="text-center text-xs font-semibold px-3 py-3" style={{ color: MODE_ACCENT_COLORS.coach_career }}>Coach</th>
-                    <th className="text-center text-xs font-semibold px-3 py-3" style={{ color: MODE_ACCENT_COLORS.player_manager }}>P-Mgr</th>
                     <th className="text-center text-xs font-semibold px-3 py-3" style={{ color: MODE_ACCENT_COLORS.fantasy_draft }}>Draft</th>
                     <th className="text-center text-xs font-semibold px-3 py-3" style={{ color: MODE_ACCENT_COLORS.international }}>Intl</th>
                   </tr>
@@ -858,13 +819,6 @@ export default function CareerModeSelector() {
                       <td className="text-center px-3 py-2.5">
                         {row.coachCareer ? (
                           <Check className="h-4 w-4 mx-auto" style={{ color: MODE_ACCENT_COLORS.coach_career }} />
-                        ) : (
-                          <X className="h-4 w-4 mx-auto text-[#484f58]" />
-                        )}
-                      </td>
-                      <td className="text-center px-3 py-2.5">
-                        {row.playerManager ? (
-                          <Check className="h-4 w-4 mx-auto" style={{ color: MODE_ACCENT_COLORS.player_manager }} />
                         ) : (
                           <X className="h-4 w-4 mx-auto text-[#484f58]" />
                         )}
@@ -1237,97 +1191,6 @@ function CoachCareerDetails({ season, isUnlocked }: { season: number; isUnlocked
           <p className="text-[10px] text-[#484f58] mt-1">
             {Math.max(3 - season, 0)} season{3 - season !== 1 ? 's' : ''} remaining
           </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PlayerManagerDetails({ season, overall, isUnlocked }: { season: number; overall: number; isUnlocked: boolean }) {
-  return (
-    <div className="space-y-3">
-      {isUnlocked ? (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-[#21262d] rounded-lg px-3 py-2">
-              <p className="text-[10px] text-[#8b949e]">Playing OVR</p>
-              <p className="text-sm font-bold text-[#f59e0b]">{overall}</p>
-            </div>
-            <div className="bg-[#21262d] rounded-lg px-3 py-2">
-              <p className="text-[10px] text-[#8b949e]">Manager Rating</p>
-              <p className="text-sm font-bold text-[#f59e0b]">B+</p>
-            </div>
-            <div className="bg-[#21262d] rounded-lg px-3 py-2">
-              <p className="text-[10px] text-[#8b949e]">Squad Value</p>
-              <p className="text-sm font-bold text-[#f59e0b]">€{(overall * 12).toFixed(0)}M</p>
-            </div>
-            <div className="bg-[#21262d] rounded-lg px-3 py-2">
-              <p className="text-[10px] text-[#8b949e]">Dual Role Bonus</p>
-              <p className="text-sm font-bold text-[#f59e0b]">+15%</p>
-            </div>
-          </div>
-
-          {/* Combined Stats */}
-          <div className="bg-[#21262d] rounded-lg p-3">
-            <p className="text-[10px] text-[#8b949e] uppercase tracking-wide mb-2">Combined Stats</p>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-xs font-bold text-[#34d399]">Player</p>
-                <div className="mt-1 space-y-1">
-                  <div className="flex items-center justify-center gap-1">
-                    <Target className="h-3 w-3 text-[#484f58]" />
-                    <span className="text-[10px] text-[#8b949e]">Scoring</span>
-                  </div>
-                  <div className="h-1.5 bg-[#0d1117] rounded-sm overflow-hidden">
-                    <div className="h-full rounded-sm bg-[#34d399] opacity-70" style={{ width: '75%' }} />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[#60a5fa]">Tactics</p>
-                <div className="mt-1 space-y-1">
-                  <div className="flex items-center justify-center gap-1">
-                    <Shield className="h-3 w-3 text-[#484f58]" />
-                    <span className="text-[10px] text-[#8b949e]">Strategy</span>
-                  </div>
-                  <div className="h-1.5 bg-[#0d1117] rounded-sm overflow-hidden">
-                    <div className="h-full rounded-sm bg-[#60a5fa] opacity-70" style={{ width: '60%' }} />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[#f59e0b]">Leader</p>
-                <div className="mt-1 space-y-1">
-                  <div className="flex items-center justify-center gap-1">
-                    <Users className="h-3 w-3 text-[#484f58]" />
-                    <span className="text-[10px] text-[#8b949e]">Morale</span>
-                  </div>
-                  <div className="h-1.5 bg-[#0d1117] rounded-sm overflow-hidden">
-                    <div className="h-full rounded-sm bg-[#f59e0b] opacity-70" style={{ width: '80%' }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-[#f59e0b]/5 border border-[#f59e0b]/20 rounded-lg px-3 py-2">
-            <Briefcase className="h-3.5 w-3.5 text-[#f59e0b]" />
-            <p className="text-[10px] text-[#8b949e]">Combines <span className="text-[#34d399] font-semibold">playing</span> + <span className="text-[#60a5fa] font-semibold">coaching</span></p>
-          </div>
-        </>
-      ) : (
-        <div className="text-center py-4">
-          <Lock className="h-6 w-6 text-[#484f58] mx-auto mb-2" />
-          <p className="text-xs text-[#8b949e]">Requires Coach Career Level 2</p>
-          <p className="text-[10px] text-[#484f58] mt-1">And 80+ Overall Rating</p>
-          <div className="mt-3 flex items-center justify-center gap-3 text-[10px]">
-            <span className={`${season >= 5 ? 'text-[#34d399]' : 'text-[#ef4444]'}`}>
-              {season >= 5 ? '✓' : '✗'} Season 5+
-            </span>
-            <span className={`${overall >= 80 ? 'text-[#34d399]' : 'text-[#ef4444]'}`}>
-              {overall >= 80 ? '✓' : '✗'} 80+ OVR
-            </span>
-          </div>
         </div>
       )}
     </div>

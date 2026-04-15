@@ -23,6 +23,14 @@ import {
   Star,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  evaluateRetirementReadiness,
+  determineLegacyTier,
+  generateRetirementPackage,
+  determinePostRetirementPath,
+  type RetirementReason,
+  type PostRetirementPath,
+} from '@/lib/game/legacyEngine';
 
 // ── Animation Constants ─────────────────────────────────────
 const D = 0.04;
@@ -434,7 +442,14 @@ function RetirementModal({
 // ── Main Component ──────────────────────────────────────────
 export default function CareerRetirement() {
   const gameState = useGameStore((s) => s.gameState);
+  const evaluateRetirement = useGameStore((s) => s.evaluateRetirement);
+  const initiateRetirementAction = useGameStore((s) => s.initiateRetirement);
+  const completeRetirementAction = useGameStore((s) => s.completeRetirement);
+  const setPostRetirementPathAction = useGameStore((s) => s.setPostRetirementPath);
+  
   const [showModal, setShowModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<RetirementReason>('age');
+  const [retirementStep, setRetirementStep] = useState<'evaluate' | 'confirm' | 'complete'>('evaluate');
 
   const computed = useMemo(() => {
     if (!gameState) return null;
@@ -452,6 +467,19 @@ export default function CareerRetirement() {
       hasCareerThreatening,
       player.morale,
     );
+
+    // New retirement readiness evaluation
+    const readiness = evaluateRetirement();
+
+    // Legacy score calculation
+    const legacyScore = Math.round(
+      (player.careerStats?.goals || 0) * 0.3 +
+      (player.careerStats?.appearances || 0) * 0.2 +
+      (player.careerStats?.trophies?.length || 0) * 5 +
+      (player.awards?.length || 0) * 3 +
+      (player.internationalCareer?.caps || 0) * 0.5
+    );
+    const legacyTier = determineLegacyTier(Math.min(legacyScore, 100));
 
     // Estimated seasons remaining
     let seasonsRemaining = 99;
@@ -657,14 +685,10 @@ export default function CareerRetirement() {
     pairs.map(([px, py]) => `${px},${py}`).join(' ');
 
   const handleAcceptRetirement = () => {
+    initiateRetirementAction(selectedReason);
+    completeRetirementAction();
     setShowModal(false);
-    // Mark as pending (actual retirement flow not implemented yet)
-    useGameStore.getState().addNotification({
-      type: 'career',
-      title: 'Retirement Accepted',
-      message: 'Your legendary career has come to an end. The fans will never forget you.',
-      actionRequired: false,
-    });
+    setRetirementStep('complete');
   };
 
   const handlePushThrough = () => {
@@ -691,6 +715,11 @@ export default function CareerRetirement() {
         actionRequired: false,
       });
     }
+  };
+
+  const handlePostRetirementPath = (path: PostRetirementPath) => {
+    setPostRetirementPathAction(path);
+    setRetirementStep('complete');
   };
 
   const fitnessColor = player.fitness >= 70 ? '#22c55e' : player.fitness >= 50 ? '#f59e0b' : '#ef4444';

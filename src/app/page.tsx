@@ -31,7 +31,6 @@ import MoralePanel from '@/components/game/MoralePanel';
 import InjuryReport from '@/components/game/InjuryReport';
 import PWAInstallPrompt from '@/components/game/PWAInstallPromptFixed';
 import SkillChallenges from '@/components/game/SkillChallenges';
-import ManagerOffice from '@/components/game/ManagerOffice';
 import PlayerAgentHub from '@/components/game/PlayerAgentHub';
 import DailyRoutineHub from '@/components/game/DailyRoutineHub';
 import CareerStatistics from '@/components/game/CareerStatistics';
@@ -40,18 +39,58 @@ import PlayerOfTheMonth from '@/components/game/PlayerOfTheMonth';
 import PostMatchAnalysis from '@/components/game/PostMatchAnalysis';
 import PlayerComparison from '@/components/game/PlayerComparison';
 import TransferNegotiation from '@/components/game/TransferNegotiation';
-import ContractNegotiationEnhanced from '@/components/game/ContractNegotiationEnhanced';
-import PlayerPsychologyEnhanced from '@/components/game/PlayerPsychologyEnhanced';
-import TransferDeadlineDayEnhanced from '@/components/game/TransferDeadlineDayEnhanced';
-import SquadRotationEnhanced from '@/components/game/SquadRotationEnhanced';
-import MediaInterviewEnhanced from '@/components/game/MediaInterviewEnhanced';
-import SponsorSystemEnhanced from '@/components/game/SponsorSystemEnhanced';
-import CareerEventsEnhanced from '@/components/game/CareerEventsEnhanced';
-import TrainingGroundEnhanced from '@/components/game/TrainingGroundEnhanced';
-import YouthAcademyEnhanced from '@/components/game/YouthAcademyEnhanced';
+import TransferMarketEnhanced from '@/components/game/TransferMarketEnhanced';
 import PersonalFinancesEnhanced from '@/components/game/PersonalFinancesEnhanced';
-import StadiumAtmosphereEnhanced from '@/components/game/StadiumAtmosphereEnhanced';
+import CareerRetirement from '@/components/game/CareerRetirement';
+import TacticalFormationBoard from '@/components/game/TacticalFormationBoard';
+import SquadRotationPlanner from '@/components/game/SquadRotationPlanner';
+import FacilitiesUpgrades from '@/components/game/FacilitiesUpgrades';
+import LoanSystemEnhanced from '@/components/game/LoanSystemEnhanced';
+import JerseyNumber from '@/components/game/JerseyNumber';
+import SponsorSystemEnhanced from '@/components/game/SponsorSystemEnhanced';
+import TrophyCabinet from '@/components/game/TrophyCabinet';
+import DynamicCareerEvents from '@/components/game/DynamicCareerEvents';
+import BadgeCollection from '@/components/game/BadgeCollection';
+import StadiumBuilder from '@/components/game/StadiumBuilder';
+import CareerStatsDeepDive from '@/components/game/CareerStatsDeepDive';
+import CoachCareerMode from '@/components/game/CoachCareerMode';
+import FantasyDraftEnhanced from '@/components/game/FantasyDraftEnhanced';
+import InternationalTournament from '@/components/game/InternationalTournament';
+import MatchEngineSimulationEnhanced from '@/components/game/MatchEngineSimulationEnhanced';
+import CareerModeSelector from '@/components/game/CareerModeSelector';
+import TrainingDrillMiniGames from '@/components/game/TrainingDrillMiniGames';
+import SeasonReviewDocumentary from '@/components/game/SeasonReviewDocumentary';
+import InGameStore from '@/components/game/InGameStore';
+import ScoutingNetworkEnhanced from '@/components/game/ScoutingNetworkEnhanced';
+import BoardRoom from '@/components/game/BoardRoom';
+import YouthDevelopment from '@/components/game/YouthDevelopment';
+import SocialMediaFeed from '@/components/game/SocialMediaFeed';
+import CreateAClub from '@/components/game/CreateAClub';
+import DailyRewards from '@/components/game/DailyRewards';
+import AchievementShowcase from '@/components/game/AchievementShowcase';
+import InGameMail from '@/components/game/InGameMail';
+import InjuryRecoveryEnhanced from '@/components/game/InjuryRecoveryEnhanced';
+import MultiplayerLeague from '@/components/game/MultiplayerLeague';
 import PlayerCareerTimelineEnhanced from '@/components/game/PlayerCareerTimelineEnhanced';
+import TacticalSetPieces from '@/components/game/TacticalSetPieces';
+import MatchWeatherEffects from '@/components/game/MatchWeatherEffects';
+import RefereeSystemEnhanced from '@/components/game/RefereeSystemEnhanced';
+import TransferDeadlineDayEnhanced from '@/components/game/TransferDeadlineDayEnhanced';
+import PlayerAgentContract from '@/components/game/PlayerAgentContract';
+import FanChants from '@/components/game/FanChants';
+import VirtualTrophyRoom from '@/components/game/VirtualTrophyRoom';
+import ErrorBoundary from '@/components/game/ErrorBoundary';
+import PressScrum from '@/components/game/PressScrum';
+import InjurySimulator from '@/components/game/InjurySimulator';
+import PlayerBioGenerator from '@/components/game/PlayerBioGenerator';
+import SetPieceTrainerEnhanced from '@/components/game/SetPieceTrainerEnhanced';
+import PlayerPsychologyEnhanced from '@/components/game/PlayerPsychologyEnhanced';
+import SocialMediaHub from '@/components/game/SocialMediaHub';
+import VirtualTrophyTour from '@/components/game/VirtualTrophyTour';
+import CoachCareerEnhanced from '@/components/game/CoachCareerEnhanced';
+import MatchReplayViewer from '@/components/game/MatchReplayViewer';
+import PreSeasonTour from '@/components/game/PreSeasonTour';
+import StadiumAtmosphereEnhanced from '@/components/game/StadiumAtmosphereEnhanced';
 import FanEngagement from '@/components/game/FanEngagement';
 import WorldFootballNews from '@/components/game/WorldFootballNews';
 import HallOfFame from '@/components/game/HallOfFame';
@@ -64,7 +103,6 @@ import MatchStatsComparison from '@/components/game/MatchStatsComparison';
 import CareerMilestones from '@/components/game/CareerMilestones';
 import PressConferenceEnhanced from '@/components/game/PressConferenceEnhanced';
 import AchievementsSystem from '@/components/game/AchievementsSystem';
-import CareerJournal from '@/components/game/CareerJournal';
 import TeamSelection from '@/components/game/TeamSelection';
 import SeasonAwards from '@/components/game/SeasonAwards';
 import RivalSystem from '@/components/game/RivalSystem';
@@ -72,90 +110,20 @@ import TacticalSubstitutions from '@/components/game/TacticalSubstitutions';
 import PotentialJourney from '@/components/game/PotentialJourney';
 import MatchDayLive from '@/components/game/MatchDayLive';
 import DynamicDifficultyPanel from '@/components/game/DynamicDifficultyPanel';
-import CareerLegacyProfile from '@/components/game/CareerLegacyProfile';
 import PreSeasonTrainingCamp from '@/components/game/PreSeasonTrainingCamp';
 import KitCustomization from '@/components/game/KitCustomization';
-import TransferMarket from '@/components/game/TransferMarket';
-import PersonalFinances from '@/components/game/PersonalFinances';
-import CareerRetirement from '@/components/game/CareerRetirement';
-import TacticalFormationBoard from '@/components/game/TacticalFormationBoard';
-import SquadRotationPlanner from '@/components/game/SquadRotationPlanner';
-import FacilitiesUpgrades from '@/components/game/FacilitiesUpgrades';
-import MediaInterview from '@/components/game/MediaInterview';
-import LoanSystem from '@/components/game/LoanSystem';
-import JerseyNumber from '@/components/game/JerseyNumber';
-import SponsorSystem from '@/components/game/SponsorSystem';
-import TrophyCabinet from '@/components/game/TrophyCabinet';
-import DynamicCareerEvents from '@/components/game/DynamicCareerEvents';
-import BadgeCollection from '@/components/game/BadgeCollection';
-import StadiumBuilder from '@/components/game/StadiumBuilder';
-import CareerStatsDeepDive from '@/components/game/CareerStatsDeepDive';
-import CoachCareerMode from '@/components/game/CoachCareerMode';
-import FantasyDraft from '@/components/game/FantasyDraft';
-import InternationalTournament from '@/components/game/InternationalTournament';
-import MatchEngineSimulation from '@/components/game/MatchEngineSimulation';
-import CareerModeSelector from '@/components/game/CareerModeSelector';
-import TrainingDrillMiniGames from '@/components/game/TrainingDrillMiniGames';
-import SeasonReviewDocumentary from '@/components/game/SeasonReviewDocumentary';
-import InGameStore from '@/components/game/InGameStore';
-import ScoutingNetwork from '@/components/game/ScoutingNetwork';
-import BoardRoom from '@/components/game/BoardRoom';
-import YouthDevelopment from '@/components/game/YouthDevelopment';
-import SocialMediaFeed from '@/components/game/SocialMediaFeed';
-import CreateAClub from '@/components/game/CreateAClub';
-import DailyRewards from '@/components/game/DailyRewards';
-import AchievementShowcase from '@/components/game/AchievementShowcase';
-import InGameMail from '@/components/game/InGameMail';
-import InjuryRecovery from '@/components/game/InjuryRecovery';
-import ManagerCareer from '@/components/game/ManagerCareer';
-import MultiplayerLeague from '@/components/game/MultiplayerLeague';
-import PlayerCareerTimeline from '@/components/game/PlayerCareerTimeline';
-import TacticalSetPieces from '@/components/game/TacticalSetPieces';
-import MatchWeatherEffects from '@/components/game/MatchWeatherEffects';
-import RefereeSystem from '@/components/game/RefereeSystem';
-import TransferDeadlineDay from '@/components/game/TransferDeadlineDay';
-import PlayerAgentContract from '@/components/game/PlayerAgentContract';
-import FanChants from '@/components/game/FanChants';
-import VirtualTrophyRoom from '@/components/game/VirtualTrophyRoom';
-import ErrorBoundary from '@/components/game/ErrorBoundary';
-import PressScrum from '@/components/game/PressScrum';
-import InjurySimulator from '@/components/game/InjurySimulator';
-import PlayerBioGenerator from '@/components/game/PlayerBioGenerator';
-import SetPieceTrainer from '@/components/game/SetPieceTrainer';
-import PlayerPsychology from '@/components/game/PlayerPsychology';
-import SocialMediaHub from '@/components/game/SocialMediaHub';
-import VirtualTrophyTour from '@/components/game/VirtualTrophyTour';
-import CoachCareer from '@/components/game/CoachCareer';
-import MatchReplayViewer from '@/components/game/MatchReplayViewer';
-import PreSeasonTour from '@/components/game/PreSeasonTour';
-import StadiumAtmosphere from '@/components/game/StadiumAtmosphere';
-import PlayerAgentHubEnhanced from '@/components/game/PlayerAgentHubEnhanced';
-import InternationalExpansion from '@/components/game/InternationalExpansion';
-import YouthAcademyDeepDive from '@/components/game/YouthAcademyDeepDive';
 import PlayerComparisonEnhanced from '@/components/game/PlayerComparisonEnhanced';
-import RefereeSystemEnhanced from '@/components/game/RefereeSystemEnhanced';
 import DreamTransferEnhanced from '@/components/game/DreamTransferEnhanced';
-import LoanSystemEnhanced from '@/components/game/LoanSystemEnhanced';
-import SeasonReviewEnhanced from '@/components/game/SeasonReviewEnhanced';
-import MultiplayerEnhanced from '@/components/game/MultiplayerEnhanced';
-import FantasyDraftEnhanced from '@/components/game/FantasyDraftEnhanced';
 import HallOfFameEnhanced from '@/components/game/HallOfFameEnhanced';
-import MediaInteraction from '@/components/game/MediaInteraction';
-import LegendStatus from '@/components/game/LegendStatus';
-import TacticalBoardEnhanced from '@/components/game/TacticalBoardEnhanced';
-import ScoutingNetworkEnhanced from '@/components/game/ScoutingNetworkEnhanced';
-import CoachCareerEnhanced from '@/components/game/CoachCareerEnhanced';
-import SeasonTrainingEnhanced from '@/components/game/SeasonTrainingEnhanced';
-import WeatherEnhanced from '@/components/game/WeatherEnhanced';
-import DraftSystemEnhanced from '@/components/game/DraftSystemEnhanced';
 import CareerJournalEnhanced from '@/components/game/CareerJournalEnhanced';
 import CareerLegacyProfileEnhanced from '@/components/game/CareerLegacyProfileEnhanced';
-import InjuryRecoveryEnhanced from '@/components/game/InjuryRecoveryEnhanced';
 import SkillChallengesEnhanced from '@/components/game/SkillChallengesEnhanced';
 import DailyRoutineEnhanced from '@/components/game/DailyRoutineEnhanced';
-import SetPieceTrainerEnhanced from '@/components/game/SetPieceTrainerEnhanced';
-import TransferMarketEnhanced from '@/components/game/TransferMarketEnhanced';
-import MatchEngineSimulationEnhanced from '@/components/game/MatchEngineSimulationEnhanced';
+import ContractNegotiationEnhanced from '@/components/game/ContractNegotiationEnhanced';
+import MediaInterviewEnhanced from '@/components/game/MediaInterviewEnhanced';
+import CareerEventsEnhanced from '@/components/game/CareerEventsEnhanced';
+import TrainingGroundEnhanced from '@/components/game/TrainingGroundEnhanced';
+import YouthAcademyEnhanced from '@/components/game/YouthAcademyEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -183,7 +151,6 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   morale: MoralePanel,
   injury_report: InjuryReport,
   skill_challenges: SkillChallenges,
-  manager_office: ManagerOffice,
   player_agent_hub: PlayerAgentHub,
   daily_routine_hub: DailyRoutineHub,
   career_statistics: CareerStatistics,
@@ -205,40 +172,39 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   press_conference: PressConferenceEnhanced,
   achievements_system: AchievementsSystem,
   team_selection: TeamSelection,
-  career_journal: CareerJournal,
+  career_journal: CareerJournalEnhanced,
   season_awards: SeasonAwards,
   rival_system: RivalSystem,
   tactical_substitutions: TacticalSubstitutions,
   potential_journey: PotentialJourney,
   match_day_live: MatchDayLive,
   dynamic_difficulty: DynamicDifficultyPanel,
-  career_legacy_profile: CareerLegacyProfile,
+  career_legacy_profile: CareerLegacyProfileEnhanced,
   pre_season_camp: PreSeasonTrainingCamp,
   kit_customization: KitCustomization,
-  transfer_market: TransferMarket,
-  personal_finances: PersonalFinances,
+  transfer_market: TransferMarketEnhanced,
+  personal_finances: PersonalFinancesEnhanced,
   tactical_formation_board: TacticalFormationBoard,
   career_retirement: CareerRetirement,
   squad_rotation: SquadRotationPlanner,
   facilities_upgrades: FacilitiesUpgrades,
-  loan_system: LoanSystem,
-  media_interview: MediaInterview,
+  loan_system: LoanSystemEnhanced,
   jersey_number: JerseyNumber,
-  sponsor_system: SponsorSystem,
+  sponsor_system: SponsorSystemEnhanced,
   trophy_cabinet: TrophyCabinet,
   career_events: DynamicCareerEvents,
   badge_collection: BadgeCollection,
   stadium_builder: StadiumBuilder,
   career_stats_deep_dive: CareerStatsDeepDive,
   coach_career: CoachCareerMode,
-  fantasy_draft: FantasyDraft,
+  fantasy_draft: FantasyDraftEnhanced,
   international_tournament: InternationalTournament,
   career_mode_selector: CareerModeSelector,
-  match_engine_simulation: MatchEngineSimulation,
+  match_engine_simulation: MatchEngineSimulationEnhanced,
   training_drill_mini_games: TrainingDrillMiniGames,
   season_review_documentary: SeasonReviewDocumentary,
   in_game_store: InGameStore,
-  scouting_network: ScoutingNetwork,
+  scouting_network: ScoutingNetworkEnhanced,
   youth_development: YouthDevelopment,
   board_room: BoardRoom,
   social_media_feed: SocialMediaFeed,
@@ -247,66 +213,26 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   achievement_showcase: AchievementShowcase,
   in_game_mail: InGameMail,
   multiplayer_league: MultiplayerLeague,
-  player_career_timeline: PlayerCareerTimeline,
-  injury_recovery: InjuryRecovery,
-  manager_career: ManagerCareer,
+  player_career_timeline: PlayerCareerTimelineEnhanced,
+  injury_recovery: InjuryRecoveryEnhanced,
   tactical_set_pieces: TacticalSetPieces,
-  referee_system: RefereeSystem,
+  referee_system: RefereeSystemEnhanced,
   match_weather_effects: MatchWeatherEffects,
-  transfer_deadline_day: TransferDeadlineDay,
+  transfer_deadline_day: TransferDeadlineDayEnhanced,
   player_agent_contract: PlayerAgentContract,
   fan_chants: FanChants,
   virtual_trophy_room: VirtualTrophyRoom,
   press_scrum: PressScrum,
   injury_simulator: InjurySimulator,
   player_bio_generator: PlayerBioGenerator,
-  set_piece_trainer: SetPieceTrainer,
-  player_psychology: PlayerPsychology,
+  set_piece_trainer: SetPieceTrainerEnhanced,
+  player_psychology: PlayerPsychologyEnhanced,
   social_media_hub: SocialMediaHub,
   virtual_trophy_tour: VirtualTrophyTour,
-  coach_career_path: CoachCareer,
+  coach_career_path: CoachCareerEnhanced,
   match_replay_viewer: MatchReplayViewer,
   pre_season_tour: PreSeasonTour,
-  stadium_atmosphere: StadiumAtmosphere,
-  player_agent_hub_enhanced: PlayerAgentHubEnhanced,
-  international_expansion: InternationalExpansion,
-  youth_academy_deep_dive: YouthAcademyDeepDive,
-  player_comparison_enhanced: PlayerComparisonEnhanced,
-  referee_system_enhanced: RefereeSystemEnhanced,
-  dream_transfer_enhanced: DreamTransferEnhanced,
-  loan_system_enhanced: LoanSystemEnhanced,
-  season_review_enhanced: SeasonReviewEnhanced,
-  multiplayer_enhanced: MultiplayerEnhanced,
-  fantasy_draft_enhanced: FantasyDraftEnhanced,
-  hall_of_fame_enhanced: HallOfFameEnhanced,
-  media_interaction: MediaInteraction,
-  legend_status: LegendStatus,
-  tactical_board_enhanced: TacticalBoardEnhanced,
-  scouting_network_enhanced: ScoutingNetworkEnhanced,
-  coach_career_enhanced: CoachCareerEnhanced,
-  season_training_enhanced: SeasonTrainingEnhanced,
-  weather_enhanced: WeatherEnhanced,
-  draft_system_enhanced: DraftSystemEnhanced,
-  career_journal_enhanced: CareerJournalEnhanced,
-  career_legacy_profile_enhanced: CareerLegacyProfileEnhanced,
-  injury_recovery_enhanced: InjuryRecoveryEnhanced,
-  skill_challenges_enhanced: SkillChallengesEnhanced,
-  daily_routine_enhanced: DailyRoutineEnhanced,
-  set_piece_trainer_enhanced: SetPieceTrainerEnhanced,
-  transfer_market_enhanced: TransferMarketEnhanced,
-  match_engine_simulation_enhanced: MatchEngineSimulationEnhanced,
-  contract_negotiation_enhanced: ContractNegotiationEnhanced,
-  player_psychology_enhanced: PlayerPsychologyEnhanced,
-  transfer_deadline_day_enhanced: TransferDeadlineDayEnhanced,
-  squad_rotation_enhanced: SquadRotationEnhanced,
-  media_interview_enhanced: MediaInterviewEnhanced,
-  sponsor_system_enhanced: SponsorSystemEnhanced,
-  career_events_enhanced: CareerEventsEnhanced,
-  training_ground_enhanced: TrainingGroundEnhanced,
-  youth_academy_enhanced: YouthAcademyEnhanced,
-  personal_finances_enhanced: PersonalFinancesEnhanced,
-  stadium_atmosphere_enhanced: StadiumAtmosphereEnhanced,
-  player_career_timeline_enhanced: PlayerCareerTimelineEnhanced,
+  stadium_atmosphere: StadiumAtmosphereEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -314,7 +240,7 @@ const gameScreens: GameScreen[] = [
   'social', 'events', 'season_stats', 'agent_hub', 'settings', 'league_table',
   'player_profile', 'season_objectives', 'cup_bracket', 'youth_academy',
   'relationships', 'continental', 'international', 'morale', 'injury_report',
-  'skill_challenges', 'manager_office', 'player_agent_hub', 'daily_routine_hub',
+  'skill_challenges', 'player_agent_hub', 'daily_routine_hub',
   'career_statistics', 'tactical_briefing', 'player_of_the_month',
   'post_match_analysis', 'player_comparison', 'transfer_negotiation',
   'fan_engagement', 'world_football_news', 'hall_of_fame', 'player_traits', 'match_highlights', 'match_highlights_enhanced',
@@ -368,7 +294,6 @@ const gameScreens: GameScreen[] = [
   'in_game_mail',
   'player_career_timeline',
   'injury_recovery',
-  'manager_career',
   'tactical_set_pieces',
   'referee_system',
   'match_weather_effects',
@@ -387,45 +312,6 @@ const gameScreens: GameScreen[] = [
   'match_replay_viewer',
   'pre_season_tour',
   'stadium_atmosphere',
-  'player_agent_hub_enhanced',
-  'international_expansion',
-  'youth_academy_deep_dive',
-  'player_comparison_enhanced',
-  'referee_system_enhanced',
-  'dream_transfer_enhanced',
-  'loan_system_enhanced',
-  'season_review_enhanced',
-  'multiplayer_enhanced',
-  'fantasy_draft_enhanced',
-  'hall_of_fame_enhanced',
-  'media_interaction',
-  'legend_status',
-  'tactical_board_enhanced',
-  'scouting_network_enhanced',
-  'coach_career_enhanced',
-  'season_training_enhanced',
-  'weather_enhanced',
-  'draft_system_enhanced',
-  'career_journal_enhanced',
-  'career_legacy_profile_enhanced',
-  'injury_recovery_enhanced',
-  'skill_challenges_enhanced',
-  'daily_routine_enhanced',
-  'set_piece_trainer_enhanced',
-  'transfer_market_enhanced',
-  'match_engine_simulation_enhanced',
-  'contract_negotiation_enhanced',
-  'player_psychology_enhanced',
-  'transfer_deadline_day_enhanced',
-  'squad_rotation_enhanced',
-  'media_interview_enhanced',
-  'sponsor_system_enhanced',
-  'career_events_enhanced',
-  'training_ground_enhanced',
-  'youth_academy_enhanced',
-  'personal_finances_enhanced',
-  'stadium_atmosphere_enhanced',
-  'player_career_timeline_enhanced',
 ];
 
 export default function Home() {

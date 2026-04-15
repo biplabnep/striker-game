@@ -1091,6 +1091,14 @@ function StatCard({ label, value, subtext, color }: {
 // ============================================================
 export default function SponsorSystemEnhanced(): React.JSX.Element | null {
   const gameState = useGameStore(state => state.gameState);
+  const acceptSponsorOffer = useGameStore(state => state.acceptSponsorOffer);
+  const rejectSponsorOffer = useGameStore(state => state.rejectSponsorOffer);
+  const renewSponsorContract = useGameStore(state => state.renewSponsorContract);
+  const terminateSponsorContract = useGameStore(state => state.terminateSponsorContract);
+  const updateSponsorDeliverables = useGameStore(state => state.updateSponsorDeliverables);
+  const trackSponsorBonuses = useGameStore(state => state.trackSponsorBonuses);
+  const generateSponsorOffers = useGameStore(state => state.generateSponsorOffers);
+  
   const [activeTab, setActiveTab] = useState<TabId>('current_sponsors');
 
   if (!gameState) return null;
@@ -1101,31 +1109,69 @@ export default function SponsorSystemEnhanced(): React.JSX.Element | null {
   const currentWeek = gameState.currentWeek ?? 1;
   const seasonsPlayed = gameState.seasons.length ?? 0;
 
-  // Derive seed deterministically
+  // Use real game state data
+  const activeSponsors = gameState.activeSponsors || [];
+  const sponsorOffers = gameState.sponsorOffers || [];
+  const sponsorshipRevenue = gameState.sponsorshipRevenue || 0;
+
+  // Derive seed deterministically for mock data fallback
   const baseSeed = player.name.length * 137 + currentSeason * 31 + currentWeek * 7;
 
-  // Generate data from game state
-  const activeSponsors = generateActiveSponsors(baseSeed, player.reputation ?? 10);
-  const negotiations = generateNegotiations(baseSeed + 100, player.reputation ?? 10);
+  // Generate mock data only if no real data exists
+  const mockActiveSponsors = activeSponsors.length > 0 ? activeSponsors : generateActiveSponsors(baseSeed, player.reputation ?? 10);
+  const mockNegotiations = sponsorOffers.length > 0 ? sponsorOffers.map(offer => ({
+    id: offer.id,
+    company: offer.company.name,
+    tier: offer.company.tier.charAt(0).toUpperCase() + offer.company.tier.slice(1),
+    type: offer.type,
+    value: offer.weeklyPayment * offer.duration,
+    progress: 50,
+    status: 'negotiating' as const,
+  })) : generateNegotiations(baseSeed + 100, player.reputation ?? 10);
   const sponsorTargets = generateSponsorTargets(baseSeed + 200, player.reputation ?? 10);
 
   // Derived stats via reduce
-  const totalAnnualIncome = activeSponsors.reduce((sum, s) => sum + s.annualValue, 0);
-  const totalContractValue = activeSponsors.reduce((sum, s) => sum + s.totalValue, 0);
+  const totalAnnualIncome = mockActiveSponsors.reduce((sum: number, s: any) => sum + (s.annualValue || s.weeklyPayment * 52 || 0), 0);
+  const totalContractValue = mockActiveSponsors.reduce((sum: number, s: any) => sum + (s.totalValue || s.weeklyPayment * (s.endWeek - s.startWeek) || 0), 0);
   const avgNegotiationProgress = Math.round(
-    negotiations.reduce((sum, n) => sum + n.progress, 0) / (negotiations.length || 1)
+    mockNegotiations.reduce((sum: number, n: any) => sum + (n.progress || 50), 0) / (mockNegotiations.length || 1)
   );
   const avgTargetAttractiveness = Math.round(
-    sponsorTargets.reduce((sum, t) => sum + t.attractiveness, 0) / (sponsorTargets.length || 1)
+    sponsorTargets.reduce((sum: number, t: any) => sum + t.attractiveness, 0) / (sponsorTargets.length || 1)
   );
-  const sponsorTierSummary = activeSponsors.reduce<Record<string, number>>((acc, s) => {
-    acc[s.tier] = (acc[s.tier] ?? 0) + 1;
+  const sponsorTierSummary = mockActiveSponsors.reduce<Record<string, number>>((acc, s: any) => {
+    const tier = s.tier || 'Bronze';
+    acc[tier] = (acc[tier] ?? 0) + 1;
     return acc;
   }, {});
   const topTier = sponsorTierSummary['Platinum'] ? 'Platinum'
     : sponsorTierSummary['Gold'] ? 'Gold'
     : sponsorTierSummary['Silver'] ? 'Silver' : 'Bronze';
   const trophies = player.careerStats.trophies ?? [];
+
+  const handleAcceptOffer = (offerId: string) => {
+    acceptSponsorOffer(offerId);
+  };
+
+  const handleRejectOffer = (offerId: string) => {
+    rejectSponsorOffer(offerId);
+  };
+
+  const handleRenewContract = (contractId: string) => {
+    renewSponsorContract(contractId);
+  };
+
+  const handleTerminateContract = (contractId: string) => {
+    terminateSponsorContract(contractId);
+  };
+
+  const handleUpdateDeliverable = (contractId: string, deliverable: 'socialMediaPosts' | 'publicAppearances' | 'interviews') => {
+    updateSponsorDeliverables(contractId, deliverable);
+  };
+
+  const handleGenerateOffers = () => {
+    generateSponsorOffers();
+  };
 
   // ============================================================
   // Render
@@ -1172,7 +1218,7 @@ export default function SponsorSystemEnhanced(): React.JSX.Element | null {
         <StatCard
           label="Annual Income"
           value={fmtCurrencyShort(totalAnnualIncome)}
-          subtext={`${activeSponsors.length} active deals`}
+          subtext={`${mockActiveSponsors.length} active deals`}
           color={W3.cyanBlue}
         />
         <StatCard

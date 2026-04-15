@@ -15,6 +15,7 @@ import {
   Position,
   SeasonTrainingFocus,
   SeasonTrainingFocusArea,
+  RecoverySession,
 } from './types';
 
 function clamp(value: number, min: number, max: number): number {
@@ -112,11 +113,39 @@ export function calculateFocusBonusMultiplier(
 export function applyWeeklyProgression(
   player: Player,
   trainingSessions: TrainingSession[],
-  seasonTrainingFocus?: SeasonTrainingFocus | null
+  seasonTrainingFocus?: SeasonTrainingFocus | null,
+  recoverySessions?: RecoverySession[]
 ): Partial<Player> {
   const updates: Partial<Player> = {};
   const attrUpdates: Partial<PlayerAttributes> = {};
   const ageMultipliers = getAgeGrowthMultiplier(player.age);
+
+  // Process recovery sessions - affects fitness and attributes during injury
+  if (recoverySessions && recoverySessions.length > 0) {
+    const activeRecovery = recoverySessions.filter(s => s.status === 'in_progress');
+    
+    for (const session of activeRecovery) {
+      const effectivenessFactor = session.effectiveness / 100;
+      const progressFactor = session.progress / 100;
+      
+      // Recovery improves fitness and prevents attribute decline
+      const recoveryBoost = 0.3 * effectivenessFactor * progressFactor;
+      
+      // Physical attributes benefit most from recovery
+      applyTrainingBoost(attrUpdates, 'physical', recoveryBoost * 0.4, ageMultipliers);
+      applyTrainingBoost(attrUpdates, 'pace', recoveryBoost * 0.2, ageMultipliers);
+      
+      // Injury-specific recovery bonuses
+      if (session.method === 'physiotherapy' || session.method === 'rehabilitation') {
+        applyTrainingBoost(attrUpdates, 'physical', recoveryBoost * 0.3, ageMultipliers);
+      } else if (session.method === 'surgery') {
+        // Surgery has delayed but stronger effect
+        if (session.progress >= 50) {
+          applyTrainingBoost(attrUpdates, 'physical', recoveryBoost * 0.5, ageMultipliers);
+        }
+      }
+    }
+  }
 
   // Process training sessions
   for (const session of trainingSessions) {
@@ -145,7 +174,8 @@ export function applyWeeklyProgression(
         applyTrainingBoost(attrUpdates, 'defending', 0.05 * intensityFactor, ageMultipliers);
         break;
       case 'recovery':
-        // Recovery doesn't boost attributes but affects fitness
+        // Recovery training boosts fitness without strain
+        applyTrainingBoost(attrUpdates, 'physical', 0.1, ageMultipliers);
         break;
     }
 

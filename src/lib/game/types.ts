@@ -92,6 +92,8 @@ export interface InjuryRecord {
 // --- Enhanced Injury System ---
 export type InjuryType = 'minor' | 'moderate' | 'severe' | 'concussion' | 'career_threatening';
 export type InjuryCategory = 'muscle' | 'ligament' | 'bone' | 'concussion' | 'illness';
+export type RecoveryMethod = 'rest' | 'physiotherapy' | 'surgery' | 'rehabilitation' | 'alternative_therapy';
+export type RecoveryStatus = 'not_started' | 'in_progress' | 'completed' | 'setback' | 'failed';
 
 export interface Injury {
   id: string;
@@ -103,6 +105,51 @@ export interface Injury {
   weeksOut: number; // total weeks to recover
   weeksRemaining: number;
   matchMissed: boolean;
+}
+
+// --- Injury Recovery System ---
+export interface RecoverySession {
+  id: string;
+  injuryId: string;
+  method: RecoveryMethod;
+  weekStarted: number;
+  seasonStarted: number;
+  duration: number; // weeks
+  progress: number; // 0-100
+  status: RecoveryStatus;
+  effectiveness: number; // 0-100, affects recovery speed
+  setbacks: RecoverySetback[];
+  completedAt?: number;
+}
+
+export interface RecoverySetback {
+  id: string;
+  week: number;
+  description: string;
+  weeksAdded: number;
+  severity: 'minor' | 'moderate' | 'severe';
+}
+
+export interface RecoveryPlan {
+  injuryId: string;
+  sessions: RecoverySession[];
+  estimatedRecoveryWeeks: number;
+  actualRecoveryWeeks: number;
+  totalCost: number; // in euros
+  successRate: number; // 0-100
+  recommendedMethod: RecoveryMethod;
+}
+
+export interface InjuryRisk {
+  overall: number; // 0-100
+  factors: {
+    fatigue: number; // 0-100
+    age: number; // 0-100
+    injuryHistory: number; // 0-100
+    trainingLoad: number; // 0-100
+    matchFrequency: number; // 0-100
+  };
+  prediction: 'low' | 'medium' | 'high' | 'critical';
 }
 
 // --- Player Trait ---
@@ -602,7 +649,7 @@ export type GameScreen =
   | 'analytics' | 'season_stats' | 'social' | 'events'
   | 'settings' | 'save_load' | 'league_table' | 'player_profile'
   | 'season_objectives' | 'cup_bracket' | 'youth_academy' | 'relationships' | 'continental' | 'international' | 'morale' | 'injury_report'
-  | 'skill_challenges' | 'manager_office'
+  | 'skill_challenges'
   | 'player_agent_hub' | 'daily_routine_hub' | 'career_statistics' | 'tactical_briefing'
   | 'player_of_the_month' | 'post_match_analysis' | 'player_comparison'
   | 'transfer_negotiation'
@@ -663,7 +710,6 @@ export type GameScreen =
   | 'achievement_showcase'
   | 'injury_recovery'
   | 'in_game_mail'
-  | 'manager_career'
   | 'tactical_set_pieces'
   | 'referee_system'
   | 'match_weather_effects'
@@ -870,6 +916,14 @@ export interface GameState {
   // Weather System
   currentWeather: WeatherCondition | null;
   weatherPreparation: 'standard' | 'adapt' | 'ignore';
+  // Sponsor System
+  activeSponsors: SponsorContract[];
+  sponsorOffers: SponsorOffer[];
+  rejectedSponsors: string[]; // IDs of rejected sponsors
+  sponsorshipRevenue: number; // total earned from sponsors
+  // In-Game Mail
+  inbox: GameMail[];
+  mailArchive: GameMail[];
   retirementPending: boolean;
   retirementRiskPushed: boolean;
   gameMode: 'career';
@@ -877,4 +931,308 @@ export interface GameState {
   createdAt: string;
   lastSaved: string;
   playTime: number;
+}
+
+// --- Sponsor System Types ---
+export type SponsorType = 'kit' | 'stadium' | 'training' | 'personal' | 'youth';
+export type SponsorTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'legendary';
+export type SponsorStatus = 'active' | 'expired' | 'negotiating' | 'terminated';
+export type SponsorIndustry = 'sports_wear' | 'technology' | 'automotive' | 'finance' | 'beverage' | 'energy' | 'media' | 'other';
+
+export interface SponsorCompany {
+  id: string;
+  name: string;
+  industry: SponsorIndustry;
+  tier: SponsorTier;
+  reputation: number; // 0-100
+  logo?: string;
+  primaryColor: string;
+  description: string;
+}
+
+export interface SponsorOffer {
+  id: string;
+  company: SponsorCompany;
+  type: SponsorType;
+  duration: number; // weeks
+  weeklyPayment: number;
+  bonusStructure?: {
+    goalBonus?: number;
+    assistBonus?: number;
+    cleanSheetBonus?: number;
+    winBonus?: number;
+    trophyBonus?: number;
+  };
+  requirements: {
+    minReputation: number;
+    minOverall: number;
+    minAppearances?: number;
+    exclusivity?: boolean;
+  };
+  expiresWeek: number;
+  expiresSeason: number;
+}
+
+export interface SponsorContract {
+  id: string;
+  company: SponsorCompany;
+  type: SponsorType;
+  status: SponsorStatus;
+  startWeek: number;
+  startSeason: number;
+  endWeek: number;
+  endSeason: number;
+  weeklyPayment: number;
+  totalEarned: number;
+  bonusStructure?: {
+    goalBonus?: number;
+    assistBonus?: number;
+    cleanSheetBonus?: number;
+    winBonus?: number;
+    trophyBonus?: number;
+  };
+  bonusesEarned: {
+    goals: number;
+    assists: number;
+    cleanSheets: number;
+    wins: number;
+    trophies: number;
+  };
+  deliverables: {
+    socialMediaPosts: number;
+    publicAppearances: number;
+    interviews: number;
+  };
+  deliverablesCompleted: {
+    socialMediaPosts: number;
+    publicAppearances: number;
+    interviews: number;
+  };
+  satisfaction: number; // 0-100, affects renewal chances
+  renewalProbability: number; // 0-100
+}
+
+export interface SponsorMilestone {
+  id: string;
+  contractId: string;
+  description: string;
+  requirement: number;
+  current: number;
+  reward: number;
+  completed: boolean;
+  completedAt?: number;
+}
+
+// --- Stadium Builder System Types ---
+export type StadiumSection = 'stands' | 'vip_boxes' | 'press_box' | 'tunnel' | 'dugout' | 'pitch' | 'roof' | 'facade';
+export type StadiumTier = 'basic' | 'standard' | 'premium' | 'world_class' | 'iconic';
+export type FacilityType = 'training_ground' | 'youth_academy' | 'medical_center' | 'gym' | 'recovery_pool' | 'conference_room';
+export type UpgradeStatus = 'planned' | 'under_construction' | 'completed';
+
+export interface StadiumSectionUpgrade {
+  id: string;
+  section: StadiumSection;
+  name: string;
+  tier: StadiumTier;
+  level: number; // 1-5
+  capacity: number; // seats added
+  cost: number;
+  revenueMultiplier: number; // affects match day income
+  atmosphereBonus: number; // 0-100
+  prestigeBonus: number; // club reputation boost
+  status: UpgradeStatus;
+  constructionWeeks: number;
+  weeksRemaining: number;
+  unlocked: boolean;
+}
+
+export interface StadiumFacility {
+  id: string;
+  type: FacilityType;
+  name: string;
+  level: number; // 1-10
+  cost: number;
+  benefits: {
+    trainingBoost?: number; // attribute growth bonus
+    injuryRecoveryBoost?: number; // faster recovery
+    youthDevelopmentBoost?: number; // better youth players
+    moraleBoost?: number; // team morale
+  };
+  status: UpgradeStatus;
+  constructionWeeks: number;
+  weeksRemaining: number;
+}
+
+export interface StadiumStats {
+  totalCapacity: number;
+  currentAttendance: number;
+  attendanceRate: number; // percentage
+  matchDayRevenue: number;
+  annualRevenue: number;
+  atmosphereRating: number; // 0-100
+  prestigeRating: number; // 0-100
+  facilityQuality: number; // 0-100 average
+}
+
+export interface StadiumDesign {
+  id: string;
+  name: string;
+  clubId: string;
+  sections: StadiumSectionUpgrade[];
+  facilities: StadiumFacility[];
+  totalCost: number;
+  totalCapacity: number;
+  designTheme: string; // 'modern' | 'traditional' | 'futuristic' | 'classic'
+  primaryColor: string;
+  secondaryColor: string;
+  builtYear: number;
+  lastRenovation: number;
+}
+
+// --- In-Game Mail System Types ---
+export type MailCategory = 'club' | 'agent' | 'media' | 'fan' | 'sponsor' | 'league' | 'personal';
+export type MailPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type MailStatus = 'unread' | 'read' | 'archived' | 'deleted';
+
+export interface MailAttachment {
+  id: string;
+  type: 'contract' | 'photo' | 'document' | 'trophy';
+  name: string;
+  data?: any;
+}
+
+export interface MailResponseOption {
+  id: string;
+  label: string;
+  effects: {
+    reputation?: number;
+    morale?: number;
+    relationshipChange?: number;
+    marketValue?: number;
+  };
+}
+
+export interface GameMail {
+  id: string;
+  from: string;
+  fromRole: string;
+  subject: string;
+  body: string;
+  category: MailCategory;
+  priority: MailPriority;
+  status: MailStatus;
+  week: number;
+  season: number;
+  timestamp: string;
+  attachments: MailAttachment[];
+  requiresResponse: boolean;
+  responseOptions?: MailResponseOption[];
+  expiresWeek?: number;
+  relatedEntityId?: string;
+}
+
+export interface MailFolder {
+  id: string;
+  name: string;
+  icon: string;
+  mailIds: string[];
+}
+
+// --- Retirement & Legacy System Types ---
+export type RetirementReason = 'age' | 'injury' | 'personal' | 'forced';
+export type LegacyTier = 'legend' | 'icon' | 'star' | 'notable' | 'forgotten';
+export type CareerHighlightType = 'trophy' | 'record' | 'milestone' | 'award' | 'memorable_match';
+export type PostRetirementPath = 'coach' | 'pundit' | 'ambassador' | 'business' | 'retired_life';
+
+export interface CareerHighlight {
+  id: string;
+  type: CareerHighlightType;
+  title: string;
+  description: string;
+  season: number;
+  week?: number;
+  icon: string;
+  stats?: Record<string, number | string>;
+}
+
+export interface RetiredPlayer {
+  id: string;
+  name: string;
+  position: string;
+  nationality: string;
+  retiredAt: string;
+  age: number;
+  reason: RetirementReason;
+  totalSeasons: number;
+  totalAppearances: number;
+  totalGoals: number;
+  totalAssists: number;
+  totalTrophies: number;
+  totalAwards: number;
+  clubsPlayed: Array<{
+    clubName: string;
+    seasons: number;
+    appearances: number;
+    goals: number;
+    trophies: number;
+  }>;
+  internationalCaps: number;
+  internationalGoals: number;
+  internationalTrophies: number;
+  careerHighlights: CareerHighlight[];
+  recordsHeld: string[];
+  legacyTier: LegacyTier;
+  legacyScore: number;
+  hallOfFameInducted: boolean;
+  retiredJerseyNumber?: number;
+  statueUnlocked?: boolean;
+  coachingLicense?: boolean;
+  punditryOffers?: number;
+  ambassadorRole?: boolean;
+}
+
+export interface HallOfFameEntry {
+  id: string;
+  playerId: string;
+  playerName: string;
+  position: string;
+  inductionYear: number;
+  legacyTier: LegacyTier;
+  legacyScore: number;
+  portrait?: string;
+  plaque: string;
+  careerStats: Array<{
+    label: string;
+    value: number | string;
+    category: 'appearance' | 'goal' | 'trophy' | 'award' | 'record';
+  }>;
+  highlights: CareerHighlight[];
+}
+
+export interface RetirementPackage {
+  farewellMatch: boolean;
+  testimonial: boolean;
+  pensionPlan: boolean;
+  coachingOffer: boolean;
+  ambassadorRole: boolean;
+  mediaDeals: number;
+}
+
+export interface PostRetirementOutcome {
+  path: PostRetirementPath;
+  title: string;
+  description: string;
+  income: number;
+  satisfaction: number;
+  unlocks: string[];
+}
+
+export interface RetirementState {
+  isRetired: boolean;
+  retirementPending: boolean;
+  retiredPlayer: RetiredPlayer | null;
+  hallOfFameEntries: HallOfFameEntry[];
+  postRetirementOutcome: PostRetirementOutcome | null;
+  retirementWeek?: number;
+  retirementSeason?: number;
 }

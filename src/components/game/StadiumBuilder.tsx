@@ -651,6 +651,13 @@ function HomeAdvantageBadge({ rating }: { rating: number }) {
 
 export default function StadiumBuilder() {
   const gameState = useGameStore(state => state.gameState);
+  const initializeStadium = useGameStore(state => state.initializeStadium);
+  const upgradeStadiumSection = useGameStore(state => state.upgradeStadiumSection);
+  const buildStadiumFacility = useGameStore(state => state.buildStadiumFacility);
+  const startStadiumConstruction = useGameStore(state => state.startStadiumConstruction);
+  const completeStadiumConstruction = useGameStore(state => state.completeStadiumConstruction);
+  const getStadiumStats = useGameStore(state => state.getStadiumStats);
+  
   const [isEditingName, setIsEditingName] = useState(false);
   const [stadiumName, setStadiumName] = useState('');
   const [expandedUpgrade, setExpandedUpgrade] = useState<string | null>(null);
@@ -662,10 +669,46 @@ export default function StadiumBuilder() {
   const currentWeek = gameState?.currentWeek ?? 1;
   const teamDynamics = gameState?.teamDynamics;
 
+  // Initialize stadium if not exists
+  if (club && !((gameState as any)?.stadium)) {
+    initializeStadium();
+  }
+
+  // Get real stadium data from store
+  const stadiumFromStore = (gameState as any)?.stadium;
+  const stadiumStats = getStadiumStats();
+
   // ===== Derived Stadium Data =====
   const stadiumData = useMemo(() => {
     if (!club) return null;
 
+    // Use real stadium data if available
+    if (stadiumFromStore && stadiumStats) {
+      return {
+        name: stadiumFromStore.name,
+        capacity: stadiumStats.totalCapacity,
+        avgAttendance: stadiumStats.currentAttendance,
+        attendancePct: stadiumStats.attendanceRate,
+        rating: Math.ceil(stadiumStats.prestigeRating / 20),
+        revenuePerMatch: stadiumStats.matchDayRevenue,
+        seatingLevel: Math.min(5, Math.ceil(stadiumStats.facilityQuality / 20)),
+        vipLevel: Math.min(5, Math.ceil(stadiumStats.atmosphereRating / 20)),
+        upgrades: stadiumFromStore.sections.map((section: any) => ({
+          id: section.id,
+          name: section.name,
+          icon: <Building2 className="h-4 w-4" />,
+          description: `${section.tier} ${section.section}`,
+          currentLevel: section.level,
+          maxLevel: 5,
+          baseCost: section.cost,
+          effectDescription: `+${section.capacity} seats, +${section.atmosphereBonus}% atmosphere`,
+          color: '#22c55e',
+          levelEffects: [`Level ${section.level}: ${section.status}`],
+        })),
+      };
+    }
+
+    // Fallback to generated data
     const reputation = club.reputation ?? 50;
     const facilities = club.facilities ?? 50;
     const finances = club.finances ?? 50;
@@ -715,7 +758,7 @@ export default function StadiumBuilder() {
       vipLevel,
       upgrades,
     };
-  }, [club]);
+  }, [club, stadiumFromStore, stadiumStats]);
 
   // Initialize stadium name
   /* eslint-disable react-hooks/set-state-in-effect */

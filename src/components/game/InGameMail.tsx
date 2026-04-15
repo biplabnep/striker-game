@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -50,12 +50,20 @@ import {
   EyeOff,
   PenLine,
 } from 'lucide-react';
+import { 
+  GameMail, 
+  MailCategory,
+  getMailCategoryIcon,
+  getMailPriorityColor,
+  sortMailsByDate,
+  filterMailsByCategory,
+  getUnreadCount
+} from '@/lib/game/mailEngine';
 
 // ============================================================
 // Types & Interfaces
 // ============================================================
 
-type MailCategory = 'agent' | 'club' | 'transfer' | 'media' | 'personal' | 'fan';
 type MailFolder = 'inbox' | 'sent' | 'drafts' | 'archive' | 'trash';
 type MailTab = 'all' | 'unread' | 'starred' | 'agent' | 'club' | 'transfer';
 type MailView = 'list' | 'detail' | 'compose' | 'stats' | 'settings';
@@ -181,9 +189,55 @@ function CategoryIcon({ category, className = 'h-3.5 w-3.5' }: { category: MailC
 }
 
 // ============================================================
-// Mock Data — 14 messages
+// Helper Functions - Convert GameMail to MailMessage
 // ============================================================
 
+function convertGameMailToMailMessage(mail: GameMail): MailMessage {
+  const colors = ['bg-sky-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 'bg-pink-500', 'bg-red-500'];
+  const colorIndex = mail.category.charCodeAt(0) % colors.length;
+  
+  return {
+    id: mail.id,
+    sender: mail.from,
+    senderRole: mail.fromRole,
+    senderInitial: mail.from.charAt(0).toUpperCase(),
+    senderColor: colors[colorIndex],
+    category: mail.category,
+    subject: mail.subject,
+    preview: mail.body.substring(0, 100) + (mail.body.length > 100 ? '...' : ''),
+    body: mail.body,
+    timestamp: new Date(mail.timestamp).toLocaleString(),
+    timeAgo: getTimeAgo(mail.week, mail.season),
+    isRead: mail.status === 'read' || mail.status === 'archived',
+    isStarred: mail.priority === 'high' || mail.priority === 'urgent',
+    hasAttachment: mail.attachments && mail.attachments.length > 0,
+    attachments: (mail.attachments || []).map(att => ({
+      name: att.name,
+      type: att.type === 'contract' ? 'pdf' : att.type === 'document' ? 'doc' : att.type === 'trophy' ? 'image' : 'report',
+      size: '1.2 MB', // Placeholder
+    })),
+    isPriority: mail.priority === 'high' || mail.priority === 'urgent',
+    actionType: mail.requiresResponse ? 'reply' : 'none',
+  };
+}
+
+function getTimeAgo(week: number, season: number): string {
+  const now = new Date();
+  const mailDate = new Date(now.getFullYear(), 0, 1 + (week - 1) * 7);
+  const diffMs = now.getTime() - mailDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return `${Math.floor(diffDays / 30)}mo ago`;
+}
+
+// ============================================================
+// Mock Data — 14 messages (Commented out - using store data now)
+// ============================================================
+/*
 const MOCK_MESSAGES: MailMessage[] = [
   {
     id: 'msg-001',
@@ -499,6 +553,7 @@ const MOCK_MESSAGES: MailMessage[] = [
     },
   },
 ];
+*/
 
 const MOCK_CONTACTS: MailContact[] = [
   { name: 'Marcus Webb', role: 'Agent' },
@@ -1622,9 +1677,15 @@ function NotificationPreferences() {
 export default function InGameMail() {
   const gameState = useGameStore((s) => s.gameState);
   const playerName = gameState?.player?.name ?? 'Player';
+  
+  // Store actions
+  const readMailAction = useGameStore((s) => s.readMail);
+  const archiveMailAction = useGameStore((s) => s.archiveMail);
+  const deleteMailAction = useGameStore((s) => s.deleteMail);
+  const respondToMailAction = useGameStore((s) => s.respondToMail);
+  const getUnreadMailCountAction = useGameStore((s) => s.getUnreadMailCount);
 
   // Local state
-  const [messages, setMessages] = useState<MailMessage[]>(MOCK_MESSAGES);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<MailTab>('all');
   const [activeFolder, setActiveFolder] = useState<MailFolder>('inbox');
@@ -1634,8 +1695,14 @@ export default function InGameMail() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showCompose, setShowCompose] = useState(false);
 
+  // Get mails from store and convert to UI format
+  const inboxMails = gameState?.inbox || [];
+  const messages = useMemo(() => {
+    return sortMailsByDate(inboxMails).map(convertGameMailToMailMessage);
+  }, [inboxMails]);
+
   // Derived
-  const unreadCount = messages.filter((m) => !m.isRead).length;
+  const unreadCount = getUnreadMailCountAction();
 
   const filteredMessages = useMemo(() => {
     let filtered = [...messages];
@@ -1655,7 +1722,11 @@ export default function InGameMail() {
         filtered = filtered.filter((m) => m.category === 'club');
         break;
       case 'transfer':
-        filtered = filtered.filter((m) => m.category === 'transfer');
+        // Transfer mails might have specific keywords in subject or body
+        filtered = filtered.filter((m) => 
+          m.subject.toLowerCase().includes('transfer') || 
+          m.body.toLowerCase().includes('transfer')
+        );
         break;
     }
 
@@ -1676,29 +1747,24 @@ export default function InGameMail() {
 
   // Handlers
   const handleToggleStar = useCallback((id: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, isStarred: !m.isStarred } : m))
-    );
+    // Star functionality is based on priority in mail engine
+    // For now, just a UI toggle (could be enhanced later)
   }, []);
 
   const handleDelete = useCallback((id: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== id));
+    deleteMailAction(id);
     if (selectedMessage?.id === id) {
       setSelectedMessage(null);
       setActiveView('list');
     }
-  }, [selectedMessage]);
+  }, [selectedMessage, deleteMailAction]);
 
   const handleMessageClick = useCallback((msg: MailMessage) => {
     setSelectedMessage(msg);
     setActiveView('detail');
-    // Mark as read
-    setMessages((prev) =>
-      prev.map((m) => (m.id === msg.id ? { ...m, isRead: true } : m))
-    );
-    // Update selected message ref
-    setSelectedMessage((prev) => (prev ? { ...prev, isRead: true } : null));
-  }, []);
+    // Mark as read in store
+    readMailAction(msg.id);
+  }, [readMailAction]);
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -1716,12 +1782,17 @@ export default function InGameMail() {
 
   const handleMarkRead = useCallback(() => {
     if (!selectedMessage) return;
-    const newRead = !selectedMessage.isRead;
-    setMessages((prev) =>
-      prev.map((m) => (m.id === selectedMessage.id ? { ...m, isRead: newRead } : m))
-    );
-    setSelectedMessage((prev) => (prev ? { ...prev, isRead: newRead } : null));
-  }, [selectedMessage]);
+    readMailAction(selectedMessage.id);
+    setSelectedMessage((prev) => (prev ? { ...prev, isRead: true } : null));
+  }, [selectedMessage, readMailAction]);
+
+  const handleArchive = useCallback((id: string) => {
+    archiveMailAction(id);
+    if (selectedMessage?.id === id) {
+      setSelectedMessage(null);
+      setActiveView('list');
+    }
+  }, [selectedMessage, archiveMailAction]);
 
   return (
     <div className="min-h-screen bg-[#0d1117]">

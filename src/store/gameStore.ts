@@ -44,6 +44,20 @@ import {
   Injury,
   InjuryType,
   InjuryCategory,
+  RecoverySession,
+  RecoveryMethod,
+  RecoveryPlan,
+  InjuryRisk,
+  SponsorOffer,
+  SponsorContract,
+  SponsorMilestone,
+  StadiumSectionUpgrade,
+  StadiumFacility,
+  StadiumDesign,
+  GameMail,
+  MailCategory,
+  RetirementReason,
+  PostRetirementPath,
 } from '@/lib/game/types';
 
 // Engine imports
@@ -144,6 +158,20 @@ import {
   generateSeasonInternationalFixtures,
   getMatchTypeLabel,
 } from '@/lib/game/internationalEngine';
+import {
+  calculateLegacyScore,
+  determineLegacyTier,
+  generateRetirementPackage,
+  generateCareerHighlights,
+  createHallOfFameEntry,
+  evaluateRetirementReadiness,
+  determinePostRetirementPath,
+  type RetiredPlayer,
+  type HallOfFameEntry,
+  type RetirementPackage,
+  type PostRetirementOutcome,
+  type CareerHighlight,
+} from '@/lib/game/legacyEngine';
 
 // ============================================================
 // Retirement probability calculation
@@ -272,6 +300,50 @@ interface GameStoreActions {
   // Player Team Level
   promoteToU21: () => void;
   promoteToSenior: () => void;
+
+  // Injury Recovery
+  startRecoverySession: (injuryId: string, method: RecoveryMethod) => void;
+  updateRecoveryProgress: (sessionId: string, progress: number) => void;
+  completeRecoverySession: (sessionId: string) => void;
+  addRecoverySetback: (sessionId: string, setback: { description: string; weeksAdded: number; severity: 'minor' | 'moderate' | 'severe' }) => void;
+  generateRecoveryPlan: (injuryId: string) => RecoveryPlan;
+  calculateInjuryRisk: () => InjuryRisk;
+
+  // Sponsor System
+  acceptSponsorOffer: (offerId: string) => void;
+  rejectSponsorOffer: (offerId: string) => void;
+  renewSponsorContract: (contractId: string) => void;
+  terminateSponsorContract: (contractId: string) => void;
+  updateSponsorDeliverables: (contractId: string, deliverable: 'socialMediaPosts' | 'publicAppearances' | 'interviews') => void;
+  trackSponsorBonuses: (contractId: string, stats: { goals?: number; assists?: number; cleanSheets?: number; wins?: number; trophies?: number }) => void;
+  generateSponsorOffers: () => void;
+
+  // Stadium Builder
+  upgradeStadiumSection: (sectionId: string) => void;
+  buildStadiumFacility: (facilityType: any) => void;
+  startStadiumConstruction: (upgradeId: string, type: 'section' | 'facility') => void;
+  completeStadiumConstruction: (upgradeId: string, type: 'section' | 'facility') => void;
+  getStadiumStats: () => any;
+  initializeStadium: () => void;
+
+  // In-Game Mail
+  sendMail: (mail: Omit<GameMail, 'id' | 'timestamp' | 'status'>) => void;
+  readMail: (mailId: string) => void;
+  archiveMail: (mailId: string) => void;
+  deleteMail: (mailId: string) => void;
+  respondToMail: (mailId: string, responseId: string) => void;
+  generateWeeklyMails: () => void;
+  getUnreadMailCount: () => number;
+  getMailsByCategory: (category: MailCategory) => GameMail[];
+
+  // Retirement & Legacy
+  evaluateRetirement: () => { ready: boolean; readinessScore: number; recommendation: string; factors: string[] };
+  initiateRetirement: (reason: RetirementReason) => void;
+  completeRetirement: () => RetiredPlayer;
+  inductToHallOfFame: (playerId: string) => HallOfFameEntry;
+  setPostRetirementPath: (path: PostRetirementPath) => void;
+  getHallOfFameEntries: () => HallOfFameEntry[];
+  getRetirementPackage: () => RetirementPackage | null;
 
   // Save/Load
   saveGame: (slotName: string) => void;
@@ -805,6 +877,9 @@ function migrateGameState(gs: GameState | null): GameState | null {
     // Weather System
     currentWeather: gs.currentWeather ?? null,
     weatherPreparation: gs.weatherPreparation ?? 'standard',
+    // In-Game Mail
+    inbox: gs.inbox ?? [],
+    mailArchive: gs.mailArchive ?? [],
     // Retirement
     retirementPending: gs.retirementPending ?? false,
     retirementRiskPushed: gs.retirementRiskPushed ?? false,
@@ -996,6 +1071,9 @@ export const useGameStore = create<GameStore>()(
           // Weather System
           currentWeather: generateWeatherCondition(1, 1),
           weatherPreparation: 'standard' as const,
+          // In-Game Mail
+          inbox: [],
+          mailArchive: [],
           // Retirement
           retirementPending: false,
           retirementRiskPushed: false,
@@ -3148,6 +3226,1161 @@ export const useGameStore = create<GameStore>()(
             actionRequired: false,
           });
         }
+      },
+
+      // ============================================================
+      // Injury Recovery Actions
+      // ============================================================
+      startRecoverySession: (injuryId, method) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs || !gs.currentInjury || gs.currentInjury.id !== injuryId) return;
+
+        const sessionId = generateId();
+        const effectiveness = method === 'surgery' ? 90 : method === 'physiotherapy' ? 75 : method === 'rehabilitation' ? 70 : method === 'alternative_therapy' ? 60 : 50;
+        const duration = method === 'surgery' ? Math.ceil(gs.currentInjury.weeksRemaining * 0.8) : method === 'physiotherapy' ? gs.currentInjury.weeksRemaining : Math.ceil(gs.currentInjury.weeksRemaining * 1.2);
+
+        const session: RecoverySession = {
+          id: sessionId,
+          injuryId,
+          method,
+          weekStarted: gs.currentWeek,
+          seasonStarted: gs.currentSeason,
+          duration,
+          progress: 0,
+          status: 'in_progress',
+          effectiveness,
+          setbacks: [],
+        };
+
+        const existingSessions = gs.player.contract as any;
+        const recoverySessions = existingSessions?.recoverySessions || [];
+
+        state.set((s) => {
+          if (s.gameState) {
+            (s.gameState.player.contract as any).recoverySessions = [...recoverySessions, session];
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Recovery Session Started',
+          message: `Started ${method} treatment for ${gs.currentInjury.name}. Estimated duration: ${duration} weeks.`,
+          actionRequired: false,
+        });
+      },
+
+      updateRecoveryProgress: (sessionId, progress) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const sessions = (gs.player.contract as any)?.recoverySessions || [];
+        const sessionIndex = sessions.findIndex((s: RecoverySession) => s.id === sessionId);
+        if (sessionIndex === -1) return;
+
+        const updatedSessions = [...sessions];
+        updatedSessions[sessionIndex] = { ...updatedSessions[sessionIndex], progress };
+
+        if (progress >= 100) {
+          updatedSessions[sessionIndex].status = 'completed';
+          updatedSessions[sessionIndex].completedAt = gs.currentWeek;
+        }
+
+        state.set((s) => {
+          if (s.gameState) {
+            (s.gameState.player.contract as any).recoverySessions = updatedSessions;
+          }
+        });
+      },
+
+      completeRecoverySession: (sessionId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs || !gs.currentInjury) return;
+
+        const sessions = (gs.player.contract as any)?.recoverySessions || [];
+        const session = sessions.find((s: RecoverySession) => s.id === sessionId);
+        if (!session || session.status !== 'in_progress') return;
+
+        const effectivenessMultiplier = session.effectiveness / 100;
+        const weeksReduced = Math.floor(session.duration * effectivenessMultiplier * 0.3);
+        const newWeeksRemaining = Math.max(1, gs.currentInjury.weeksRemaining - weeksReduced);
+
+        const updatedInjury = { ...gs.currentInjury, weeksRemaining: newWeeksRemaining };
+        const updatedInjuries = gs.injuries.map(inc => inc.id === gs.currentInjury!.id ? updatedInjury : inc);
+
+        const sessionsList = (gs.player.contract as any)?.recoverySessions || [];
+        const completedSessions = sessionsList.map((s: RecoverySession) =>
+          s.id === sessionId ? { ...s, status: 'completed' as const, completedAt: gs.currentWeek, progress: 100 } : s
+        );
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.currentInjury = newWeeksRemaining === 0 ? null : updatedInjury;
+            s.gameState.injuries = newWeeksRemaining === 0 ? updatedInjuries.filter(inc => inc.id !== gs.currentInjury!.id) : updatedInjuries;
+            s.gameState.player.injuryWeeks = newWeeksRemaining;
+            (s.gameState.player.contract as any).recoverySessions = completedSessions;
+          }
+        });
+
+        if (newWeeksRemaining === 0) {
+          state.addNotification({
+            type: 'career',
+            title: 'Full Recovery! ✓',
+            message: `${gs.player.name} has fully recovered from ${gs.currentInjury.name}!`,
+            actionRequired: false,
+          });
+        } else {
+          state.addNotification({
+            type: 'career',
+            title: 'Recovery Progress',
+            message: `Recovery session completed. ${newWeeksRemaining} weeks remaining.`,
+            actionRequired: false,
+          });
+        }
+      },
+
+      addRecoverySetback: (sessionId, setback) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs || !gs.currentInjury) return;
+
+        const sessions = (gs.player.contract as any)?.recoverySessions || [];
+        const sessionIndex = sessions.findIndex((s: RecoverySession) => s.id === sessionId);
+        if (sessionIndex === -1) return;
+
+        const setbackWithId = { ...setback, id: generateId(), week: gs.currentWeek };
+        const updatedSessions = [...sessions];
+        updatedSessions[sessionIndex] = {
+          ...updatedSessions[sessionIndex],
+          setbacks: [...updatedSessions[sessionIndex].setbacks, setbackWithId],
+          status: 'setback' as const,
+        };
+
+        const newWeeksRemaining = gs.currentInjury.weeksRemaining + setback.weeksAdded;
+        const updatedInjury = { ...gs.currentInjury, weeksRemaining: newWeeksRemaining, weeksOut: gs.currentInjury.weeksOut + setback.weeksAdded };
+        const updatedInjuries = gs.injuries.map(inc => inc.id === gs.currentInjury!.id ? updatedInjury : inc);
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.currentInjury = updatedInjury;
+            s.gameState.injuries = updatedInjuries;
+            s.gameState.player.injuryWeeks = newWeeksRemaining;
+            (s.gameState.player.contract as any).recoverySessions = updatedSessions;
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Recovery Setback ⚠️',
+          message: `${setback.description}. Recovery extended by ${setback.weeksAdded} weeks.`,
+          actionRequired: false,
+        });
+      },
+
+      generateRecoveryPlan: (injuryId) => {
+        const gs = get().gameState;
+        if (!gs) return { injuryId, sessions: [], estimatedRecoveryWeeks: 0, actualRecoveryWeeks: 0, totalCost: 0, successRate: 0, recommendedMethod: 'rest' as const };
+
+        const injury = gs.injuries.find(i => i.id === injuryId) || gs.currentInjury;
+        if (!injury) return { injuryId, sessions: [], estimatedRecoveryWeeks: 0, actualRecoveryWeeks: 0, totalCost: 0, successRate: 0, recommendedMethod: 'rest' as const };
+
+        const methods: RecoveryMethod[] = ['rest', 'physiotherapy', 'surgery', 'rehabilitation', 'alternative_therapy'];
+        const costs = { rest: 0, physiotherapy: 5000, surgery: 50000, rehabilitation: 15000, alternative_therapy: 10000 };
+        const successRates = { rest: 60, physiotherapy: 75, surgery: 90, rehabilitation: 80, alternative_therapy: 65 };
+        const durationMultipliers = { rest: 1.2, physiotherapy: 1.0, surgery: 0.8, rehabilitation: 1.0, alternative_therapy: 1.1 };
+
+        let recommendedMethod: RecoveryMethod = 'rest';
+        let bestScore = 0;
+
+        methods.forEach(method => {
+          const score = successRates[method] * 0.6 + (100 - costs[method] / 1000) * 0.4;
+          if (score > bestScore) {
+            bestScore = score;
+            recommendedMethod = method;
+          }
+        });
+
+        const estimatedWeeks = Math.ceil(injury.weeksRemaining * durationMultipliers[recommendedMethod]);
+        const sessions: RecoverySession[] = [{
+          id: generateId(),
+          injuryId,
+          method: recommendedMethod,
+          weekStarted: gs.currentWeek,
+          seasonStarted: gs.currentSeason,
+          duration: estimatedWeeks,
+          progress: 0,
+          status: 'not_started',
+          effectiveness: successRates[recommendedMethod],
+          setbacks: [],
+        }];
+
+        return {
+          injuryId,
+          sessions,
+          estimatedRecoveryWeeks: estimatedWeeks,
+          actualRecoveryWeeks: injury.weeksRemaining,
+          totalCost: costs[recommendedMethod],
+          successRate: successRates[recommendedMethod],
+          recommendedMethod,
+        };
+      },
+
+      calculateInjuryRisk: () => {
+        const gs = get().gameState;
+        if (!gs) return { overall: 0, factors: { fatigue: 0, age: 0, injuryHistory: 0, trainingLoad: 0, matchFrequency: 0 }, prediction: 'low' as const };
+
+        const player = gs.player;
+        const fatigueRisk = Math.max(0, (100 - player.fitness) * 0.4);
+        const ageRisk = player.age > 30 ? (player.age - 30) * 8 : 0;
+        const historyRisk = Math.min(100, player.injuryHistory.length * 15);
+        const trainingLoadRisk = gs.trainingHistory.length > 3 ? 40 : gs.trainingHistory.length * 10;
+        const matchFreqRisk = gs.recentResults.length > 5 ? 50 : gs.recentResults.length * 8;
+
+        const overall = Math.round(fatigueRisk * 0.3 + ageRisk * 0.25 + historyRisk * 0.25 + trainingLoadRisk * 0.1 + matchFreqRisk * 0.1);
+
+        let prediction: 'low' | 'medium' | 'high' | 'critical' = 'low';
+        if (overall > 70) prediction = 'critical';
+        else if (overall > 50) prediction = 'high';
+        else if (overall > 30) prediction = 'medium';
+
+        return {
+          overall,
+          factors: {
+            fatigue: Math.round(fatigueRisk),
+            age: Math.round(ageRisk),
+            injuryHistory: Math.round(historyRisk),
+            trainingLoad: Math.round(trainingLoadRisk),
+            matchFrequency: Math.round(matchFreqRisk),
+          },
+          prediction,
+        };
+      },
+
+      // ============================================================
+      // Sponsor System Actions
+      // ============================================================
+      acceptSponsorOffer: (offerId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const offer = gs.sponsorOffers.find(o => o.id === offerId);
+        if (!offer) return;
+
+        const contract: SponsorContract = {
+          id: generateId(),
+          company: offer.company,
+          type: offer.type,
+          status: 'active',
+          startWeek: gs.currentWeek,
+          startSeason: gs.currentSeason,
+          endWeek: gs.currentWeek + offer.duration,
+          endSeason: gs.currentSeason,
+          weeklyPayment: offer.weeklyPayment,
+          totalEarned: 0,
+          bonusStructure: offer.bonusStructure,
+          bonusesEarned: { goals: 0, assists: 0, cleanSheets: 0, wins: 0, trophies: 0 },
+          deliverables: {
+            socialMediaPosts: Math.floor(offer.duration / 4),
+            publicAppearances: Math.floor(offer.duration / 8),
+            interviews: Math.floor(offer.duration / 6),
+          },
+          deliverablesCompleted: { socialMediaPosts: 0, publicAppearances: 0, interviews: 0 },
+          satisfaction: 75,
+          renewalProbability: 60,
+        };
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.activeSponsors = [...s.gameState.activeSponsors, contract];
+            s.gameState.sponsorOffers = s.gameState.sponsorOffers.filter(o => o.id !== offerId);
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Sponsor Deal Signed! 🤝',
+          message: `${offer.company.name} sponsorship activated. Weekly payment: €${offer.weeklyPayment.toLocaleString()}`,
+          actionRequired: false,
+        });
+      },
+
+      rejectSponsorOffer: (offerId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const offer = gs.sponsorOffers.find(o => o.id === offerId);
+        if (!offer) return;
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.sponsorOffers = s.gameState.sponsorOffers.filter(o => o.id !== offerId);
+            s.gameState.rejectedSponsors = [...s.gameState.rejectedSponsors, offerId];
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Offer Rejected',
+          message: `Declined ${offer.company.name}'s sponsorship proposal.`,
+          actionRequired: false,
+        });
+      },
+
+      renewSponsorContract: (contractId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const contract = gs.activeSponsors.find(c => c.id === contractId);
+        if (!contract) return;
+
+        const renewalDuration = contract.endWeek - contract.startWeek;
+        const renewedContract: SponsorContract = {
+          ...contract,
+          id: generateId(),
+          status: 'active',
+          startWeek: gs.currentWeek,
+          startSeason: gs.currentSeason,
+          endWeek: gs.currentWeek + renewalDuration,
+          endSeason: gs.currentSeason,
+          totalEarned: 0,
+          bonusesEarned: { goals: 0, assists: 0, cleanSheets: 0, wins: 0, trophies: 0 },
+          deliverablesCompleted: { socialMediaPosts: 0, publicAppearances: 0, interviews: 0 },
+          satisfaction: 80,
+          renewalProbability: 50,
+          weeklyPayment: Math.round(contract.weeklyPayment * 1.1),
+        };
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.activeSponsors = s.gameState.activeSponsors.filter(c => c.id !== contractId);
+            s.gameState.activeSponsors = [...s.gameState.activeSponsors, renewedContract];
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Contract Renewed! ✍️',
+          message: `${contract.company.name} deal extended with 10% raise.`,
+          actionRequired: false,
+        });
+      },
+
+      terminateSponsorContract: (contractId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const contract = gs.activeSponsors.find(c => c.id === contractId);
+        if (!contract) return;
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.activeSponsors = s.gameState.activeSponsors.filter(c => c.id !== contractId);
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Contract Terminated',
+          message: `Ended partnership with ${contract.company.name}.`,
+          actionRequired: false,
+        });
+      },
+
+      updateSponsorDeliverables: (contractId, deliverable) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const contractIndex = gs.activeSponsors.findIndex(c => c.id === contractId);
+        if (contractIndex === -1) return;
+
+        const updatedSponsors = [...gs.activeSponsors];
+        const current = updatedSponsors[contractIndex].deliverablesCompleted[deliverable];
+        const max = updatedSponsors[contractIndex].deliverables[deliverable];
+
+        if (current < max) {
+          updatedSponsors[contractIndex] = {
+            ...updatedSponsors[contractIndex],
+            deliverablesCompleted: {
+              ...updatedSponsors[contractIndex].deliverablesCompleted,
+              [deliverable]: current + 1,
+            },
+            satisfaction: Math.min(100, updatedSponsors[contractIndex].satisfaction + 5),
+          };
+
+          state.set((s) => {
+            if (s.gameState) {
+              s.gameState.activeSponsors = updatedSponsors;
+            }
+          });
+        }
+      },
+
+      trackSponsorBonuses: (contractId, stats) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const contractIndex = gs.activeSponsors.findIndex(c => c.id === contractId);
+        if (contractIndex === -1) return;
+
+        const contract = gs.activeSponsors[contractIndex];
+        const updatedBonuses = { ...contract.bonusesEarned };
+
+        if (stats.goals) updatedBonuses.goals += stats.goals;
+        if (stats.assists) updatedBonuses.assists += stats.assists;
+        if (stats.cleanSheets) updatedBonuses.cleanSheets += stats.cleanSheets;
+        if (stats.wins) updatedBonuses.wins += stats.wins;
+        if (stats.trophies) updatedBonuses.trophies += stats.trophies;
+
+        const updatedSponsors = [...gs.activeSponsors];
+        updatedSponsors[contractIndex] = {
+          ...contract,
+          bonusesEarned: updatedBonuses,
+        };
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.activeSponsors = updatedSponsors;
+          }
+        });
+      },
+
+      generateSponsorOffers: () => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const player = gs.player;
+        const reputation = player.reputation;
+        const overall = player.overall;
+
+        const companies: SponsorCompany[] = [
+          { id: 'sp1', name: 'NikeSport', industry: 'sports_wear', tier: 'platinum', reputation: 95, primaryColor: '#FF6B00', description: 'Global sports apparel giant' },
+          { id: 'sp2', name: 'AdidasPro', industry: 'sports_wear', tier: 'platinum', reputation: 92, primaryColor: '#000000', description: 'Leading athletic brand' },
+          { id: 'sp3', name: 'TechGear', industry: 'technology', tier: 'gold', reputation: 78, primaryColor: '#00A8E8', description: 'Cutting-edge sports tech' },
+          { id: 'sp4', name: 'AutoElite', industry: 'automotive', tier: 'gold', reputation: 82, primaryColor: '#C0C0C0', description: 'Luxury automotive sponsor' },
+          { id: 'sp5', name: 'FinanceFirst', industry: 'finance', tier: 'silver', reputation: 70, primaryColor: '#006400', description: 'Premier financial services' },
+          { id: 'sp6', name: 'EnergyBoost', industry: 'energy', tier: 'silver', reputation: 65, primaryColor: '#FFD700', description: 'Sports nutrition leader' },
+          { id: 'sp7', name: 'MediaMax', industry: 'media', tier: 'bronze', reputation: 55, primaryColor: '#E50914', description: 'Digital media platform' },
+        ];
+
+        const eligibleCompanies = companies.filter(c => c.reputation <= reputation + 20);
+        const newOffers: SponsorOffer[] = [];
+
+        for (const company of eligibleCompanies.slice(0, 3)) {
+          const basePayment = company.tier === 'platinum' ? 50000 : company.tier === 'gold' ? 25000 : company.tier === 'silver' ? 10000 : 5000;
+          const multiplier = overall / 70;
+          const weeklyPayment = Math.round(basePayment * multiplier);
+
+          const offer: SponsorOffer = {
+            id: generateId(),
+            company,
+            type: 'personal',
+            duration: 52,
+            weeklyPayment,
+            bonusStructure: {
+              goalBonus: weeklyPayment * 0.1,
+              assistBonus: weeklyPayment * 0.05,
+              trophyBonus: weeklyPayment * 5,
+            },
+            requirements: {
+              minReputation: company.reputation - 15,
+              minOverall: company.tier === 'platinum' ? 80 : company.tier === 'gold' ? 70 : 60,
+              exclusivity: company.tier === 'platinum',
+            },
+            expiresWeek: gs.currentWeek + 4,
+            expiresSeason: gs.currentSeason,
+          };
+
+          newOffers.push(offer);
+        }
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.sponsorOffers = [...s.gameState.sponsorOffers, ...newOffers];
+          }
+        });
+
+        if (newOffers.length > 0) {
+          state.addNotification({
+            type: 'transfer',
+            title: 'New Sponsor Offers! 💼',
+            message: `${newOffers.length} sponsorship proposals received.`,
+            actionRequired: true,
+          });
+        }
+      },
+
+      // ============================================================
+      // Stadium Builder Actions
+      // ============================================================
+      initializeStadium: () => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const initialSections: StadiumSectionUpgrade[] = [
+          { id: 'st1', section: 'stands', name: 'Main Stand', tier: 'standard', level: 1, capacity: 15000, cost: 5000000, revenueMultiplier: 1.0, atmosphereBonus: 10, prestigeBonus: 5, status: 'completed', constructionWeeks: 0, weeksRemaining: 0, unlocked: true },
+          { id: 'st2', section: 'vip_boxes', name: 'VIP Boxes', tier: 'basic', level: 1, capacity: 500, cost: 3000000, revenueMultiplier: 1.5, atmosphereBonus: 5, prestigeBonus: 10, status: 'planned', constructionWeeks: 8, weeksRemaining: 8, unlocked: false },
+          { id: 'st3', section: 'press_box', name: 'Press Box', tier: 'basic', level: 1, capacity: 100, cost: 1000000, revenueMultiplier: 1.0, atmosphereBonus: 2, prestigeBonus: 8, status: 'planned', constructionWeeks: 4, weeksRemaining: 4, unlocked: false },
+          { id: 'st4', section: 'pitch', name: 'Playing Surface', tier: 'standard', level: 1, capacity: 0, cost: 2000000, revenueMultiplier: 1.0, atmosphereBonus: 5, prestigeBonus: 5, status: 'completed', constructionWeeks: 0, weeksRemaining: 0, unlocked: true },
+        ];
+
+        const initialFacilities: StadiumFacility[] = [
+          { id: 'sf1', type: 'training_ground', name: 'Training Ground', level: 1, cost: 4000000, benefits: { trainingBoost: 5 }, status: 'completed', constructionWeeks: 0, weeksRemaining: 0 },
+          { id: 'sf2', type: 'medical_center', name: 'Medical Center', level: 1, cost: 2500000, benefits: { injuryRecoveryBoost: 10 }, status: 'planned', constructionWeeks: 6, weeksRemaining: 6 },
+        ];
+
+        const stadium: StadiumDesign = {
+          id: generateId(),
+          name: `${gs.currentClub.name} Stadium`,
+          clubId: gs.currentClub.id,
+          sections: initialSections,
+          facilities: initialFacilities,
+          totalCost: 17500000,
+          totalCapacity: 15500,
+          designTheme: 'traditional',
+          primaryColor: gs.currentClub.primaryColor,
+          secondaryColor: gs.currentClub.secondaryColor,
+          builtYear: gs.year,
+          lastRenovation: gs.year,
+        };
+
+        state.set((s) => {
+          if (s.gameState) {
+            (s.gameState as any).stadium = stadium;
+          }
+        });
+      },
+
+      upgradeStadiumSection: (sectionId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const stadium = (gs as any).stadium as StadiumDesign | undefined;
+        if (!stadium) return;
+
+        const sectionIndex = stadium.sections.findIndex(s => s.id === sectionId);
+        if (sectionIndex === -1) return;
+
+        const section = stadium.sections[sectionIndex];
+        if (!section.unlocked || section.status !== 'planned') return;
+
+        const upgradedSection: StadiumSectionUpgrade = {
+          ...section,
+          status: 'under_construction',
+          weeksRemaining: section.constructionWeeks,
+        };
+
+        const updatedSections = [...stadium.sections];
+        updatedSections[sectionIndex] = upgradedSection;
+
+        state.set((s) => {
+          if (s.gameState) {
+            (s.gameState as any).stadium = { ...stadium, sections: updatedSections };
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Construction Started! 🏗️',
+          message: `${section.name} upgrade underway. ${section.weeksRemaining} weeks to completion.`,
+          actionRequired: false,
+        });
+      },
+
+      buildStadiumFacility: (facilityType) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const stadium = (gs as any).stadium as StadiumDesign | undefined;
+        if (!stadium) return;
+
+        const facilityTemplates: Record<string, Omit<StadiumFacility, 'id'>> = {
+          youth_academy: { type: 'youth_academy', name: 'Youth Academy', level: 1, cost: 5000000, benefits: { youthDevelopmentBoost: 15 }, status: 'planned', constructionWeeks: 12, weeksRemaining: 12 },
+          gym: { type: 'gym', name: 'Fitness Center', level: 1, cost: 2000000, benefits: { trainingBoost: 8 }, status: 'planned', constructionWeeks: 6, weeksRemaining: 6 },
+          recovery_pool: { type: 'recovery_pool', name: 'Recovery Pool', level: 1, cost: 1500000, benefits: { injuryRecoveryBoost: 20 }, status: 'planned', constructionWeeks: 4, weeksRemaining: 4 },
+          conference_room: { type: 'conference_room', name: 'Conference Room', level: 1, cost: 1000000, benefits: { moraleBoost: 5 }, status: 'planned', constructionWeeks: 3, weeksRemaining: 3 },
+        };
+
+        const template = facilityTemplates[facilityType];
+        if (!template) return;
+
+        const newFacility: StadiumFacility = { ...template, id: generateId() };
+        const updatedFacilities = [...stadium.facilities, newFacility];
+
+        state.set((s) => {
+          if (s.gameState) {
+            (s.gameState as any).stadium = { ...stadium, facilities: updatedFacilities, totalCost: stadium.totalCost + template.cost };
+          }
+        });
+
+        state.addNotification({
+          type: 'career',
+          title: 'Facility Planned 🏢',
+          message: `${template.name} added to construction queue.`,
+          actionRequired: false,
+        });
+      },
+
+      startStadiumConstruction: (upgradeId, type) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const stadium = (gs as any).stadium as StadiumDesign | undefined;
+        if (!stadium) return;
+
+        if (type === 'section') {
+          state.upgradeStadiumSection(upgradeId);
+        } else {
+          const facilityIndex = stadium.facilities.findIndex(f => f.id === upgradeId);
+          if (facilityIndex === -1) return;
+
+          const facility = stadium.facilities[facilityIndex];
+          if (facility.status !== 'planned') return;
+
+          const updatedFacilities = [...stadium.facilities];
+          updatedFacilities[facilityIndex] = { ...facility, status: 'under_construction' };
+
+          state.set((s) => {
+            if (s.gameState) {
+              (s.gameState as any).stadium = { ...stadium, facilities: updatedFacilities };
+            }
+          });
+
+          state.addNotification({
+            type: 'career',
+            title: 'Construction Started! 🏗️',
+            message: `${facility.name} construction begun. ${facility.weeksRemaining} weeks remaining.`,
+            actionRequired: false,
+          });
+        }
+      },
+
+      completeStadiumConstruction: (upgradeId, type) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const stadium = (gs as any).stadium as StadiumDesign | undefined;
+        if (!stadium) return;
+
+        if (type === 'section') {
+          const sectionIndex = stadium.sections.findIndex(s => s.id === upgradeId);
+          if (sectionIndex === -1) return;
+
+          const section = stadium.sections[sectionIndex];
+          if (section.status !== 'under_construction') return;
+
+          const updatedSections = [...stadium.sections];
+          updatedSections[sectionIndex] = { ...section, status: 'completed', weeksRemaining: 0, level: section.level + 1, unlocked: true };
+
+          const newCapacity = stadium.totalCapacity + section.capacity;
+
+          state.set((s) => {
+            if (s.gameState) {
+              (s.gameState as any).stadium = { ...stadium, sections: updatedSections, totalCapacity: newCapacity };
+            }
+          });
+
+          state.addNotification({
+            type: 'career',
+            title: 'Upgrade Complete! ✅',
+            message: `${section.name} is now operational. Capacity: ${newCapacity.toLocaleString()}`,
+            actionRequired: false,
+          });
+        } else {
+          const facilityIndex = stadium.facilities.findIndex(f => f.id === upgradeId);
+          if (facilityIndex === -1) return;
+
+          const facility = stadium.facilities[facilityIndex];
+          if (facility.status !== 'under_construction') return;
+
+          const updatedFacilities = [...stadium.facilities];
+          updatedFacilities[facilityIndex] = { ...facility, status: 'completed', weeksRemaining: 0, level: facility.level + 1 };
+
+          state.set((s) => {
+            if (s.gameState) {
+              (s.gameState as any).stadium = { ...stadium, facilities: updatedFacilities };
+            }
+          });
+
+          state.addNotification({
+            type: 'career',
+            title: 'Facility Complete! ✅',
+            message: `${facility.name} is now open and operational.`,
+            actionRequired: false,
+          });
+        }
+      },
+
+      getStadiumStats: () => {
+        const gs = get().gameState;
+        if (!gs) return null;
+
+        const stadium = (gs as any).stadium as StadiumDesign | undefined;
+        if (!stadium) return null;
+
+        const completedSections = stadium.sections.filter(s => s.status === 'completed');
+        const completedFacilities = stadium.facilities.filter(f => f.status === 'completed');
+
+        const totalCapacity = completedSections.reduce((sum, s) => sum + s.capacity, 0);
+        const atmosphereRating = completedSections.reduce((sum, s) => sum + s.atmosphereBonus, 0);
+        const prestigeRating = completedSections.reduce((sum, s) => sum + s.prestigeBonus, 0) + completedFacilities.length * 5;
+        const facilityQuality = completedFacilities.length > 0 ? Math.round(completedFacilities.reduce((sum, f) => sum + f.level, 0) / completedFacilities.length * 10) : 0;
+        const matchDayRevenue = Math.round(totalCapacity * 25 * (1 + completedSections.reduce((sum, s) => sum + s.revenueMultiplier - 1, 0)));
+
+        return {
+          totalCapacity,
+          currentAttendance: Math.round(totalCapacity * 0.85),
+          attendanceRate: 85,
+          matchDayRevenue,
+          annualRevenue: matchDayRevenue * 20,
+          atmosphereRating: Math.min(100, atmosphereRating),
+          prestigeRating: Math.min(100, prestigeRating),
+          facilityQuality: Math.min(100, facilityQuality),
+        };
+      },
+
+      // ============================================================
+      // In-Game Mail Actions
+      // ============================================================
+      sendMail: (mail) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const newMail: GameMail = {
+          ...mail,
+          id: generateId(),
+          timestamp: new Date().toISOString(),
+          status: 'unread',
+        };
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.inbox = [...(s.gameState.inbox || []), newMail];
+          }
+        });
+
+        if (mail.priority === 'high' || mail.priority === 'urgent') {
+          state.addNotification({
+            type: 'event',
+            title: `New ${mail.priority === 'urgent' ? 'URGENT' : ''} Mail!`,
+            message: mail.subject,
+            actionRequired: mail.requiresResponse,
+          });
+        }
+      },
+
+      readMail: (mailId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const updatedInbox = (gs.inbox || []).map(mail =>
+          mail.id === mailId ? { ...mail, status: 'read' as const } : mail
+        );
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.inbox = updatedInbox;
+          }
+        });
+      },
+
+      archiveMail: (mailId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const updatedInbox = (gs.inbox || []).map(mail =>
+          mail.id === mailId ? { ...mail, status: 'archived' as const } : mail
+        );
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.inbox = updatedInbox;
+          }
+        });
+      },
+
+      deleteMail: (mailId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.inbox = (s.gameState.inbox || []).filter(mail => mail.id !== mailId);
+          }
+        });
+      },
+
+      respondToMail: (mailId, responseId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const mail = (gs.inbox || []).find(m => m.id === mailId);
+        if (!mail || !mail.responseOptions) return;
+
+        const response = mail.responseOptions.find(r => r.id === responseId);
+        if (!response) return;
+
+        // Apply response effects
+        if (response.effects.reputation && gs.player) {
+          gs.player.reputation = Math.max(0, Math.min(100, gs.player.reputation + response.effects.reputation));
+        }
+        if (response.effects.morale && gs.player) {
+          gs.player.morale = Math.max(0, Math.min(100, gs.player.morale + response.effects.morale));
+        }
+        if (response.effects.marketValue && gs.player) {
+          gs.player.marketValue += response.effects.marketValue;
+        }
+
+        // Archive the mail after response
+        const updatedInbox = (gs.inbox || []).map(m =>
+          m.id === mailId ? { ...m, status: 'archived' as const } : m
+        );
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.inbox = updatedInbox;
+          }
+        });
+
+        state.addNotification({
+          type: 'event',
+          title: 'Response Sent',
+          message: `Your response to "${mail.subject}" has been sent.`,
+          actionRequired: false,
+        });
+      },
+
+      generateWeeklyMails: () => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        const player = gs.player;
+        const mails: Omit<GameMail, 'id' | 'timestamp' | 'status'>[] = [];
+
+        // Performance-based mail
+        if (player.form >= 7.5) {
+          mails.push({
+            from: 'Manager',
+            fromRole: 'Manager',
+            subject: 'Excellent Form!',
+            body: `Dear ${player.name},\n\nYour recent performances have been outstanding. The coaching staff is very pleased with your contribution. Keep up the great work!\n\nBest regards,\nManager`,
+            category: 'club',
+            priority: 'normal',
+            week: gs.currentWeek,
+            season: gs.currentSeason,
+            attachments: [],
+            requiresResponse: false,
+          });
+        }
+
+        // Agent mail about market value
+        if (player.reputation > 60) {
+          mails.push({
+            from: 'Agent',
+            fromRole: 'Agent',
+            subject: 'Market Interest',
+            body: `Hello ${player.name},\n\nI've received inquiries from several clubs about your availability. Your market value is rising. Let's discuss potential opportunities.\n\nBest,\nAgent`,
+            category: 'agent',
+            priority: 'high',
+            week: gs.currentWeek,
+            season: gs.currentSeason,
+            attachments: [],
+            requiresResponse: true,
+            responseOptions: [
+              { id: 'explore', label: 'Explore offers', effects: { reputation: 5 } },
+              { id: 'stay_loyal', label: 'Stay loyal to current club', effects: { reputation: 10, morale: 5 } },
+            ],
+          });
+        }
+
+        // Fan mail
+        if (Math.random() > 0.5) {
+          mails.push({
+            from: 'Fan Club',
+            fromRole: 'Fan Club President',
+            subject: 'Thank You!',
+            body: `Dear ${player.name},\n\nThe fans appreciate your efforts on the pitch. You're an inspiration to all of us!\n\nYours faithfully,\nFan Club`,
+            category: 'fan',
+            priority: 'low',
+            week: gs.currentWeek,
+            season: gs.currentSeason,
+            attachments: [],
+            requiresResponse: false,
+          });
+        }
+
+        // Send all generated mails
+        mails.forEach(mail => state.sendMail(mail));
+      },
+
+      getUnreadMailCount: () => {
+        const gs = get().gameState;
+        if (!gs) return 0;
+        return (gs.inbox || []).filter(mail => mail.status === 'unread').length;
+      },
+
+      getMailsByCategory: (category) => {
+        const gs = get().gameState;
+        if (!gs) return [];
+        return (gs.inbox || []).filter(mail => mail.category === category);
+      },
+
+      // ============================================================
+      // Retirement & Legacy Actions
+      // ============================================================
+      evaluateRetirement: () => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return { ready: false, readinessScore: 0, recommendation: 'No game state', factors: [] };
+
+        const player = gs.player;
+        const injuryCount = gs.injuries?.length || 0;
+        const currentForm = player.form || 70;
+        const morale = player.morale || 70;
+        
+        const familyPressure = Math.min((player.age - 30) * 10, 100);
+        
+        const legacyScore = calculateLegacyScore(
+          gs.currentSeason,
+          player.careerStats?.appearances || 0,
+          player.careerStats?.goals || 0,
+          player.careerStats?.trophies || 0,
+          player.awards?.length || 0,
+          player.internationalCareer?.caps || 0,
+          0
+        );
+
+        return evaluateRetirementReadiness({
+          age: player.age,
+          injuryCount,
+          currentForm,
+          morale,
+          familyPressure,
+          offersReceived: gs.transferOffers?.length || 0,
+          legacyScore,
+        });
+      },
+
+      initiateRetirement: (reason) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) return;
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.retirementPending = true;
+          }
+        });
+
+        state.addNotification({
+          type: 'event',
+          title: 'Retirement Initiated',
+          message: `You have decided to retire. Your legacy will be calculated.`,
+          actionRequired: false,
+        });
+      },
+
+      completeRetirement: () => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs) throw new Error('No game state');
+
+        const player = gs.player;
+        const totalSeasons = gs.currentSeason;
+        const totalAppearances = player.careerStats?.appearances || 0;
+        const totalGoals = player.careerStats?.goals || 0;
+        const totalAssists = player.careerStats?.assists || 0;
+        const totalTrophies = player.careerStats?.trophies || 0;
+        const totalAwards = player.awards?.length || 0;
+        const internationalCaps = player.internationalCareer?.caps || 0;
+        const internationalGoals = player.internationalCareer?.goals || 0;
+        const internationalTrophies = player.internationalCareer?.trophies || 0;
+
+        const legacyScore = calculateLegacyScore(
+          totalSeasons,
+          totalAppearances,
+          totalGoals,
+          totalTrophies,
+          totalAwards,
+          internationalCaps,
+          0
+        );
+        const legacyTier = determineLegacyTier(legacyScore);
+
+        const seasonData = gs.seasons.map(s => ({
+          season: s.number,
+          trophies: s.achievements.filter(a => a.includes('Cup') || a.includes('League') || a.includes('Trophy')),
+          awards: s.achievements.filter(a => a.includes('Player') || a.includes('Golden') || a.includes('Team')),
+          goals: s.playerStats.goals,
+          appearances: s.playerStats.appearances,
+        }));
+        const careerHighlights = generateCareerHighlights(seasonData, []);
+
+        const retirementPackage = generateRetirementPackage(
+          legacyTier,
+          totalSeasons,
+          player.reputation || 70
+        );
+
+        const retiredPlayer: RetiredPlayer = {
+          id: generateId(),
+          name: player.name,
+          position: player.position,
+          nationality: player.nationality,
+          retiredAt: new Date().toISOString(),
+          age: player.age,
+          reason: 'age',
+          totalSeasons,
+          totalAppearances,
+          totalGoals,
+          totalAssists,
+          totalTrophies,
+          totalAwards,
+          clubsPlayed: [{
+            clubName: gs.currentClub.name,
+            seasons: totalSeasons,
+            appearances: totalAppearances,
+            goals: totalGoals,
+            trophies: totalTrophies,
+          }],
+          internationalCaps,
+          internationalGoals,
+          internationalTrophies,
+          careerHighlights,
+          recordsHeld: [],
+          legacyTier,
+          legacyScore,
+          hallOfFameInducted: legacyTier === 'legend' || legacyTier === 'icon',
+          retiredJerseyNumber: legacyTier === 'legend' ? player.shirtNumber : undefined,
+          statueUnlocked: legacyTier === 'legend' && totalSeasons >= 10,
+          coachingLicense: retirementPackage.coachingOffer,
+          punditryOffers: retirementPackage.mediaDeals,
+          ambassadorRole: retirementPackage.ambassadorRole,
+        };
+
+        let hallOfFameEntry: HallOfFameEntry | null = null;
+        if (retiredPlayer.hallOfFameInducted) {
+          hallOfFameEntry = state.inductToHallOfFame(retiredPlayer.id);
+        }
+
+        const personality = player.personality || 'balanced';
+        const postRetirementPath = determinePostRetirementPath(
+          legacyTier,
+          retirementPackage.coachingOffer,
+          retirementPackage.mediaDeals,
+          retirementPackage.ambassadorRole,
+          personality as any
+        );
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.retiredPlayer = retiredPlayer;
+            s.gameState.postRetirementOutcome = postRetirementPath;
+            s.gameState.retirementWeek = s.gameState.currentWeek;
+            s.gameState.retirementSeason = s.gameState.currentSeason;
+          }
+        });
+
+        state.addNotification({
+          type: 'event',
+          title: 'Career Complete!',
+          message: `${player.name} retires as a ${legacyTier}. Legacy Score: ${legacyScore}/100`,
+          actionRequired: false,
+        });
+
+        return retiredPlayer;
+      },
+
+      inductToHallOfFame: (playerId) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs || !gs.retiredPlayer) throw new Error('No retired player');
+
+        const entry = createHallOfFameEntry(gs.retiredPlayer, gs.currentSeason + 1);
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.hallOfFameEntries = [...(s.gameState.hallOfFameEntries || []), entry];
+          }
+        });
+
+        return entry;
+      },
+
+      setPostRetirementPath: (path) => {
+        const state = get();
+        const gs = state.gameState;
+        if (!gs || !gs.retiredPlayer) return;
+
+        const legacyTier = gs.retiredPlayer.legacyTier;
+        const coachingLicense = gs.retiredPlayer.coachingLicense || false;
+        const mediaDeals = gs.retiredPlayer.punditryOffers || 0;
+        const ambassadorRole = gs.retiredPlayer.ambassadorRole || false;
+
+        const personalityMap: Record<string, 'charismatic' | 'tactical' | 'business' | 'private'> = {
+          coach: 'tactical',
+          pundit: 'charismatic',
+          business: 'business',
+          ambassador: 'charismatic',
+          retired_life: 'private',
+        };
+
+        const outcome = determinePostRetirementPath(
+          legacyTier,
+          coachingLicense,
+          mediaDeals,
+          ambassadorRole,
+          personalityMap[path] || 'private'
+        );
+
+        state.set((s) => {
+          if (s.gameState) {
+            s.gameState.postRetirementOutcome = outcome;
+          }
+        });
+
+        state.addNotification({
+          type: 'event',
+          title: 'New Chapter',
+          message: `You are now pursuing a career as ${outcome.title}`,
+          actionRequired: false,
+        });
+      },
+
+      getHallOfFameEntries: () => {
+        const gs = get().gameState;
+        if (!gs) return [];
+        return gs.hallOfFameEntries || [];
+      },
+
+      getRetirementPackage: () => {
+        const gs = get().gameState;
+        if (!gs || !gs.retiredPlayer) return null;
+
+        return generateRetirementPackage(
+          gs.retiredPlayer.legacyTier,
+          gs.retiredPlayer.totalSeasons,
+          75
+        );
       },
     }),
     {

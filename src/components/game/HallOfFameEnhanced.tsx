@@ -27,6 +27,7 @@ import {
   Lock,
   CheckCircle2,
 } from 'lucide-react';
+import type { HallOfFameEntry } from '@/lib/game/types';
 
 // ── Animation Constants ─────────────────────────────────────
 const BASE_ANIM = { duration: 0.18, ease: 'easeOut' as const };
@@ -1669,6 +1670,7 @@ function TabPathToLegend({ gameState }: { gameState: NonNullable<ReturnType<type
 // ════════════════════════════════════════════════════════════
 export default function HallOfFameEnhanced() {
   const { gameState, setScreen } = useGameStore();
+  const getHallOfFameEntries = useGameStore((s) => s.getHallOfFameEntries);
   const [activeTab, setActiveTab] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -1679,6 +1681,11 @@ export default function HallOfFameEnhanced() {
   const totalApps = gameState?.player?.careerStats?.totalAppearances ?? 0;
   const ovr = gameState?.player?.overall ?? 50;
   const pos = gameState?.player?.position ?? 'ST';
+  
+  // Get Hall of Fame entries from store
+  const hallOfFameEntries = getHallOfFameEntries();
+  const hasRetiredPlayer = !!gameState?.retiredPlayer;
+  const retiredPlayer = gameState?.retiredPlayer;
 
   const legendScore = useMemo(() => {
     if (!gameState) return 0;
@@ -1700,6 +1707,10 @@ export default function HallOfFameEnhanced() {
 
   const tierLabel = legendScore >= 80 ? 'Club Legend' : legendScore >= 60 ? 'Star Player' : legendScore >= 40 ? 'Rising Star' : 'Newcomer';
   const tierColor = legendScore >= 80 ? COLORS.emerald : legendScore >= 60 ? COLORS.amber : legendScore >= 40 ? COLORS.blue : COLORS.muted;
+  
+  // Check if player is in Hall of Fame
+  const isInHallOfFame = hallOfFameEntries.some(entry => entry.playerId === retiredPlayer?.id);
+  const playerEntry = hallOfFameEntries.find(entry => entry.playerId === retiredPlayer?.id);
 
   function handleTabChange(index: number) {
     setActiveTab(index);
@@ -1792,6 +1803,46 @@ export default function HallOfFameEnhanced() {
         {activeTab === 1 && gameState && <TabAllTimeRecords gameState={gameState} />}
         {activeTab === 2 && gameState && <TabCareerComparison gameState={gameState} />}
         {activeTab === 3 && gameState && <TabPathToLegend gameState={gameState} />}
+
+        {/* ── Player's Hall of Fame Entry (if retired) ─────── */}
+        {hasRetiredPlayer && isInHallOfFame && playerEntry && (
+          <motion.div
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 space-y-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...BASE_ANIM, delay: 0.1 }}
+          >
+            <div className="flex items-center gap-2">
+              <Crown className="h-4 w-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-[#e6edf3]">Your Hall of Fame Entry</h3>
+            </div>
+            
+            <div className="bg-[#21262d] rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#e6edf3]">{playerEntry.playerName}</span>
+                <Badge variant="outline" className="text-[9px] border-amber-400/30 text-amber-400">
+                  {playerEntry.legacyTier.toUpperCase()}
+                </Badge>
+              </div>
+              
+              <p className="text-[10px] text-[#8b949e] whitespace-pre-line">{playerEntry.plaque}</p>
+              
+              <div className="grid grid-cols-3 gap-2 pt-2">
+                {playerEntry.careerStats.slice(0, 6).map((stat, idx) => (
+                  <div key={idx} className="text-center bg-[#161b22] rounded p-1.5">
+                    <div className="text-[11px] font-bold tabular-nums text-[#e6edf3]">{stat.value}</div>
+                    <div className="text-[7px] text-[#8b949e]">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="pt-2 border-t border-[#30363d]">
+                <div className="text-[9px] text-[#8b949e] mb-1">Induction Year: {playerEntry.inductionYear}</div>
+                <div className="text-[9px] text-[#8b949e]">Legacy Score: {playerEntry.legacyScore}/100</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Footer ───────────────────────────────────────── */}
         <motion.div
