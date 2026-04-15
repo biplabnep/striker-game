@@ -694,7 +694,9 @@ export type GameScreen =
   | 'fantasy_draft_enhanced'
   | 'hall_of_fame_enhanced'
   | 'media_interaction'
-  | 'legend_status';
+  | 'legend_status'
+  | 'tactical_board_enhanced'
+  | 'scouting_network_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

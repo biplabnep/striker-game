@@ -30,6 +30,23 @@ import { motion } from 'framer-motion';
 import type { MatchEvent, MatchEventType } from '@/lib/game/types';
 
 // -----------------------------------------------------------
+// Web3 Design Token Constants
+// -----------------------------------------------------------
+const W3 = {
+  bg: '#000000',
+  card: '#0a0a0a',
+  panel: '#111111',
+  elevated: '#1a1a1a',
+  accent: '#FF5500',
+  lime: '#CCFF00',
+  cyan: '#00E5FF',
+  border: '#222222',
+  dim: '#666666',
+  mid: '#999999',
+  bright: '#e8e8e8',
+} as const;
+
+// -----------------------------------------------------------
 // Rating color helpers
 // -----------------------------------------------------------
 function getRatingColor(rating: number): string {
@@ -318,6 +335,782 @@ function MiniRatingBar({ rating, index }: { rating: number; index: number }) {
   );
 }
 
+// ===========================================================
+// SVG HELPER FUNCTIONS
+// ===========================================================
+
+/** Convert angle (0=12 o'clock, clockwise) to SVG cartesian point */
+function polarToXY(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
+  const rad = angleDeg * Math.PI / 180;
+  return {
+    x: cx + r * Math.sin(rad),
+    y: cy - r * Math.cos(rad),
+  };
+}
+
+/** Build an SVG arc path for a donut segment */
+function donutSegmentPath(
+  cx: number, cy: number,
+  outerR: number, innerR: number,
+  startDeg: number, endDeg: number
+): string {
+  const outerStart = polarToXY(cx, cy, outerR, startDeg);
+  const outerEnd = polarToXY(cx, cy, outerR, endDeg);
+  const innerEnd = polarToXY(cx, cy, innerR, endDeg);
+  const innerStart = polarToXY(cx, cy, innerR, startDeg);
+  const largeArc = (endDeg - startDeg > 180) ? 1 : 0;
+  return [
+    `M ${outerStart.x.toFixed(1)} ${outerStart.y.toFixed(1)}`,
+    `A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEnd.x.toFixed(1)} ${outerEnd.y.toFixed(1)}`,
+    `L ${innerEnd.x.toFixed(1)} ${innerEnd.y.toFixed(1)}`,
+    `A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerStart.x.toFixed(1)} ${innerStart.y.toFixed(1)}`,
+    'Z',
+  ].join(' ');
+}
+
+/** Compute polygon points string for radar charts */
+function computeRadarPoints(cx: number, cy: number, r: number, values: number[]): string {
+  return values.reduce((acc, val, i) => {
+    const angle = (i / values.length) * 360 - 90;
+    const pt = polarToXY(cx, cy, r * (val / 100), angle + 90);
+    const pair = `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+    return i === 0 ? pair : `${acc} ${pair}`;
+  }, '');
+}
+
+/** Get impact score for an event type (for scatter plot) */
+function getEventImpact(type: MatchEventType): number {
+  switch (type) {
+    case 'goal': return 10;
+    case 'own_goal': return 8;
+    case 'red_card': return 9;
+    case 'second_yellow': return 8;
+    case 'save': return 7;
+    case 'assist': return 7;
+    case 'penalty_missed': return 6;
+    case 'injury': return 5;
+    case 'chance': return 5;
+    case 'yellow_card': return 4;
+    case 'substitution': return 3;
+    default: return 2;
+  }
+}
+
+/** Build a semi-circular gauge arc path (left to right through top) */
+function gaugeArcPath(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  if (Math.abs(endAngle - startAngle) < 0.5) return '';
+  const start = polarToXY(cx, cy, r, startAngle - 90);
+  const end = polarToXY(cx, cy, r, endAngle - 90);
+  const largeArc = (endAngle - startAngle > 180) ? 1 : 0;
+  return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+}
+
+// ===========================================================
+// SVG COMPONENT 1: Match Rating Gauge
+// ===========================================================
+function MatchRatingGauge({ rating }: { rating: number }): React.JSX.Element {
+  const cx = 80;
+  const cy = 85;
+  const r = 56;
+  const gaugeColor = rating >= 8 ? W3.lime : rating >= 7 ? '#22c55e' : rating >= 6 ? W3.accent : '#ef4444';
+  const bgPath = gaugeArcPath(cx, cy, r, 0, 180);
+  const ratingAngle = Math.min(180, Math.max(2, (rating / 10) * 180));
+  const ratingPath = gaugeArcPath(cx, cy, r, 0, ratingAngle);
+
+  return (
+    <svg viewBox="0 0 160 110" className="w-full max-w-[200px] mx-auto">
+      <path d={bgPath} fill="none" stroke={W3.border} strokeWidth="10" strokeLinecap="round" />
+      {ratingPath && (
+        <path d={ratingPath} fill="none" stroke={gaugeColor} strokeWidth="10" strokeLinecap="round" />
+      )}
+      {/* Needle indicator */}
+      {rating > 0 && (() => {
+        const needleAngle = (rating / 10) * 180;
+        const needlePt = polarToXY(cx, cy - 18, r * 0.68, needleAngle - 90);
+        const needleBase = polarToXY(cx, cy - 18, 4, needleAngle - 90);
+        return (
+          <circle cx={needlePt.x.toFixed(1)} cy={needlePt.y.toFixed(1)} r="4" fill={W3.bright} />
+        );
+      })()}
+      <text x={cx} y={cy - 10} textAnchor="middle"  fontFamily="monospace" fontSize="28" fontWeight="bold" fill={W3.bright}>
+        {rating.toFixed(1)}
+      </text>
+      <text x={cx} y={cy + 8} textAnchor="middle"  fontFamily="monospace" fontSize="9" fill={W3.mid}>
+        MATCH RATING
+      </text>
+      <text x={14} y={cy + 22} textAnchor="start"  fontFamily="monospace" fontSize="8" fill={W3.dim}>
+        0
+      </text>
+      <text x={146} y={cy + 22} textAnchor="end"  fontFamily="monospace" fontSize="8" fill={W3.dim}>
+        10
+      </text>
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 2: Performance Pentagon Radar
+// ===========================================================
+function PerformancePentagonRadar({
+  performance,
+  playerRating,
+}: {
+  performance: PerformanceBreakdown;
+  playerRating: number;
+}): React.JSX.Element {
+  const cx = 80;
+  const cy = 80;
+  const r = 52;
+  const decision = Math.min(100, Math.max(5, Math.round(playerRating * 8 + 10 + (performance.attacking > 40 ? 10 : 0))));
+  const values = [performance.attacking, performance.creative, performance.defensive, performance.stamina, decision];
+  const labels = ['ATK', 'CRE', 'DEF', 'STA', 'DEC'];
+
+  // Grid rings at 25%, 50%, 75%, 100%
+  const gridRings = [0.25, 0.5, 0.75, 1.0];
+
+  // Compute axis lines and labels
+  const axisEndpoints = values.reduce((acc, _v, i) => {
+    const pt = polarToXY(cx, cy, r, i * 72 - 90);
+    const labelPt = polarToXY(cx, cy, r + 14, i * 72 - 90);
+    return [...acc, { endpoint: pt, labelPt, label: labels[i] }];
+  }, [] as { endpoint: { x: number; y: number }; labelPt: { x: number; y: number }; label: string }[]);
+
+  const dataPoints = computeRadarPoints(cx, cy, r, values);
+  const gridPointsList = gridRings.map(s => computeRadarPoints(cx, cy, r * s, [100, 100, 100, 100, 100]));
+
+  return (
+    <svg viewBox="0 0 160 160" className="w-full max-w-[200px] mx-auto">
+      {/* Grid polygons */}
+      {gridPointsList.map((pts, i) => (
+        <polygon key={i} points={pts} fill="none" stroke={W3.border} strokeWidth="0.5" />
+      ))}
+      {/* Axis lines */}
+      {axisEndpoints.map((a, i) => (
+        <line key={i} x1={cx} y1={cy} x2={a.endpoint.x} y2={a.endpoint.y} stroke={W3.border} strokeWidth="0.5" />
+      ))}
+      {/* Data polygon */}
+      <polygon points={dataPoints} fill={`${W3.lime}20`} stroke={W3.lime} strokeWidth="1.5" />
+      {/* Data dots */}
+      {values.map((v, i) => {
+        const pt = polarToXY(cx, cy, r * (v / 100), i * 72 - 90);
+        return <circle key={i} cx={pt.x} cy={pt.y} r="3" fill={W3.lime} />;
+      })}
+      {/* Labels */}
+      {axisEndpoints.map((a, i) => (
+        <text key={i} x={a.labelPt.x} y={a.labelPt.y} textAnchor="middle"  fontFamily="monospace" fontSize="8" fill={W3.mid}>
+          {a.label}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 3: Shot Distribution Donut
+// ===========================================================
+function ShotDistributionDonut({ events, playerRating }: { events: MatchEvent[]; playerRating: number }): React.JSX.Element {
+  const raw = events.reduce((acc, e) => {
+    if (e.type === 'goal') return { ...acc, onTarget: acc.onTarget + 1 };
+    if (e.type === 'chance') return { ...acc, offTarget: acc.offTarget + 1 };
+    if (e.type === 'save') return { ...acc, saved: acc.saved + 1 };
+    return acc;
+  }, { onTarget: 0, offTarget: 0, blocked: 0, saved: 0 });
+
+  const totalRaw = raw.onTarget + raw.offTarget + raw.blocked + raw.saved;
+  const boost = totalRaw < 4 ? Math.max(2, Math.round(playerRating * 1.2)) : 0;
+  const shots = {
+    onTarget: raw.onTarget + boost + Math.max(0, Math.round(playerRating / 3)),
+    offTarget: raw.offTarget + boost + 1,
+    blocked: raw.blocked + Math.max(0, boost - 1),
+    saved: raw.saved + Math.max(0, boost - 2),
+  };
+  const total = shots.onTarget + shots.offTarget + shots.blocked + shots.saved;
+
+  const cx = 80;
+  const cy = 70;
+  const outerR = 48;
+  const innerR = 30;
+  const segments = [
+    { label: 'On Target', value: shots.onTarget, color: W3.lime },
+    { label: 'Off Target', value: shots.offTarget, color: W3.accent },
+    { label: 'Blocked', value: shots.blocked, color: W3.cyan },
+    { label: 'Saved', value: shots.saved, color: W3.dim },
+  ];
+
+  const paths = segments.reduce((acc, seg) => {
+    if (seg.value === 0) return acc;
+    const startDeg = acc.cumDeg;
+    const spanDeg = (seg.value / total) * 360;
+    const path = donutSegmentPath(cx, cy, outerR, innerR, startDeg, startDeg + spanDeg);
+    return { items: [...acc.items, { path, color: seg.color, label: seg.label, value: seg.value }], cumDeg: startDeg + spanDeg };
+  }, { items: [] as { path: string; color: string; label: string; value: number }[], cumDeg: 0 }).items;
+
+  const legendItems = segments.map(s => ({
+    ...s,
+    pct: total > 0 ? Math.round((s.value / total) * 100) : 0,
+  }));
+
+  return (
+    <svg viewBox="0 0 160 130" className="w-full max-w-[200px] mx-auto">
+      {/* Background ring */}
+      <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke={W3.border} strokeWidth={outerR - innerR} />
+      {/* Segments */}
+      {paths.map((p, i) => (
+        <path key={i} d={p.path} fill={p.color} />
+      ))}
+      {/* Center text */}
+      <text x={cx} y={cy - 2} textAnchor="middle"  fontFamily="monospace" fontSize="16" fontWeight="bold" fill={W3.bright}>
+        {total}
+      </text>
+      <text x={cx} y={cy + 10} textAnchor="middle"  fontFamily="monospace" fontSize="7" fill={W3.mid}>
+        SHOTS
+      </text>
+      {/* Legend */}
+      {legendItems.map((item, i) => {
+        const lx = i < 2 ? 8 : 84;
+        const ly = 108 + (i % 2) * 14;
+        return (
+          <g key={i}>
+            <rect x={lx} y={ly - 6} width="8" height="8" rx="2" fill={item.color} />
+            <text x={lx + 12} y={ly + 1} textAnchor="start"  fontFamily="monospace" fontSize="8" fill={W3.mid}>
+              {item.label} {item.pct}%
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 4: Passing Accuracy Bars
+// ===========================================================
+function PassingAccuracyBars({ playerRating }: { playerRating: number }): React.JSX.Element {
+  const bars = [
+    { label: 'Short', value: Math.min(95, Math.max(60, Math.round(playerRating * 8.2 + 17))) },
+    { label: 'Medium', value: Math.min(92, Math.max(50, Math.round(playerRating * 7 + 22))) },
+    { label: 'Long', value: Math.min(78, Math.max(35, Math.round(playerRating * 5.5 + 22))) },
+    { label: 'Cross', value: Math.min(70, Math.max(28, Math.round(playerRating * 4.8 + 18))) },
+  ];
+
+  const barHeight = 14;
+  const gap = 16;
+  const startY = 16;
+  const maxBarWidth = 90;
+  const labelWidth = 48;
+
+  return (
+    <svg viewBox="0 0 160 100" className="w-full max-w-[200px] mx-auto">
+      {bars.map((bar, i) => {
+        const y = startY + i * gap;
+        const barW = (bar.value / 100) * maxBarWidth;
+        const barColor = bar.value >= 80 ? W3.lime : bar.value >= 60 ? W3.cyan : bar.value >= 45 ? W3.accent : '#ef4444';
+        return (
+          <g key={i}>
+            <text x={labelWidth - 4} y={y + barHeight - 3} textAnchor="end"  fontFamily="monospace" fontSize="9" fill={W3.mid}>
+              {bar.label}
+            </text>
+            {/* Background bar */}
+            <rect x={labelWidth} y={y} width={maxBarWidth} height={barHeight} rx="3" fill={W3.border} />
+            {/* Value bar */}
+            <rect x={labelWidth} y={y} width={barW} height={barHeight} rx="3" fill={barColor} opacity="0.85" />
+            {/* Percentage */}
+            <text x={labelWidth + maxBarWidth + 4} y={y + barHeight - 3} textAnchor="start"  fontFamily="monospace" fontSize="8" fontWeight="bold" fill={barColor}>
+              {bar.value}%
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 5: Match Events Timeline (SVG horizontal)
+// ===========================================================
+function MatchEventsTimelineSVG({ events }: { events: MatchEvent[] }): React.JSX.Element {
+  const significantTypes: MatchEventType[] = ['goal', 'own_goal', 'red_card', 'yellow_card', 'second_yellow', 'assist', 'substitution', 'injury', 'save', 'penalty_missed'];
+  const filtered = events
+    .filter(e => significantTypes.includes(e.type))
+    .sort((a, b) => a.minute - b.minute);
+
+  const padX = 12;
+  const lineY = 30;
+  const lineStartX = padX;
+  const lineEndX = 148;
+  const lineWidth = lineEndX - lineStartX;
+
+  const dotColorMap: Record<string, string> = {
+    goal: W3.lime,
+    own_goal: '#ef4444',
+    red_card: '#ef4444',
+    second_yellow: W3.accent,
+    yellow_card: '#f59e0b',
+    assist: W3.cyan,
+    substitution: W3.mid,
+    injury: '#ef4444',
+    save: W3.cyan,
+    penalty_missed: W3.accent,
+  };
+
+  const topEvents = filtered.filter((_e, i) => i % 2 === 0);
+  const bottomEvents = filtered.filter((_e, i) => i % 2 === 1);
+
+  return (
+    <svg viewBox="0 0 160 65" className="w-full max-w-[200px] mx-auto">
+      {/* Timeline line */}
+      <line x1={lineStartX} y1={lineY} x2={lineEndX} y2={lineY} stroke={W3.border} strokeWidth="1.5" />
+      {/* Half markers */}
+      <text x={lineStartX} y={lineY - 6} textAnchor="start"  fontFamily="monospace" fontSize="7" fill={W3.dim}>0&apos;</text>
+      <text x={lineEndX} y={lineY - 6} textAnchor="end"  fontFamily="monospace" fontSize="7" fill={W3.dim}>90&apos;</text>
+      <line x1={lineStartX + lineWidth / 2} y1={lineY - 3} x2={lineStartX + lineWidth / 2} y2={lineY + 3} stroke={W3.dim} strokeWidth="0.5" />
+      <text x={lineStartX + lineWidth / 2} y={lineY - 6} textAnchor="middle"  fontFamily="monospace" fontSize="7" fill={W3.dim}>45&apos;</text>
+      {/* Top event dots */}
+      {topEvents.map((e, i) => {
+        const x = lineStartX + (e.minute / 90) * lineWidth;
+        const color = dotColorMap[e.type] ?? W3.dim;
+        return (
+          <g key={`t-${e.minute}-${e.type}-${i}`}>
+            <line x1={x} y1={lineY - 3} x2={x} y2={lineY - 12} stroke={color} strokeWidth="0.5" />
+            <circle cx={x} cy={lineY - 14} r="3.5" fill={color} />
+            <text x={x} y={lineY - 20} textAnchor="middle"  fontFamily="monospace" fontSize="6" fill={color}>
+              {e.minute}&apos;
+            </text>
+          </g>
+        );
+      })}
+      {/* Bottom event dots */}
+      {bottomEvents.map((e, i) => {
+        const x = lineStartX + (e.minute / 90) * lineWidth;
+        const color = dotColorMap[e.type] ?? W3.dim;
+        return (
+          <g key={`b-${e.minute}-${e.type}-${i}`}>
+            <line x1={x} y1={lineY + 3} x2={x} y2={lineY + 12} stroke={color} strokeWidth="0.5" />
+            <circle cx={x} cy={lineY + 14} r="3.5" fill={color} />
+            <text x={x} y={lineY + 26} textAnchor="middle"  fontFamily="monospace" fontSize="6" fill={color}>
+              {e.minute}&apos;
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 6: Player Comparison Bar (Butterfly)
+// ===========================================================
+function PlayerComparisonBar({
+  goals,
+  assists,
+  rating,
+  minutes,
+  playerRating,
+}: {
+  goals: number;
+  assists: number;
+  rating: number;
+  minutes: number;
+  playerRating: number;
+}): React.JSX.Element {
+  const opponentBase = Math.max(0.3, (10 - playerRating) * 0.08 + 0.35);
+  const categories = [
+    {
+      label: 'GOALS',
+      player: Math.min(1, goals * 0.35 + 0.05),
+      opponent: Math.min(1, opponentBase * 0.6 + (goals > 0 ? 0.15 : 0.05)),
+    },
+    {
+      label: 'ASSISTS',
+      player: Math.min(1, assists * 0.4 + 0.08),
+      opponent: Math.min(1, opponentBase * 0.55 + (assists > 0 ? 0.12 : 0.06)),
+    },
+    {
+      label: 'RATING',
+      player: Math.min(1, rating / 10),
+      opponent: Math.min(1, (6.5 - Math.abs(playerRating - 6.5) * 0.1) / 10),
+    },
+    {
+      label: 'MINS',
+      player: Math.min(1, minutes / 90),
+      opponent: Math.min(1, Math.max(0.05, 0.72 + playerRating * 0.005)),
+    },
+  ].map(c => ({
+    ...c,
+    opponent: Math.max(0.05, c.opponent),
+  }));
+
+  const centerX = 80;
+  const maxBarW = 55;
+  const barH = 12;
+  const gap = 20;
+  const startY = 12;
+
+  return (
+    <svg viewBox="0 0 160 110" className="w-full max-w-[200px] mx-auto">
+      {/* Center divider */}
+      <line x1={centerX} y1={0} x2={centerX} y2={startY + categories.length * gap} stroke={W3.border} strokeWidth="0.5" />
+      {/* Headers */}
+      <text x={centerX - 6} y={8} textAnchor="end"  fontFamily="monospace" fontSize="7" fill={W3.cyan}>YOU</text>
+      <text x={centerX + 6} y={8} textAnchor="start"  fontFamily="monospace" fontSize="7" fill={W3.dim}>OPP</text>
+      {categories.map((cat, i) => {
+        const y = startY + i * gap;
+        const playerW = cat.player * maxBarW;
+        const oppW = cat.opponent * maxBarW;
+        return (
+          <g key={i}>
+            <text x={centerX} y={y + barH + 3} textAnchor="middle"  fontFamily="monospace" fontSize="7" fontWeight="bold" fill={W3.mid}>
+              {cat.label}
+            </text>
+            {/* Player bar (right from center) */}
+            <rect x={centerX + 2} y={y} width={playerW} height={barH} rx="2" fill={W3.cyan} opacity="0.8" />
+            {/* Opponent bar (left from center) */}
+            <rect x={centerX - 2 - oppW} y={y} width={oppW} height={barH} rx="2" fill={W3.dim} opacity="0.5" />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 7: Possession Split Ring
+// ===========================================================
+function PossessionSplitRing({
+  isHome,
+  homeScore,
+  awayScore,
+  playerRating,
+}: {
+  isHome: boolean;
+  homeScore: number;
+  awayScore: number;
+  playerRating: number;
+}): React.JSX.Element {
+  const rawPossession = 50 + (homeScore - awayScore) * 2.5 + (playerRating - 6.5) * 1.2;
+  const homePoss = Math.min(65, Math.max(38, Math.round(rawPossession)));
+  const awayPoss = 100 - homePoss;
+  const playerPoss = isHome ? homePoss : awayPoss;
+  const oppPoss = isHome ? awayPoss : homePoss;
+
+  const cx = 80;
+  const cy = 72;
+  const outerR = 46;
+  const innerR = 28;
+
+  const playerSpan = (playerPoss / 100) * 360;
+  const oppSpan = (oppPoss / 100) * 360;
+
+  const playerPath = donutSegmentPath(cx, cy, outerR, innerR, 0, playerSpan);
+  const oppPath = donutSegmentPath(cx, cy, outerR, innerR, playerSpan, 360);
+
+  return (
+    <svg viewBox="0 0 160 130" className="w-full max-w-[200px] mx-auto">
+      {/* Background ring */}
+      <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke={W3.border} strokeWidth={outerR - innerR} />
+      {/* Player segment */}
+      <path d={playerPath} fill={W3.cyan} />
+      {/* Opponent segment */}
+      <path d={oppPath} fill={W3.dim} opacity="0.6" />
+      {/* Center text */}
+      <text x={cx} y={cy - 4} textAnchor="middle"  fontFamily="monospace" fontSize="18" fontWeight="bold" fill={W3.bright}>
+        {playerPoss}%
+      </text>
+      <text x={cx} y={cy + 10} textAnchor="middle"  fontFamily="monospace" fontSize="7" fill={W3.mid}>
+        POSSESSION
+      </text>
+      {/* Legend */}
+      <g>
+        <rect x={32} y={118} width="8" height="8" rx="2" fill={W3.cyan} />
+        <text x={44} y={125} textAnchor="start"  fontFamily="monospace" fontSize="8" fill={W3.mid}>
+          YOU {playerPoss}%
+        </text>
+        <rect x={96} y={118} width="8" height="8" rx="2" fill={W3.dim} />
+        <text x={108} y={125} textAnchor="start"  fontFamily="monospace" fontSize="8" fill={W3.mid}>
+          OPP {oppPoss}%
+        </text>
+      </g>
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 8: Key Moments Scatter
+// ===========================================================
+function KeyMomentsScatter({ events }: { events: MatchEvent[] }): React.JSX.Element {
+  const scatterTypes: MatchEventType[] = ['goal', 'own_goal', 'red_card', 'yellow_card', 'second_yellow', 'assist', 'substitution', 'injury', 'save', 'penalty_missed', 'chance'];
+  const points = events
+    .filter(e => scatterTypes.includes(e.type))
+    .reduce((acc, e) => {
+      const impact = getEventImpact(e.type);
+      return [...acc, { minute: e.minute, impact, type: e.type }];
+    }, [] as { minute: number; impact: number; type: MatchEventType }[]);
+
+  const colorMap: Record<string, string> = {
+    goal: W3.lime,
+    own_goal: '#ef4444',
+    red_card: '#ef4444',
+    second_yellow: W3.accent,
+    yellow_card: '#f59e0b',
+    assist: W3.cyan,
+    substitution: W3.mid,
+    injury: '#ef4444',
+    save: W3.cyan,
+    penalty_missed: W3.accent,
+    chance: W3.accent,
+  };
+
+  const padX = 20;
+  const padTop = 10;
+  const padBottom = 20;
+  const chartW = 120;
+  const chartH = 80;
+
+  const mapX = (min: number) => padX + (min / 90) * chartW;
+  const mapY = (imp: number) => padTop + chartH - (imp / 10) * chartH;
+
+  return (
+    <svg viewBox="0 0 160 115" className="w-full max-w-[200px] mx-auto">
+      {/* Axes */}
+      <line x1={padX} y1={padTop} x2={padX} y2={padTop + chartH} stroke={W3.border} strokeWidth="1" />
+      <line x1={padX} y1={padTop + chartH} x2={padX + chartW} y2={padTop + chartH} stroke={W3.border} strokeWidth="1" />
+      {/* Axis labels */}
+      <text x={padX + chartW / 2} y={padTop + chartH + 14} textAnchor="middle"  fontFamily="monospace" fontSize="7" fill={W3.dim}>
+        MINUTE
+      </text>
+      {/* Vertical IMPACT label using individual characters */}
+      {['I', 'M', 'P'].map((ch, ci) => (
+        <text key={`imp-${ci}`} x={6} y={padTop + 20 + ci * 9} textAnchor="middle" fontFamily="monospace" fontSize="6" fill={W3.dim}>
+          {ch}
+        </text>
+      ))}
+      {/* Grid lines */}
+      {[2, 4, 6, 8, 10].map(v => {
+        const y = mapY(v);
+        return <line key={v} x1={padX} y1={y} x2={padX + chartW} y2={y} stroke={W3.border} strokeWidth="0.3" strokeDasharray="2 3" />;
+      })}
+      {/* Scatter dots */}
+      {points.map((pt, i) => {
+        const color = colorMap[pt.type] ?? W3.dim;
+        const r = pt.impact >= 8 ? 5 : pt.impact >= 6 ? 4 : 3;
+        return (
+          <circle
+            key={`${pt.minute}-${pt.type}-${i}`}
+            cx={mapX(pt.minute)}
+            cy={mapY(pt.impact)}
+            r={r}
+            fill={color}
+            opacity="0.85"
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 9: Formation Contribution Bars
+// ===========================================================
+function FormationContributionBars({
+  performance,
+  playerRating,
+  goals,
+  assists,
+}: {
+  performance: PerformanceBreakdown;
+  playerRating: number;
+  goals: number;
+  assists: number;
+}): React.JSX.Element {
+  const bars = [
+    { label: 'DEF', value: Math.min(100, Math.max(5, Math.round(performance.defensive * 0.85 + playerRating * 1.2))) },
+    { label: 'MID', value: Math.min(100, Math.max(5, Math.round((performance.creative + performance.stamina) * 0.35 + 20 + playerRating * 0.8))) },
+    { label: 'ATK', value: Math.min(100, Math.max(5, Math.round(performance.attacking * 0.9 + goals * 8 + playerRating * 0.5))) },
+    { label: 'SET', value: Math.min(100, Math.max(5, Math.round(goals * 18 + assists * 12 + playerRating * 1.5 + 8))) },
+    { label: 'TRN', value: Math.min(100, Math.max(5, Math.round(performance.stamina * 0.5 + performance.creative * 0.25 + playerRating * 0.8 + 12))) },
+  ];
+
+  const barH = 11;
+  const gap = 15;
+  const startY = 14;
+  const labelW = 28;
+  const maxBarW = 90;
+
+  return (
+    <svg viewBox="0 0 160 105" className="w-full max-w-[200px] mx-auto">
+      {bars.map((bar, i) => {
+        const y = startY + i * gap;
+        const barW = (bar.value / 100) * maxBarW;
+        const color = bar.value >= 75 ? W3.lime : bar.value >= 50 ? W3.cyan : bar.value >= 30 ? W3.accent : '#ef4444';
+        return (
+          <g key={i}>
+            <text x={labelW - 2} y={y + barH - 2} textAnchor="end"  fontFamily="monospace" fontSize="8" fontWeight="bold" fill={W3.mid}>
+              {bar.label}
+            </text>
+            <rect x={labelW} y={y} width={maxBarW} height={barH} rx="2" fill={W3.border} />
+            <rect x={labelW} y={y} width={barW} height={barH} rx="2" fill={color} opacity="0.85" />
+            <text x={labelW + maxBarW + 3} y={y + barH - 2} textAnchor="start"  fontFamily="monospace" fontSize="7" fontWeight="bold" fill={color}>
+              {bar.value}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 10: Fitness Impact Area Chart
+// ===========================================================
+function FitnessImpactAreaChart({
+  fitness,
+  minutes,
+  playerRating,
+}: {
+  fitness: number;
+  minutes: number;
+  playerRating: number;
+}): React.JSX.Element {
+  const decayRate = Math.max(0.5, (1 - playerRating / 12) * 1.8);
+  const dataPoints = [0, 1, 2, 3, 4, 5, 6, 7].map(i => {
+    const periodFitness = fitness - i * decayRate * (minutes / 90);
+    return Math.max(15, Math.min(100, Math.round(periodFitness)));
+  });
+
+  const padX = 18;
+  const padTop = 8;
+  const padBottom = 18;
+  const chartW = 124;
+  const chartH = 65;
+  const stepX = chartW / (dataPoints.length - 1);
+
+  const mapX = (i: number) => padX + i * stepX;
+  const mapY = (v: number) => padTop + chartH - (v / 100) * chartH;
+
+  const linePoints = dataPoints.map((v, i) => `${mapX(i).toFixed(1)},${mapY(v).toFixed(1)}`).join(' ');
+  const areaPath = [
+    `M ${mapX(0).toFixed(1)} ${mapY(dataPoints[0]).toFixed(1)}`,
+    ...dataPoints.slice(1).map((v, i) => `L ${mapX(i + 1).toFixed(1)} ${mapY(v).toFixed(1)}`),
+    `L ${mapX(dataPoints.length - 1).toFixed(1)} ${(padTop + chartH).toFixed(1)}`,
+    `L ${mapX(0).toFixed(1)} ${(padTop + chartH).toFixed(1)}`,
+    'Z',
+  ].join(' ');
+
+  const dotCoords = dataPoints.map((v, i) => ({ x: mapX(i), y: mapY(v), value: v }));
+
+  return (
+    <svg viewBox="0 0 160 100" className="w-full max-w-[200px] mx-auto">
+      {/* Axes */}
+      <line x1={padX} y1={padTop} x2={padX} y2={padTop + chartH} stroke={W3.border} strokeWidth="0.5" />
+      <line x1={padX} y1={padTop + chartH} x2={padX + chartW} y2={padTop + chartH} stroke={W3.border} strokeWidth="0.5" />
+      {/* Grid lines */}
+      {[25, 50, 75].map(v => {
+        const y = mapY(v);
+        return <line key={v} x1={padX} y1={y} x2={padX + chartW} y2={y} stroke={W3.border} strokeWidth="0.3" strokeDasharray="2 3" />;
+      })}
+      {/* Area fill */}
+      <path d={areaPath} fill={`${W3.cyan}15`} stroke="none" />
+      {/* Line */}
+      <polyline points={linePoints} fill="none" stroke={W3.cyan} strokeWidth="1.5" />
+      {/* Dots */}
+      {dotCoords.map((pt, i) => (
+        <circle key={i} cx={pt.x.toFixed(1)} cy={pt.y.toFixed(1)} r="2.5" fill={W3.cyan} />
+      ))}
+      {/* X-axis labels */}
+      {dataPoints.map((_v, i) => (
+        <text key={i} x={mapX(i)} y={padTop + chartH + 12} textAnchor="middle"  fontFamily="monospace" fontSize="6" fill={W3.dim}>
+          {i * 11}&apos;
+        </text>
+      ))}
+      {/* Title */}
+      <text x={80} y={padTop + chartH + 24} textAnchor="middle"  fontFamily="monospace" fontSize="7" fill={W3.mid}>
+        MATCH FITNESS TRAJECTORY
+      </text>
+    </svg>
+  );
+}
+
+// ===========================================================
+// SVG COMPONENT 11: Team Performance Hex Radar
+// ===========================================================
+function TeamPerformanceHexRadar({
+  performance,
+  playerRating,
+  homeScore,
+  awayScore,
+  events,
+}: {
+  performance: PerformanceBreakdown;
+  playerRating: number;
+  homeScore: number;
+  awayScore: number;
+  events: MatchEvent[];
+}): React.JSX.Element {
+  const opponentConceded = homeScore + awayScore > 3 ? 25 : homeScore + awayScore > 1 ? 40 : 55;
+  const playerCards = events.filter(e => e.type === 'yellow_card' || e.type === 'red_card' || e.type === 'second_yellow').length;
+  const teamValues = [
+    Math.min(95, Math.max(15, Math.round(performance.attacking * 0.45 + playerRating * 2 + homeScore * 5 + 15))),
+    Math.min(95, Math.max(15, Math.round(performance.defensive * 0.5 + opponentConceded + 15))),
+    Math.min(95, Math.max(15, Math.round((performance.creative + performance.stamina) * 0.3 + playerRating * 1.5 + 20))),
+    Math.min(95, Math.max(15, Math.round(performance.creative * 0.55 + playerRating * 1.8 + 15))),
+    Math.min(95, Math.max(15, Math.round(performance.stamina * 0.45 + playerRating * 2 + 20))),
+    Math.min(95, Math.max(15, Math.round(70 - playerCards * 15 + playerRating * 0.5))),
+  ];
+
+  const opponentBase = 55 - Math.abs(playerRating - 6.5) * 2;
+  const opponentValues = teamValues.map((v, i) => Math.min(90, Math.max(20, Math.round(opponentBase + (v - 55) * -0.4 + (i % 2 === 0 ? 1 : -1) * 0.5 + (i * 1.3 - 2)))));
+
+  const cx = 80;
+  const cy = 80;
+  const r = 50;
+  const labels = ['ATK', 'DEF', 'MID', 'CRE', 'PRS', 'DIS'];
+
+  const gridRings = [0.33, 0.66, 1.0];
+
+  const axisEndpoints = labels.reduce((acc, _label, i) => {
+    const pt = polarToXY(cx, cy, r, i * 60 - 90);
+    const labelPt = polarToXY(cx, cy, r + 14, i * 60 - 90);
+    return [...acc, { endpoint: pt, labelPt, label: labels[i] }];
+  }, [] as { endpoint: { x: number; y: number }; labelPt: { x: number; y: number }; label: string }[]);
+
+  const teamPoints = computeRadarPoints(cx, cy, r, teamValues);
+  const oppPoints = computeRadarPoints(cx, cy, r, opponentValues);
+  const gridPointsList = gridRings.map(s => computeRadarPoints(cx, cy, r * s, [100, 100, 100, 100, 100, 100]));
+
+  return (
+    <svg viewBox="0 0 160 160" className="w-full max-w-[200px] mx-auto">
+      {/* Grid polygons */}
+      {gridPointsList.map((pts, i) => (
+        <polygon key={i} points={pts} fill="none" stroke={W3.border} strokeWidth="0.5" />
+      ))}
+      {/* Axis lines */}
+      {axisEndpoints.map((a, i) => (
+        <line key={i} x1={cx} y1={cy} x2={a.endpoint.x} y2={a.endpoint.y} stroke={W3.border} strokeWidth="0.5" />
+      ))}
+      {/* Opponent polygon */}
+      <polygon points={oppPoints} fill="none" stroke={W3.dim} strokeWidth="1" strokeDasharray="3 2" opacity="0.6" />
+      {/* Team polygon */}
+      <polygon points={teamPoints} fill={`${W3.accent}18`} stroke={W3.accent} strokeWidth="1.5" />
+      {/* Team dots */}
+      {teamValues.map((v, i) => {
+        const pt = polarToXY(cx, cy, r * (v / 100), i * 60 - 90);
+        return <circle key={`t-${i}`} cx={pt.x} cy={pt.y} r="2.5" fill={W3.accent} />;
+      })}
+      {/* Labels */}
+      {axisEndpoints.map((a, i) => (
+        <text key={`l-${i}`} x={a.labelPt.x} y={a.labelPt.y} textAnchor="middle"  fontFamily="monospace" fontSize="8" fill={W3.mid}>
+          {a.label}
+        </text>
+      ))}
+      {/* Legend */}
+      <line x1={30} y1={148} x2={46} y2={148} stroke={W3.accent} strokeWidth="1.5" />
+      <text x={50} y={151} textAnchor="start"  fontFamily="monospace" fontSize="7" fill={W3.mid}>TEAM</text>
+      <line x1={90} y1={148} x2={106} y2={148} stroke={W3.dim} strokeWidth="1" strokeDasharray="3 2" />
+      <text x={110} y={151} textAnchor="start"  fontFamily="monospace" fontSize="7" fill={W3.dim}>OPP</text>
+    </svg>
+  );
+}
+
 // -----------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------
@@ -421,6 +1214,9 @@ export default function PostMatchAnalysis() {
   const competitionLabel = match.competition === 'league'
     ? 'League Match'
     : match.competition.charAt(0).toUpperCase() + match.competition.slice(1).replace('_', ' ');
+
+  // ---- Data for SVG visualizations (plain variables, no useMemo) ----
+  const playerFitness = gameState.player?.fitness ?? 75;
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4 pb-20">
@@ -889,13 +1685,286 @@ export default function PostMatchAnalysis() {
         </motion.div>
       )}
 
+      {/* ============================================================= */}
+      {/* NEW SVG VISUALIZATIONS */}
+      {/* ============================================================= */}
+
       {/* ============================================= */}
-      {/* 7. Action Buttons */}
+      {/* SVG 1: Match Rating Gauge */}
       {/* ============================================= */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.35, duration: 0.2 }}
+        transition={{ delay: 0.38, duration: 0.3 }}
+      >
+        <Card className="bg-[#0a0a0a] border-[#222222]">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+              <Activity className="w-3 h-3" style={{ color: W3.accent }} />
+              Match Rating Gauge
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            <MatchRatingGauge rating={match.playerRating} />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ============================================= */}
+      {/* SVG 2: Performance Pentagon Radar */}
+      {/* ============================================= */}
+      {performance && match.playerMinutesPlayed > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.42, duration: 0.3 }}
+        >
+          <Card className="bg-[#0a0a0a] border-[#222222]">
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+                <Target className="w-3 h-3" style={{ color: W3.lime }} />
+                Performance Radar
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+              <PerformancePentagonRadar performance={performance} playerRating={match.playerRating} />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* SVG 3: Shot Distribution Donut */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.46, duration: 0.3 }}
+      >
+        <Card className="bg-[#0a0a0a] border-[#222222]">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+              <Target className="w-3 h-3" style={{ color: W3.accent }} />
+              Shot Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            <ShotDistributionDonut events={match.events} playerRating={match.playerRating} />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ============================================= */}
+      {/* SVG 4: Passing Accuracy Bars */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.50, duration: 0.3 }}
+      >
+        <Card className="bg-[#0a0a0a] border-[#222222]">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+              <Zap className="w-3 h-3" style={{ color: W3.cyan }} />
+              Passing Accuracy
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            <PassingAccuracyBars playerRating={match.playerRating} />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ============================================= */}
+      {/* SVG 5: Match Events Timeline (SVG) */}
+      {/* ============================================= */}
+      {significantEvents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.54, duration: 0.3 }}
+        >
+          <Card className="bg-[#0a0a0a] border-[#222222]">
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+                <Clock className="w-3 h-3" style={{ color: W3.lime }} />
+                Match Flow
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+              <MatchEventsTimelineSVG events={match.events} />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* SVG 6: Player Comparison Bar */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.58, duration: 0.3 }}
+      >
+        <Card className="bg-[#0a0a0a] border-[#222222]">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+              <BarChart3 className="w-3 h-3" style={{ color: W3.cyan }} />
+              Player Comparison
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            <PlayerComparisonBar
+              goals={match.playerGoals}
+              assists={match.playerAssists}
+              rating={match.playerRating}
+              minutes={match.playerMinutesPlayed}
+              playerRating={match.playerRating}
+            />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ============================================= */}
+      {/* SVG 7: Possession Split Ring */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.62, duration: 0.3 }}
+      >
+        <Card className="bg-[#0a0a0a] border-[#222222]">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+              <Activity className="w-3 h-3" style={{ color: W3.cyan }} />
+              Possession Split
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            <PossessionSplitRing
+              isHome={isPlayerHome}
+              homeScore={match.homeScore}
+              awayScore={match.awayScore}
+              playerRating={match.playerRating}
+            />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ============================================= */}
+      {/* SVG 8: Key Moments Scatter */}
+      {/* ============================================= */}
+      {significantEvents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.66, duration: 0.3 }}
+        >
+          <Card className="bg-[#0a0a0a] border-[#222222]">
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+                <Star className="w-3 h-3" style={{ color: W3.lime }} />
+                Key Moments
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+              <KeyMomentsScatter events={match.events} />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* SVG 9: Formation Contribution Bars */}
+      {/* ============================================= */}
+      {performance && match.playerMinutesPlayed > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.70, duration: 0.3 }}
+        >
+          <Card className="bg-[#0a0a0a] border-[#222222]">
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+                <Shield className="w-3 h-3" style={{ color: W3.accent }} />
+                Formation Contribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+              <FormationContributionBars
+                performance={performance}
+                playerRating={match.playerRating}
+                goals={match.playerGoals}
+                assists={match.playerAssists}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* SVG 10: Fitness Impact Area Chart */}
+      {/* ============================================= */}
+      {match.playerMinutesPlayed > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.74, duration: 0.3 }}
+        >
+          <Card className="bg-[#0a0a0a] border-[#222222]">
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+                <Heart className="w-3 h-3" style={{ color: W3.cyan }} />
+                Fitness Impact
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+              <FitnessImpactAreaChart
+                fitness={playerFitness}
+                minutes={match.playerMinutesPlayed}
+                playerRating={match.playerRating}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* SVG 11: Team Performance Hex Radar */}
+      {/* ============================================= */}
+      {performance && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.78, duration: 0.3 }}
+        >
+          <Card className="bg-[#0a0a0a] border-[#222222]">
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-xs text-[#999999] font-semibold flex items-center gap-1.5">
+                <BarChart3 className="w-3 h-3" style={{ color: W3.accent }} />
+                Team Performance Radar
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1">
+              <TeamPerformanceHexRadar
+                performance={performance}
+                playerRating={match.playerRating}
+                homeScore={match.homeScore}
+                awayScore={match.awayScore}
+                events={match.events}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ============================================= */}
+      {/* Action Buttons */}
+      {/* ============================================= */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.85, duration: 0.2 }}
         className="space-y-2"
       >
         <Button

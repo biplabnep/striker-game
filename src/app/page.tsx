@@ -130,6 +130,8 @@ import FantasyDraftEnhanced from '@/components/game/FantasyDraftEnhanced';
 import HallOfFameEnhanced from '@/components/game/HallOfFameEnhanced';
 import MediaInteraction from '@/components/game/MediaInteraction';
 import LegendStatus from '@/components/game/LegendStatus';
+import TacticalBoardEnhanced from '@/components/game/TacticalBoardEnhanced';
+import ScoutingNetworkEnhanced from '@/components/game/ScoutingNetworkEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -255,6 +257,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   hall_of_fame_enhanced: HallOfFameEnhanced,
   media_interaction: MediaInteraction,
   legend_status: LegendStatus,
+  tactical_board_enhanced: TacticalBoardEnhanced,
+  scouting_network_enhanced: ScoutingNetworkEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -348,6 +352,8 @@ const gameScreens: GameScreen[] = [
   'hall_of_fame_enhanced',
   'media_interaction',
   'legend_status',
+  'tactical_board_enhanced',
+  'scouting_network_enhanced',
 ];
 
 export default function Home() {

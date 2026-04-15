@@ -115,6 +115,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'hall_of_fame_enhanced', icon: <Landmark className="h-5 w-5" />, label: 'Hall of Fame+' },
       { screen: 'media_interaction', icon: <Mic className="h-5 w-5" />, label: 'Media Center' },
       { screen: 'legend_status', icon: <Crown className="h-5 w-5" />, label: 'Legend Status' },
+      { screen: 'tactical_board_enhanced', icon: <Compass className="h-5 w-5" />, label: 'Tactical+' },
+      { screen: 'scouting_network_enhanced', icon: <Search className="h-5 w-5" />, label: 'Scouting+' },
     ],
   },
   {
