@@ -132,6 +132,8 @@ import MediaInteraction from '@/components/game/MediaInteraction';
 import LegendStatus from '@/components/game/LegendStatus';
 import TacticalBoardEnhanced from '@/components/game/TacticalBoardEnhanced';
 import ScoutingNetworkEnhanced from '@/components/game/ScoutingNetworkEnhanced';
+import CoachCareerEnhanced from '@/components/game/CoachCareerEnhanced';
+import SeasonTrainingEnhanced from '@/components/game/SeasonTrainingEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -259,6 +261,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   legend_status: LegendStatus,
   tactical_board_enhanced: TacticalBoardEnhanced,
   scouting_network_enhanced: ScoutingNetworkEnhanced,
+  coach_career_enhanced: CoachCareerEnhanced,
+  season_training_enhanced: SeasonTrainingEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -354,6 +358,8 @@ const gameScreens: GameScreen[] = [
   'legend_status',
   'tactical_board_enhanced',
   'scouting_network_enhanced',
+  'coach_career_enhanced',
+  'season_training_enhanced',
 ];
 
 export default function Home() {

@@ -696,7 +696,9 @@ export type GameScreen =
   | 'media_interaction'
   | 'legend_status'
   | 'tactical_board_enhanced'
-  | 'scouting_network_enhanced';
+  | 'scouting_network_enhanced'
+  | 'coach_career_enhanced'
+  | 'season_training_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

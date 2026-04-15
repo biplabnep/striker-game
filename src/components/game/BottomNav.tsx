@@ -117,6 +117,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'legend_status', icon: <Crown className="h-5 w-5" />, label: 'Legend Status' },
       { screen: 'tactical_board_enhanced', icon: <Compass className="h-5 w-5" />, label: 'Tactical+' },
       { screen: 'scouting_network_enhanced', icon: <Search className="h-5 w-5" />, label: 'Scouting+' },
+      { screen: 'coach_career_enhanced', icon: <GraduationCap className="h-5 w-5" />, label: 'Coach+' },
+      { screen: 'season_training_enhanced', icon: <Dumbbell className="h-5 w-5" />, label: 'Season Train+' },
     ],
   },
   {

@@ -656,6 +656,57 @@ export default function SponsorSystem() {
     return { peers, percentile, yourRank };
   }, [baseSeed, totalAnnualIncome, activeSponsors.length, sponsorRating]);
 
+  // ============================================================
+  // Section data: SVG Visualization computed values
+  // ============================================================
+  const categoryCounts = activeSponsors.reduce<Record<string, number>>((acc, s) => {
+    const cat = s.category === 'Sportswear' || s.category === 'Energy Drink' || s.category === 'Tech'
+      ? s.category
+      : 'Other';
+    acc[cat] = (acc[cat] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const categoryDonutData = [
+    { label: 'Sportswear', count: categoryCounts['Sportswear'] ?? 0, color: '#CCFF00' },
+    { label: 'Energy', count: categoryCounts['Energy Drink'] ?? 0, color: '#00E5FF' },
+    { label: 'Tech', count: categoryCounts['Tech'] ?? 0, color: '#FF5500' },
+    { label: 'Other', count: categoryCounts['Other'] ?? 0, color: '#666666' },
+  ];
+
+  const totalCategoryCount = categoryDonutData.reduce((sum, d) => sum + d.count, 0) || 1;
+
+  const incomeTrendData = Array.from({ length: 8 }, (_, i) =>
+    Math.round(totalAnnualIncome * seededRange(baseSeed + 800 + i, 0.2, 1.1))
+  );
+
+  const endorsementScore = Math.min(100, Math.round(
+    (Math.min(totalSocialFollowers / 500000, 1) * 50) +
+    (avgEngagementRate / 8 * 30) +
+    (activeSponsors.length / 6 * 20)
+  ));
+
+  const clauseBonusData = [
+    { type: 'Goal Bonus', potential: activeSponsors.reduce((sum, s) => sum + (s.hasPerformanceClause ? s.annualValue * 0.15 : 0), 0) },
+    { type: 'Appearance', potential: activeSponsors.reduce((sum, s) => sum + s.annualValue * 0.05, 0) },
+    { type: 'Team Success', potential: activeSponsors.reduce((sum, s) => sum + s.annualValue * 0.1, 0) },
+    { type: 'Award Bonus', potential: activeSponsors.reduce((sum, s) => sum + (s.tier === 'Platinum' || s.tier === 'Gold' ? s.annualValue * 0.2 : 0), 0) },
+  ];
+
+  const maxClauseBonus = Math.max(...clauseBonusData.map(d => d.potential), 1);
+
+  const engagementTrendData = Array.from({ length: 6 }, (_, i) =>
+    Math.round(seededRange(baseSeed + 900 + i, 2.0, 7.5) * 10) / 10
+  );
+
+  const radarScores = [
+    { axis: 'Diversity', score: Math.min(100, Math.round((new Set(activeSponsors.map(s => s.category)).size / 6) * 100)) },
+    { axis: 'Value', score: Math.min(100, Math.round(totalAnnualIncome / 80000)) },
+    { axis: 'Growth', score: Math.round(seededRange(baseSeed + 850, 40, 90)) },
+    { axis: 'Stability', score: Math.round(activeSponsors.reduce((sum, s) => sum + s.yearsRemaining, 0) / (activeSponsors.length || 1) * 25) },
+    { axis: 'Exclusivity', score: activeSponsors.some(s => s.tier === 'Platinum') ? 95 : activeSponsors.some(s => s.tier === 'Gold') ? 70 : 40 },
+  ];
+
   if (!gameState || !player) return null;
 
   // Tab configuration
@@ -873,6 +924,706 @@ export default function SponsorSystem() {
               );
             })
           )}
+
+          {/* =========================================
+              Section: SVG Sponsor Portfolio Ring
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.28 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#FF5500]/50 border border-[#FF5500]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#FF5500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Sponsor Portfolio Ring</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#FF5500]">{activeSponsors.length}/6 slots</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const cx = 120, cy = 60, r = 38;
+                const circumference = 2 * Math.PI * r;
+                const gap = 6;
+                const segLen = (circumference - gap * 6) / 6;
+                const offset = -circumference / 4;
+                return (
+                  <>
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth="7" />
+                    {Array.from({ length: 6 }, (_, i) => {
+                      const startA = offset + i * (segLen + gap);
+                      const x1 = cx + r * Math.cos(startA);
+                      const y1 = cy + r * Math.sin(startA);
+                      const endA = startA + segLen;
+                      const x2 = cx + r * Math.cos(endA);
+                      const y2 = cy + r * Math.sin(endA);
+                      return (
+                        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+                          stroke={i < activeSponsors.length ? '#FF5500' : '#30363d'}
+                          strokeWidth="7" strokeLinecap="round"
+                          opacity={i < activeSponsors.length ? 1 : 0.4}
+                        />
+                      );
+                    })}
+                    <text x={cx} y={cy - 4} fill="#c9d1d9" fontSize="16" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">
+                      {activeSponsors.length}
+                    </text>
+                    <text x={cx} y={cy + 10} fill="#484f58" fontSize="7" textAnchor="middle" fontFamily="sans-serif">
+                      of 6 slots
+                    </text>
+                    {Array.from({ length: 6 }, (_, i) => {
+                      const y = 18 + i * 17;
+                      return (
+                        <g key={`slot-${i}`}>
+                          <rect x="220" y={y} width="8" height="8" rx="2"
+                            fill={i < activeSponsors.length ? '#FF5500' : '#21262d'}
+                            opacity={i < activeSponsors.length ? 1 : 0.5}
+                          />
+                          <text x="234" y={y + 7} fill={i < activeSponsors.length ? '#c9d1d9' : '#484f58'}
+                            fontSize="7" fontFamily="sans-serif">
+                            {activeSponsors[i] ? activeSponsors[i].brand : 'Empty'}
+                          </text>
+                          {activeSponsors[i] && (
+                            <text x="310" y={y + 7} fill="#8b949e" fontSize="7" textAnchor="end" fontFamily="sans-serif">
+                              {activeSponsors[i].tier}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Category Distribution Donut
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.30 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#CCFF00]/50 border border-[#CCFF00]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+                    <path d="M22 12A10 10 0 0 0 12 2v10z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Category Distribution</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#CCFF00]">{totalCategoryCount} active</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const cx = 100, cy = 60, r = 38, inner = 22;
+                const total = totalCategoryCount;
+                const gapAngle = total > 1 ? 0.06 : 0;
+                let currentAngle = -Math.PI / 2;
+                const arcs = categoryDonutData.map((seg) => {
+                  const sliceAngle = seg.count > 0 ? (seg.count / total) * Math.PI * 2 : 0.01;
+                  const startA = currentAngle + gapAngle;
+                  const endA = currentAngle + Math.max(sliceAngle, 0.01) - gapAngle;
+                  currentAngle += sliceAngle;
+                  const outerStart = { x: cx + r * Math.cos(startA), y: cy + r * Math.sin(startA) };
+                  const outerEnd = { x: cx + r * Math.cos(endA), y: cy + r * Math.sin(endA) };
+                  const innerEnd = { x: cx + inner * Math.cos(endA), y: cy + inner * Math.sin(endA) };
+                  const innerStart = { x: cx + inner * Math.cos(startA), y: cy + inner * Math.sin(startA) };
+                  const large = (endA - startA) > Math.PI ? 1 : 0;
+                  return { ...seg, large };
+                });
+                return (
+                  <>
+                    <circle cx={cx} cy={cy} r={inner - 2} fill="#161b22" />
+                    {arcs.map((arc, i) => {
+                      const sliceAngle = arc.count > 0 ? (arc.count / total) * Math.PI * 2 : 0.01;
+                      const startA = -Math.PI / 2 + categoryDonutData.slice(0, i).reduce((s, d) => s + (d.count > 0 ? (d.count / total) * Math.PI * 2 : 0.01), 0) + gapAngle;
+                      const endA = startA + Math.max(sliceAngle, 0.01) - gapAngle * 2;
+                      const outerStart = { x: cx + r * Math.cos(startA), y: cy + r * Math.sin(startA) };
+                      const outerEnd = { x: cx + r * Math.cos(endA), y: cy + r * Math.sin(endA) };
+                      const innerEnd = { x: cx + inner * Math.cos(endA), y: cy + inner * Math.sin(endA) };
+                      const innerStart = { x: cx + inner * Math.cos(startA), y: cy + inner * Math.sin(startA) };
+                      const large = (endA - startA) > Math.PI ? 1 : 0;
+                      const d = `M ${outerStart.x} ${outerStart.y} A ${r} ${r} 0 ${large} 1 ${outerEnd.x} ${outerEnd.y} L ${innerEnd.x} ${innerEnd.y} A ${inner} ${inner} 0 ${large} 0 ${innerStart.x} ${innerStart.y} Z`;
+                      return <path key={i} d={d} fill={arc.color} opacity={arc.count > 0 ? 0.85 : 0.15} />;
+                    })}
+                    <text x={cx} y={cy - 2} fill="#c9d1d9" fontSize="12" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">
+                      {total}
+                    </text>
+                    <text x={cx} y={cy + 10} fill="#484f58" fontSize="7" textAnchor="middle" fontFamily="sans-serif">
+                      deals
+                    </text>
+                    {categoryDonutData.map((arc, i) => (
+                      <g key={`leg-${i}`}>
+                        <rect x="195" y={20 + i * 22} width="8" height="8" rx="2" fill={arc.color} opacity={arc.count > 0 ? 0.85 : 0.3} />
+                        <text x="209" y={28 + i * 22} fill="#c9d1d9" fontSize="7" fontFamily="sans-serif">{arc.label}</text>
+                        <text x="310" y={28 + i * 22} fill="#8b949e" fontSize="7" textAnchor="end" fontFamily="sans-serif">
+                          {arc.count} ({total > 0 ? Math.round((arc.count / total) * 100) : 0}%)
+                        </text>
+                      </g>
+                    ))}
+                  </>
+                );
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Annual Income Trend
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.32 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#00E5FF]/50 border border-[#00E5FF]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Annual Income Trend</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#00E5FF]">8 seasons</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const maxVal = Math.max(...incomeTrendData, 1);
+                const points = incomeTrendData.map((v, i) => ({
+                  x: 40 + i * 34,
+                  y: 100 - (v / maxVal) * 75,
+                  val: v,
+                }));
+                const lineStr = points.map(p => `${p.x},${p.y}`).join(' ');
+                const areaStr = `40,100 ${lineStr} ${points[points.length - 1].x},100`;
+                return (
+                  <>
+                    <line x1="40" y1="25" x2="310" y2="25" stroke="#21262d" strokeWidth="0.5" />
+                    <line x1="40" y1="62" x2="310" y2="62" stroke="#21262d" strokeWidth="0.5" />
+                    <line x1="40" y1="100" x2="310" y2="100" stroke="#30363d" strokeWidth="0.5" />
+                    <text x="35" y="29" fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">{fmtCurrencyShort(maxVal)}</text>
+                    <text x="35" y="66" fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">{fmtCurrencyShort(maxVal / 2)}</text>
+                    <text x="35" y="104" fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">€0</text>
+                    <polygon points={areaStr} fill="#00E5FF" opacity="0.1" />
+                    <polyline points={lineStr} fill="none" stroke="#00E5FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    {points.map((p, i) => (
+                      <g key={i}>
+                        <circle cx={p.x} cy={p.y} r="3" fill="#00E5FF" />
+                        <circle cx={p.x} cy={p.y} r="1.5" fill="#161b22" />
+                        <text x={p.x} y={p.y - 8} fill="#00E5FF" fontSize="6" textAnchor="middle" fontFamily="sans-serif">
+                          {fmtCurrencyShort(p.val)}
+                        </text>
+                        <text x={p.x} y="115" fill="#484f58" fontSize="7" textAnchor="middle" fontFamily="sans-serif">
+                          S{i + 1}
+                        </text>
+                      </g>
+                    ))}
+                  </>
+                );
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Endorsement Value Gauge
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.34 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#CCFF00]/50 border border-[#CCFF00]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v4" />
+                    <path d="M12 18v4" />
+                    <path d="M4.93 4.93l2.83 2.83" />
+                    <path d="M16.24 16.24l2.83 2.83" />
+                    <path d="M2 12h4" />
+                    <path d="M18 12h4" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Endorsement Value</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#CCFF00]">score {endorsementScore}</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const cx = 160, cy = 100, r = 75;
+                const startAngle = Math.PI;
+                const scoreRatio = endorsementScore / 100;
+                const valueAngle = startAngle - scoreRatio * Math.PI;
+                const bgX1 = cx + r * Math.cos(startAngle);
+                const bgY1 = cy + r * Math.sin(startAngle);
+                const bgX2 = cx + r * Math.cos(0);
+                const bgY2 = cy + r * Math.sin(0);
+                const bgPath = `M ${bgX1} ${bgY1} A ${r} ${r} 0 0 1 ${bgX2} ${bgY2}`;
+                const vX1 = cx + r * Math.cos(startAngle);
+                const vY1 = cy + r * Math.sin(startAngle);
+                const vX2 = cx + r * Math.cos(valueAngle);
+                const vY2 = cy + r * Math.sin(valueAngle);
+                const largeArc = scoreRatio > 0.5 ? 1 : 0;
+                const valuePath = `M ${vX1} ${vY1} A ${r} ${r} 0 ${largeArc} 1 ${vX2} ${vY2}`;
+                const tickAngles = [0, 0.25, 0.5, 0.75, 1];
+                return (
+                  <>
+                    <path d={bgPath} fill="none" stroke="#21262d" strokeWidth="10" strokeLinecap="round" />
+                    <path d={valuePath} fill="none" stroke="#CCFF00" strokeWidth="10" strokeLinecap="round" />
+                    {tickAngles.map((t, i) => {
+                      const angle = startAngle - t * Math.PI;
+                      const innerR = r - 16;
+                      const outerR = r - 10;
+                      return (
+                        <line key={i}
+                          x1={cx + innerR * Math.cos(angle)} y1={cy + innerR * Math.sin(angle)}
+                          x2={cx + outerR * Math.cos(angle)} y2={cy + outerR * Math.sin(angle)}
+                          stroke="#484f58" strokeWidth="1"
+                        />
+                      );
+                    })}
+                    <text x={cx} y={cy - 14} fill="#c9d1d9" fontSize="22" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">
+                      {endorsementScore}
+                    </text>
+                    <text x={cx} y={cy} fill="#484f58" fontSize="7" textAnchor="middle" fontFamily="sans-serif">
+                      Endorsement Score
+                    </text>
+                    <text x={cx - r - 8} y={cy + 16} fill="#484f58" fontSize="7" textAnchor="middle" fontFamily="sans-serif">0</text>
+                    <text x={cx + r + 8} y={cy + 16} fill="#484f58" fontSize="7" textAnchor="middle" fontFamily="sans-serif">100</text>
+                  </>
+                );
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Social Media Growth Bars
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.36 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#FF5500]/50 border border-[#FF5500]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#FF5500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Social Media Growth</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#FF5500]">{fmtFollowers(totalSocialFollowers)}</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const maxFollowers = Math.max(...socialPlatforms.map(p => p.followers), 1);
+                const colors = ['#FF5500', '#CCFF00', '#00E5FF'];
+                const labels = ['Instagram', 'Twitter/X', 'TikTok'];
+                return socialPlatforms.map((platform, i) => {
+                  const barWidth = (platform.followers / maxFollowers) * 160;
+                  const y = 12 + i * 34;
+                  return (
+                    <g key={i}>
+                      <text x="0" y={y + 10} fill="#c9d1d9" fontSize="8" fontWeight="bold" fontFamily="sans-serif">{labels[i]}</text>
+                      <rect x="75" y={y} width="160" height="16" rx="3" fill="#21262d" />
+                      <rect x="75" y={y} width={Math.max(barWidth, 4)} height="16" rx="3" fill={colors[i]} opacity="0.8" />
+                      <text x={75 + barWidth + 6} y={y + 11} fill={colors[i]} fontSize="7" fontWeight="bold" fontFamily="sans-serif">
+                        {fmtFollowers(platform.followers)}
+                      </text>
+                      <text x="310" y={y + 11} fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">
+                        {platform.engagementRate}% eng
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Contract Expiry Timeline
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.38 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#00E5FF]/50 border border-[#00E5FF]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Contract Expiry Timeline</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#00E5FF]">{activeSponsors.length} contracts</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const nodes = activeSponsors.map(s => ({
+                  brand: s.brand,
+                  expiry: s.yearsRemaining,
+                  color: s.color,
+                }));
+                const maxExpiry = Math.max(...nodes.map(n => n.expiry), 1);
+                const lineY = 55;
+                return (
+                  <>
+                    <line x1="30" y1={lineY} x2="290" y2={lineY} stroke="#30363d" strokeWidth="2" />
+                    <line x1="30" y1={lineY - 12} x2="30" y2={lineY + 12} stroke="#c9d1d9" strokeWidth="1.5" />
+                    <text x="30" y={lineY - 16} fill="#c9d1d9" fontSize="7" textAnchor="middle" fontWeight="bold" fontFamily="sans-serif">Now</text>
+                    {nodes.map((node, i) => {
+                      const x = 30 + (node.expiry / maxExpiry) * 260;
+                      return (
+                        <g key={i}>
+                          <line x1={x} y1={lineY - 8} x2={x} y2={lineY + 8} stroke={node.color} strokeWidth="2" />
+                          <circle cx={x} cy={lineY} r="5" fill={node.color} opacity="0.8" />
+                          <circle cx={x} cy={lineY} r="2.5" fill="#161b22" />
+                          <text x={x} y={lineY - 14} fill={node.color} fontSize="7" textAnchor="middle" fontWeight="bold" fontFamily="sans-serif">
+                            {node.expiry}yr
+                          </text>
+                          <text x={x} y={lineY + 22} fill="#8b949e" fontSize="6" textAnchor="middle" fontFamily="sans-serif">
+                            {node.brand}
+                          </text>
+                        </g>
+                      );
+                    })}
+                    {Array.from({ length: Math.min(maxExpiry, 5) }, (_, i) => {
+                      const x = 30 + ((i + 1) / maxExpiry) * 260;
+                      return (
+                        <g key={`yr-${i}`}>
+                          <line x1={x} y1={lineY - 4} x2={x} y2={lineY + 4} stroke="#21262d" strokeWidth="1" />
+                          <text x={x} y={lineY + 35} fill="#484f58" fontSize="6" textAnchor="middle" fontFamily="sans-serif">
+                            +{i + 1}yr
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Sponsor Tier Pyramid
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.40 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#CCFF00]/50 border border-[#CCFF00]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Sponsor Tier Pyramid</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#CCFF00]">{activeSponsors.length} deals</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const tiers = ['Platinum', 'Gold', 'Silver', 'Bronze'];
+                const tierColors = ['#8b949e', '#f59e0b', '#9ca3af', '#f97316'];
+                const tierCounts = tiers.map(t => activeSponsors.filter(s => s.tier === t).length);
+                const maxCount = Math.max(...tierCounts, 1);
+                return tiers.map((tier, i) => {
+                  const barWidth = (tierCounts[i] / maxCount) * 170;
+                  const y = 8 + i * 27;
+                  return (
+                    <g key={tier}>
+                      <text x="0" y={y + 13} fill="#c9d1d9" fontSize="8" fontWeight="bold" fontFamily="sans-serif">{tier}</text>
+                      <rect x="70" y={y} width="170" height="18" rx="3" fill="#21262d" />
+                      <rect x="70" y={y} width={Math.max(barWidth, 4)} height="18" rx="3" fill={tierColors[i]} opacity="0.7" />
+                      <text x={70 + barWidth + 6} y={y + 13} fill="#8b949e" fontSize="7" fontWeight="bold" fontFamily="sans-serif">
+                        {tierCounts[i]} deal{tierCounts[i] !== 1 ? 's' : ''}
+                      </text>
+                      <text x="310" y={y + 13} fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">
+                        {tierCounts[i] > 0 ? fmtCurrencyShort(activeSponsors.filter(s => s.tier === tier).reduce((sum, s) => sum + s.annualValue, 0)) : '-'}
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Brand Portfolio Health Radar
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.42 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#00E5FF]/50 border border-[#00E5FF]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />
+                    <line x1="12" y1="22" x2="12" y2="15.5" />
+                    <polyline points="22 8.5 12 15.5 2 8.5" />
+                    <polyline points="2 15.5 12 8.5 22 15.5" />
+                    <line x1="12" y1="2" x2="12" y2="8.5" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Portfolio Health Radar</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#00E5FF]">
+                {Math.round(radarScores.reduce((sum, r) => sum + r.score, 0) / radarScores.length)}/100
+              </span>
+            </div>
+            <svg viewBox="0 0 320 140" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const cx = 110, cy = 70, maxR = 48;
+                const axes = radarScores.length;
+                const angleStep = (Math.PI * 2) / axes;
+                const startAngle = -Math.PI / 2;
+                const gridLevels = [0.25, 0.5, 0.75, 1.0];
+                return (
+                  <>
+                    {gridLevels.map((level, li) => {
+                      const pts = radarScores.map((_, i) => {
+                        const angle = startAngle + i * angleStep;
+                        return `${cx + maxR * level * Math.cos(angle)},${cy + maxR * level * Math.sin(angle)}`;
+                      }).join(' ');
+                      return <polygon key={li} points={pts} fill="none" stroke="#21262d" strokeWidth="0.5" />;
+                    })}
+                    {radarScores.map((_, i) => {
+                      const angle = startAngle + i * angleStep;
+                      return (
+                        <line key={i} x1={cx} y1={cy}
+                          x2={cx + maxR * Math.cos(angle)}
+                          y2={cy + maxR * Math.sin(angle)}
+                          stroke="#30363d" strokeWidth="0.5"
+                        />
+                      );
+                    })}
+                    <polygon
+                      points={radarScores.map((rs, i) => {
+                        const angle = startAngle + i * angleStep;
+                        const val = rs.score / 100;
+                        return `${cx + maxR * val * Math.cos(angle)},${cy + maxR * val * Math.sin(angle)}`;
+                      }).join(' ')}
+                      fill="#00E5FF" opacity="0.15" stroke="#00E5FF" strokeWidth="1.5"
+                    />
+                    {radarScores.map((rs, i) => {
+                      const angle = startAngle + i * angleStep;
+                      const val = rs.score / 100;
+                      return (
+                        <circle key={i}
+                          cx={cx + maxR * val * Math.cos(angle)}
+                          cy={cy + maxR * val * Math.sin(angle)}
+                          r="3" fill="#00E5FF"
+                        />
+                      );
+                    })}
+                    {radarScores.map((rs, i) => {
+                      const angle = startAngle + i * angleStep;
+                      const lx = cx + (maxR + 14) * Math.cos(angle);
+                      const ly = cy + (maxR + 14) * Math.sin(angle);
+                      return (
+                        <g key={`label-${i}`}>
+                          <text x={lx} y={ly - 2} fill="#c9d1d9" fontSize="7" textAnchor="middle" fontFamily="sans-serif">
+                            {rs.axis}
+                          </text>
+                          <text x={lx} y={ly + 8} fill="#484f58" fontSize="6" textAnchor="middle" fontFamily="sans-serif">
+                            {rs.score}
+                          </text>
+                        </g>
+                      );
+                    })}
+                    {radarScores.map((rs, i) => (
+                      <g key={`leg-${i}`}>
+                        <rect x="215" y={15 + i * 24} width="6" height="6" rx="1" fill="#00E5FF" opacity="0.6" />
+                        <text x="226" y={21 + i * 24} fill="#c9d1d9" fontSize="7" fontFamily="sans-serif">{rs.axis}</text>
+                        <text x="270" y={21 + i * 24} fill="#00E5FF" fontSize="7" fontWeight="bold" fontFamily="sans-serif">{rs.score}/100</text>
+                      </g>
+                    ))}
+                  </>
+                );
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Market Comparison Bars
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.44 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#FF5500]/50 border border-[#FF5500]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#FF5500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Market Comparison</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#FF5500]">Top {marketComparison.percentile}%</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const maxIncome = Math.max(...marketComparison.peers.map(p => p.income), 1);
+                return marketComparison.peers.map((peer, i) => {
+                  const barWidth = (peer.income / maxIncome) * 170;
+                  const y = 10 + i * 26;
+                  return (
+                    <g key={i}>
+                      <text x="0" y={y + 12} fill={peer.isYou ? '#FF5500' : '#c9d1d9'} fontSize="8"
+                        fontWeight={peer.isYou ? 'bold' : 'normal'} fontFamily="sans-serif">{peer.name}</text>
+                      <rect x="75" y={y} width="170" height="16" rx="3" fill="#21262d" />
+                      <rect x="75" y={y} width={Math.max(barWidth, 4)} height="16" rx="3"
+                        fill={peer.isYou ? '#FF5500' : '#30363d'} opacity={peer.isYou ? 0.8 : 0.7} />
+                      <text x={75 + barWidth + 6} y={y + 12} fill={peer.isYou ? '#FF5500' : '#8b949e'}
+                        fontSize="7" fontWeight="bold" fontFamily="sans-serif">
+                        {fmtCurrencyShort(peer.income)}
+                      </text>
+                      {peer.isYou && (
+                        <text x="310" y={y + 12} fill="#FF5500" fontSize="7" textAnchor="end" fontWeight="bold" fontFamily="sans-serif">
+                          YOU
+                        </text>
+                      )}
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Performance Clause Impact
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.46 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#CCFF00]/50 border border-[#CCFF00]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#CCFF00]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Performance Clause Impact</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#CCFF00]">{fmtCurrencyShort(clauseBonusData.reduce((s, d) => s + d.potential, 0))}</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const colors = ['#FF5500', '#CCFF00', '#00E5FF', '#8b949e'];
+                return clauseBonusData.map((clause, i) => {
+                  const barWidth = (clause.potential / maxClauseBonus) * 165;
+                  const y = 10 + i * 26;
+                  return (
+                    <g key={i}>
+                      <text x="0" y={y + 12} fill="#c9d1d9" fontSize="8" fontFamily="sans-serif">{clause.type}</text>
+                      <rect x="85" y={y} width="165" height="16" rx="3" fill="#21262d" />
+                      <rect x="85" y={y} width={Math.max(barWidth, 4)} height="16" rx="3" fill={colors[i]} opacity="0.7" />
+                      <text x={85 + barWidth + 6} y={y + 12} fill={colors[i]} fontSize="7" fontWeight="bold" fontFamily="sans-serif">
+                        {fmtCurrencyShort(clause.potential)}
+                      </text>
+                      <text x="310" y={y + 12} fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">
+                        potential
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+          </motion.div>
+
+          {/* =========================================
+              Section: SVG Engagement Rate Trend Line
+              ========================================= */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.48 }}
+            className="bg-[#161b22] border border-[#30363d] rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#00E5FF]/50 border border-[#00E5FF]/30 flex items-center justify-center">
+                  <svg className="h-3 w-3 text-[#00E5FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                    <polyline points="17 6 23 6 23 12" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-bold text-[#c9d1d9]">Engagement Rate Trend</h3>
+              </div>
+              <span className="text-[9px] font-bold text-[#00E5FF]">{engagementTrendData[engagementTrendData.length - 1]}%</span>
+            </div>
+            <svg viewBox="0 0 320 120" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+              {(() => {
+                const maxVal = Math.max(...engagementTrendData, 1);
+                const minVal = Math.min(...engagementTrendData, 0);
+                const range = maxVal - minVal || 1;
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                const points = engagementTrendData.map((v, i) => ({
+                  x: 50 + i * 46,
+                  y: 90 - ((v - minVal) / range) * 60,
+                  val: v,
+                }));
+                const lineStr = points.map(p => `${p.x},${p.y}`).join(' ');
+                return (
+                  <>
+                    <line x1="50" y1="30" x2="310" y2="30" stroke="#21262d" strokeWidth="0.5" />
+                    <line x1="50" y1="60" x2="310" y2="60" stroke="#21262d" strokeWidth="0.5" />
+                    <line x1="50" y1="90" x2="310" y2="90" stroke="#30363d" strokeWidth="0.5" />
+                    <text x="45" y="34" fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">{maxVal.toFixed(1)}%</text>
+                    <text x="45" y="64" fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">{((maxVal + minVal) / 2).toFixed(1)}%</text>
+                    <text x="45" y="94" fill="#484f58" fontSize="7" textAnchor="end" fontFamily="sans-serif">{minVal.toFixed(1)}%</text>
+                    <polyline points={lineStr} fill="none" stroke="#CCFF00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    {points.map((p, i) => (
+                      <g key={i}>
+                        <circle cx={p.x} cy={p.y} r="3" fill="#CCFF00" />
+                        <circle cx={p.x} cy={p.y} r="1.5" fill="#161b22" />
+                        <text x={p.x} y={p.y - 8} fill="#CCFF00" fontSize="6" textAnchor="middle" fontWeight="bold" fontFamily="sans-serif">
+                          {p.val}%
+                        </text>
+                        <text x={p.x} y="108" fill="#484f58" fontSize="7" textAnchor="middle" fontFamily="sans-serif">{months[i]}</text>
+                      </g>
+                    ))}
+                  </>
+                );
+              })()}
+            </svg>
+          </motion.div>
 
           {/* =========================================
               Section A: Brand Value Timeline
