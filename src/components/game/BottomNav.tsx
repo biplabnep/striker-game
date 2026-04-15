@@ -50,6 +50,7 @@ const moreCategories: NavCategory[] = [
       { screen: 'kit_customization', icon: <Shirt className="h-5 w-5" />, label: 'Kit' },
       { screen: 'squad_rotation', icon: <RotateCcw className="h-5 w-5" />, label: 'Rotation' },
       { screen: 'match_engine_simulation', icon: <Cpu className="h-5 w-5" />, label: 'Engine' },
+      { screen: 'match_engine_simulation_enhanced', icon: <Cpu className="h-5 w-5" />, label: 'Engine+' },
       { screen: 'training_drill_mini_games', icon: <Gamepad2 className="h-5 w-5" />, label: 'Mini Games' },
       { screen: 'daily_rewards', icon: <Gift className="h-5 w-5" />, label: 'Rewards' },
       { screen: 'tactical_set_pieces', icon: <Crosshair className="h-5 w-5" />, label: 'Set Pieces' },
@@ -65,6 +66,7 @@ const moreCategories: NavCategory[] = [
     items: [
       { screen: 'transfers', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Transfers' },
       { screen: 'transfer_market', icon: <Store className="h-5 w-5" />, label: 'Market' },
+      { screen: 'transfer_market_enhanced', icon: <Store className="h-5 w-5" />, label: 'Market+' },
       { screen: 'personal_finances', icon: <Wallet className="h-5 w-5" />, label: 'Finances' },
       { screen: 'transfer_negotiation', icon: <Handshake className="h-5 w-5" />, label: 'Negotiate' },
       { screen: 'career_hub', icon: <Award className="h-5 w-5" />, label: 'Career Hub' },

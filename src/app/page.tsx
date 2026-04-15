@@ -142,6 +142,8 @@ import InjuryRecoveryEnhanced from '@/components/game/InjuryRecoveryEnhanced';
 import SkillChallengesEnhanced from '@/components/game/SkillChallengesEnhanced';
 import DailyRoutineEnhanced from '@/components/game/DailyRoutineEnhanced';
 import SetPieceTrainerEnhanced from '@/components/game/SetPieceTrainerEnhanced';
+import TransferMarketEnhanced from '@/components/game/TransferMarketEnhanced';
+import MatchEngineSimulationEnhanced from '@/components/game/MatchEngineSimulationEnhanced';
 
 const screenComponents: Record<GameScreen, React.ComponentType> = {
   main_menu: MainMenu,
@@ -279,6 +281,8 @@ const screenComponents: Record<GameScreen, React.ComponentType> = {
   skill_challenges_enhanced: SkillChallengesEnhanced,
   daily_routine_enhanced: DailyRoutineEnhanced,
   set_piece_trainer_enhanced: SetPieceTrainerEnhanced,
+  transfer_market_enhanced: TransferMarketEnhanced,
+  match_engine_simulation_enhanced: MatchEngineSimulationEnhanced,
 };
 
 const gameScreens: GameScreen[] = [
@@ -384,6 +388,8 @@ const gameScreens: GameScreen[] = [
   'skill_challenges_enhanced',
   'daily_routine_enhanced',
   'set_piece_trainer_enhanced',
+  'transfer_market_enhanced',
+  'match_engine_simulation_enhanced',
 ];
 
 export default function Home() {

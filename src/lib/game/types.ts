@@ -706,7 +706,9 @@ export type GameScreen =
   | 'injury_recovery_enhanced'
   | 'skill_challenges_enhanced'
   | 'daily_routine_enhanced'
-  | 'set_piece_trainer_enhanced';
+  | 'set_piece_trainer_enhanced'
+  | 'transfer_market_enhanced'
+  | 'match_engine_simulation_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

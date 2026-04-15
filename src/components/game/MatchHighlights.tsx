@@ -270,6 +270,700 @@ function RatingSparkline({ ratings }: { ratings: number[] }) {
   );
 }
 
+// ── SVG Geometry Helpers ────────────────────────────────────
+function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function arcPathD(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  if (endAngle - startAngle >= 359.99) {
+    return `M ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy}`;
+  }
+  const start = polarToCartesian(cx, cy, r, startAngle);
+  const end = polarToCartesian(cx, cy, r, endAngle);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+}
+
+// ── SVG 1: GoalDistributionTimeline ────────────────────────
+function GoalDistributionTimeline({ results }: { results: MatchResult[] }) {
+  const data = results.slice(-8).reverse();
+  if (data.length === 0) return null;
+
+  const w = 280;
+  const h = 44;
+  const gap = w / (data.length + 1);
+
+  const nodePosArr = data.map((r, i) => ({
+    x: gap * (i + 1),
+    y: r.playerGoals > 0 ? 14 : 30,
+    goals: r.playerGoals,
+  }));
+
+  const lineStr = nodePosArr.map(p => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+        <polyline fill="none" stroke="#30363d" strokeWidth={1} points={lineStr} />
+        {nodePosArr.map((p, i) => (
+          <motion.circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={5}
+            fill={p.goals > 0 ? '#CCFF00' : '#666'}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...ANIM, delay: i * 0.02 }}
+          />
+        ))}
+        {nodePosArr.map((p, i) => (
+          <text key={`l-${i}`} x={p.x} y={h - 2} fontSize="6" fill="#8b949e" textAnchor="middle">
+            {p.goals}
+          </text>
+        ))}
+      </svg>
+      <div className="flex justify-between mt-1 px-1">
+        <span className="text-[9px] text-[#484f58]">Oldest</span>
+        <span className="text-[9px] text-[#8b949e]">Goals per match</span>
+        <span className="text-[9px] text-[#484f58]">Newest</span>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── SVG 2: MatchResultDonut ────────────────────────────────
+function MatchResultDonut({ results, playerClubId }: { results: MatchResult[]; playerClubId: string }) {
+  if (results.length === 0) return null;
+
+  const counts = results.reduce<{ w: number; d: number; l: number }>(
+    (acc, r) => {
+      const info = getResultInfo(r, playerClubId);
+      if (info.won) acc.w++;
+      else if (info.drew) acc.d++;
+      else acc.l++;
+      return acc;
+    },
+    { w: 0, d: 0, l: 0 }
+  );
+
+  const total = counts.w + counts.d + counts.l;
+  if (total === 0) return null;
+
+  const cx = 50;
+  const cy = 50;
+  const r = 38;
+  const sw = 10;
+
+  const segments = [
+    { value: counts.w, color: '#CCFF00', label: 'W' },
+    { value: counts.d, color: '#00E5FF', label: 'D' },
+    { value: counts.l, color: '#FF5500', label: 'L' },
+  ];
+
+  let currentAngle = -90;
+  const arcs = segments.map(seg => {
+    const angle = total > 0 ? (seg.value / total) * 360 : 0;
+    const startAngle = currentAngle;
+    const endAngle = currentAngle + angle;
+    currentAngle = endAngle;
+    const d = angle > 0.5 ? arcPathD(cx, cy, r, startAngle, endAngle) : '';
+    return { ...seg, d };
+  });
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM} className="flex flex-col items-center">
+      <svg viewBox="0 0 100 100" className="w-24 h-24">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#30363d" strokeWidth={sw} />
+        {arcs.filter(a => a.d).map((a, i) => (
+          <motion.path
+            key={i}
+            d={a.d}
+            fill="none"
+            stroke={a.color}
+            strokeWidth={sw}
+            strokeLinecap="butt"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...ANIM, delay: i * 0.04 }}
+          />
+        ))}
+        <text x={cx} y={cy + 1} fontSize="10" fill="#c9d1d9" textAnchor="middle" dominantBaseline="middle">
+          {total}
+        </text>
+      </svg>
+      <div className="flex gap-3 mt-2">
+        {segments.map((s, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: s.color }} />
+            <span className="text-[9px] text-[#8b949e]">{s.label} {s.value}</span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── SVG 3: RatingTrendAreaChart ────────────────────────────
+function RatingTrendAreaChart({ ratings }: { ratings: number[] }) {
+  if (ratings.length < 2) return null;
+
+  const w = 280;
+  const h = 60;
+  const px = 4;
+  const py = 6;
+  const cw = w - px * 2;
+  const ch = h - py * 2;
+  const yMin = 0;
+  const yMax = 10;
+  const yRange = yMax - yMin || 1;
+
+  const pts = ratings.map((v, i) => ({
+    x: px + (i / (ratings.length - 1)) * cw,
+    y: py + ch - ((v - yMin) / yRange) * ch,
+  }));
+
+  const lineStr = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaStr = `${lineStr} L${pts[pts.length - 1].x},${h - py} L${pts[0].x},${h - py} Z`;
+  const dotStr = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none">
+        <motion.path
+          d={areaStr}
+          fill="#00E5FF"
+          fillOpacity={0.1}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={ANIM}
+        />
+        <motion.polyline
+          fill="none"
+          stroke="#00E5FF"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={dotStr}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={ANIM}
+        />
+        {pts.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={2} fill="#00E5FF" />
+        ))}
+      </svg>
+    </motion.div>
+  );
+}
+
+// ── SVG 4: GoalMinuteHeatmap ───────────────────────────────
+function GoalMinuteHeatmap({ results }: { results: MatchResult[] }) {
+  if (results.length === 0) return null;
+
+  const goalEvents = results.reduce<{ minute: number; team: string }[]>((acc, r) => {
+    r.events.forEach(e => {
+      if (e.type === 'goal') acc.push({ minute: e.minute, team: e.team });
+    });
+    return acc;
+  }, []);
+
+  const buckets = ['0-15', '16-30', '31-45', '46-60', '61-75', '76-90'];
+  const homeCounts = buckets.map((_, i) =>
+    goalEvents.filter(e => e.team === 'home' && e.minute >= i * 15 && (i < 5 ? e.minute < (i + 1) * 15 : true)).length
+  );
+  homeCounts[5] = goalEvents.filter(e => e.team === 'home' && e.minute >= 75).length;
+  const awayCounts = buckets.map((_, i) =>
+    goalEvents.filter(e => e.team === 'away' && e.minute >= i * 15 && (i < 5 ? e.minute < (i + 1) * 15 : true)).length
+  );
+  awayCounts[5] = goalEvents.filter(e => e.team === 'away' && e.minute >= 75).length;
+
+  const allCounts = [...homeCounts, ...awayCounts];
+  const maxVal = Math.max(...allCounts, 1);
+
+  const w = 280;
+  const h = 56;
+  const cellW = w / 6;
+  const cellH = 16;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+        {/* Bucket labels */}
+        {buckets.map((label, i) => (
+          <text key={`bl-${i}`} x={cellW * i + cellW / 2 + 8} y={10} fontSize="6" fill="#8b949e" textAnchor="middle">
+            {label}
+          </text>
+        ))}
+        <text x={2} y={26} fontSize="6" fill="#8b949e">H</text>
+        <text x={2} y={46} fontSize="6" fill="#8b949e">A</text>
+
+        {/* Home row */}
+        {homeCounts.map((count, i) => (
+          <motion.rect
+            key={`h-${i}`}
+            x={cellW * i + 12}
+            y={16}
+            width={cellW - 14}
+            height={cellH}
+            rx={2}
+            fill="#FF5500"
+            fillOpacity={maxVal > 0 ? count / maxVal : 0}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...ANIM, delay: i * 0.02 }}
+          />
+        ))}
+
+        {/* Away row */}
+        {awayCounts.map((count, i) => (
+          <motion.rect
+            key={`a-${i}`}
+            x={cellW * i + 12}
+            y={36}
+            width={cellW - 14}
+            height={cellH}
+            rx={2}
+            fill="#FF5500"
+            fillOpacity={maxVal > 0 ? count / maxVal : 0}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...ANIM, delay: (i + 6) * 0.02 }}
+          />
+        ))}
+
+        {/* Count labels home */}
+        {homeCounts.map((c, i) => (
+          <text key={`hc-${i}`} x={cellW * i + 12 + (cellW - 14) / 2} y={27} fontSize="7" fill="#c9d1d9" textAnchor="middle">
+            {c > 0 ? c : ''}
+          </text>
+        ))}
+        {/* Count labels away */}
+        {awayCounts.map((c, i) => (
+          <text key={`ac-${i}`} x={cellW * i + 12 + (cellW - 14) / 2} y={47} fontSize="7" fill="#c9d1d9" textAnchor="middle">
+            {c > 0 ? c : ''}
+          </text>
+        ))}
+      </svg>
+      <div className="flex justify-between mt-1 px-1">
+        <span className="text-[9px] text-[#484f58]">H = Home</span>
+        <span className="text-[9px] text-[#8b949e]">Goal timing by 15-min bucket</span>
+        <span className="text-[9px] text-[#484f58]">A = Away</span>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── SVG 5: CardDistributionDonut ───────────────────────────
+function CardDistributionDonut({ results }: { results: MatchResult[] }) {
+  if (results.length === 0) return null;
+
+  const counts = results.reduce<{ yellow: number; red: number; secondYellow: number }>(
+    (acc, r) => {
+      r.events.forEach(e => {
+        if (e.type === 'yellow_card') acc.yellow++;
+        else if (e.type === 'red_card') acc.red++;
+        else if (e.type === 'second_yellow') acc.secondYellow++;
+      });
+      return acc;
+    },
+    { yellow: 0, red: 0, secondYellow: 0 }
+  );
+
+  const total = counts.yellow + counts.red + counts.secondYellow;
+  if (total === 0) return null;
+
+  const cx = 50;
+  const cy = 50;
+  const r = 38;
+  const sw = 10;
+
+  const segments = [
+    { value: counts.yellow, color: '#CCFF00', label: 'Yellow' },
+    { value: counts.red, color: '#FF5500', label: 'Red' },
+    { value: counts.secondYellow, color: '#00E5FF', label: '2nd Y' },
+  ];
+
+  let currentAngle = -90;
+  const arcs = segments.map(seg => {
+    const angle = total > 0 ? (seg.value / total) * 360 : 0;
+    const startAngle = currentAngle;
+    const endAngle = currentAngle + angle;
+    currentAngle = endAngle;
+    const d = angle > 0.5 ? arcPathD(cx, cy, r, startAngle, endAngle) : '';
+    return { ...seg, d };
+  });
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM} className="flex flex-col items-center">
+      <svg viewBox="0 0 100 100" className="w-24 h-24">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#30363d" strokeWidth={sw} />
+        {arcs.filter(a => a.d).map((a, i) => (
+          <motion.path
+            key={i}
+            d={a.d}
+            fill="none"
+            stroke={a.color}
+            strokeWidth={sw}
+            strokeLinecap="butt"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...ANIM, delay: i * 0.04 }}
+          />
+        ))}
+        <text x={cx} y={cy + 1} fontSize="10" fill="#c9d1d9" textAnchor="middle" dominantBaseline="middle">
+          {total}
+        </text>
+      </svg>
+      <div className="flex gap-3 mt-2">
+        {segments.map((s, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: s.color }} />
+            <span className="text-[9px] text-[#8b949e]">{s.label} {s.value}</span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── SVG 6: AssistTypeBars ──────────────────────────────────
+function AssistTypeBars({ results }: { results: MatchResult[] }) {
+  const totalAssists = results.reduce((s, r) => s + r.playerAssists, 0);
+
+  const data = [
+    { label: 'Through Ball', value: Math.round(totalAssists * 0.35), color: '#CCFF00' },
+    { label: 'Cross', value: Math.round(totalAssists * 0.25), color: '#00E5FF' },
+    { label: 'Short Pass', value: Math.round(totalAssists * 0.3), color: '#FF5500' },
+    { label: 'Set Piece', value: Math.round(totalAssists * 0.1), color: '#666' },
+  ];
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const w = 280;
+  const h = 80;
+  const barH = 12;
+  const gap = 16;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+        {data.map((d, i) => {
+          const barW = (d.value / maxVal) * 180;
+          const y = i * gap + 8;
+          return (
+            <g key={i}>
+              <text x={0} y={y - 2} fontSize="7" fill="#8b949e">{d.label}</text>
+              <motion.rect
+                x={0}
+                y={y}
+                width={barW}
+                height={barH}
+                rx={2}
+                fill={d.color}
+                fillOpacity={0.8}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ ...ANIM, delay: i * 0.03 }}
+              />
+              <text x={barW + 4} y={y + 9} fontSize="7" fill="#c9d1d9">{d.value}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+// ── SVG 7: FormStreakGauge ─────────────────────────────────
+function FormStreakGauge({ ratings }: { ratings: number[] }) {
+  if (ratings.length === 0) return null;
+
+  const recent = ratings.slice(-5);
+  const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  const pct = Math.min(100, Math.max(0, (avg / 10) * 100));
+
+  const cx = 100;
+  const cy = 90;
+  const r = 70;
+
+  const bgArc = arcPathD(cx, cy, r, 180, 360);
+  const valueAngle = 180 + (pct / 100) * 180;
+  const valueArc = pct > 0.5 ? arcPathD(cx, cy, r, 180, valueAngle) : '';
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM} className="flex flex-col items-center">
+      <svg viewBox="0 0 200 110" className="w-full max-w-[200px]">
+        <path d={bgArc} fill="none" stroke="#30363d" strokeWidth={10} strokeLinecap="round" />
+        <motion.path
+          d={valueArc}
+          fill="none"
+          stroke="#CCFF00"
+          strokeWidth={10}
+          strokeLinecap="round"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={ANIM}
+        />
+        <text x={cx} y={cy - 5} fontSize="18" fill="#c9d1d9" textAnchor="middle" fontWeight="bold">
+          {Math.round(pct)}%
+        </text>
+        <text x={cx} y={cy + 10} fontSize="8" fill="#8b949e" textAnchor="middle">
+          Form Rating
+        </text>
+      </svg>
+    </motion.div>
+  );
+}
+
+// ── SVG 8: GoalVsAssistScatter ─────────────────────────────
+function GoalVsAssistScatter({ results }: { results: MatchResult[] }) {
+  const data = results.slice(0, 8);
+  if (data.length === 0) return null;
+
+  const maxGoals = Math.max(...data.map(r => r.playerGoals), 1);
+  const maxAssists = Math.max(...data.map(r => r.playerAssists), 1);
+
+  const w = 200;
+  const h = 140;
+  const px = 24;
+  const py = 16;
+  const cw = w - px - 8;
+  const ch = h - py - 16;
+
+  const dots = data.map((r) => ({
+    x: px + (r.playerGoals / maxGoals) * cw,
+    y: py + ch - (r.playerAssists / maxAssists) * ch,
+    goals: r.playerGoals,
+    assists: r.playerAssists,
+  }));
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+        {/* Axes */}
+        <line x1={px} y1={py} x2={px} y2={py + ch} stroke="#30363d" strokeWidth={0.5} />
+        <line x1={px} y1={py + ch} x2={px + cw} y2={py + ch} stroke="#30363d" strokeWidth={0.5} />
+        <text x={px + cw / 2} y={h - 2} fontSize="6" fill="#8b949e" textAnchor="middle">Goals</text>
+        <text x={6} y={py + ch / 2} fontSize="6" fill="#8b949e" textAnchor="middle">A</text>
+
+        {/* Dots */}
+        {dots.map((d, i) => (
+          <motion.circle
+            key={i}
+            cx={d.x}
+            cy={d.y}
+            r={4}
+            fill={d.goals > d.assists ? '#FF5500' : '#00E5FF'}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...ANIM, delay: i * 0.02 }}
+          />
+        ))}
+      </svg>
+      <div className="flex justify-center gap-4 mt-1">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#FF5500' }} />
+          <span className="text-[9px] text-[#8b949e]">More Goals</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#00E5FF' }} />
+          <span className="text-[9px] text-[#8b949e]">More Assists</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── SVG 9: MatchContributionRadar ──────────────────────────
+function MatchContributionRadar({ results, playerClubId }: { results: MatchResult[]; playerClubId: string }) {
+  if (results.length === 0) return null;
+
+  const axes = ['Goals', 'Assists', 'Clean', 'MOTM', 'Mins'];
+
+  const totalGoals = results.reduce((s, r) => s + r.playerGoals, 0);
+  const totalAssists = results.reduce((s, r) => s + r.playerAssists, 0);
+  const cleanSheets = results.reduce((s, r) => {
+    const info = getResultInfo(r, playerClubId);
+    const teamConceded = info.isHome ? r.awayScore : r.homeScore;
+    return s + (teamConceded === 0 ? 1 : 0);
+  }, 0);
+  const motmCount = results.reduce((s, r) => s + (r.playerRating >= 8.5 ? 1 : 0), 0);
+  const avgMinutes = results.reduce((s, r) => s + r.playerMinutesPlayed, 0) / results.length;
+
+  const values = [
+    Math.min(100, (totalGoals / Math.max(results.length * 1, 1)) * 100),
+    Math.min(100, (totalAssists / Math.max(results.length * 0.8, 1)) * 100),
+    (cleanSheets / results.length) * 100,
+    (motmCount / results.length) * 100,
+    (avgMinutes / 90) * 100,
+  ];
+
+  const cx = 80;
+  const cy = 80;
+  const r = 60;
+  const n = axes.length;
+
+  const axisEndpoints = axes.map((_, i) => {
+    const angle = (2 * Math.PI * i) / n - Math.PI / 2;
+    return {
+      x: cx + r * Math.cos(angle),
+      y: cy + r * Math.sin(angle),
+    };
+  });
+
+  const axisEndStr = axisEndpoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const dataPoints = values.map((v, i) => {
+    const angle = (2 * Math.PI * i) / n - Math.PI / 2;
+    const vr = (v / 100) * r;
+    return {
+      x: cx + vr * Math.cos(angle),
+      y: cy + vr * Math.sin(angle),
+    };
+  });
+
+  const dataStr = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  const labelPoints = axes.map((_, i) => {
+    const angle = (2 * Math.PI * i) / n - Math.PI / 2;
+    return {
+      x: cx + (r + 14) * Math.cos(angle),
+      y: cy + (r + 14) * Math.sin(angle),
+    };
+  });
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM} className="flex flex-col items-center">
+      <svg viewBox="0 0 160 160" className="w-36 h-36">
+        {/* Grid */}
+        <polygon fill="none" stroke="#30363d" strokeWidth={0.5} points={axisEndStr} />
+        {/* Axis lines */}
+        {axisEndpoints.map((p, i) => (
+          <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#30363d" strokeWidth={0.5} />
+        ))}
+        {/* Data polygon */}
+        <motion.polygon
+          fill="#FF5500"
+          fillOpacity={0.2}
+          stroke="#FF5500"
+          strokeWidth={1.5}
+          points={dataStr}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={ANIM}
+        />
+        {/* Labels */}
+        {labelPoints.map((p, i) => (
+          <text key={i} x={p.x} y={p.y + 3} fontSize="7" fill="#8b949e" textAnchor="middle">
+            {axes[i]}
+          </text>
+        ))}
+      </svg>
+    </motion.div>
+  );
+}
+
+// ── SVG 10: DisciplineBars ─────────────────────────────────
+function DisciplineBars({ results }: { results: MatchResult[] }) {
+  const counts = results.reduce<{ yellow: number; red: number; secondYellow: number }>(
+    (acc, r) => {
+      r.events.forEach(e => {
+        if (e.type === 'yellow_card') acc.yellow++;
+        else if (e.type === 'red_card') acc.red++;
+        else if (e.type === 'second_yellow') acc.secondYellow++;
+      });
+      return acc;
+    },
+    { yellow: 0, red: 0, secondYellow: 0 }
+  );
+
+  const data = [
+    { label: 'Yellow', value: counts.yellow, color: '#CCFF00' },
+    { label: 'Red', value: counts.red, color: '#FF5500' },
+    { label: '2nd Yellow', value: counts.secondYellow, color: '#00E5FF' },
+  ];
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const w = 280;
+  const h = 56;
+  const barH = 12;
+  const gap = 16;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+        {data.map((d, i) => {
+          const barW = (d.value / maxVal) * 180;
+          const y = i * gap + 6;
+          return (
+            <g key={i}>
+              <text x={0} y={y - 2} fontSize="7" fill="#8b949e">{d.label}</text>
+              <motion.rect
+                x={0}
+                y={y}
+                width={barW}
+                height={barH}
+                rx={2}
+                fill={d.color}
+                fillOpacity={0.8}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ ...ANIM, delay: i * 0.03 }}
+              />
+              <text x={barW + 4} y={y + 9} fontSize="7" fill="#c9d1d9">{d.value}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </motion.div>
+  );
+}
+
+// ── SVG 11: RecentPerformanceRing ──────────────────────────
+function RecentPerformanceRing({ results }: { results: MatchResult[] }) {
+  if (results.length === 0) return null;
+
+  const goodMatches = results.reduce((s, r) => s + (r.playerRating >= 7.0 ? 1 : 0), 0);
+  const total = results.length;
+  const pct = total > 0 ? goodMatches / total : 0;
+
+  const cx = 50;
+  const cy = 50;
+  const r = 38;
+  const sw = 8;
+
+  const circumference = 2 * Math.PI * r;
+  const dashOffset = circumference * (1 - pct);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={ANIM} className="flex flex-col items-center">
+      <svg viewBox="0 0 100 100" className="w-24 h-24">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#30363d" strokeWidth={sw} />
+        <motion.circle
+          cx={cx}
+          cy={cy}
+          r={r}
+          fill="none"
+          stroke="#00E5FF"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={ANIM}
+        />
+        <text x={cx} y={cy - 2} fontSize="14" fill="#c9d1d9" textAnchor="middle" fontWeight="bold">
+          {goodMatches}/{total}
+        </text>
+        <text x={cx} y={cy + 10} fontSize="7" fill="#8b949e" textAnchor="middle">
+          Rating 7+
+        </text>
+      </svg>
+    </motion.div>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────
 export default function MatchHighlights() {
   const gameState = useGameStore((s) => s.gameState);
@@ -909,6 +1603,126 @@ export default function MatchHighlights() {
           </div>
         </motion.div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 8: Performance Overview (W/D/L + Performance Ring) */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <Section
+        title="Performance Overview"
+        icon={<Activity className="h-3.5 w-3.5" />}
+        badge={`${totalMatches} played`}
+        delay={nextSectionDelay()}
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <MatchResultDonut results={gameState.recentResults} playerClubId={playerClubId} />
+          <RecentPerformanceRing results={gameState.recentResults} />
+        </div>
+      </Section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 9: Goal Distribution Timeline */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <Section
+        title="Goal Distribution"
+        icon={<Target className="h-3.5 w-3.5" />}
+        badge="per match"
+        delay={nextSectionDelay()}
+      >
+        <GoalDistributionTimeline results={gameState.recentResults} />
+      </Section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 10: Goal Timing Heatmap */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <Section
+        title="Goal Timing"
+        icon={<Clock className="h-3.5 w-3.5" />}
+        badge="15-min buckets"
+        delay={nextSectionDelay()}
+      >
+        <GoalMinuteHeatmap results={gameState.recentResults} />
+      </Section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 11: Assist Breakdown */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <Section
+        title="Assist Breakdown"
+        icon={<Zap className="h-3.5 w-3.5" />}
+        badge="by type"
+        delay={nextSectionDelay()}
+      >
+        <AssistTypeBars results={gameState.recentResults} />
+      </Section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 12: Goal vs Assist Scatter */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <Section
+        title="Goal vs Assist"
+        icon={<BarChart3 className="h-3.5 w-3.5" />}
+        badge="scatter"
+        delay={nextSectionDelay()}
+      >
+        <GoalVsAssistScatter results={gameState.recentResults} />
+      </Section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 13: Contribution Radar */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <Section
+        title="Contribution Radar"
+        icon={<Star className="h-3.5 w-3.5" />}
+        badge="5-axis"
+        delay={nextSectionDelay()}
+      >
+        <MatchContributionRadar results={gameState.recentResults} playerClubId={playerClubId} />
+      </Section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 14: Rating Trend Area */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {ratingHistory.length >= 2 && (
+        <Section
+          title="Rating Trend"
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          badge="area chart"
+          delay={nextSectionDelay()}
+        >
+          <RatingTrendAreaChart ratings={ratingHistory} />
+        </Section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 15: Form Gauge */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {ratingHistory.length >= 1 && (
+        <Section
+          title="Form Gauge"
+          icon={<Award className="h-3.5 w-3.5" />}
+          badge="recent 5"
+          delay={nextSectionDelay()}
+        >
+          <FormStreakGauge ratings={ratingHistory} />
+        </Section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION 16: Discipline Analysis */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <Section
+        title="Discipline Analysis"
+        icon={<AlertTriangle className="h-3.5 w-3.5" />}
+        badge="all cards"
+        delay={nextSectionDelay()}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <CardDistributionDonut results={gameState.recentResults} />
+            <DisciplineBars results={gameState.recentResults} />
+          </div>
+        </div>
+      </Section>
     </div>
   );
 }

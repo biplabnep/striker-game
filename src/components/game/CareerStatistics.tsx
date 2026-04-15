@@ -183,6 +183,341 @@ function SectionCard({ title, icon, children, delay = 0 }: {
   );
 }
 
+// ── SVG Helpers ──────────────────────────────────────────
+
+function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
+}
+
+// ── SVG Visualization Components ──────────────────────────
+
+// 1. GoalsAssistsRatioDonut — 2-segment donut
+function GoalsAssistsRatioDonut({ goals, assists }: { goals: number; assists: number }) {
+  const cx = 60, cy = 60, r = 40;
+  const total = goals + assists || 1;
+  const goalAngle = (goals / total) * 360;
+  const assistAngle = (assists / total) * 360;
+  return (
+    <svg width={120} height={120} className="block mx-auto">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth={12} />
+      {goalAngle > 0 && (
+        <path d={describeArc(cx, cy, r, 0, Math.min(goalAngle, 359.9))} fill="none" stroke="#FF5500" strokeWidth={12} strokeLinecap="round" />
+      )}
+      {assistAngle > 0 && (
+        <path d={describeArc(cx, cy, r, goalAngle, Math.min(goalAngle + assistAngle, 359.9))} fill="none" stroke="#00E5FF" strokeWidth={12} strokeLinecap="round" />
+      )}
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize={16} fontWeight="bold">{total}</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fill="#8b949e" fontSize={8}>G+A</text>
+    </svg>
+  );
+}
+
+// 2. CareerProgressionAreaChart — area chart from season goals
+function CareerProgressionAreaChart({ seasonData }: { seasonData: { season: number; goals: number }[] }) {
+  const w = 260, h = 80, pad = 4;
+  const sliced = seasonData.slice(-8);
+  if (sliced.length < 2) return null;
+  const max = Math.max(...sliced.map((s) => s.goals), 1);
+  const step = w / (sliced.length - 1);
+  const pts = sliced.map((s, i) => `${i * step},${h - pad - (s.goals / max) * (h - pad * 2)}`);
+  const areaPath = `M 0,${h} ${pts.join(' L ')} L ${w},${h} Z`;
+  const linePath = `M ${pts.join(' L ')}`;
+  return (
+    <svg width={w} height={h} className="block">
+      <path d={areaPath} fill="#CCFF00" fillOpacity={0.15} />
+      <path d={linePath} fill="none" stroke="#CCFF00" strokeWidth={2} strokeLinejoin="round" />
+      {sliced.map((s, i) => {
+        const cx = i * step;
+        const cy = h - pad - (s.goals / max) * (h - pad * 2);
+        return <circle key={i} cx={cx} cy={cy} r={3} fill="#CCFF00" />;
+      })}
+    </svg>
+  );
+}
+
+// 3. AttributeDevelopmentRadar — 6-axis radar
+function AttributeDevelopmentRadar({ attrs }: { attrs: { pace: number; shooting: number; passing: number; dribbling: number; defending: number; physical: number } }) {
+  const cx = 70, cy = 70, maxR = 50;
+  const labels = ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'];
+  const values = [attrs.pace, attrs.shooting, attrs.passing, attrs.dribbling, attrs.defending, attrs.physical];
+  const n = labels.length;
+  const radarPoints = values.map((v, i) => {
+    const angle = (360 / n) * i - 90;
+    const rad = (angle * Math.PI) / 180;
+    const rv = (v / 100) * maxR;
+    return `${cx + rv * Math.cos(rad)},${cy + rv * Math.sin(rad)}`;
+  });
+  const radarStr = radarPoints.join(' ');
+  const gridScales = [0.33, 0.66, 1.0];
+  const gridStrings = gridScales.map((scale) => {
+    return labels.map((_, i) => {
+      const angle = (360 / n) * i - 90;
+      const rad = (angle * Math.PI) / 180;
+      const gr = scale * maxR;
+      return `${cx + gr * Math.cos(rad)},${cy + gr * Math.sin(rad)}`;
+    }).join(' ');
+  });
+  const axisEnds = labels.map((_, i) => {
+    const angle = (360 / n) * i - 90;
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + maxR * Math.cos(rad), y: cy + maxR * Math.sin(rad) };
+  });
+  const labelPos = labels.map((_, i) => {
+    const angle = (360 / n) * i - 90;
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + (maxR + 12) * Math.cos(rad), y: cy + (maxR + 12) * Math.sin(rad) };
+  });
+  return (
+    <svg width={140} height={140} className="block mx-auto">
+      {gridStrings.map((pts, i) => (
+        <polygon key={i} points={pts} fill="none" stroke="#30363d" strokeWidth={0.5} />
+      ))}
+      {axisEnds.map((ep, i) => (
+        <line key={i} x1={cx} y1={cy} x2={ep.x} y2={ep.y} stroke="#30363d" strokeWidth={0.5} />
+      ))}
+      <polygon points={radarStr} fill="#FF5500" fillOpacity={0.2} stroke="#FF5500" strokeWidth={1.5} />
+      {values.map((v, i) => {
+        const angle = (360 / n) * i - 90;
+        const rad = (angle * Math.PI) / 180;
+        const rv = (v / 100) * maxR;
+        return <circle key={i} cx={cx + rv * Math.cos(rad)} cy={cy + rv * Math.sin(rad)} r={2.5} fill="#FF5500" />;
+      })}
+      {labelPos.map((lp, i) => (
+        <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize={7}>{labels[i]}</text>
+      ))}
+    </svg>
+  );
+}
+
+// 4. RatingConsistencyRing — circular ring for consistency
+function RatingConsistencyRing({ score }: { score: number }) {
+  const cx = 60, cy = 60, r = 42;
+  const angle = (Math.min(100, Math.max(0, score)) / 100) * 360;
+  return (
+    <svg width={120} height={120} className="block mx-auto">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth={8} />
+      {angle > 0 && (
+        <path d={describeArc(cx, cy, r, 0, Math.min(angle, 359.9))} fill="none" stroke="#00E5FF" strokeWidth={8} strokeLinecap="round" />
+      )}
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#00E5FF" fontSize={20} fontWeight="bold">{score}</text>
+      <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize={8}>Consistency</text>
+    </svg>
+  );
+}
+
+// 5. GoalsByCompetitionDonut — 3-segment donut
+function GoalsByCompetitionDonut({ leagueGoals, cupGoals, continentalGoals }: { leagueGoals: number; cupGoals: number; continentalGoals: number }) {
+  const cx = 60, cy = 60, r = 38;
+  const segments = [
+    { value: leagueGoals, color: '#CCFF00' },
+    { value: cupGoals, color: '#FF5500' },
+    { value: continentalGoals, color: '#00E5FF' },
+  ];
+  const total = segments.reduce((sum, seg) => sum + seg.value, 0) || 1;
+  let accumulated = 0;
+  const arcPaths = segments.reduce<Array<{ d: string; color: string }>>((acc, seg) => {
+    const angle = (seg.value / total) * 360;
+    if (angle > 0) {
+      acc.push({ d: describeArc(cx, cy, r, accumulated, accumulated + Math.min(angle, 359.9)), color: seg.color });
+    }
+    accumulated += angle;
+    return acc;
+  }, []);
+  return (
+    <svg width={120} height={120} className="block mx-auto">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth={10} />
+      {arcPaths.map((arc, i) => (
+        <path key={i} d={arc.d} fill="none" stroke={arc.color} strokeWidth={10} />
+      ))}
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#c9d1d9" fontSize={14} fontWeight="bold">{total}</text>
+      <text x={cx} y={cy + 8} textAnchor="middle" fill="#8b949e" fontSize={7}>Goals</text>
+    </svg>
+  );
+}
+
+// 6. SeasonGoalsComparisonBars — horizontal bars comparing goals per season
+function SeasonGoalsComparisonBars({ seasonData }: { seasonData: { season: number; goals: number }[] }) {
+  const w = 240, h = 160;
+  const sliced = seasonData.slice(-8);
+  if (sliced.length === 0) return null;
+  const max = Math.max(...sliced.map((s) => s.goals), 1);
+  const barH = Math.max(8, Math.min(16, (h - 10) / sliced.length - 4));
+  return (
+    <svg width={w} height={h} className="block">
+      {sliced.map((s, i) => {
+        const y = 4 + i * (barH + 4);
+        const barW = (s.goals / max) * (w - 50);
+        const isTop = s.goals === max;
+        return (
+          <g key={i}>
+            <text x={2} y={y + barH / 2} dominantBaseline="central" fill="#8b949e" fontSize={8}>S{s.season}</text>
+            <rect x={32} y={y} width={barW} height={barH} fill={isTop ? '#FF5500' : '#666'} rx={2} />
+            <text x={36 + barW} y={y + barH / 2} dominantBaseline="central" fill="#c9d1d9" fontSize={8}>{s.goals}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// 7. MilestoneProgressRing — circular ring for milestone completion
+function MilestoneProgressRing({ milestones }: { milestones: { current: number; target: number }[] }) {
+  const cx = 60, cy = 60, r = 42;
+  const completed = milestones.reduce((sum, m) => sum + (m.current >= m.target ? 1 : 0), 0);
+  const total = milestones.length || 1;
+  const angle = (completed / total) * 360;
+  return (
+    <svg width={120} height={120} className="block mx-auto">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#21262d" strokeWidth={8} />
+      {angle > 0 && (
+        <path d={describeArc(cx, cy, r, 0, Math.min(angle, 359.9))} fill="none" stroke="#CCFF00" strokeWidth={8} strokeLinecap="round" />
+      )}
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#CCFF00" fontSize={18} fontWeight="bold">{completed}/{total}</text>
+      <text x={cx} y={cy + 12} textAnchor="middle" fill="#8b949e" fontSize={7}>Milestones</text>
+    </svg>
+  );
+}
+
+// 8. HatTrickTimeline — 8-node horizontal timeline of W/D/L results
+function HatTrickTimeline({ results, currentClubName }: { results: { homeClub: { name: string }; awayClub: { name: string }; homeScore: number; awayScore: number }[]; currentClubName: string }) {
+  const sliced = results.slice(-8);
+  if (sliced.length === 0) return null;
+  const w = 260, h = 50;
+  const step = sliced.length > 1 ? w / (sliced.length - 1) : w;
+  const midY = h / 2;
+  const nodes = sliced.map((r, i) => {
+    const isHome = r.homeClub.name === currentClubName;
+    const won = isHome ? r.homeScore > r.awayScore : r.awayScore > r.homeScore;
+    const drawn = r.homeScore === r.awayScore;
+    const result = drawn ? 'D' as const : won ? 'W' as const : 'L' as const;
+    return { x: i * step, result };
+  });
+  return (
+    <svg width={w} height={h} className="block">
+      <line x1={0} y1={midY} x2={w} y2={midY} stroke="#30363d" strokeWidth={2} />
+      {nodes.map((nd, i) => {
+        const color = nd.result === 'W' ? '#00E5FF' : nd.result === 'D' ? '#CCFF00' : '#FF5500';
+        return (
+          <g key={i}>
+            <circle cx={nd.x} cy={midY} r={8} fill="#161b22" stroke={color} strokeWidth={2} />
+            <text x={nd.x} y={midY + 1} textAnchor="middle" dominantBaseline="central" fill={color} fontSize={7} fontWeight="bold">{nd.result}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// 9. CareerValueTrendLine — 8-point line chart from mvData
+function CareerValueTrendLine({ values }: { values: number[] }) {
+  const w = 260, h = 60, pad = 4;
+  const sliced = values.slice(-8);
+  if (sliced.length < 2) return null;
+  const max = Math.max(...sliced);
+  const min = Math.min(...sliced);
+  const range = max - min || 1;
+  const step = w / (sliced.length - 1);
+  const pts = sliced.map((v, i) => `${i * step},${h - pad - ((v - min) / range) * (h - pad * 2)}`);
+  const linePath = `M ${pts.join(' L ')}`;
+  return (
+    <svg width={w} height={h} className="block">
+      <path d={linePath} fill="none" stroke="#FF5500" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {sliced.map((v, i) => {
+        const cx = i * step;
+        const cy = h - pad - ((v - min) / range) * (h - pad * 2);
+        return <circle key={i} cx={cx} cy={cy} r={3} fill="#FF5500" />;
+      })}
+    </svg>
+  );
+}
+
+// 10. PositionStatsRadar — 5-axis radar from career stats
+function PositionStatsRadar({ goals, assists, rating, apps, motm }: { goals: number; assists: number; rating: number; apps: number; motm: number }) {
+  const cx = 70, cy = 70, maxR = 50;
+  const labels = ['Goals', 'Assists', 'Rating', 'Apps', 'MOTM'];
+  const maxVals = [50, 30, 10, 80, 15];
+  const raw = [goals, assists, rating, apps, motm];
+  const values = raw.map((v, i) => Math.min(1, v / maxVals[i]));
+  const n = labels.length;
+  const radarPoints = values.map((v, i) => {
+    const angle = (360 / n) * i - 90;
+    const rad = (angle * Math.PI) / 180;
+    const rv = v * maxR;
+    return `${cx + rv * Math.cos(rad)},${cy + rv * Math.sin(rad)}`;
+  });
+  const radarStr = radarPoints.join(' ');
+  const gridScales = [0.33, 0.66, 1.0];
+  const gridStrings = gridScales.map((scale) => {
+    return labels.map((_, i) => {
+      const angle = (360 / n) * i - 90;
+      const rad = (angle * Math.PI) / 180;
+      const gr = scale * maxR;
+      return `${cx + gr * Math.cos(rad)},${cy + gr * Math.sin(rad)}`;
+    }).join(' ');
+  });
+  const axisEnds = labels.map((_, i) => {
+    const angle = (360 / n) * i - 90;
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + maxR * Math.cos(rad), y: cy + maxR * Math.sin(rad) };
+  });
+  const labelPos = labels.map((_, i) => {
+    const angle = (360 / n) * i - 90;
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + (maxR + 14) * Math.cos(rad), y: cy + (maxR + 14) * Math.sin(rad) };
+  });
+  return (
+    <svg width={140} height={140} className="block mx-auto">
+      {gridStrings.map((pts, i) => (
+        <polygon key={i} points={pts} fill="none" stroke="#30363d" strokeWidth={0.5} />
+      ))}
+      {axisEnds.map((ep, i) => (
+        <line key={i} x1={cx} y1={cy} x2={ep.x} y2={ep.y} stroke="#30363d" strokeWidth={0.5} />
+      ))}
+      <polygon points={radarStr} fill="#CCFF00" fillOpacity={0.2} stroke="#CCFF00" strokeWidth={1.5} />
+      {values.map((v, i) => {
+        const angle = (360 / n) * i - 90;
+        const rad = (angle * Math.PI) / 180;
+        const rv = v * maxR;
+        return <circle key={i} cx={cx + rv * Math.cos(rad)} cy={cy + rv * Math.sin(rad)} r={2.5} fill="#CCFF00" />;
+      })}
+      {labelPos.map((lp, i) => (
+        <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="central" fill="#8b949e" fontSize={6}>{labels[i]}</text>
+      ))}
+    </svg>
+  );
+}
+
+// 11. ScoringFormAreaChart — 8-point area chart from recent goal form
+function ScoringFormAreaChart({ recentGoals }: { recentGoals: number[] }) {
+  const w = 260, h = 70, pad = 4;
+  const data = recentGoals.slice(-8);
+  if (data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const step = w / (data.length - 1);
+  const pts = data.map((v, i) => `${i * step},${h - pad - (v / max) * (h - pad * 2)}`);
+  const areaPath = `M 0,${h} ${pts.join(' L ')} L ${w},${h} Z`;
+  const linePath = `M ${pts.join(' L ')}`;
+  return (
+    <svg width={w} height={h} className="block">
+      <path d={areaPath} fill="#00E5FF" fillOpacity={0.15} />
+      <path d={linePath} fill="none" stroke="#00E5FF" strokeWidth={2} strokeLinejoin="round" />
+      {data.map((v, i) => {
+        const cx = i * step;
+        const cy = h - pad - (v / max) * (h - pad * 2);
+        return <circle key={i} cx={cx} cy={cy} r={3} fill="#00E5FF" />;
+      })}
+    </svg>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────
 export default function CareerStatistics() {
   const gameState = useGameStore((s) => s.gameState);
@@ -369,6 +704,9 @@ export default function CareerStatistics() {
   const maxGoalsSeason = Math.max(...allSeasonStats.map((s) => s.goals), 1);
   const maxAssistsSeason = Math.max(...allSeasonStats.map((s) => s.assists), 1);
 
+  // Recent goals for scoring form chart
+  const recentGoals = recentResults.slice(-8).map(r => r.playerGoals);
+
   return (
     <div className="bg-[#0d1117] min-h-screen pb-20">
       <div className="max-w-lg mx-auto p-4">
@@ -405,6 +743,16 @@ export default function CareerStatistics() {
               <StatCard icon={<Handshake className="h-4 w-4" />} value={assists} label="Assists" color="text-cyan-400" delay={0.06} />
               <StatCard icon={<Trophy className="h-4 w-4" />} value={trophies.length} label="Trophies" color="text-amber-400" delay={0.08} />
             </div>
+
+            <SectionCard title="Goals vs Assists" icon={<Target className="h-3.5 w-3.5" />} delay={0.09}>
+              <div className="flex justify-center items-center gap-4">
+                <GoalsAssistsRatioDonut goals={goals} assists={assists} />
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: '#FF5500' }} /><span className="text-[10px] text-[#c9d1d9]">{goals} Goals</span></div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: '#00E5FF' }} /><span className="text-[10px] text-[#c9d1d9]">{assists} Assists</span></div>
+                </div>
+              </div>
+            </SectionCard>
 
             {/* Per-game ratios */}
             <SectionCard title="Per-Game Ratios" icon={<Crosshair className="h-3.5 w-3.5" />} delay={0.1}>
@@ -492,6 +840,11 @@ export default function CareerStatistics() {
               </div>
             </SectionCard>
 
+            <SectionCard title="Career Progression" icon={<TrendingUp className="h-3.5 w-3.5" />} delay={0.13}>
+              <CareerProgressionAreaChart seasonData={allSeasonStats} />
+              <p className="text-[9px] text-[#484f58] mt-1 text-center">Goals per season</p>
+            </SectionCard>
+
             {/* Attribute evolution */}
             <SectionCard title="Attribute Evolution" icon={<TrendingUp className="h-3.5 w-3.5" />} delay={0.14}>
               <div className="space-y-2.5">
@@ -523,6 +876,14 @@ export default function CareerStatistics() {
               </div>
             </SectionCard>
 
+            <SectionCard title="Attribute Radar" icon={<Crosshair className="h-3.5 w-3.5" />} delay={0.145}>
+              <AttributeDevelopmentRadar attrs={player.attributes} />
+            </SectionCard>
+
+            <SectionCard title="Position Stats" icon={<Star className="h-3.5 w-3.5" />} delay={0.155}>
+              <PositionStatsRadar goals={goals} assists={assists} rating={careerAvg} apps={apps} motm={motmCount} />
+            </SectionCard>
+
             {/* Market value sparkline */}
             <SectionCard title="Market Value" icon={<Trophy className="h-3.5 w-3.5" />} delay={0.16}>
               <div className="text-center">
@@ -532,6 +893,11 @@ export default function CareerStatistics() {
                 </div>
                 <p className="text-[9px] text-[#484f58] mt-1">Last {mvData.length} seasons</p>
               </div>
+            </SectionCard>
+
+            <SectionCard title="Value Trend" icon={<TrendingUp className="h-3.5 w-3.5" />} delay={0.17}>
+              <CareerValueTrendLine values={mvData} />
+              <p className="text-[9px] text-[#484f58] mt-1 text-center">Market value trend</p>
             </SectionCard>
           </TabsContent>
 
@@ -550,6 +916,11 @@ export default function CareerStatistics() {
               </div>
             </SectionCard>
 
+            <SectionCard title="Scoring Form" icon={<Flame className="h-3.5 w-3.5" />} delay={0.03}>
+              <ScoringFormAreaChart recentGoals={recentGoals} />
+              <p className="text-[9px] text-[#484f58] mt-1 text-center">Recent goal form (last 8 matches)</p>
+            </SectionCard>
+
             {/* Goals per season bar chart */}
             <SectionCard title="Goals by Season" icon={<BarChart3 className="h-3.5 w-3.5" />} delay={0.04}>
               <div className="space-y-2">
@@ -557,6 +928,10 @@ export default function CareerStatistics() {
                   <HBar key={s.season} value={s.goals} max={maxGoalsSeason} color="#10b981" label={`S${s.season}`} />
                 ))}
               </div>
+            </SectionCard>
+
+            <SectionCard title="Season Goals Comparison" icon={<BarChart3 className="h-3.5 w-3.5" />} delay={0.05}>
+              <SeasonGoalsComparisonBars seasonData={allSeasonStats} />
             </SectionCard>
 
             {/* Goal timing heatmap */}
@@ -594,12 +969,32 @@ export default function CareerStatistics() {
               </div>
             </SectionCard>
 
+            <SectionCard title="Recent Results" icon={<Calendar className="h-3.5 w-3.5" />} delay={0.09}>
+              <HatTrickTimeline results={recentResults} currentClubName={gameState.currentClub.name} />
+              <div className="flex justify-center gap-4 mt-1">
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: '#00E5FF' }} /><span className="text-[9px] text-[#8b949e]">Win</span></div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: '#CCFF00' }} /><span className="text-[9px] text-[#8b949e]">Draw</span></div>
+                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: '#FF5500' }} /><span className="text-[9px] text-[#8b949e]">Loss</span></div>
+              </div>
+            </SectionCard>
+
             {/* Goals by competition */}
             <SectionCard title="Goals by Competition" icon={<Trophy className="h-3.5 w-3.5" />} delay={0.1}>
               <div className="space-y-2">
                 <HBar value={leagueGoals} max={Math.max(leagueGoals, cupGoals, continentalGoals, 1)} color="#10b981" label="League" />
                 <HBar value={cupGoals} max={Math.max(leagueGoals, cupGoals, continentalGoals, 1)} color="#06b6d4" label="Cup" />
                 <HBar value={continentalGoals} max={Math.max(leagueGoals, cupGoals, continentalGoals, 1)} color="#a855f7" label="Continental" />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Competition Breakdown" icon={<Trophy className="h-3.5 w-3.5" />} delay={0.105}>
+              <div className="flex justify-center items-center gap-4">
+                <GoalsByCompetitionDonut leagueGoals={leagueGoals} cupGoals={cupGoals} continentalGoals={continentalGoals} />
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: '#CCFF00' }} /><span className="text-[10px] text-[#c9d1d9]">{leagueGoals} League</span></div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: '#FF5500' }} /><span className="text-[10px] text-[#c9d1d9]">{cupGoals} Cup</span></div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: '#00E5FF' }} /><span className="text-[10px] text-[#c9d1d9]">{continentalGoals} Continental</span></div>
+                </div>
               </div>
             </SectionCard>
 
@@ -800,6 +1195,12 @@ export default function CareerStatistics() {
                 </div>
               </div>
             </SectionCard>
+
+            <SectionCard title="Consistency Ring" icon={<Award className="h-3.5 w-3.5" />} delay={0.09}>
+              <div className="flex justify-center">
+                <RatingConsistencyRing score={consistencyScore} />
+              </div>
+            </SectionCard>
           </TabsContent>
 
           {/* ━━━━━━━━━━━━━━━━━━━ TAB 5: RECORDS ━━━━━━━━━━━━━━━━━━━ */}
@@ -890,6 +1291,12 @@ export default function CareerStatistics() {
                     </motion.div>
                   );
                 })}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Milestone Ring" icon={<Medal className="h-3.5 w-3.5" />} delay={0.115}>
+              <div className="flex justify-center">
+                <MilestoneProgressRing milestones={milestones} />
               </div>
             </SectionCard>
           </TabsContent>
