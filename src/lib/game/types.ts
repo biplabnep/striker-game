@@ -688,7 +688,9 @@ export type GameScreen =
   | 'player_comparison_enhanced'
   | 'referee_system_enhanced'
   | 'dream_transfer_enhanced'
-  | 'loan_system_enhanced';
+  | 'loan_system_enhanced'
+  | 'season_review_enhanced'
+  | 'multiplayer_enhanced';
 
 // --- Player Mindset ---
 export type PlayerMindset = 'aggressive' | 'balanced' | 'conservative';

@@ -109,6 +109,8 @@ const moreCategories: NavCategory[] = [
       { screen: 'international_expansion', icon: <Globe className="h-5 w-5" />, label: 'International' },
       { screen: 'player_comparison_enhanced', icon: <GitCompareArrows className="h-5 w-5" />, label: 'Compare+' },
       { screen: 'dream_transfer_enhanced', icon: <Sparkles className="h-5 w-5" />, label: 'Dream Transfer+' },
+      { screen: 'multiplayer_enhanced', icon: <Gamepad2 className="h-5 w-5" />, label: 'Multiplayer+' },
+      { screen: 'season_review_enhanced', icon: <FileSignature className="h-5 w-5" />, label: 'Season Review+' },
     ],
   },
   {
