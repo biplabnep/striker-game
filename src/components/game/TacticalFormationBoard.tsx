@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePinch, useDrag } from '@use-gesture/react';
 import {
   LayoutGrid,
   Swords,
@@ -13,6 +14,7 @@ import {
   X,
   ArrowRight,
   Zap,
+  RotateCcw,
 } from 'lucide-react';
 import { useGameStore } from '@/store/gameStore';
 import { Position } from '@/lib/game/types';
@@ -722,6 +724,13 @@ export default function TacticalFormationBoard() {
   const [formation, setFormation] = useState<FormationKey>('4-3-3');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showOpponent, setShowOpponent] = useState(false);
+  
+  // Zoom and pan state for pinch-to-zoom
+  const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isZooming, setIsZooming] = useState(false);
+  const [showZoomIndicator, setShowZoomIndicator] = useState(false);
+  const zoomIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Generate team data deterministically
   const squad = useMemo(() => {
@@ -786,6 +795,62 @@ export default function TacticalFormationBoard() {
 
   const handlePlayerClick = useCallback((id: string) => {
     setSelectedPlayerId((prev) => (prev === id ? null : id));
+  }, []);
+
+  // Pinch-to-zoom handler
+  const pinchHandler = usePinch(
+    ({ origin, da: [d], memo }) => {
+      if (!memo) memo = zoom;
+
+      const newZoom = Math.min(Math.max(memo * (1 + d * 0.005), 0.5), 2);
+      setZoom(newZoom);
+      setIsZooming(true);
+
+      // Show zoom indicator
+      setShowZoomIndicator(true);
+      if (zoomIndicatorTimeoutRef.current) {
+        clearTimeout(zoomIndicatorTimeoutRef.current);
+      }
+      zoomIndicatorTimeoutRef.current = setTimeout(() => {
+        setShowZoomIndicator(false);
+        setIsZooming(false);
+      }, 1500);
+      
+      return memo;
+    },
+    {
+      threshold: 0,
+      rubberband: true,
+    }
+  );
+
+  // Drag handler for panning
+  const dragHandler = useDrag(
+    ({ active, movement: [mx, my], memo }) => {
+      if (!active) return;
+      
+      if (!memo) {
+        memo = { ...panOffset };
+      }
+      
+      setPanOffset({ x: memo.x + mx, y: memo.y + my });
+      return memo;
+    },
+    {
+      filterTaps: true,
+      threshold: 10,
+      enabled: zoom !== 1, // Only enable drag when zoomed in
+    }
+  );
+
+  // Reset zoom function
+  const handleResetZoom = useCallback(() => {
+    setZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+    setShowZoomIndicator(false);
+    if (zoomIndicatorTimeoutRef.current) {
+      clearTimeout(zoomIndicatorTimeoutRef.current);
+    }
   }, []);
 
   // No game state fallback
@@ -862,26 +927,79 @@ export default function TacticalFormationBoard() {
           {/* 2. Pitch Diagram                              */}
           {/* ============================================ */}
           <motion.div variants={staggerChild}>
-            <InfoCard className="p-2">
+            <InfoCard className="p-2 relative overflow-hidden">
+              {/* Zoom indicator overlay */}
+              <AnimatePresence>
+                {showZoomIndicator && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-2 right-2 z-10 bg-[#161b22]/90 backdrop-blur-sm border border-[#30363d] rounded-lg px-3 py-1.5 shadow-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-emerald-400">{zoom.toFixed(1)}x</span>
+                      <div className="w-16 h-1 bg-[#30363d] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-400 rounded-full transition-all duration-150"
+                          style={{ width: `${((zoom - 0.5) / 1.5) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Reset zoom button */}
+              {(zoom !== 1 || panOffset.x !== 0 || panOffset.y !== 0) && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={handleResetZoom}
+                  className="absolute bottom-2 right-2 z-10 p-2 bg-[#161b22]/90 backdrop-blur-sm border border-[#30363d] rounded-lg hover:border-emerald-500/30 transition-colors shadow-lg"
+                >
+                  <RotateCcw className="w-4 h-4 text-emerald-400" />
+                </motion.button>
+              )}
+
               <motion.div
                 key={formation}
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
+                {...pinchHandler()}
+                {...dragHandler()}
+                className="cursor-grab active:cursor-grabbing touch-none"
+                style={{ touchAction: 'none' }}
               >
-                <PitchSVG>
-                  {squad.map((player, idx) => (
-                    <PitchPlayerDot
-                      key={`${formation}-${player.id}`}
-                      player={player}
-                      x={positions[idx]?.x ?? 50}
-                      y={positions[idx]?.y ?? 50}
-                      isUser={player.isUser}
-                      selected={selectedPlayerId === player.id}
-                      onClick={() => handlePlayerClick(player.id)}
-                    />
-                  ))}
-                </PitchSVG>
+                <motion.div
+                  animate={{
+                    scale: zoom,
+                    x: panOffset.x,
+                    y: panOffset.y,
+                  }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  style={{ 
+                    transformOrigin: 'center center',
+                    willChange: 'transform',
+                  }}
+                >
+                  <PitchSVG>
+                    {squad.map((player, idx) => (
+                      <PitchPlayerDot
+                        key={`${formation}-${player.id}`}
+                        player={player}
+                        x={positions[idx]?.x ?? 50}
+                        y={positions[idx]?.y ?? 50}
+                        isUser={player.isUser}
+                        selected={selectedPlayerId === player.id}
+                        onClick={() => handlePlayerClick(player.id)}
+                      />
+                    ))}
+                  </PitchSVG>
+                </motion.div>
               </motion.div>
 
               {/* Legend */}

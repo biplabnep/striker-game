@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GameScreen } from '@/lib/game/types';
 import { Home, Swords, Trophy, BarChart3, Menu, Table, Dumbbell, ArrowRightLeft, Award, MessageSquare, Bell, Settings, X, UserCircle, Target, Globe, GraduationCap, Users, Flag, Heart, Activity, Briefcase, ScrollText, ClipboardList, Calendar, UserRound, Star, FileText, GitCompareArrows, Handshake, HeartHandshake, Newspaper, Crown, Shield, Zap, UsersRound, Film, Search, Clock, Mic, Sparkles, BookOpen, Crosshair, Route, Radio, Gauge, Tent, Shirt, Store, Wallet, LayoutGrid, Hourglass, Building2, RotateCcw, Gem, CalendarClock, Compass, Cpu, Gamepad2, Clapperboard, ShoppingBag, Binoculars, Landmark, Baby, Palette, MessageCircle, Gift, Stethoscope, Mail, ShieldAlert, CloudSun, AlarmClock, FileSignature, Music, Warehouse, Syringe, IdCard, Brain, Share2, Plane, Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isTouchDevice } from '@/lib/device';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface NavItem {
   screen: GameScreen;
@@ -187,6 +189,7 @@ export default function BottomNav() {
   const setScreen = useGameStore(state => state.setScreen);
   const activeEvents = useGameStore(state => state.gameState?.activeEvents ?? []);
   const unreadNotifications = useGameStore(state => state.notifications.filter(n => !n.read).length);
+  const touchControlsEnabled = useGameStore(state => state.mobileSettings?.touchControlsEnabled ?? true);
 
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,6 +197,23 @@ export default function BottomNav() {
 
   const isMoreActive = moreScreenSet.has(screen);
   const totalBadges = activeEvents.length + unreadNotifications;
+  const isMobile = useIsMobile();
+  const isTouch = isTouchDevice();
+
+  // Hide BottomNav on mobile when touch controls are active during match screens
+  const shouldHideOnMobile = useMemo(() => {
+    if (!isMobile || !isTouch) return false;
+    if (!touchControlsEnabled) return false;
+    
+    // Hide during live match or match day screens where joystick/radial menu are shown
+    const matchScreens: GameScreen[] = ['match_day', 'match_day_live'];
+    return matchScreens.includes(screen);
+  }, [isMobile, isTouch, touchControlsEnabled, screen]);
+
+  // Don't render anything if should hide on mobile
+  if (shouldHideOnMobile) {
+    return null;
+  }
 
   const handleMoreClick = () => {
     setMoreOpen(prev => !prev);
